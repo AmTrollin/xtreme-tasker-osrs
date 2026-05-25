@@ -1,0 +1,13 @@
+.gradle
+build
+.idea/
+.project
+.settings/
+.classpath
+nbactions.xml
+nb-configuration.xml
+nbproject/
+src/main/resources/task_data/taskbak.json
+src/main/resources/task_data/tasks_v1*.csv
+src/main/resources/task_data/utils/
+src/main/resources/utils/
