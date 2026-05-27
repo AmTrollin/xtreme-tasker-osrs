@@ -1596,25 +1596,49 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             allowCompletionRegressionSave = true;
         }
 
+        int remainingToAdd = desired - existingCompleted;
+        int remainingToRemove = existingCompleted - desired;
         long now = System.currentTimeMillis();
-        for (int i = 0; i < group.size(); i++)
-        {
-            XtremeTask groupedTask = group.get(i);
-            String id = groupedTask.getId();
-            if (id == null || id.trim().isEmpty())
-            {
-                continue;
-            }
 
-            if (i < desired)
+        if (remainingToAdd > 0)
+        {
+            for (XtremeTask groupedTask : group)
             {
+                if (remainingToAdd <= 0)
+                {
+                    break;
+                }
+
+                String id = groupedTask.getId();
+                if (id == null || id.trim().isEmpty() || isTaskCompleted(groupedTask))
+                {
+                    continue;
+                }
+
                 manualCompletedTaskIds.add(id);
                 manualCompletionTimestamps.putIfAbsent(id, now);
                 syncedCompletionTimestamps.remove(id);
+                remainingToAdd--;
             }
-            else
+        }
+        else if (remainingToRemove > 0)
+        {
+            for (int i = group.size() - 1; i >= 0; i--)
             {
+                if (remainingToRemove <= 0)
+                {
+                    break;
+                }
+
+                XtremeTask groupedTask = group.get(i);
+                String id = groupedTask.getId();
+                if (id == null || id.trim().isEmpty() || !isTaskCompleted(groupedTask))
+                {
+                    continue;
+                }
+
                 markTaskIncomplete(id);
+                remainingToRemove--;
             }
         }
 

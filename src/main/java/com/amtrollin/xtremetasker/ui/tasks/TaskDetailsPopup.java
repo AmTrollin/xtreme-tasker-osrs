@@ -31,7 +31,7 @@ import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from diary rewards.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Diary Achievement rewards.";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
     private final UiPalette palette;
@@ -978,8 +978,7 @@ public final class TaskDetailsPopup
             return List.of();
         }
 
-        java.util.ArrayList<InstanceHistoryLine> lines = new java.util.ArrayList<>(instances.size());
-        int completedOrdinal = 1;
+        java.util.ArrayList<CompletedInstance> completedInstances = new java.util.ArrayList<>(instances.size());
         for (int i = 0; i < instances.size(); i++)
         {
             XtremeTask instance = instances.get(i);
@@ -989,14 +988,35 @@ public final class TaskDetailsPopup
                 continue;
             }
 
-            String prefix = completedOrdinal++ + ". ";
             CompletionInfo info = completionInfoProvider == null ? null : completionInfoProvider.apply(instance);
             Long ticks = taskTicksProvider == null ? null : taskTicksProvider.apply(instance);
-            String dateText = instanceCompletionDateText(info, ticks);
 
-            lines.add(new InstanceHistoryLine(instance, prefix + dateText, buildInstanceTimeSpentLine(info, ticks)));
+            completedInstances.add(new CompletedInstance(instance, info, ticks, i));
+        }
+
+        completedInstances.sort((a, b) -> {
+            int byTimestamp = Long.compare(instanceSortTimestamp(a.info), instanceSortTimestamp(b.info));
+            return byTimestamp != 0 ? byTimestamp : Integer.compare(a.originalIndex, b.originalIndex);
+        });
+
+        java.util.ArrayList<InstanceHistoryLine> lines = new java.util.ArrayList<>(completedInstances.size());
+        for (int i = 0; i < completedInstances.size(); i++)
+        {
+            CompletedInstance completed = completedInstances.get(i);
+            String prefix = (i + 1) + ". ";
+            String dateText = instanceCompletionDateText(completed.info, completed.ticks);
+
+            lines.add(new InstanceHistoryLine(
+                    completed.task,
+                    prefix + dateText,
+                    buildInstanceTimeSpentLine(completed.info, completed.ticks)));
         }
         return lines;
+    }
+
+    private static long instanceSortTimestamp(CompletionInfo info)
+    {
+        return info != null && info.timestamp > 0 ? info.timestamp : Long.MAX_VALUE;
     }
 
     private static String buildTimeSpentLine(CompletionInfo info, Long ticks)
@@ -1046,6 +1066,22 @@ public final class TaskDetailsPopup
             this.task = task;
             this.completedLine = completedLine;
             this.timeLine = timeLine;
+        }
+    }
+
+    private static final class CompletedInstance
+    {
+        private final XtremeTask task;
+        private final CompletionInfo info;
+        private final Long ticks;
+        private final int originalIndex;
+
+        private CompletedInstance(XtremeTask task, CompletionInfo info, Long ticks, int originalIndex)
+        {
+            this.task = task;
+            this.info = info;
+            this.ticks = ticks;
+            this.originalIndex = originalIndex;
         }
     }
 

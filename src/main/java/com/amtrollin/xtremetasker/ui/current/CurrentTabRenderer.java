@@ -27,7 +27,7 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
 
 public final class CurrentTabRenderer
 {
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Achievement Diary rewards.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Diary Achievement rewards.";
     private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
@@ -336,9 +336,11 @@ public final class CurrentTabRenderer
                     ? null
                     : collectionLogRequirementPreviewProvider.apply(current);
             boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
-            boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
             boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
-            String desc = hideDescription ? null : current.getDescription();
+            boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
+            String desc = showAchievementDiaryNote
+                    ? ACHIEVEMENT_DIARY_NOTE
+                    : (hideDescription ? null : current.getDescription());
             boolean hasDesc = desc != null && !desc.trim().isEmpty();
             String tip = showTips ? current.getTip() : null;
             boolean hasTip = tip != null && !tip.trim().isEmpty();
@@ -393,10 +395,6 @@ public final class CurrentTabRenderer
                     }
                 }
                 totalPx += 8;
-            }
-            if (showAchievementDiaryNote)
-            {
-                totalPx += rowHeight + 8;
             }
             if (hasTip)
             {
@@ -471,13 +469,6 @@ public final class CurrentTabRenderer
             {
                 y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview);
                 y += 8;
-            }
-
-            if (showAchievementDiaryNote)
-            {
-                g.setColor(uiTextDim);
-                g.drawString(truncateToWidth(ACHIEVEMENT_DIARY_NOTE, fm, maxW), x, y);
-                y += rowHeight + 8;
             }
 
             if (hasTip)
