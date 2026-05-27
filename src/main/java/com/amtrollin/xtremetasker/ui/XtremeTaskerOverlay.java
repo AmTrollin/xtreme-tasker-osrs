@@ -7,6 +7,7 @@ import com.amtrollin.xtremetasker.XtremeTaskerConfig;
 import com.amtrollin.xtremetasker.XtremeTaskerPlugin;
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
@@ -958,17 +959,13 @@ public class XtremeTaskerOverlay extends Overlay {
                 String gameProgress = plugin.getSyncMismatchGameProgressLabel(task);
                 if (gameProgress != null && !gameProgress.isEmpty())
                 {
-                    int hintX = row.x + 8;
-                    int hintMaxW = Math.max(0, actionColumnX - hintX - 8);
+                    int hintX = row.x + 8 + fm.stringWidth(label) + 8;
+                    int hintMaxW = Math.max(0, row.x + row.width - hintX - 8);
                     if (hintMaxW > 40)
                     {
                         String hint = TextUtils.truncateToWidth(gameProgress, fm, hintMaxW);
                         g.setColor(P.UI_TEXT_DIM);
-                        int hintY = row.y - 3;
-                        if (hintY < syncMismatchViewportBounds.y + fm.getAscent())
-                        {
-                            hintY = row.y + row.height + fm.getAscent();
-                        }
+                        int hintY = row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent();
                         g.drawString(hint, hintX, hintY);
                     }
                 }
@@ -1200,7 +1197,55 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             return task.getName();
         }
-        return task.getName() + " " + progress.label();
+
+        int instanceOrdinal = completedInstanceOrdinalInGroup(group, task);
+        if (instanceOrdinal <= 0)
+        {
+            return task.getName() + " " + progress.label();
+        }
+        return task.getName() + " (" + instanceOrdinal + "/" + group.size() + ")";
+    }
+
+    private int completedInstanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)
+    {
+        if (group == null || group.isEmpty() || task == null)
+        {
+            return -1;
+        }
+
+        List<XtremeTask> completed = new ArrayList<>();
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
+            {
+                completed.add(groupedTask);
+            }
+        }
+
+        completed.sort((a, b) -> {
+            int byTimestamp = Long.compare(completionSortTimestamp(a), completionSortTimestamp(b));
+            if (byTimestamp != 0)
+            {
+                return byTimestamp;
+            }
+            return Integer.compare(group.indexOf(a), group.indexOf(b));
+        });
+
+        for (int i = 0; i < completed.size(); i++)
+        {
+            XtremeTask completedTask = completed.get(i);
+            if (completedTask != null && Objects.equals(completedTask.getId(), task.getId()))
+            {
+                return i + 1;
+            }
+        }
+        return -1;
+    }
+
+    private long completionSortTimestamp(XtremeTask task)
+    {
+        CompletionInfo info = plugin.getCompletionInfo(task);
+        return info != null && info.timestamp > 0 ? info.timestamp : Long.MAX_VALUE;
     }
 
     private void renderSyncMismatchApplyConfirm(Graphics2D g, FontMetrics fm)

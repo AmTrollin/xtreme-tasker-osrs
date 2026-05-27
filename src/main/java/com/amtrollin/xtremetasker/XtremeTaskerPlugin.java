@@ -2105,13 +2105,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
                 List<XtremeTask> group = TaskGroupUtils.groupFor(tasks, task);
                 int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
-                for (int i = desiredCompleted; i < group.size(); i++)
+                List<XtremeTask> completedGroup = completedTasksFromGroupInCompletionOrder(group);
+                for (int i = desiredCompleted; i < completedGroup.size(); i++)
                 {
-                    XtremeTask groupedTask = group.get(i);
-                    if (isTaskCompleted(groupedTask))
-                    {
-                        mismatches.add(groupedTask);
-                    }
+                    mismatches.add(completedGroup.get(i));
                 }
                 continue;
             }
@@ -2137,13 +2134,43 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
+        for (XtremeTask groupedTask : completedTasksFromGroupInCompletionOrder(group))
+        {
+            mismatches.add(groupedTask);
+        }
+    }
+
+    private List<XtremeTask> completedTasksFromGroupInCompletionOrder(List<XtremeTask> group)
+    {
+        if (group == null || group.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> completed = new ArrayList<>();
         for (XtremeTask groupedTask : group)
         {
             if (groupedTask != null && isTaskCompleted(groupedTask))
             {
-                mismatches.add(groupedTask);
+                completed.add(groupedTask);
             }
         }
+
+        completed.sort((a, b) -> {
+            int byTimestamp = Long.compare(completionSortTimestamp(a), completionSortTimestamp(b));
+            if (byTimestamp != 0)
+            {
+                return byTimestamp;
+            }
+            return Integer.compare(group.indexOf(a), group.indexOf(b));
+        });
+        return completed;
+    }
+
+    private long completionSortTimestamp(XtremeTask task)
+    {
+        CompletionInfo info = getCompletionInfo(task);
+        return info != null && info.timestamp > 0 ? info.timestamp : Long.MAX_VALUE;
     }
 
     private boolean isCollectionLogTaskCompleteInGame(XtremeTask task, TaskVerification verification)
@@ -2369,7 +2396,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
-        return "In game data shows (" + desiredCompleted + "/" + group.size() + ") complete";
+        return "Sync found " + desiredCompleted + "/" + group.size() + " completed";
     }
 
     @Override
