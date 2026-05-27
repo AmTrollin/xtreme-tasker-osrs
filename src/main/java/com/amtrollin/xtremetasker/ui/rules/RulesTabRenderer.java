@@ -352,7 +352,7 @@ public final class RulesTabRenderer {
         lines.add(LINE_DATA_SYNC_TITLE);
         lines.add("Account progress sync");
         String progressDesc =
-                "Use these buttons to detect tasks you've already completed. Progress sync is separate from task-list updates.";
+                "Use these buttons to detect tasks you've already completed. Progress sync is separate from task list updates.";
         lines.addAll(TextUtils.wrapText(progressDesc, fm, maxWidth));
         return lines;
     }

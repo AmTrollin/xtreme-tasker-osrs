@@ -117,22 +117,9 @@ public final class CurrentTabViewRenderer
         String activeText = showComplete ? "Mark complete" : "Roll task";
         Rectangle activeBounds = showComplete ? state.layout().completeButtonBounds : state.layout().rollButtonBounds;
 
-        // Draw button clipped to viewport (so it scrolls naturally and clips at viewport edge)
-        Rectangle vp = state.layout().viewportBounds;
         if (activeBounds.width > 0 && activeBounds.height > 0)
         {
-            if (vp.width > 0 && vp.height > 0)
-            {
-                Shape oldClip = g.getClip();
-                g.setClip(vp.x, vp.y, vp.width, vp.height);
-                buttonRenderer.drawPrimaryButton(g, activeBounds, activeText);
-                g.setClip(oldClip);
-            }
-            else
-            {
-                // No scroll (no task or rolling) — draw unclipped
-                buttonRenderer.drawPrimaryButton(g, activeBounds, activeText);
-            }
+            buttonRenderer.drawPrimaryButton(g, activeBounds, activeText);
         }
 
         renderKeyboardHints(g, fm, panelBounds, keyboardHintsOpen, keyboardHintsButtonBounds, keyboardHintsPopupBounds, hoverX, hoverY);
@@ -150,7 +137,7 @@ public final class CurrentTabViewRenderer
     )
     {
         int innerW = panelBounds.width - (PANEL_PADDING * 2);
-        int baselineY = panelBounds.y + panelBounds.height - PANEL_PADDING - 4;
+        int baselineY = panelBounds.y + panelBounds.height - 12;
         drawKeyboardHintsButton(g, fm, panelBounds.x, baselineY, innerW, buttonBounds, hoverX, hoverY);
         if (keyboardHintsOpen)
         {

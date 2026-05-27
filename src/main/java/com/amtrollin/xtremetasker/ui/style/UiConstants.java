@@ -2,8 +2,8 @@ package com.amtrollin.xtremetasker.ui.style;
 
 public final class UiConstants
 {
-    public static final int ICON_WIDTH = 34;
-    public static final int ICON_HEIGHT = 34;
+    public static final int ICON_WIDTH = 30;
+    public static final int ICON_HEIGHT = 30;
 
     public static final int PANEL_WIDTH = 420;
     public static final int PANEL_PADDING = 8;

@@ -1340,6 +1340,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return collectionLogService != null && collectionLogService.isItemObtained(itemId);
     }
 
+    public int countObtainedCollectionLogItems(int[] itemIds) {
+        return collectionLogService == null ? 0 : Math.toIntExact(collectionLogService.countObtained(itemIds));
+    }
+
     public java.awt.image.BufferedImage getItemImage(int itemId) {
         return itemManager.getImage(itemId);
     }

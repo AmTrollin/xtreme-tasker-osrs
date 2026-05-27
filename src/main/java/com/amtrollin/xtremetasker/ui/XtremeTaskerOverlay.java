@@ -9,6 +9,7 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
+import com.amtrollin.xtremetasker.models.TaskGroupProgress;
 import com.amtrollin.xtremetasker.tasklist.TaskListPipeline;
 import com.amtrollin.xtremetasker.tasklist.TaskGroupUtils;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
@@ -220,19 +221,147 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int[] itemIds = verification.getItemIds();
         if (itemIds == null || itemIds.length == 0) return null;
+        if (itemIds.length == 1) return null;
 
-        int requiredCount = verification.getCount() == null ? 1 : verification.getCount();
+        int requiredCount = collectionLogPreviewRequiredCount(task, verification, itemIds);
         requiredCount = Math.max(1, Math.min(requiredCount, itemIds.length));
+        int previousRequiredCount = collectionLogPreviewPreviousRequiredCount(task, itemIds);
+        int totalObtainedCount = plugin.countObtainedCollectionLogItems(itemIds);
+        int obtainedCount = Math.max(0, totalObtainedCount - previousRequiredCount);
+        int shownObtainedCount = Math.min(obtainedCount, requiredCount);
 
-        List<CollectionLogRequirementItem> items = new ArrayList<>(itemIds.length);
+        Map<String, Boolean> obtainedByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
-            items.add(new CollectionLogRequirementItem(
-                    plugin.getItemName(itemId),
-                    plugin.isCollectionLogItemObtained(itemId)
-            ));
+            String itemName = plugin.getItemName(itemId);
+            boolean obtained = plugin.isCollectionLogItemObtained(itemId);
+            obtainedByItemName.merge(itemName, obtained, Boolean::logicalOr);
         }
 
-        return new CollectionLogRequirementPreview(requiredCount, itemIds.length, items);
+        List<CollectionLogRequirementItem> items = new ArrayList<>(obtainedByItemName.size());
+        for (Map.Entry<String, Boolean> entry : obtainedByItemName.entrySet()) {
+            items.add(new CollectionLogRequirementItem(entry.getKey(), entry.getValue()));
+        }
+
+        boolean sameNameFamily = obtainedByItemName.size() == 1;
+        TaskGroupProgress groupProgress = plugin.getTaskGroupProgress(task);
+        boolean repeatedDistinctPool = !sameNameFamily && groupProgress != null && groupProgress.isGrouped();
+        String summaryText = sameNameFamily
+                ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
+                : repeatedCollectionLogRequirementSummary(totalObtainedCount, previousRequiredCount, repeatedDistinctPool);
+        return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
+    }
+
+    private int collectionLogPreviewRequiredCount(XtremeTask task, TaskVerification verification, int[] itemIds) {
+        int count = verification.getCount() == null ? 1 : verification.getCount();
+        if (count <= 1 || task == null || task.getId() == null)
+        {
+            return Math.max(1, count);
+        }
+
+        XtremeTask previous = null;
+        for (XtremeTask candidate : plugin.getDummyTasks())
+        {
+            if (!sameCollectionLogRequirementSequence(task, candidate, itemIds))
+            {
+                continue;
+            }
+
+            if (task.getId().equals(candidate.getId()))
+            {
+                break;
+            }
+
+            previous = candidate;
+        }
+
+        TaskVerification previousVerification = previous == null ? null : previous.getVerification();
+        Integer previousCount = previousVerification == null ? null : previousVerification.getCount();
+        if (previousCount != null && previousCount > 0 && count > previousCount)
+        {
+            return count - previousCount;
+        }
+
+        return count;
+    }
+
+    private int collectionLogPreviewPreviousRequiredCount(XtremeTask task, int[] itemIds) {
+        if (task == null || task.getId() == null)
+        {
+            return 0;
+        }
+
+        XtremeTask previous = null;
+        for (XtremeTask candidate : plugin.getDummyTasks())
+        {
+            if (!sameCollectionLogRequirementSequence(task, candidate, itemIds))
+            {
+                continue;
+            }
+
+            if (task.getId().equals(candidate.getId()))
+            {
+                break;
+            }
+
+            previous = candidate;
+        }
+
+        TaskVerification previousVerification = previous == null ? null : previous.getVerification();
+        Integer previousCount = previousVerification == null ? null : previousVerification.getCount();
+        return previousCount == null ? 0 : Math.max(0, previousCount);
+    }
+
+    private String repeatedCollectionLogRequirementSummary(int totalObtainedCount, int previousRequiredCount, boolean repeatedDistinctPool) {
+        if (!repeatedDistinctPool)
+        {
+            return "";
+        }
+
+        int priorCount = Math.max(0, Math.min(previousRequiredCount, totalObtainedCount));
+        if (priorCount <= 0)
+        {
+            return "";
+        }
+        return totalObtainedCount + " obtained; " + priorCount + " counted toward earlier completions.";
+    }
+
+    private String pluralizeRequirementName(String name, int requiredCount) {
+        String clean = name == null ? "items" : name.trim();
+        if (clean.isEmpty())
+        {
+            return "items";
+        }
+        if (requiredCount == 1 || clean.endsWith("s"))
+        {
+            return clean;
+        }
+        if (clean.endsWith("y") && clean.length() > 1)
+        {
+            char beforeY = Character.toLowerCase(clean.charAt(clean.length() - 2));
+            if ("aeiou".indexOf(beforeY) < 0)
+            {
+                return clean.substring(0, clean.length() - 1) + "ies";
+            }
+        }
+        return clean + "s";
+    }
+
+    private boolean sameCollectionLogRequirementSequence(XtremeTask target, XtremeTask candidate, int[] targetItemIds) {
+        if (target == null || candidate == null)
+        {
+            return false;
+        }
+
+        TaskVerification verification = candidate.getVerification();
+        return candidate.getSource() == TaskSource.COLLECTION_LOG
+                && Objects.equals(normalizeRequirementSequenceName(target.getName()), normalizeRequirementSequenceName(candidate.getName()))
+                && verification != null
+                && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
+                && Arrays.equals(targetItemIds, verification.getItemIds());
+    }
+
+    private String normalizeRequirementSequenceName(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     // Task Details popup
@@ -829,14 +958,18 @@ public class XtremeTaskerOverlay extends Overlay {
                 String gameProgress = plugin.getSyncMismatchGameProgressLabel(task);
                 if (gameProgress != null && !gameProgress.isEmpty())
                 {
-                    int hintX = row.x + 8 + fm.stringWidth(label) + 8;
-                    int hintMaxW = Math.max(0, row.x + row.width - 8 - hintX);
+                    int hintX = row.x + 8;
+                    int hintMaxW = Math.max(0, actionColumnX - hintX - 8);
                     if (hintMaxW > 40)
                     {
                         String hint = TextUtils.truncateToWidth(gameProgress, fm, hintMaxW);
                         g.setColor(P.UI_TEXT_DIM);
-                        g.drawString(hint, hintX,
-                                row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent());
+                        int hintY = row.y - 3;
+                        if (hintY < syncMismatchViewportBounds.y + fm.getAscent())
+                        {
+                            hintY = row.y + row.height + fm.getAscent();
+                        }
+                        g.drawString(hint, hintX, hintY);
                     }
                 }
             }
@@ -1062,12 +1195,12 @@ public class XtremeTaskerOverlay extends Overlay {
             return task.getName();
         }
 
-        int instance = group.indexOf(task);
-        if (instance < 0)
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (progress == null || !progress.isGrouped())
         {
-            return task.getName() + " " + plugin.getTaskGroupProgress(task).label();
+            return task.getName();
         }
-        return task.getName() + " (" + (instance + 1) + "/" + group.size() + ")";
+        return task.getName() + " " + progress.label();
     }
 
     private void renderSyncMismatchApplyConfirm(Graphics2D g, FontMetrics fm)
