@@ -31,7 +31,7 @@ import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Achievement Diary rewards.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from diary rewards.";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
     private final UiPalette palette;
@@ -339,12 +339,15 @@ public final class TaskDetailsPopup
 
         // Count total content pixel height for scroll math
         boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
-        boolean hideDescription = hasRequirementPreview || task.getSource() == TaskSource.COLLECTION_LOG;
         boolean showAchievementDiaryNote = isAchievementDiaryTask(task);
-        String desc = hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim();
+        boolean hideDescription = hasRequirementPreview || task.getSource() == TaskSource.COLLECTION_LOG;
+        boolean showDescriptionSection = !hideDescription || showAchievementDiaryNote;
+        String desc = showAchievementDiaryNote
+                ? ACHIEVEMENT_DIARY_NOTE
+                : (hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim());
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
         int totalPx = 0;
-        if (!hideDescription)
+        if (showDescriptionSection)
         {
             totalPx += ROW_HEIGHT; // "Description" header
             if (desc.isEmpty())
@@ -356,36 +359,11 @@ public final class TaskDetailsPopup
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(desc, fm, contentW).size();
             }
         }
-        if (hasRequirementPreview)
+        if (showDescriptionSection)
         {
-            totalPx += ROW_HEIGHT; // "Eligible Collection Log Items" header
-            if (requirementPreview.showSummaryText())
-            {
-                totalPx += ROW_HEIGHT; // counter summary
-            }
-            if (requirementPreview.showItemList())
-            {
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + safe(item.getName()), fm, contentW).size();
-                }
-            }
+            totalPx += 6 + 12; // divider gap before "Prereqs"
         }
-        if (showAchievementDiaryNote)
-        {
-            totalPx += ROW_HEIGHT;
-        }
-        if (!taskTip.isEmpty())
-        {
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW, 40));
-            if (!hideDescription)
-            {
-                totalPx += ROW_HEIGHT; // blank line before tip
-            }
-            totalPx += ROW_HEIGHT * tipLines.size();
-            totalPx += 6;
-        }
-        totalPx += 6 + 12 + ROW_HEIGHT; // divider gap + "Prereqs" header
+        totalPx += ROW_HEIGHT; // "Prereqs" header
         if ((prerequisiteStatuses == null || prerequisiteStatuses.isEmpty()) && prereqs.isEmpty())
         {
             totalPx += ROW_HEIGHT; // "None"
@@ -405,6 +383,32 @@ public final class TaskDetailsPopup
                 if (p.isEmpty()) continue;
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(p, fm, contentW).size();
             }
+        }
+        if (hasRequirementPreview)
+        {
+            totalPx += 6 + 12; // divider gap before eligible CLog items
+            totalPx += ROW_HEIGHT; // "Eligible Collection Log Items" header
+            if (requirementPreview.showSummaryText())
+            {
+                totalPx += ROW_HEIGHT; // counter summary
+            }
+            if (requirementPreview.showItemList())
+            {
+                for (CollectionLogRequirementItem item : requirementPreview.getItems())
+                {
+                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + safe(item.getName()), fm, contentW).size();
+                }
+            }
+        }
+        if (!taskTip.isEmpty())
+        {
+            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW, 40));
+            if (showDescriptionSection)
+            {
+                totalPx += ROW_HEIGHT; // blank line before tip
+            }
+            totalPx += ROW_HEIGHT * tipLines.size();
+            totalPx += 6;
         }
         if (!instanceHistoryLines.isEmpty())
         {
@@ -449,7 +453,7 @@ public final class TaskDetailsPopup
 
         int y = contentTop + fm.getAscent() - scrollPx;
 
-        if (!hideDescription)
+        if (showDescriptionSection)
         {
             g.setColor(palette.UI_GOLD);
             g.drawString("Description", contentLeft, y);
@@ -472,74 +476,13 @@ public final class TaskDetailsPopup
             }
         }
 
-        if (hasRequirementPreview)
+        if (showDescriptionSection)
         {
-            g.setColor(palette.UI_GOLD);
-            g.drawString("Eligible Collection Log Items", contentLeft, y);
-            y += ROW_HEIGHT;
-
-            if (requirementPreview.showSummaryText())
-            {
-                g.setColor(palette.UI_TEXT_DIM);
-                g.drawString(TextUtils.truncateToWidth(requirementPreview.summaryText(), fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
-            }
-
-            if (requirementPreview.showItemList())
-            {
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    String lineText = "- " + safe(item.getName());
-                    for (String line : TextUtils.wrapText(lineText, fm, contentW))
-                    {
-                        String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                        g.setColor(item.isObtained() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
-                        g.drawString(drawLine, contentLeft, y);
-
-                        if (item.isObtained())
-                        {
-                            drawStrikeThrough(g, fm, drawLine, contentLeft, y);
-                        }
-
-                        y += ROW_HEIGHT;
-                    }
-                }
-            }
-        }
-
-        if (showAchievementDiaryNote)
-        {
-            g.setColor(palette.UI_TEXT_DIM);
-            g.drawString(TextUtils.truncateToWidth(ACHIEVEMENT_DIARY_NOTE, fm, contentW), contentLeft, y);
-            y += ROW_HEIGHT;
-        }
-
-        if (!taskTip.isEmpty())
-        {
-            if (!hideDescription)
-            {
-                y += ROW_HEIGHT; // blank line before tip
-            }
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW - 8, 40));
-            g.setColor(palette.UI_TEXT_DIM);
-            if (!tipLines.isEmpty())
-            {
-                g.drawString(TextUtils.truncateToWidth("Tip: " + tipLines.get(0), fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
-                for (int i = 1; i < tipLines.size(); i++)
-                {
-                    g.drawString(TextUtils.truncateToWidth(tipLines.get(i), fm, contentW), contentLeft, y);
-                    y += ROW_HEIGHT;
-                }
-            }
             y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
         }
-
-        // Divider between sections
-        y += 6;
-        g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-        g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-        y += 12;
 
         g.setColor(palette.UI_GOLD);
         g.drawString("Prereqs", contentLeft, y);
@@ -585,6 +528,67 @@ public final class TaskDetailsPopup
                     y += ROW_HEIGHT;
                 }
             }
+        }
+
+        if (hasRequirementPreview)
+        {
+            y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
+
+            g.setColor(palette.UI_GOLD);
+            g.drawString("Eligible Collection Log Items", contentLeft, y);
+            y += ROW_HEIGHT;
+
+            if (requirementPreview.showSummaryText())
+            {
+                g.setColor(palette.UI_TEXT_DIM);
+                g.drawString(TextUtils.truncateToWidth(requirementPreview.summaryText(), fm, contentW), contentLeft, y);
+                y += ROW_HEIGHT;
+            }
+
+            if (requirementPreview.showItemList())
+            {
+                for (CollectionLogRequirementItem item : requirementPreview.getItems())
+                {
+                    String lineText = "- " + safe(item.getName());
+                    for (String line : TextUtils.wrapText(lineText, fm, contentW))
+                    {
+                        String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
+                        g.setColor(item.isObtained() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
+                        g.drawString(drawLine, contentLeft, y);
+
+                        if (item.isObtained())
+                        {
+                            drawStrikeThrough(g, fm, drawLine, contentLeft, y);
+                        }
+
+                        y += ROW_HEIGHT;
+                    }
+                }
+            }
+        }
+
+        if (!taskTip.isEmpty())
+        {
+            if (showDescriptionSection)
+            {
+                y += ROW_HEIGHT; // blank line before tip
+            }
+            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW - 8, 40));
+            g.setColor(palette.UI_TEXT_DIM);
+            if (!tipLines.isEmpty())
+            {
+                g.drawString(TextUtils.truncateToWidth("Tip: " + tipLines.get(0), fm, contentW), contentLeft, y);
+                y += ROW_HEIGHT;
+                for (int i = 1; i < tipLines.size(); i++)
+                {
+                    g.drawString(TextUtils.truncateToWidth(tipLines.get(i), fm, contentW), contentLeft, y);
+                    y += ROW_HEIGHT;
+                }
+            }
+            y += 6;
         }
 
         if (groupProgress != null && groupProgress.isGrouped())
