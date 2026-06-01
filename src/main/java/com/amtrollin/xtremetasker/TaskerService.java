@@ -66,6 +66,14 @@ public interface TaskerService
 
     String getLastCollectionLogSyncResultAtLocalTime();
 
+    List<String> getLastCombatAchievementSyncedTaskNames();
+
+    List<String> getLastCollectionLogSyncedTaskNames();
+
+    boolean isCombatAchievementSyncedTasksExpanded();
+
+    boolean isCollectionLogSyncedTasksExpanded();
+
     boolean isCollectionLogSyncPending();
 
     List<XtremeTask> getSyncMismatchTasks();

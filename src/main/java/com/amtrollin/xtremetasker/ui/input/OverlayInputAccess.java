@@ -74,6 +74,10 @@ public interface OverlayInputAccess
     RulesTabLayout rulesLayout();
     RulesTabLayout.SubTab rulesSubTab();
     void setRulesSubTab(RulesTabLayout.SubTab subTab);
+    void toggleCaSyncedTasksExpanded();
+    void toggleClogSyncedTasksExpanded();
+    void setCaSyncedTasksExpanded(boolean expanded);
+    void setClogSyncedTasksExpanded(boolean expanded);
     void openSyncMismatchReview();
     void openSyncMismatchReview(TaskSource source);
     void closeSyncMismatchReview();
