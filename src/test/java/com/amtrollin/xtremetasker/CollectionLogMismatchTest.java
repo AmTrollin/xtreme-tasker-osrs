@@ -58,19 +58,74 @@ public class CollectionLogMismatchTest
                 .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
         findMismatches.setAccessible(true);
 
-        List<XtremeTask> mismatchesWhenUnseen = (List<XtremeTask>) findMismatches.invoke(plugin, true);
-        assertEquals("Plugin-completed CLOG requirement not found by sync should be reviewable",
-                1, mismatchesWhenUnseen.size());
-        assertEquals(task.getId(), mismatchesWhenUnseen.get(0).getId());
-
-        collectionLogService.storeSeenItem(10878);
-        List<XtremeTask> mismatchesWhenSeenButUnobtained = (List<XtremeTask>) findMismatches.invoke(plugin, true);
-        assertEquals("Seen but unobtained CLOG requirement should mismatch", 1, mismatchesWhenSeenButUnobtained.size());
-        assertEquals(task.getId(), mismatchesWhenSeenButUnobtained.get(0).getId());
+        List<XtremeTask> mismatchesWhenNotFound = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        assertEquals("Completed CLOG requirement not found by sync should mismatch", 1, mismatchesWhenNotFound.size());
+        assertEquals(task.getId(), mismatchesWhenNotFound.get(0).getId());
 
         collectionLogService.storeItem(10878);
         List<XtremeTask> mismatchesWhenObtained = (List<XtremeTask>) findMismatches.invoke(plugin, true);
         assertTrue("Obtained requirement should no longer mismatch", mismatchesWhenObtained.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void satchelInterfaceItemsCountForSatchelRequirements() throws Exception
+    {
+        int[][] satchelIds = new int[][]{
+                {10877, 25618},
+                {10878, 25619},
+                {10879, 25620},
+                {10880, 25621},
+                {10881, 25622},
+                {10882, 25623}
+        };
+
+        for (int[] ids : satchelIds)
+        {
+            XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+            CollectionLogService collectionLogService = new CollectionLogService();
+            setField(plugin, "collectionLogService", collectionLogService);
+
+            int realItemId = ids[0];
+            int interfaceItemId = ids[1];
+            TaskVerification verification = new Gson().fromJson(
+                    "{\"method\":\"collection-log\",\"itemIds\":[" + realItemId + "],\"count\":1}",
+                    TaskVerification.class
+            );
+
+            XtremeTask task = new XtremeTask(
+                    "collection_log_easy_get-a-satchel_" + realItemId + "_test",
+                    "Get a satchel",
+                    TaskSource.COLLECTION_LOG,
+                    TaskTier.EASY,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    verification,
+                    null
+            );
+
+            List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+            tasks.clear();
+            tasks.add(task);
+
+            Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+            manualCompletedTaskIds.clear();
+            manualCompletedTaskIds.add(task.getId());
+
+            collectionLogService.storeSeenItem(interfaceItemId);
+            collectionLogService.storeItem(interfaceItemId);
+
+            Method findMismatches = XtremeTaskerPlugin.class
+                    .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
+            findMismatches.setAccessible(true);
+
+            List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+            assertTrue("Satchel interface item " + interfaceItemId + " should satisfy satchel requirement " + realItemId,
+                    mismatches.isEmpty());
+        }
     }
 
     @Test
