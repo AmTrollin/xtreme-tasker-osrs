@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,6 +28,15 @@ public class CollectionLogService
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
             "New item added to your collection log:\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
+    );
+
+    private static final Map<Integer, Integer> COLLECTION_LOG_INTERFACE_ITEM_ALIASES = Map.of(
+            25618, 10877, // Plain satchel interface item -> Plain satchel
+            25619, 10878, // Green satchel interface item -> Green satchel
+            25620, 10879, // Red satchel interface item -> Red satchel
+            25621, 10880, // Black satchel interface item -> Black satchel
+            25622, 10881, // Gold satchel interface item -> Gold satchel
+            25623, 10882  // Rune satchel interface item -> Rune satchel
     );
 
     @Inject
@@ -136,12 +146,14 @@ public class CollectionLogService
 
     public boolean isItemObtained(int itemId)
     {
-        return obtainedItems.contains(itemId);
+        return obtainedItems.contains(itemId)
+                || obtainedItems.contains(canonicalCollectionLogItemId(itemId));
     }
 
     public boolean hasSeenItem(int itemId)
     {
-        return seenItems.contains(itemId);
+        return seenItems.contains(itemId)
+                || seenItems.contains(canonicalCollectionLogItemId(itemId));
     }
 
     public boolean requestCollectionLogOpenOrRefresh()
@@ -159,6 +171,7 @@ public class CollectionLogService
         if (itemId > 0)
         {
             obtainedItems.add(itemId);
+            obtainedItems.add(canonicalCollectionLogItemId(itemId));
         }
     }
 
@@ -167,6 +180,7 @@ public class CollectionLogService
         if (itemId > 0)
         {
             seenItems.add(itemId);
+            seenItems.add(canonicalCollectionLogItemId(itemId));
         }
     }
 
@@ -227,7 +241,9 @@ public class CollectionLogService
             if (itemId != null && itemId > 0)
             {
                 obtainedItems.add(itemId);
+                obtainedItems.add(canonicalCollectionLogItemId(itemId));
                 seenItems.add(itemId);
+                seenItems.add(canonicalCollectionLogItemId(itemId));
             }
         }
     }
@@ -241,5 +257,10 @@ public class CollectionLogService
     {
         obtainedItems.clear();
         seenItems.clear();
+    }
+
+    private int canonicalCollectionLogItemId(int itemId)
+    {
+        return COLLECTION_LOG_INTERFACE_ITEM_ALIASES.getOrDefault(itemId, itemId);
     }
 }
