@@ -21,7 +21,7 @@ public class CollectionLogMismatchTest
 {
     @Test
     @SuppressWarnings("unchecked")
-    public void collectionLogRequirementNotFoundBySyncIsMarkedAsMismatch() throws Exception
+    public void unseenCollectionLogRequirementIsNotMarkedAsMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
@@ -59,9 +59,8 @@ public class CollectionLogMismatchTest
         findMismatches.setAccessible(true);
 
         List<XtremeTask> mismatchesWhenUnseen = (List<XtremeTask>) findMismatches.invoke(plugin, true);
-        assertEquals("Plugin-completed CLOG requirement not found by sync should be reviewable",
-                1, mismatchesWhenUnseen.size());
-        assertEquals(task.getId(), mismatchesWhenUnseen.get(0).getId());
+        assertTrue("Unseen CLOG requirements should be treated as unknown, not mismatches",
+                mismatchesWhenUnseen.isEmpty());
 
         collectionLogService.storeSeenItem(10878);
         List<XtremeTask> mismatchesWhenSeenButUnobtained = (List<XtremeTask>) findMismatches.invoke(plugin, true);
@@ -114,6 +113,11 @@ public class CollectionLogMismatchTest
         Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(first.getId());
+
+        for (int itemId : new int[]{4119, 4121, 4123, 4125, 4127, 4129, 4131})
+        {
+            collectionLogService.storeSeenItem(itemId);
+        }
 
         Method findMismatches = XtremeTaskerPlugin.class
                 .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);

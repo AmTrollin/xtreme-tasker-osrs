@@ -139,6 +139,11 @@ public class CollectionLogService
         return obtainedItems.contains(itemId);
     }
 
+    public boolean hasSeenItem(int itemId)
+    {
+        return seenItems.contains(itemId);
+    }
+
     public boolean requestCollectionLogOpenOrRefresh()
     {
         return widgetMonitor.requestCollectionLogOpenOrRefresh();
@@ -154,6 +159,7 @@ public class CollectionLogService
         if (itemId > 0)
         {
             obtainedItems.add(itemId);
+            seenItems.add(itemId);
         }
     }
 

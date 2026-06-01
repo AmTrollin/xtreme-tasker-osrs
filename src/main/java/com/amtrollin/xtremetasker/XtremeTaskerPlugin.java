@@ -2372,6 +2372,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     continue;
                 }
 
+                if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
+                        && !canEvaluateCollectionLogRequirement(task))
+                {
+                    continue;
+                }
+
                 String groupKey = countedCollectionLogGroupKey(task, verification);
                 if (groupKey == null)
                 {
@@ -2395,7 +2401,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 List<XtremeTask> completedGroup = completedTasksFromGroupInCompletionOrder(group);
                 for (int i = desiredCompleted; i < completedGroup.size(); i++)
                 {
-                    mismatches.add(completedGroup.get(i));
+                    XtremeTask mismatchedTask = completedGroup.get(i);
+                    logCollectionLogMismatch(mismatchedTask, mismatchedTask.getVerification(), "counted-group review");
+                    mismatches.add(mismatchedTask);
                 }
                 continue;
             }
@@ -2405,8 +2413,15 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 continue;
             }
 
+            if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
+                    && !canEvaluateCollectionLogRequirement(task))
+            {
+                continue;
+            }
+
             if (!isCollectionLogTaskCompleteInGame(task, verification))
             {
+                logCollectionLogMismatch(task, verification, "single-task review");
                 mismatches.add(task);
             }
         }
@@ -2423,6 +2438,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         for (XtremeTask groupedTask : completedTasksFromGroupInCompletionOrder(group))
         {
+            logCollectionLogMismatch(groupedTask, groupedTask.getVerification(), "counted-group review");
             mismatches.add(groupedTask);
         }
     }
@@ -2482,6 +2498,42 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return false;
+    }
+
+    private void logCollectionLogMismatch(XtremeTask task, TaskVerification verification, String reason)
+    {
+        if (task == null || verification == null
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return;
+        }
+
+        ItemRequirement requirement = resolveCollectionLogRequirement(task);
+        if (requirement == null || requirement.itemIds == null || requirement.itemIds.length == 0)
+        {
+            log.info("CLOG review mismatch: '{}' ({}) reason={} no resolved item requirement",
+                    task.getName(), task.getId(), reason);
+            return;
+        }
+
+        String itemState = Arrays.stream(requirement.itemIds)
+                .mapToObj(itemId -> itemId
+                        + "[seen=" + collectionLogService.hasSeenItem(itemId)
+                        + ",obtained=" + collectionLogService.isItemObtained(itemId) + "]")
+                .collect(Collectors.joining(", "));
+        long obtained = collectionLogService.countObtained(requirement.itemIds);
+
+        log.info("CLOG review mismatch: '{}' ({}) reason={} required={} obtained={} items={}",
+                task.getName(), task.getId(), reason, requirement.requiredCount, obtained, itemState);
+    }
+
+    private boolean canEvaluateCollectionLogRequirement(XtremeTask task)
+    {
+        ItemRequirement requirement = resolveCollectionLogRequirement(task);
+        return requirement != null
+                && requirement.itemIds != null
+                && requirement.itemIds.length > 0
+                && collectionLogService.hasSeenAll(requirement.itemIds);
     }
 
     @Override
