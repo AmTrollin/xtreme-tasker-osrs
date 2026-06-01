@@ -33,6 +33,8 @@ public final class RulesTabRenderer {
     private static final String LINE_SYNC_CLOG_BUTTON_ROW = "[SYNC_CLOG_BUTTON_ROW]";
     private static final String LINE_SYNC_CA_REVIEW_ACTIONS_ROW = "[SYNC_CA_REVIEW_ACTIONS_ROW]";
     private static final String LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW = "[SYNC_CLOG_REVIEW_ACTIONS_ROW]";
+    private static final String LINE_SYNC_CA_MARKED_TOGGLE_PREFIX = "[SYNC_CA_MARKED_TOGGLE]";
+    private static final String LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX = "[SYNC_CLOG_MARKED_TOGGLE]";
     private static final String LINE_SYNC_SECTION_DIVIDER = "[SYNC_SECTION_DIVIDER]";
     private static final String LINE_DATA_SYNC_TITLE = "[DATA_SYNC_TITLE]";
     private static final String REVIEW_NEEDED_TITLE = "Review needed";
@@ -70,6 +72,10 @@ public final class RulesTabRenderer {
             String lastCombatAchievementSyncResultAtLocalTime,
             String lastCollectionLogSyncResult,
             String lastCollectionLogSyncResultAtLocalTime,
+                List<String> lastCombatAchievementSyncedTaskNames,
+                List<String> lastCollectionLogSyncedTaskNames,
+                boolean showCombatAchievementSyncedTaskNames,
+                boolean showCollectionLogSyncedTaskNames,
             boolean collectionLogSyncPending,
             int combatAchievementReviewCount,
             int collectionLogReviewCount
@@ -83,6 +89,8 @@ public final class RulesTabRenderer {
         layout.syncCaReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncClogReviewButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncClogReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
+        layout.syncCaMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
+        layout.syncClogMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
         int bx = panelX + panelPadding;
         int viewportW = panelWidth - 2 * panelPadding;
 
@@ -117,6 +125,10 @@ public final class RulesTabRenderer {
                         lastCombatAchievementSyncResultAtLocalTime,
                         lastCollectionLogSyncResult,
                         lastCollectionLogSyncResultAtLocalTime,
+                        lastCombatAchievementSyncedTaskNames,
+                        lastCollectionLogSyncedTaskNames,
+                        showCombatAchievementSyncedTaskNames,
+                        showCollectionLogSyncedTaskNames,
                         collectionLogSyncPending,
                         combatAchievementReviewCount,
                         collectionLogReviewCount)
@@ -168,6 +180,30 @@ public final class RulesTabRenderer {
                 int y = drawY - Math.max(4, fm.getAscent() / 2);
                 g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
                 g.drawLine(bx, y, bx + viewportW - 8, y);
+                drawY += rb;
+                continue;
+            }
+
+            if (line.startsWith(LINE_SYNC_CA_MARKED_TOGGLE_PREFIX)
+                    || line.startsWith(LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX)) {
+                String marker = line.startsWith(LINE_SYNC_CA_MARKED_TOGGLE_PREFIX)
+                        ? LINE_SYNC_CA_MARKED_TOGGLE_PREFIX
+                        : LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX;
+                String label = line.substring(marker.length()).trim();
+                int by = drawY - fm.getAscent();
+                String drawText = TextUtils.truncateToWidth(label, fm, viewportW - 8);
+                g.setColor(white);
+                g.drawString(drawText, bx, drawY);
+                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 180));
+                g.drawLine(bx, drawY + 2, bx + Math.max(0, fm.stringWidth(drawText)), drawY + 2);
+
+                int boundsW = Math.min(viewportW - 8, fm.stringWidth(drawText) + 4);
+                if (LINE_SYNC_CA_MARKED_TOGGLE_PREFIX.equals(marker)) {
+                    layout.syncCaMarkedTasksToggleBounds.setBounds(bx, by, Math.max(0, boundsW), rowHeight + 8);
+                } else {
+                    layout.syncClogMarkedTasksToggleBounds.setBounds(bx, by, Math.max(0, boundsW), rowHeight + 8);
+                }
+
                 drawY += rb;
                 continue;
             }
@@ -364,6 +400,10 @@ public final class RulesTabRenderer {
             String lastCombatAchievementSyncResultAtLocalTime,
             String lastCollectionLogSyncResult,
             String lastCollectionLogSyncResultAtLocalTime,
+            List<String> lastCombatAchievementSyncedTaskNames,
+            List<String> lastCollectionLogSyncedTaskNames,
+            boolean showCombatAchievementSyncedTaskNames,
+            boolean showCollectionLogSyncedTaskNames,
             boolean collectionLogSyncPending,
             int combatAchievementReviewCount,
             int collectionLogReviewCount) {
@@ -379,6 +419,12 @@ public final class RulesTabRenderer {
         {
             addSyncResultInfoLines(lines, "Last CA sync", lastCombatAchievementSyncResult, lastCombatAchievementSyncResultAtLocalTime, fm, maxWidth);
         }
+        addMarkedTaskLines(lines,
+                lastCombatAchievementSyncedTaskNames,
+                showCombatAchievementSyncedTaskNames,
+                LINE_SYNC_CA_MARKED_TOGGLE_PREFIX,
+                fm,
+                maxWidth);
         addReviewLines(lines, combatAchievementReviewCount, "CA", fm, maxWidth, LINE_SYNC_CA_REVIEW_ACTIONS_ROW);
         if (combatAchievementReviewCount > 0)
         {
@@ -402,6 +448,12 @@ public final class RulesTabRenderer {
         {
             addSyncResultInfoLines(lines, "Last CLOG sync", lastCollectionLogSyncResult, lastCollectionLogSyncResultAtLocalTime, fm, maxWidth);
         }
+        addMarkedTaskLines(lines,
+            lastCollectionLogSyncedTaskNames,
+            showCollectionLogSyncedTaskNames,
+            LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX,
+            fm,
+            maxWidth);
         addReviewLines(lines, collectionLogReviewCount, "CLOG", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
 
         lines.add("");
@@ -413,6 +465,41 @@ public final class RulesTabRenderer {
     {
         lines.addAll(TextUtils.wrapText("Result:", fm, maxWidth));
         lines.addAll(TextUtils.wrapText("....", fm, maxWidth));
+    }
+
+    private void addMarkedTaskLines(
+            List<String> lines,
+            List<String> taskNames,
+            boolean expanded,
+            String markerPrefix,
+            FontMetrics fm,
+            int maxWidth)
+    {
+        if (taskNames == null || taskNames.isEmpty())
+        {
+            return;
+        }
+
+        String toggleLabel = (expanded ? "Hide" : "Show")
+                + " tasks marked complete ("
+                + taskNames.size()
+                + ")";
+        lines.add(markerPrefix + " " + toggleLabel);
+
+        if (!expanded)
+        {
+            return;
+        }
+
+        for (String taskName : taskNames)
+        {
+            if (taskName == null || taskName.trim().isEmpty())
+            {
+                continue;
+            }
+
+            lines.addAll(TextUtils.wrapText("- " + taskName.trim(), fm, maxWidth));
+        }
     }
 
     private void addReviewLines(

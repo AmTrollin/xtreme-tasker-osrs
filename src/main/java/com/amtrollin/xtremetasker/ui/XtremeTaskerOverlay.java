@@ -1598,6 +1598,10 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin.getLastCombatAchievementSyncResultAtLocalTime(),
                 plugin.getLastCollectionLogSyncResult(),
                 plugin.getLastCollectionLogSyncResultAtLocalTime(),
+                plugin.getLastCombatAchievementSyncedTaskNames(),
+                plugin.getLastCollectionLogSyncedTaskNames(),
+                plugin.isCombatAchievementSyncedTasksExpanded(),
+                plugin.isCollectionLogSyncedTasksExpanded(),
                 plugin.isCollectionLogSyncPending(),
                 plugin.getSyncMismatchTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
                 plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).size()
@@ -1614,6 +1618,8 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesLayout.syncCaReviewIgnoreButtonBounds.setBounds(layout.syncCaReviewIgnoreButtonBounds);
         rulesLayout.syncClogReviewButtonBounds.setBounds(layout.syncClogReviewButtonBounds);
         rulesLayout.syncClogReviewIgnoreButtonBounds.setBounds(layout.syncClogReviewIgnoreButtonBounds);
+        rulesLayout.syncCaMarkedTasksToggleBounds.setBounds(layout.syncCaMarkedTasksToggleBounds);
+        rulesLayout.syncClogMarkedTasksToggleBounds.setBounds(layout.syncClogMarkedTasksToggleBounds);
         rulesLayout.subTabRulesBounds.setBounds(layout.subTabRulesBounds);
         rulesLayout.subTabDataSyncsBounds.setBounds(layout.subTabDataSyncsBounds);
 
@@ -2257,6 +2263,26 @@ public class XtremeTaskerOverlay extends Overlay {
                     rulesSubTab = subTab;
                     rulesScroll.reset();
                 }
+            }
+
+            @Override
+            public void toggleCaSyncedTasksExpanded() {
+                plugin.setCombatAchievementSyncedTasksExpanded(!plugin.isCombatAchievementSyncedTasksExpanded());
+            }
+
+            @Override
+            public void toggleClogSyncedTasksExpanded() {
+                plugin.setCollectionLogSyncedTasksExpanded(!plugin.isCollectionLogSyncedTasksExpanded());
+            }
+
+            @Override
+            public void setCaSyncedTasksExpanded(boolean expanded) {
+                plugin.setCombatAchievementSyncedTasksExpanded(expanded);
+            }
+
+            @Override
+            public void setClogSyncedTasksExpanded(boolean expanded) {
+                plugin.setCollectionLogSyncedTasksExpanded(expanded);
             }
 
             @Override

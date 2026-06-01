@@ -553,14 +553,26 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 return e;
             }
             if (a.rulesLayout().syncClogsButtonBounds.contains(p)) {
+                a.setClogSyncedTasksExpanded(false);
                 a.syncMismatchScroll().reset();
                 a.plugin().syncCollectionLogsAndPersist();
                 e.consume();
                 return e;
             }
             if (a.rulesLayout().syncCAsButtonBounds.contains(p)) {
+                a.setCaSyncedTasksExpanded(false);
                 a.syncMismatchScroll().reset();
                 a.plugin().syncCombatAchievementsAndPersist();
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncCaMarkedTasksToggleBounds.contains(p)) {
+                a.toggleCaSyncedTasksExpanded();
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncClogMarkedTasksToggleBounds.contains(p)) {
+                a.toggleClogSyncedTasksExpanded();
                 e.consume();
                 return e;
             }
@@ -1120,6 +1132,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().githubReadmeLinkBounds.contains(p)
                         || a.rulesLayout().syncClogsButtonBounds.contains(p)
                         || a.rulesLayout().syncCAsButtonBounds.contains(p)
+                        || a.rulesLayout().syncCaMarkedTasksToggleBounds.contains(p)
+                        || a.rulesLayout().syncClogMarkedTasksToggleBounds.contains(p)
                         || a.rulesLayout().syncCaReviewButtonBounds.contains(p)
                         || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncClogReviewButtonBounds.contains(p)

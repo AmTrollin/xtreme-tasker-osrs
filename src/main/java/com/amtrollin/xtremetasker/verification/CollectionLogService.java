@@ -222,6 +222,7 @@ public class CollectionLogService
             if (itemId != null && itemId > 0)
             {
                 obtainedItems.add(itemId);
+                seenItems.add(itemId);
             }
         }
     }
