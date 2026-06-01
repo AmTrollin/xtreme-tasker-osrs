@@ -159,7 +159,6 @@ public class CollectionLogService
         if (itemId > 0)
         {
             obtainedItems.add(itemId);
-            seenItems.add(itemId);
         }
     }
 

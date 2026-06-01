@@ -2372,12 +2372,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     continue;
                 }
 
-                if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
-                        && !canEvaluateCollectionLogRequirement(task))
-                {
-                    continue;
-                }
-
                 String groupKey = countedCollectionLogGroupKey(task, verification);
                 if (groupKey == null)
                 {
@@ -2409,12 +2403,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
 
             if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG && !collectionLogCacheAvailable)
-            {
-                continue;
-            }
-
-            if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
-                    && !canEvaluateCollectionLogRequirement(task))
             {
                 continue;
             }
@@ -2525,15 +2513,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         log.info("CLOG review mismatch: '{}' ({}) reason={} required={} obtained={} items={}",
                 task.getName(), task.getId(), reason, requirement.requiredCount, obtained, itemState);
-    }
-
-    private boolean canEvaluateCollectionLogRequirement(XtremeTask task)
-    {
-        ItemRequirement requirement = resolveCollectionLogRequirement(task);
-        return requirement != null
-                && requirement.itemIds != null
-                && requirement.itemIds.length > 0
-                && collectionLogService.hasSeenAll(requirement.itemIds);
     }
 
     @Override
