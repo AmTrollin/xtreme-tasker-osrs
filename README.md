@@ -59,15 +59,11 @@ Rows use simple status indicators:
 
 ![Tasks tab](docs/images/TasksTab.png)
 
-![Sort and filter tasks](docs/gifs/SortAndFilter_Tasks.gif)
-
 ## Repeated Tasks
 
 Some tasks can appear more than once because they can be rolled multiple times.
 
 By default, repeated tasks are condensed into one row with a `#/#` progress indicator. You can expand repeated tasks to inspect each roll individually.
-
-![Separate and condense repeated tasks](docs/gifs/SeparateAndCondense_Tasks.gif)
 
 Repeated task details let you mark all instances complete, mark all incomplete after confirmation, or remove completion from a specific completed instance.
 
@@ -79,7 +75,9 @@ Repeated task details let you mark all instances complete, mark all incomplete a
 
 Collection Log task details show eligible items when that list is useful. Items you already have are crossed out.
 
-Single-item Collection Log tasks skip the extra eligible-items section.
+Single item Collection Log tasks skip the extra eligible items section.
+
+Tasks that require multiple of the same item show `Collection Log Progress`, such as `0/2 Ancient pages obtained`.
 
 For repeated counted Collection Log tasks, Xtreme Tasker may show how many items already counted toward earlier completions, such as `14 obtained; 10 counted toward earlier completions.`
 
@@ -93,8 +91,6 @@ Xtreme Tasker loads the bundled task list automatically and checks it again when
 
 Use `See New Tasks` to toggle the Tasks tab between the newly added tasks and your normal task list.
 
-![Review newly added tasks](docs/gifs/SyncNewTasks_Help_Tasks.gif)
-
 ## Manual Progress Sync
 
 Manual sync is only for account progress, not for updating the task list.
@@ -105,13 +101,11 @@ Completions marked by you are shown as marked in task details; completions added
 
 `Sync CLOGs` checks Collection Log items RuneLite has cached. After earning new Collection Log items, open your Collection Log in game so RuneLite can refresh them before syncing.
 
-If sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the `Help` > `Sync` section shows a review note. Use `Review` to choose which tasks to mark incomplete, or `Ignore` to clear the note until a future sync finds mismatches again. Repeated tasks in review show group completion progress, such as `(1/6)`.
+If sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the `Help` > `Sync` section shows a review note. Use `Review` to choose which tasks to mark incomplete, or `Ignore` to clear the note until a future sync finds mismatches again. Repeated tasks in review show the specific marked instance, such as `(1/6)`, and hover text can show what sync found in game.
 
 ![Help Sync review note](docs/images/CAlistreview_help_datasync.png)
 
 ![Sync Combat Achievements and review mismatches](docs/gifs/SyncCAs_Help_Datasyncs.gif)
-
-![Sync Collection Log tasks and ignore a review note](docs/gifs/Sync_Clog_Help_Datasyncs.gif)
 
 ## Saves and Backups
 
@@ -145,7 +139,7 @@ Use the [Detailed Guide](docs/DETAILED_GUIDE.md) for deeper notes about task sou
 
 Xtreme Tasker follows the official Tasker ruleset and adds Xtreme Tasker-specific guidance for the expanded task list.
 
-The in-game Help tab links to:
+The in game Help tab links to:
 
 - TaskerFAQ for official Tasker rules.
 - This README for Xtreme Tasker notes.
