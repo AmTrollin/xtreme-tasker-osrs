@@ -62,6 +62,7 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CA;
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CLOGS;
@@ -230,6 +231,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int totalObtainedCount = plugin.countObtainedCollectionLogItems(itemIds);
         int obtainedCount = Math.max(0, totalObtainedCount - previousRequiredCount);
         int shownObtainedCount = Math.min(obtainedCount, requiredCount);
+        boolean isCountedSequence = collectionLogRequirementSequence(task, itemIds).size() > 1;
 
         Map<String, Boolean> obtainedByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
@@ -244,11 +246,12 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         boolean sameNameFamily = obtainedByItemName.size() == 1;
-        TaskGroupProgress groupProgress = plugin.getTaskGroupProgress(task);
-        boolean repeatedDistinctPool = !sameNameFamily && groupProgress != null && groupProgress.isGrouped();
-        String summaryText = sameNameFamily
+        boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
+        String summaryText = repeatedDistinctPool
+            ? repeatedCollectionLogRequirementSummary(totalObtainedCount, previousRequiredCount, true)
+            : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
-                : repeatedCollectionLogRequirementSummary(totalObtainedCount, previousRequiredCount, repeatedDistinctPool);
+            : "";
         return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
     }
 
@@ -259,30 +262,15 @@ public class XtremeTaskerOverlay extends Overlay {
             return Math.max(1, count);
         }
 
-        XtremeTask previous = null;
-        for (XtremeTask candidate : plugin.getDummyTasks())
+        CountedRequirementPosition position = countedRequirementPosition(task, itemIds);
+        if (position == null)
         {
-            if (!sameCollectionLogRequirementSequence(task, candidate, itemIds))
-            {
-                continue;
-            }
-
-            if (task.getId().equals(candidate.getId()))
-            {
-                break;
-            }
-
-            previous = candidate;
+            return count;
         }
 
-        TaskVerification previousVerification = previous == null ? null : previous.getVerification();
-        Integer previousCount = previousVerification == null ? null : previousVerification.getCount();
-        if (previousCount != null && previousCount > 0 && count > previousCount)
-        {
-            return count - previousCount;
-        }
-
-        return count;
+        int currentThreshold = position.currentThreshold;
+        int previousThreshold = position.previousThreshold;
+        return Math.max(1, currentThreshold - previousThreshold);
     }
 
     private int collectionLogPreviewPreviousRequiredCount(XtremeTask task, int[] itemIds) {
@@ -291,25 +279,148 @@ public class XtremeTaskerOverlay extends Overlay {
             return 0;
         }
 
-        XtremeTask previous = null;
-        for (XtremeTask candidate : plugin.getDummyTasks())
+        CountedRequirementPosition position = countedRequirementPosition(task, itemIds);
+        return position == null ? 0 : Math.max(0, position.previousThreshold);
+    }
+
+    private CountedRequirementPosition countedRequirementPosition(XtremeTask task, int[] itemIds) {
+        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
+        if (sequence.isEmpty())
         {
-            if (!sameCollectionLogRequirementSequence(task, candidate, itemIds))
-            {
-                continue;
-            }
-
-            if (task.getId().equals(candidate.getId()))
-            {
-                break;
-            }
-
-            previous = candidate;
+            return null;
         }
 
-        TaskVerification previousVerification = previous == null ? null : previous.getVerification();
-        Integer previousCount = previousVerification == null ? null : previousVerification.getCount();
-        return previousCount == null ? 0 : Math.max(0, previousCount);
+        int index = -1;
+        for (int i = 0; i < sequence.size(); i++)
+        {
+            XtremeTask candidate = sequence.get(i);
+            if (candidate != null && Objects.equals(task.getId(), candidate.getId()))
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index < 0)
+        {
+            return null;
+        }
+
+        List<Integer> thresholds = countedRequirementThresholds(sequence);
+        if (thresholds.isEmpty())
+        {
+            return null;
+        }
+
+        int current = thresholds.get(index);
+        int previous = index <= 0 ? 0 : thresholds.get(index - 1);
+        return new CountedRequirementPosition(previous, current);
+    }
+
+    private List<XtremeTask> collectionLogRequirementSequence(XtremeTask task, int[] itemIds) {
+        if (task == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> sequence = new ArrayList<>();
+        for (XtremeTask candidate : plugin.getDummyTasks())
+        {
+            if (sameCollectionLogRequirementSignature(task, candidate, itemIds))
+            {
+                sequence.add(candidate);
+            }
+        }
+        return sequence;
+    }
+
+    private boolean sameCollectionLogRequirementSignature(XtremeTask target, XtremeTask candidate, int[] targetItemIds) {
+        if (target == null || candidate == null)
+        {
+            return false;
+        }
+
+        TaskVerification targetVerification = target.getVerification();
+        TaskVerification candidateVerification = candidate.getVerification();
+        if (target.getSource() != TaskSource.COLLECTION_LOG
+                || candidate.getSource() != TaskSource.COLLECTION_LOG
+                || target.getTier() != candidate.getTier()
+                || targetVerification == null
+                || candidateVerification == null
+                || targetVerification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || candidateVerification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return false;
+        }
+
+        int[] candidateItemIds = candidateVerification.getItemIds();
+        return canonicalItemIds(targetItemIds).equals(canonicalItemIds(candidateItemIds));
+    }
+
+    private String canonicalItemIds(int[] itemIds) {
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return "";
+        }
+
+        return Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .mapToObj(String::valueOf)
+                .collect(Collectors.joining(","));
+    }
+
+    private List<Integer> countedRequirementThresholds(List<XtremeTask> sequence) {
+        if (sequence == null || sequence.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        List<Integer> explicit = new ArrayList<>();
+        boolean strictlyIncreasing = true;
+        int previous = 0;
+        for (XtremeTask groupedTask : sequence)
+        {
+            TaskVerification groupedVerification = groupedTask == null ? null : groupedTask.getVerification();
+            Integer count = groupedVerification == null ? null : groupedVerification.getCount();
+            if (count == null || count <= 0)
+            {
+                strictlyIncreasing = false;
+                count = 1;
+            }
+
+            if (!explicit.isEmpty() && count <= previous)
+            {
+                strictlyIncreasing = false;
+            }
+
+            explicit.add(count);
+            previous = count;
+        }
+
+        if (strictlyIncreasing)
+        {
+            return explicit;
+        }
+
+        int base = explicit.stream().filter(Objects::nonNull).min(Integer::compareTo).orElse(1);
+        List<Integer> inferred = new ArrayList<>(sequence.size());
+        for (int i = 0; i < sequence.size(); i++)
+        {
+            inferred.add(base + i);
+        }
+        return inferred;
+    }
+
+    private static final class CountedRequirementPosition {
+        private final int previousThreshold;
+        private final int currentThreshold;
+
+        private CountedRequirementPosition(int previousThreshold, int currentThreshold) {
+            this.previousThreshold = previousThreshold;
+            this.currentThreshold = currentThreshold;
+        }
     }
 
     private String repeatedCollectionLogRequirementSummary(int totalObtainedCount, int previousRequiredCount, boolean repeatedDistinctPool) {

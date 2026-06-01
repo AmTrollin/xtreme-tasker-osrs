@@ -10,8 +10,10 @@ import net.runelite.http.api.item.ItemPrice;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,6 +39,7 @@ public class CollectionLogService
     private ItemManager itemManager;
 
     private final Set<Integer> obtainedItems = new HashSet<>();
+    private final Set<Integer> seenItems = new HashSet<>();
 
     public void startUp()
     {
@@ -84,6 +87,12 @@ public class CollectionLogService
     private void resolveAndStoreByName(String itemName)
     {
         List<ItemPrice> results = itemManager.search(itemName);
+        if (results == null || results.isEmpty())
+        {
+            log.debug("Collection log chat capture could not resolve item ID for '{}'", itemName);
+            return;
+        }
+
         for (ItemPrice result : results)
         {
             if (itemName.equalsIgnoreCase(result.getName()))
@@ -94,16 +103,35 @@ public class CollectionLogService
             }
         }
 
-        // Fallback: if no exact match, take the best result so we at least capture something.
-        if (!results.isEmpty())
+        String normalizedTarget = normalizeItemName(itemName);
+        List<ItemPrice> normalizedMatches = new ArrayList<>();
+        for (ItemPrice result : results)
         {
-            log.debug("Collection log chat capture (fuzzy): '{}' -> item ID {}", itemName, results.get(0).getId());
-            storeItem(results.get(0).getId());
+            if (normalizedTarget.equals(normalizeItemName(result.getName())))
+            {
+                normalizedMatches.add(result);
+            }
         }
-        else
+
+        if (normalizedMatches.size() == 1)
         {
-            log.debug("Collection log chat capture could not resolve item ID for '{}'", itemName);
+            ItemPrice resolved = normalizedMatches.get(0);
+            log.debug("Collection log chat capture (normalized): '{}' -> item ID {}", itemName, resolved.getId());
+            storeItem(resolved.getId());
+            return;
         }
+
+        log.debug("Collection log chat capture ignored ambiguous match for '{}' ({} candidates)", itemName, results.size());
+    }
+
+    private static String normalizeItemName(String value)
+    {
+        if (value == null)
+        {
+            return "";
+        }
+
+        return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
     public boolean isItemObtained(int itemId)
@@ -116,12 +144,42 @@ public class CollectionLogService
         return widgetMonitor.requestCollectionLogOpenOrRefresh();
     }
 
+    public boolean isCollectionLogScanInProgress()
+    {
+        return widgetMonitor.isCollectionLogScanInProgress();
+    }
+
     public void storeItem(int itemId)
     {
         if (itemId > 0)
         {
             obtainedItems.add(itemId);
         }
+    }
+
+    public void storeSeenItem(int itemId)
+    {
+        if (itemId > 0)
+        {
+            seenItems.add(itemId);
+        }
+    }
+
+    public boolean hasSeenAll(int[] itemIds)
+    {
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return false;
+        }
+
+        for (int itemId : itemIds)
+        {
+            if (!seenItems.contains(itemId))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     public long countObtained(int[] itemIds)
@@ -176,5 +234,6 @@ public class CollectionLogService
     private void reset()
     {
         obtainedItems.clear();
+        seenItems.clear();
     }
 }

@@ -176,6 +176,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private boolean allowCompletionRegressionSave = false;
     private int flushTickCounter = 0;
     private int pendingCollectionLogSyncTicks = -1;
+    private int pendingCollectionLogSyncBaselineCapturedItems = -1;
+    private int pendingCollectionLogSyncSettledTicks = 0;
+    private boolean pendingCollectionLogSyncObservedActivity = false;
+    private static final int COLLECTION_LOG_SYNC_MAX_WAIT_TICKS = 20;
+    private static final int COLLECTION_LOG_SYNC_SETTLE_TICKS = 2;
     private static final int FLUSH_EVERY_TICKS = 10; // ~6s (game tick ~0.6s)
     private Thread shutdownSaveHook;
 
@@ -1197,9 +1202,25 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         lastCollectionLogSyncResultAtEpochMillis = 0L;
         lastCollectionLogSyncResultAtLocalTime = null;
         knownTaskIds.clear();
-        pendingCollectionLogSyncTicks = -1;
+        clearPendingCollectionLogSyncState();
         collectionLogService.resetCachedItemIds();
         clearSyncMismatchReviewState();
+    }
+
+    private void beginPendingCollectionLogSyncWait()
+    {
+        pendingCollectionLogSyncTicks = COLLECTION_LOG_SYNC_MAX_WAIT_TICKS;
+        pendingCollectionLogSyncBaselineCapturedItems = collectionLogService.getCapturedItemCount();
+        pendingCollectionLogSyncSettledTicks = 0;
+        pendingCollectionLogSyncObservedActivity = false;
+    }
+
+    private void clearPendingCollectionLogSyncState()
+    {
+        pendingCollectionLogSyncTicks = -1;
+        pendingCollectionLogSyncBaselineCapturedItems = -1;
+        pendingCollectionLogSyncSettledTicks = 0;
+        pendingCollectionLogSyncObservedActivity = false;
     }
 
     private void migrateLegacyLastSyncResultIfNeeded()
@@ -1685,9 +1706,33 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (pendingCollectionLogSyncTicks >= 0)
         {
             pendingCollectionLogSyncTicks--;
-            if (pendingCollectionLogSyncTicks <= 0)
+
+            int capturedNow = collectionLogService.getCapturedItemCount();
+            boolean capturedChanged = capturedNow > pendingCollectionLogSyncBaselineCapturedItems;
+            if (capturedChanged)
             {
-                pendingCollectionLogSyncTicks = -1;
+                pendingCollectionLogSyncBaselineCapturedItems = capturedNow;
+                pendingCollectionLogSyncObservedActivity = true;
+            }
+
+            boolean scanInProgress = collectionLogService.isCollectionLogScanInProgress();
+            if (scanInProgress)
+            {
+                pendingCollectionLogSyncObservedActivity = true;
+                pendingCollectionLogSyncSettledTicks = 0;
+            }
+            else if (pendingCollectionLogSyncObservedActivity)
+            {
+                pendingCollectionLogSyncSettledTicks++;
+            }
+
+            boolean timedOut = pendingCollectionLogSyncTicks <= 0;
+            boolean settledAfterActivity = pendingCollectionLogSyncObservedActivity
+                    && !scanInProgress
+                    && pendingCollectionLogSyncSettledTicks >= COLLECTION_LOG_SYNC_SETTLE_TICKS;
+            if (timedOut || settledAfterActivity)
+            {
+                clearPendingCollectionLogSyncState();
                 runCollectionLogSyncFromCache();
             }
         }
@@ -1846,13 +1891,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
             if (isCountedCollectionLogSync(verification))
             {
-                String groupKey = TaskGroupUtils.key(task);
+                String groupKey = countedCollectionLogGroupKey(task, verification);
+                if (groupKey == null)
+                {
+                    continue;
+                }
+
                 if (!processedCountedGroups.add(groupKey))
                 {
                     continue;
                 }
 
-                List<XtremeTask> group = TaskGroupUtils.groupFor(tasks, task);
+                List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
                 int observedCount = observedCollectionLogSyncCount(task, verification);
                 if (observedCount < 0)
                 {
@@ -1924,6 +1974,99 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return -1;
     }
 
+    private String countedCollectionLogGroupKey(XtremeTask task, TaskVerification verification)
+    {
+        if (task == null || verification == null || !isCountedCollectionLogSync(verification))
+        {
+            return null;
+        }
+
+        StringBuilder key = new StringBuilder();
+        key.append("source=").append(Objects.toString(task.getSource(), ""))
+                .append("|tier=").append(Objects.toString(task.getTier(), ""))
+                .append("|type=").append(Objects.toString(verification.getType(), ""));
+
+        if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            ItemRequirement requirement = resolveCollectionLogRequirement(task);
+            if (requirement == null || requirement.itemIds == null || requirement.itemIds.length == 0)
+            {
+                return null;
+            }
+
+            int[] sortedItemIds = Arrays.stream(requirement.itemIds)
+                    .filter(itemId -> itemId > 0)
+                    .distinct()
+                    .sorted()
+                    .toArray();
+            if (sortedItemIds.length == 0)
+            {
+                return null;
+            }
+
+            key.append("|items=");
+            for (int itemId : sortedItemIds)
+            {
+                key.append(itemId).append(',');
+            }
+            return key.toString();
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.SKILL)
+        {
+            if (verification.getExperience() == null || verification.getExperience().isEmpty())
+            {
+                return null;
+            }
+
+            List<String> skillKeys = verification.getExperience().keySet().stream()
+                    .filter(Objects::nonNull)
+                    .map(skill -> skill.trim().toLowerCase(Locale.ROOT))
+                    .filter(skill -> !skill.isEmpty())
+                    .sorted()
+                    .collect(Collectors.toList());
+            if (skillKeys.isEmpty())
+            {
+                return null;
+            }
+
+            key.append("|skills=").append(String.join(",", skillKeys));
+            return key.toString();
+        }
+
+        return null;
+    }
+
+    private List<XtremeTask> countedCollectionLogGroupFor(XtremeTask task, TaskVerification verification)
+    {
+        String key = countedCollectionLogGroupKey(task, verification);
+        if (key == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> group = new ArrayList<>();
+        for (XtremeTask candidate : tasks)
+        {
+            if (candidate == null || candidate.getSource() != TaskSource.COLLECTION_LOG)
+            {
+                continue;
+            }
+
+            TaskVerification candidateVerification = candidate.getVerification();
+            if (!isCountedCollectionLogSync(candidateVerification))
+            {
+                continue;
+            }
+
+            if (key.equals(countedCollectionLogGroupKey(candidate, candidateVerification)))
+            {
+                group.add(candidate);
+            }
+        }
+        return group;
+    }
+
     private int syncCountedCollectionLogGroup(
             List<XtremeTask> group,
             int observedCount)
@@ -1934,12 +2077,30 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
+        int currentlyCompleted = 0;
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null && isTaskCompleted(groupedTask))
+            {
+                currentlyCompleted++;
+            }
+        }
+
+        int remainingToSync = Math.max(0, desiredCompleted - currentlyCompleted);
+        if (remainingToSync <= 0)
+        {
+            return 0;
+        }
 
         int newlySynced = 0;
         long now = System.currentTimeMillis();
-        for (int i = 0; i < desiredCompleted; i++)
+        for (XtremeTask groupedTask : group)
         {
-            XtremeTask groupedTask = group.get(i);
+            if (remainingToSync <= 0)
+            {
+                break;
+            }
+
             String id = groupedTask.getId();
             if (id == null || manualCompletedTaskIds.contains(id) || syncedCompletedTaskIds.contains(id))
             {
@@ -1949,6 +2110,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             syncedCompletedTaskIds.add(id);
             syncedCompletionTimestamps.putIfAbsent(id, now);
             newlySynced++;
+            remainingToSync--;
         }
 
         return newlySynced;
@@ -2022,7 +2184,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             boolean refreshRequested = collectionLogService.requestCollectionLogOpenOrRefresh();
             if (refreshRequested && client.getGameState() == GameState.LOGGED_IN)
             {
-                pendingCollectionLogSyncTicks = 4;
+                beginPendingCollectionLogSyncWait();
                 return;
             }
 
@@ -2079,7 +2241,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             TaskVerification verification = task.getVerification();
             if (verification == null)
             {
-                mismatches.add(task);
                 continue;
             }
 
@@ -2090,7 +2251,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     continue;
                 }
 
-                String groupKey = TaskGroupUtils.key(task);
+                if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
+                        && !canEvaluateCollectionLogRequirement(task))
+                {
+                    continue;
+                }
+
+                String groupKey = countedCollectionLogGroupKey(task, verification);
+                if (groupKey == null)
+                {
+                    continue;
+                }
+
                 if (!processedCountedGroups.add(groupKey))
                 {
                     continue;
@@ -2099,11 +2271,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 int observedCount = observedCollectionLogSyncCount(task, verification);
                 if (observedCount < 0)
                 {
-                    addCompletedTasksFromGroup(mismatches, TaskGroupUtils.groupFor(tasks, task));
+                    addCompletedTasksFromGroup(mismatches, countedCollectionLogGroupFor(task, verification));
                     continue;
                 }
 
-                List<XtremeTask> group = TaskGroupUtils.groupFor(tasks, task);
+                List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
                 int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
                 List<XtremeTask> completedGroup = completedTasksFromGroupInCompletionOrder(group);
                 for (int i = desiredCompleted; i < completedGroup.size(); i++)
@@ -2114,6 +2286,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
 
             if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG && !collectionLogCacheAvailable)
+            {
+                continue;
+            }
+
+            if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
+                    && !canEvaluateCollectionLogRequirement(task))
             {
                 continue;
             }
@@ -2195,6 +2373,15 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return false;
+    }
+
+    private boolean canEvaluateCollectionLogRequirement(XtremeTask task)
+    {
+        ItemRequirement requirement = resolveCollectionLogRequirement(task);
+        return requirement != null
+                && requirement.itemIds != null
+                && requirement.itemIds.length > 0
+                && collectionLogService.hasSeenAll(requirement.itemIds);
     }
 
     @Override
@@ -2377,14 +2564,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return null;
         }
 
-        List<XtremeTask> group = TaskGroupUtils.groupFor(tasks, task);
-        if (group.size() <= 1)
+        TaskVerification verification = task.getVerification();
+        if (!isCountedCollectionLogSync(verification))
         {
             return null;
         }
 
-        TaskVerification verification = task.getVerification();
-        if (!isCountedCollectionLogSync(verification))
+        List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
+        if (group.size() <= 1)
         {
             return null;
         }
