@@ -2,7 +2,9 @@
 
 Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progressive random task list built from Combat Achievements and Collection Log goals.
 
-Use this guide for the basics. For save details, recovery notes, account switching behavior, and deeper explanations, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
+Xtreme Tasker turns OSRS into a long-term progression challenge by mixing Combat Achievements and Collection Log goals into one random task journey. The idea was inspired by Tedious' Collection Log Master game mode.
+
+This guide covers the basics. For save details, recovery notes, account switching behavior, and deeper explanations, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
 
 ## What It Does
 
@@ -11,8 +13,7 @@ Use this guide for the basics. For save details, recovery notes, account switchi
 - Browse, search, filter, and sort the full task list.
 - Mark tasks complete or incomplete manually.
 - Condense repeated task rolls into one row, while still counting each roll as its own task.
-- Refresh bundled task data automatically when you log in.
-- Highlight newly added tasks with a `See New Tasks` control.
+- Automatically update bundled task data and highlight newly added tasks.
 - Manually sync Combat Achievement and Collection Log progress when you choose.
 - Save progress locally per account with automatic backups.
 
@@ -32,7 +33,7 @@ Your current task and completion progress are saved locally through RuneLite.
 
 ## Overlay Tabs
 
-- `Current`: your active task, tier progress, prereqs, wiki link, and roll/complete buttons.
+- `Current`: your active task, tier progress, roll/complete button, prereqs, eligible Collection Log items when useful, and wiki link.
 - `Tasks`: the full task list with search, filters, sorting, details, and manual completion controls.
 - `Help`: rules, FAQ links, this README, and manual sync actions.
 
@@ -64,7 +65,7 @@ Rows use simple status indicators:
 
 Some tasks can appear more than once because they can be rolled multiple times.
 
-By default, repeated tasks are condensed into one row with a `#/#` progress indicator. You can separate repeated tasks from the Tasks tab when you want to inspect each roll individually.
+By default, repeated tasks are condensed into one row with a `#/#` progress indicator. You can expand repeated tasks to inspect each roll individually.
 
 ![Separate and condense repeated tasks](docs/gifs/SeparateAndCondense_Tasks.gif)
 
@@ -73,6 +74,16 @@ Repeated task details let you mark all instances complete, mark all incomplete a
 ![Repeated task prereq and progress detail](docs/images/MultitaskPrereqStrike.png)
 
 ![Mark repeated task instances complete and incomplete](docs/gifs/MarkMultiTaskInstancesCompleteIncomplete_Taskdesc.gif)
+
+## Collection Log Details
+
+Collection Log task details show eligible items when that list is useful. Items you already have are crossed out.
+
+Single-item Collection Log tasks skip the extra eligible-items section.
+
+For repeated counted Collection Log tasks, Xtreme Tasker may show how many items already counted toward earlier completions, such as `14 obtained; 10 counted toward earlier completions.`
+
+Achievement Diary Collection Log tasks show `Obtained from Achievement Diary rewards.` because they are not normal item drops.
 
 ## Task Updates
 
@@ -94,9 +105,9 @@ Completions marked by you are shown as marked in task details; completions added
 
 `Sync CLOGs` checks Collection Log items RuneLite has cached. After earning new Collection Log items, open your Collection Log in game so RuneLite can refresh them before syncing.
 
-If sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the Sync page shows a review note. Use `Review` to choose which tasks to mark incomplete, or `Ignore` to clear the note until a future sync finds mismatches again.
+If sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the `Help` > `Sync` section shows a review note. Use `Review` to choose which tasks to mark incomplete, or `Ignore` to clear the note until a future sync finds mismatches again. Repeated tasks in review show group completion progress, such as `(1/6)`.
 
-![Sync page review note](docs/images/CAlistreview_help_datasync.png)
+![Help Sync review note](docs/images/CAlistreview_help_datasync.png)
 
 ![Sync Combat Achievements and review mismatches](docs/gifs/SyncCAs_Help_Datasyncs.gif)
 
@@ -108,7 +119,7 @@ Progress saves locally through RuneLite and is stored per account.
 
 Xtreme Tasker saves important progress changes immediately, keeps three rolling backups, and tries to recover from missing or corrupt saves automatically.
 
-Saves include helpful recovery info such as account hash, last known display name, readable save time, current task, completed task IDs, and retired task IDs.
+Saves include recovery info such as account hash, last known display name, readable save time, current task, completed task IDs, and retired task IDs.
 
 More details are in the [Detailed Guide](docs/DETAILED_GUIDE.md#progress-saves-and-backups).
 
@@ -151,4 +162,4 @@ Xtreme Tasker stores progress locally in RuneLite config. It does not send accou
 
 Sync features use account state already visible to RuneLite, such as Combat Achievement data and cached Collection Log entries. They do not upload that data anywhere.
 
-The plugin can open external links when you click wiki, FAQ, or README buttons.
+The plugin only opens external links when you click wiki, FAQ, or README buttons.

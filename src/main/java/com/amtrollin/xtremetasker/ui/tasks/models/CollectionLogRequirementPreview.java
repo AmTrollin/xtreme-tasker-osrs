@@ -4,14 +4,16 @@ import java.util.List;
 
 public final class CollectionLogRequirementPreview
 {
-    private final int requiredCount;
-    private final int totalCount;
+    private final String summaryText;
+    private final boolean showSummaryText;
+    private final boolean showItemList;
     private final List<CollectionLogRequirementItem> items;
 
-    public CollectionLogRequirementPreview(int requiredCount, int totalCount, List<CollectionLogRequirementItem> items)
+    public CollectionLogRequirementPreview(String summaryText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items)
     {
-        this.requiredCount = requiredCount;
-        this.totalCount = totalCount;
+        this.summaryText = summaryText == null ? "" : summaryText;
+        this.showSummaryText = showSummaryText;
+        this.showItemList = showItemList;
         this.items = items == null ? List.of() : items;
     }
 
@@ -22,19 +24,21 @@ public final class CollectionLogRequirementPreview
 
     public boolean hasItems()
     {
-        return !items.isEmpty();
+        return showSummaryText() || showItemList();
     }
 
-    public String requirementText()
+    public boolean showItemList()
     {
-        if (totalCount <= 1)
-        {
-            return "Need 1";
-        }
-        if (requiredCount >= totalCount)
-        {
-            return totalCount == 2 ? "Need both" : "Need all " + totalCount;
-        }
-        return "Need " + requiredCount + " of " + totalCount;
+        return showItemList && !items.isEmpty();
+    }
+
+    public boolean showSummaryText()
+    {
+        return showSummaryText && !summaryText.isEmpty();
+    }
+
+    public String summaryText()
+    {
+        return summaryText;
     }
 }

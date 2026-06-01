@@ -1340,6 +1340,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return collectionLogService != null && collectionLogService.isItemObtained(itemId);
     }
 
+    public int countObtainedCollectionLogItems(int[] itemIds) {
+        return collectionLogService == null ? 0 : Math.toIntExact(collectionLogService.countObtained(itemIds));
+    }
+
     public java.awt.image.BufferedImage getItemImage(int itemId) {
         return itemManager.getImage(itemId);
     }
@@ -1592,25 +1596,49 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             allowCompletionRegressionSave = true;
         }
 
+        int remainingToAdd = desired - existingCompleted;
+        int remainingToRemove = existingCompleted - desired;
         long now = System.currentTimeMillis();
-        for (int i = 0; i < group.size(); i++)
-        {
-            XtremeTask groupedTask = group.get(i);
-            String id = groupedTask.getId();
-            if (id == null || id.trim().isEmpty())
-            {
-                continue;
-            }
 
-            if (i < desired)
+        if (remainingToAdd > 0)
+        {
+            for (XtremeTask groupedTask : group)
             {
+                if (remainingToAdd <= 0)
+                {
+                    break;
+                }
+
+                String id = groupedTask.getId();
+                if (id == null || id.trim().isEmpty() || isTaskCompleted(groupedTask))
+                {
+                    continue;
+                }
+
                 manualCompletedTaskIds.add(id);
                 manualCompletionTimestamps.putIfAbsent(id, now);
                 syncedCompletionTimestamps.remove(id);
+                remainingToAdd--;
             }
-            else
+        }
+        else if (remainingToRemove > 0)
+        {
+            for (int i = group.size() - 1; i >= 0; i--)
             {
+                if (remainingToRemove <= 0)
+                {
+                    break;
+                }
+
+                XtremeTask groupedTask = group.get(i);
+                String id = groupedTask.getId();
+                if (id == null || id.trim().isEmpty() || !isTaskCompleted(groupedTask))
+                {
+                    continue;
+                }
+
                 markTaskIncomplete(id);
+                remainingToRemove--;
             }
         }
 
@@ -2077,13 +2105,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
                 List<XtremeTask> group = TaskGroupUtils.groupFor(tasks, task);
                 int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
-                for (int i = desiredCompleted; i < group.size(); i++)
+                List<XtremeTask> completedGroup = completedTasksFromGroupInCompletionOrder(group);
+                for (int i = desiredCompleted; i < completedGroup.size(); i++)
                 {
-                    XtremeTask groupedTask = group.get(i);
-                    if (isTaskCompleted(groupedTask))
-                    {
-                        mismatches.add(groupedTask);
-                    }
+                    mismatches.add(completedGroup.get(i));
                 }
                 continue;
             }
@@ -2109,13 +2134,43 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
+        for (XtremeTask groupedTask : completedTasksFromGroupInCompletionOrder(group))
+        {
+            mismatches.add(groupedTask);
+        }
+    }
+
+    private List<XtremeTask> completedTasksFromGroupInCompletionOrder(List<XtremeTask> group)
+    {
+        if (group == null || group.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> completed = new ArrayList<>();
         for (XtremeTask groupedTask : group)
         {
             if (groupedTask != null && isTaskCompleted(groupedTask))
             {
-                mismatches.add(groupedTask);
+                completed.add(groupedTask);
             }
         }
+
+        completed.sort((a, b) -> {
+            int byTimestamp = Long.compare(completionSortTimestamp(a), completionSortTimestamp(b));
+            if (byTimestamp != 0)
+            {
+                return byTimestamp;
+            }
+            return Integer.compare(group.indexOf(a), group.indexOf(b));
+        });
+        return completed;
+    }
+
+    private long completionSortTimestamp(XtremeTask task)
+    {
+        CompletionInfo info = getCompletionInfo(task);
+        return info != null && info.timestamp > 0 ? info.timestamp : Long.MAX_VALUE;
     }
 
     private boolean isCollectionLogTaskCompleteInGame(XtremeTask task, TaskVerification verification)
@@ -2341,7 +2396,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
-        return "In game data shows (" + desiredCompleted + "/" + group.size() + ") complete";
+        return "Sync found " + desiredCompleted + "/" + group.size() + " completed";
     }
 
     @Override

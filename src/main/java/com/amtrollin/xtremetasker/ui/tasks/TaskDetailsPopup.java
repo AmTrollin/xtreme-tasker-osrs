@@ -2,8 +2,10 @@ package com.amtrollin.xtremetasker.ui.tasks;
 
 import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
+import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
@@ -29,6 +31,7 @@ import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Diary Achievement rewards.";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
     private final UiPalette palette;
@@ -305,7 +308,7 @@ public final class TaskDetailsPopup
         List<XtremeTask> groupInstances = (grouped && taskGroupProvider != null) ? taskGroupProvider.apply(task) : List.of();
         CompletionInfo completionInfo = (completionInfoProvider != null) ? completionInfoProvider.apply(task) : null;
         Long ticks = (taskTicksProvider != null) ? taskTicksProvider.apply(task) : null;
-        String completionLine = buildCompletionLine(completionInfo);
+        String completionLine = buildCompletionLine(completionInfo, ticks);
         String timeTakenLine = done ? buildTimeSpentLine(completionInfo, ticks) : null;
         CollectionLogRequirementPreview requirementPreview = collectionLogRequirementPreviewProvider == null
                 ? null
@@ -336,10 +339,15 @@ public final class TaskDetailsPopup
 
         // Count total content pixel height for scroll math
         boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
-        String desc = hasRequirementPreview ? "" : safe(task.getDescription()).replace("\r", "").trim();
+        boolean showAchievementDiaryNote = isAchievementDiaryTask(task);
+        boolean hideDescription = hasRequirementPreview || task.getSource() == TaskSource.COLLECTION_LOG;
+        boolean showDescriptionSection = !hideDescription || showAchievementDiaryNote;
+        String desc = showAchievementDiaryNote
+                ? ACHIEVEMENT_DIARY_NOTE
+                : (hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim());
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
         int totalPx = 0;
-        if (!hasRequirementPreview)
+        if (showDescriptionSection)
         {
             totalPx += ROW_HEIGHT; // "Description" header
             if (desc.isEmpty())
@@ -351,26 +359,11 @@ public final class TaskDetailsPopup
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(desc, fm, contentW).size();
             }
         }
-        if (hasRequirementPreview)
+        if (showDescriptionSection)
         {
-            totalPx += ROW_HEIGHT; // "Collection Log Items" header
-            totalPx += ROW_HEIGHT; // requirement summary
-            for (CollectionLogRequirementItem item : requirementPreview.getItems())
-            {
-                totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + safe(item.getName()), fm, contentW).size();
-            }
+            totalPx += 6 + 12; // divider gap before "Prereqs"
         }
-        if (!taskTip.isEmpty())
-        {
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW, 40));
-            if (!hasRequirementPreview)
-            {
-                totalPx += ROW_HEIGHT; // blank line before tip
-            }
-            totalPx += ROW_HEIGHT * tipLines.size();
-            totalPx += 6;
-        }
-        totalPx += 6 + 12 + ROW_HEIGHT; // divider gap + "Prereqs" header
+        totalPx += ROW_HEIGHT; // "Prereqs" header
         if ((prerequisiteStatuses == null || prerequisiteStatuses.isEmpty()) && prereqs.isEmpty())
         {
             totalPx += ROW_HEIGHT; // "None"
@@ -390,6 +383,32 @@ public final class TaskDetailsPopup
                 if (p.isEmpty()) continue;
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(p, fm, contentW).size();
             }
+        }
+        if (hasRequirementPreview)
+        {
+            totalPx += 6 + 12; // divider gap before eligible CLog items
+            totalPx += ROW_HEIGHT; // "Eligible Collection Log Items" header
+            if (requirementPreview.showSummaryText())
+            {
+                totalPx += ROW_HEIGHT; // counter summary
+            }
+            if (requirementPreview.showItemList())
+            {
+                for (CollectionLogRequirementItem item : requirementPreview.getItems())
+                {
+                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + safe(item.getName()), fm, contentW).size();
+                }
+            }
+        }
+        if (!taskTip.isEmpty())
+        {
+            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW, 40));
+            if (showDescriptionSection)
+            {
+                totalPx += ROW_HEIGHT; // blank line before tip
+            }
+            totalPx += ROW_HEIGHT * tipLines.size();
+            totalPx += 6;
         }
         if (!instanceHistoryLines.isEmpty())
         {
@@ -434,7 +453,7 @@ public final class TaskDetailsPopup
 
         int y = contentTop + fm.getAscent() - scrollPx;
 
-        if (!hasRequirementPreview)
+        if (showDescriptionSection)
         {
             g.setColor(palette.UI_GOLD);
             g.drawString("Description", contentLeft, y);
@@ -457,61 +476,13 @@ public final class TaskDetailsPopup
             }
         }
 
-        if (hasRequirementPreview)
+        if (showDescriptionSection)
         {
-            g.setColor(palette.UI_GOLD);
-            g.drawString("Collection Log Items", contentLeft, y);
-            y += ROW_HEIGHT;
-
-            g.setColor(palette.UI_TEXT_DIM);
-            g.drawString(TextUtils.truncateToWidth(requirementPreview.requirementText(), fm, contentW), contentLeft, y);
-            y += ROW_HEIGHT;
-
-            for (CollectionLogRequirementItem item : requirementPreview.getItems())
-            {
-                String lineText = "- " + safe(item.getName());
-                for (String line : TextUtils.wrapText(lineText, fm, contentW))
-                {
-                    String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                    g.setColor(item.isObtained() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
-                    g.drawString(drawLine, contentLeft, y);
-
-                    if (item.isObtained())
-                    {
-                        drawStrikeThrough(g, fm, drawLine, contentLeft, y);
-                    }
-
-                    y += ROW_HEIGHT;
-                }
-            }
-        }
-
-        if (!taskTip.isEmpty())
-        {
-            if (!hasRequirementPreview)
-            {
-                y += ROW_HEIGHT; // blank line before tip
-            }
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW - 8, 40));
-            g.setColor(palette.UI_TEXT_DIM);
-            if (!tipLines.isEmpty())
-            {
-                g.drawString(TextUtils.truncateToWidth("Tip: " + tipLines.get(0), fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
-                for (int i = 1; i < tipLines.size(); i++)
-                {
-                    g.drawString(TextUtils.truncateToWidth(tipLines.get(i), fm, contentW), contentLeft, y);
-                    y += ROW_HEIGHT;
-                }
-            }
             y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
         }
-
-        // Divider between sections
-        y += 6;
-        g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-        g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-        y += 12;
 
         g.setColor(palette.UI_GOLD);
         g.drawString("Prereqs", contentLeft, y);
@@ -557,6 +528,67 @@ public final class TaskDetailsPopup
                     y += ROW_HEIGHT;
                 }
             }
+        }
+
+        if (hasRequirementPreview)
+        {
+            y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
+
+            g.setColor(palette.UI_GOLD);
+            g.drawString(collectionLogRequirementTitle(requirementPreview), contentLeft, y);
+            y += ROW_HEIGHT;
+
+            if (requirementPreview.showSummaryText())
+            {
+                g.setColor(palette.UI_TEXT_DIM);
+                g.drawString(TextUtils.truncateToWidth(requirementPreview.summaryText(), fm, contentW), contentLeft, y);
+                y += ROW_HEIGHT;
+            }
+
+            if (requirementPreview.showItemList())
+            {
+                for (CollectionLogRequirementItem item : requirementPreview.getItems())
+                {
+                    String lineText = "- " + safe(item.getName());
+                    for (String line : TextUtils.wrapText(lineText, fm, contentW))
+                    {
+                        String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
+                        g.setColor(item.isObtained() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
+                        g.drawString(drawLine, contentLeft, y);
+
+                        if (item.isObtained())
+                        {
+                            drawStrikeThrough(g, fm, drawLine, contentLeft, y);
+                        }
+
+                        y += ROW_HEIGHT;
+                    }
+                }
+            }
+        }
+
+        if (!taskTip.isEmpty())
+        {
+            if (showDescriptionSection)
+            {
+                y += ROW_HEIGHT; // blank line before tip
+            }
+            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW - 8, 40));
+            g.setColor(palette.UI_TEXT_DIM);
+            if (!tipLines.isEmpty())
+            {
+                g.drawString(TextUtils.truncateToWidth("Tip: " + tipLines.get(0), fm, contentW), contentLeft, y);
+                y += ROW_HEIGHT;
+                for (int i = 1; i < tipLines.size(); i++)
+                {
+                    g.drawString(TextUtils.truncateToWidth(tipLines.get(i), fm, contentW), contentLeft, y);
+                    y += ROW_HEIGHT;
+                }
+            }
+            y += 6;
         }
 
         if (groupProgress != null && groupProgress.isGrouped())
@@ -920,12 +952,25 @@ public final class TaskDetailsPopup
         return s == null ? "" : s;
     }
 
-    private static String buildCompletionLine(CompletionInfo info)
+    private static boolean isAchievementDiaryTask(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        return verification != null && verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY;
+    }
+
+    private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
+    {
+        return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
+                ? "Collection Log Progress"
+                : "Eligible Collection Log Items";
+    }
+
+    private static String buildCompletionLine(CompletionInfo info, Long ticks)
     {
         if (info == null) return null;
         if (info.timestamp <= 0) return "Completed: date unknown";
         String date = new SimpleDateFormat("MMM d, yyyy").format(new Date(info.timestamp));
-        return "Completed: " + date + completionSourceSuffix(info);
+        return "Completed: " + date + completionSourceSuffix(info, ticks);
     }
 
     private static List<InstanceHistoryLine> buildInstanceHistoryLines(
@@ -940,8 +985,7 @@ public final class TaskDetailsPopup
             return List.of();
         }
 
-        java.util.ArrayList<InstanceHistoryLine> lines = new java.util.ArrayList<>(instances.size());
-        int completedOrdinal = 1;
+        java.util.ArrayList<CompletedInstance> completedInstances = new java.util.ArrayList<>(instances.size());
         for (int i = 0; i < instances.size(); i++)
         {
             XtremeTask instance = instances.get(i);
@@ -951,14 +995,35 @@ public final class TaskDetailsPopup
                 continue;
             }
 
-            String prefix = completedOrdinal++ + ". ";
             CompletionInfo info = completionInfoProvider == null ? null : completionInfoProvider.apply(instance);
-            String dateText = instanceCompletionDateText(info);
             Long ticks = taskTicksProvider == null ? null : taskTicksProvider.apply(instance);
 
-            lines.add(new InstanceHistoryLine(instance, prefix + dateText, buildInstanceTimeSpentLine(info, ticks)));
+            completedInstances.add(new CompletedInstance(instance, info, ticks, i));
+        }
+
+        completedInstances.sort((a, b) -> {
+            int byTimestamp = Long.compare(instanceSortTimestamp(a.info), instanceSortTimestamp(b.info));
+            return byTimestamp != 0 ? byTimestamp : Integer.compare(a.originalIndex, b.originalIndex);
+        });
+
+        java.util.ArrayList<InstanceHistoryLine> lines = new java.util.ArrayList<>(completedInstances.size());
+        for (int i = 0; i < completedInstances.size(); i++)
+        {
+            CompletedInstance completed = completedInstances.get(i);
+            String prefix = (i + 1) + ". ";
+            String dateText = instanceCompletionDateText(completed.info, completed.ticks);
+
+            lines.add(new InstanceHistoryLine(
+                    completed.task,
+                    prefix + dateText,
+                    buildInstanceTimeSpentLine(completed.info, completed.ticks)));
         }
         return lines;
+    }
+
+    private static long instanceSortTimestamp(CompletionInfo info)
+    {
+        return info != null && info.timestamp > 0 ? info.timestamp : Long.MAX_VALUE;
     }
 
     private static String buildTimeSpentLine(CompletionInfo info, Long ticks)
@@ -1011,7 +1076,23 @@ public final class TaskDetailsPopup
         }
     }
 
-    private static String instanceCompletionDateText(CompletionInfo info)
+    private static final class CompletedInstance
+    {
+        private final XtremeTask task;
+        private final CompletionInfo info;
+        private final Long ticks;
+        private final int originalIndex;
+
+        private CompletedInstance(XtremeTask task, CompletionInfo info, Long ticks, int originalIndex)
+        {
+            this.task = task;
+            this.info = info;
+            this.ticks = ticks;
+            this.originalIndex = originalIndex;
+        }
+    }
+
+    private static String instanceCompletionDateText(CompletionInfo info, Long ticks)
     {
         if (info == null)
         {
@@ -1022,10 +1103,10 @@ public final class TaskDetailsPopup
         {
             return "Date unknown";
         }
-        return new SimpleDateFormat("MMM d, yyyy").format(new Date(info.timestamp)) + completionSourceSuffix(info);
+        return new SimpleDateFormat("MMM d, yyyy").format(new Date(info.timestamp)) + completionSourceSuffix(info, ticks);
     }
 
-    private static String completionSourceSuffix(CompletionInfo info)
+    private static String completionSourceSuffix(CompletionInfo info, Long ticks)
     {
         if (info == null || info.timestamp <= 0 || info.source == null)
         {
@@ -1034,6 +1115,10 @@ public final class TaskDetailsPopup
 
         if (info.source == CompletionInfo.Source.MANUAL)
         {
+            if (ticks != null && ticks > 0)
+            {
+                return "";
+            }
             return " (marked)";
         }
         if (info.source == CompletionInfo.Source.SYNCED)

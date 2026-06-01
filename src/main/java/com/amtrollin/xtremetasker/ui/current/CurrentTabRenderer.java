@@ -7,6 +7,7 @@ import com.amtrollin.xtremetasker.models.CompletionInfo;
 import net.runelite.client.ui.FontManager;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
@@ -26,6 +27,8 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
 
 public final class CurrentTabRenderer
 {
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Diary Achievement rewards.";
+    private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
     private final int panelWidth;
@@ -302,13 +305,30 @@ public final class CurrentTabRenderer
             }
 
             cursorYBaseline += 20 + 12;
+
+            int buttonHeight = rowHeight + 10;
+            int innerW = panelWidth - 2 * panelPadding;
+            int buttonWidth = innerW / 2;
+            int btnX = panelX + panelPadding + (innerW - buttonWidth) / 2;
+            int btnY = cursorYBaseline - fm.getAscent();
+
+            if (!currentCompleted)
+            {
+                layout.completeButtonBounds.setBounds(btnX, btnY, buttonWidth, buttonHeight);
+            }
+            else
+            {
+                layout.rollButtonBounds.setBounds(btnX, btnY, buttonWidth, buttonHeight);
+            }
+
+            cursorYBaseline += buttonHeight + 16;
         }
 
         // ── Scrollable details body (description + prereqs) ────────────────────
         if (current != null)
         {
-            int x = panelX + panelPadding;
-            int maxW = panelWidth - 2 * panelPadding;
+            int x = panelX + panelPadding + DETAILS_INSET_X;
+            int maxW = panelWidth - 2 * (panelPadding + DETAILS_INSET_X);
 
             // Measure total content height first (needed for scroll clamping + scrollbar)
             int totalPx = 0;
@@ -316,7 +336,11 @@ public final class CurrentTabRenderer
                     ? null
                     : collectionLogRequirementPreviewProvider.apply(current);
             boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
-            String desc = hasRequirementPreview ? null : current.getDescription();
+            boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
+            boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
+            String desc = showAchievementDiaryNote
+                    ? ACHIEVEMENT_DIARY_NOTE
+                    : (hideDescription ? null : current.getDescription());
             boolean hasDesc = desc != null && !desc.trim().isEmpty();
             String tip = showTips ? current.getTip() : null;
             boolean hasTip = tip != null && !tip.trim().isEmpty();
@@ -326,23 +350,6 @@ public final class CurrentTabRenderer
                 totalPx += rowHeight; // "Description" header
                 List<String> descLines = wrapText(desc, fm, maxW);
                 totalPx += rowHeight * Math.min(descLines.size(), 7);
-                totalPx += 8;
-            }
-            if (hasRequirementPreview)
-            {
-                totalPx += rowHeight; // "Collection Log Items" header
-                totalPx += rowHeight; // requirement summary
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    totalPx += rowHeight * wrapText("- " + safe(item.getName()), fm, maxW).size();
-                }
-                totalPx += 8;
-            }
-            if (hasTip)
-            {
-                if (hasDesc) totalPx += rowHeight; // blank line before tip only when desc present
-                List<String> tipMeasureLines = wrapText(tip, fm, Math.max(hasDesc ? maxW - 8 : maxW, 40));
-                totalPx += rowHeight * Math.min(tipMeasureLines.size(), 5);
                 totalPx += 8;
             }
             totalPx += rowHeight; // "Prereqs" header
@@ -372,15 +379,37 @@ public final class CurrentTabRenderer
             {
                 totalPx += rowHeight; // "None"
             }
-            // button after prereqs
-            totalPx += 10 + (rowHeight + 10);
+            totalPx += 8;
+            if (hasRequirementPreview)
+            {
+                totalPx += rowHeight; // "Eligible Collection Log Items" header
+                if (requirementPreview.showSummaryText())
+                {
+                    totalPx += rowHeight; // counter summary
+                }
+                if (requirementPreview.showItemList())
+                {
+                    for (CollectionLogRequirementItem item : requirementPreview.getItems())
+                    {
+                        totalPx += rowHeight * wrapText("- " + safe(item.getName()), fm, maxW).size();
+                    }
+                }
+                totalPx += 8;
+            }
+            if (hasTip)
+            {
+                if (hasDesc) totalPx += rowHeight; // blank line before tip only when desc present
+                List<String> tipMeasureLines = wrapText(tip, fm, Math.max(hasDesc ? maxW - 8 : maxW, 40));
+                totalPx += rowHeight * Math.min(tipMeasureLines.size(), 5);
+                totalPx += 8;
+            }
             totalPx += fm.getAscent() + 8;
 
             layout.totalContentPx = totalPx;
 
             // Viewport top = cursorYBaseline minus ascent so text starts at cursorYBaseline
             int vpTop = cursorYBaseline - fm.getAscent();
-            int hintFooterH = fm.getHeight() + panelPadding + 8;
+            int hintFooterH = fm.getHeight() + panelPadding + 22;
             int actualAvailableH = Math.max(10, panelBounds.y + panelBounds.height - hintFooterH - vpTop);
             int vpH = viewportH > 0 ? Math.min(viewportH, actualAvailableH) : Math.min(totalPx, actualAvailableH);
             layout.viewportBounds.setBounds(panelX, vpTop, panelWidth, vpH);
@@ -390,6 +419,7 @@ public final class CurrentTabRenderer
 
             // Clip to viewport
             Shape oldClip = g.getClip();
+            drawCurrentViewportFrame(g, layout.viewportBounds);
             g.setClip(panelX, vpTop, panelWidth, vpH);
 
             // Draw content shifted by scroll
@@ -403,31 +433,6 @@ public final class CurrentTabRenderer
 
                 g.setColor(uiText);
                 y = drawWrapped(g, fm, desc, x, y, maxW, 7);
-                y += 8;
-            }
-
-            if (hasRequirementPreview)
-            {
-                y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview);
-                y += 8;
-            }
-
-            if (hasTip)
-            {
-                if (hasDesc) y += rowHeight; // blank line before tip only when desc present
-                int tipIndent = hasDesc ? 8 : 0;
-                List<String> tipLines = wrapText(tip, fm, Math.max(maxW - tipIndent, 40));
-                g.setColor(uiTextDim);
-                if (!tipLines.isEmpty())
-                {
-                    g.drawString("Tip: " + tipLines.get(0), x + tipIndent, y);
-                    y += rowHeight;
-                    for (int i = 1; i < Math.min(tipLines.size(), 5); i++)
-                    {
-                        g.drawString(tipLines.get(i), x + tipIndent, y);
-                        y += rowHeight;
-                    }
-                }
                 y += 8;
             }
 
@@ -458,22 +463,31 @@ public final class CurrentTabRenderer
                 g.drawString("None", x, y);
                 y += rowHeight;
             }
+            y += 8;
 
-            // ── Button inside scroll body ──────────────────────────────────
-            y += 10;
-            int buttonHeight = rowHeight + 10;
-            int innerW = panelWidth - 2 * panelPadding;
-            int buttonWidth = innerW / 2;
-            int btnX = panelX + panelPadding + (innerW - buttonWidth) / 2;
-
-            boolean showComplete = !currentCompleted;
-            if (showComplete)
+            if (hasRequirementPreview)
             {
-                layout.completeButtonBounds.setBounds(btnX, y, buttonWidth, buttonHeight);
+                y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview);
+                y += 8;
             }
-            else
+
+            if (hasTip)
             {
-                layout.rollButtonBounds.setBounds(btnX, y, buttonWidth, buttonHeight);
+                if (hasDesc) y += rowHeight; // blank line before tip only when desc present
+                int tipIndent = hasDesc ? 8 : 0;
+                List<String> tipLines = wrapText(tip, fm, Math.max(maxW - tipIndent, 40));
+                g.setColor(uiTextDim);
+                if (!tipLines.isEmpty())
+                {
+                    g.drawString("Tip: " + tipLines.get(0), x + tipIndent, y);
+                    y += rowHeight;
+                    for (int i = 1; i < Math.min(tipLines.size(), 5); i++)
+                    {
+                        g.drawString(tipLines.get(i), x + tipIndent, y);
+                        y += rowHeight;
+                    }
+                }
+                y += 8;
             }
 
             g.setClip(oldClip);
@@ -792,28 +806,34 @@ public final class CurrentTabRenderer
         int y = yBaseline;
 
         g.setColor(uiGold);
-        g.drawString("Collection Log Items", x, y);
+        g.drawString(collectionLogRequirementTitle(requirementPreview), x, y);
         y += rowHeight;
 
-        g.setColor(uiTextDim);
-        g.drawString(truncateToWidth(requirementPreview.requirementText(), fm, maxWidth), x, y);
-        y += rowHeight;
-
-        for (CollectionLogRequirementItem item : requirementPreview.getItems())
+        if (requirementPreview.showSummaryText())
         {
-            String lineText = "- " + safe(item.getName());
-            for (String line : wrapText(lineText, fm, maxWidth))
+            g.setColor(uiTextDim);
+            g.drawString(truncateToWidth(requirementPreview.summaryText(), fm, maxWidth), x, y);
+            y += rowHeight;
+        }
+
+        if (requirementPreview.showItemList())
+        {
+            for (CollectionLogRequirementItem item : requirementPreview.getItems())
             {
-                String drawLine = truncateToWidth(line, fm, maxWidth);
-                g.setColor(item.isObtained() ? uiTextDim : uiText);
-                g.drawString(drawLine, x, y);
-
-                if (item.isObtained())
+                String lineText = "- " + safe(item.getName());
+                for (String line : wrapText(lineText, fm, maxWidth))
                 {
-                    drawStrikeThrough(g, fm, drawLine, x, y);
-                }
+                    String drawLine = truncateToWidth(line, fm, maxWidth);
+                    g.setColor(item.isObtained() ? uiTextDim : uiText);
+                    g.drawString(drawLine, x, y);
 
-                y += rowHeight;
+                    if (item.isObtained())
+                    {
+                        drawStrikeThrough(g, fm, drawLine, x, y);
+                    }
+
+                    y += rowHeight;
+                }
             }
         }
 
@@ -827,13 +847,13 @@ public final class CurrentTabRenderer
             return;
         }
 
-        final int scrollBarW = 5;
-        int railX = viewport.x + viewport.width - panelPadding / 2 - scrollBarW;
-        int railY = viewport.y;
-        int railH = viewport.height;
+        final int scrollBarW = 4;
+        int railX = viewport.x + viewport.width - panelPadding - 2;
+        int railY = viewport.y + 4;
+        int railH = Math.max(1, viewport.height - 8);
 
-        g.setColor(new Color(18, 14, 9, 200));
-        g.fillRect(railX, railY, scrollBarW, railH);
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 45));
+        g.fillRoundRect(railX, railY, scrollBarW, railH, 4, 4);
 
         float thumbRatio = (float) viewportH / (float) totalPx;
         int thumbH = Math.max(14, (int) (railH * thumbRatio));
@@ -841,8 +861,32 @@ public final class CurrentTabRenderer
         float scrollRatio = Math.max(0f, Math.min(1f, (float) scrollPx / (float) maxScrollPx));
         int thumbY = railY + (int) ((railH - thumbH) * scrollRatio);
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 160));
-        g.fillRoundRect(railX, thumbY, scrollBarW, thumbH, 3, 3);
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 175));
+        g.fillRoundRect(railX, thumbY, scrollBarW, thumbH, 4, 4);
+    }
+
+    private void drawCurrentViewportFrame(Graphics2D g, Rectangle viewport)
+    {
+        if (viewport.width <= 0 || viewport.height <= 0)
+        {
+            return;
+        }
+
+        int x = viewport.x + panelPadding + DETAILS_INSET_X;
+        int y = viewport.y - 6;
+        int w = viewport.width - 2 * (panelPadding + DETAILS_INSET_X);
+        int h = viewport.height + 12;
+
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 62));
+        g.drawLine(x, y, x + w, y);
+        g.drawLine(x, y + h, x + w, y + h);
+    }
+
+    private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
+    {
+        return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
+                ? "Collection Log Progress"
+                : "Eligible Collection Log Items";
     }
 
     private void drawBadgesLeftAligned(Graphics2D g, FontMetrics fm, int panelX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
@@ -927,5 +971,10 @@ public final class CurrentTabRenderer
         return text == null ? "" : text;
     }
 
+    private static boolean isAchievementDiaryTask(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        return verification != null && verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY;
+    }
 
 }
