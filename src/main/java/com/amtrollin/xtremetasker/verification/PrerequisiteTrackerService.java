@@ -31,6 +31,7 @@ public class PrerequisiteTrackerService
     private static final Pattern SKILL_PREREQ_PATTERN = Pattern.compile("^(\\d+)\\s+([A-Za-z][A-Za-z\\- ]+)$");
     private static final Pattern SKILL_PREREQ_PLUS_PATTERN = Pattern.compile("^(\\d+)\\+\\s+([A-Za-z][A-Za-z\\- ]+)$");
     private static final Pattern QUEST_PREREQ_PATTERN = Pattern.compile("^(.+?)\\s+quest$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern START_QUEST_PREREQ_PATTERN = Pattern.compile("^start\\s+(.+?)\\s+quest$", Pattern.CASE_INSENSITIVE);
     private static final Pattern QUEST_POINTS_PATTERN = Pattern.compile("^(\\d+)\\s+quest\\s+points?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMBAT_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+combat(?:\\s+level)?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOTAL_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+total\\s+level$", Pattern.CASE_INSENSITIVE);
@@ -302,6 +303,19 @@ public class PrerequisiteTrackerService
             return client.getTotalLevel() >= requiredTotal;
         }
 
+        Matcher startQuestMatcher = START_QUEST_PREREQ_PATTERN.matcher(normalized);
+        if (startQuestMatcher.matches())
+        {
+            Quest quest = findQuest(startQuestMatcher.group(1));
+            if (quest == null)
+            {
+                return false;
+            }
+
+            QuestState state = quest.getState(client);
+            return state == QuestState.IN_PROGRESS || state == QuestState.FINISHED;
+        }
+
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(normalized);
         if (questMatcher.matches())
         {
@@ -339,6 +353,12 @@ public class PrerequisiteTrackerService
         for (Quest quest : Quest.values())
         {
             questsByName.put(normalize(quest.getName()), quest);
+        }
+
+        Quest elementalWorkshopI = questsByName.get(normalize("Elemental Workshop I"));
+        if (elementalWorkshopI != null)
+        {
+            questsByName.put(normalize("Elemental Workshop 1"), elementalWorkshopI);
         }
     }
 

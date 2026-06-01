@@ -4044,7 +4044,7 @@
       "name": "Complete the Kandarin Easy Diary",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "20 Agility; 16 Fishing; 13 Farming; Elemental Workshop 1 quest",
+      "prereqs": "20 Agility; 16 Fishing; 13 Farming; Start Elemental Workshop 1 quest",
       "wikiTitle": "Kandarin Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Kandarin_Diary",
       "verification": {
