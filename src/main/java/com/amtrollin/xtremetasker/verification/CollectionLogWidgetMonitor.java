@@ -133,6 +133,22 @@ public class CollectionLogWidgetMonitor
         return false;
     }
 
+    public boolean isCollectionLogScanInProgress()
+    {
+        if (pendingCollectionLogClickTicks >= 0)
+        {
+            return true;
+        }
+
+        if (isAutoScanInProgress)
+        {
+            return true;
+        }
+
+        return tickClogScriptFired != -1
+                && tickClogScriptFired + 2 >= client.getTickCount();
+    }
+
     /**
      * When the collection log page is set up, auto-trigger a re-render so script 4100
      * fires for all items on the current page — without requiring manual navigation.

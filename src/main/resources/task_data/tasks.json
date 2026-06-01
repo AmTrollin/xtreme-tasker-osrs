@@ -2710,6 +2710,13 @@
       "prereqs": "Tower of Life quest; 10 Construction",
       "wikiTitle": "Tea flask",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Tea_flask",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          10859
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -2720,6 +2727,13 @@
       "prereqs": "Tower of Life quest; 10 Construction",
       "wikiTitle": "Rune satchel",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Rune_satchel",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          10882
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -2730,6 +2744,13 @@
       "prereqs": "Tower of Life quest; 10 Construction",
       "wikiTitle": "Green satchel",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Green_satchel",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          10878
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -2740,6 +2761,13 @@
       "prereqs": "Tower of Life quest; 10 Construction",
       "wikiTitle": "Red satchel",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Red_satchel",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          10879
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -2750,6 +2778,13 @@
       "prereqs": "Tower of Life quest; 10 Construction",
       "wikiTitle": "Black satchel",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Black_satchel",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          10880
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -5120,6 +5155,13 @@
       "prereqs": "Tower of Life quest; 10 Construction",
       "wikiTitle": "Gold satchel",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Gold_satchel",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          10881
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -5130,6 +5172,13 @@
       "prereqs": "Tower of Life quest; 10 Construction",
       "wikiTitle": "Plain satchel",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Plain_satchel",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          10877
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -9295,6 +9344,13 @@
       "prereqs": "Cabin Fever quest; 42 Agility; 45 Crafting; 50 Smithing; 40 Ranged; 40 Farming; 47 Prayer; 42 Slayer; 50 Fishing; 8 Herblore; 5 Fletching; 40 Cooking",
       "wikiTitle": "Gilded smile flag",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Gilded_smile_flag",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          8967
+        ],
+        "count": 1
+      },
       "version": 1
     },
     {
@@ -12016,7 +12072,7 @@
       "tier": "MEDIUM",
       "prereqs": "None",
       "wikiTitle": "Graceful outfit",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Graceful_outfit",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Graceful_outfit#Recolouring",
       "version": 1
     },
     {
