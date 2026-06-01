@@ -39,6 +39,7 @@ public class CollectionLogService
     private ItemManager itemManager;
 
     private final Set<Integer> obtainedItems = new HashSet<>();
+    private final Set<Integer> seenItems = new HashSet<>();
 
     public void startUp()
     {
@@ -156,6 +157,31 @@ public class CollectionLogService
         }
     }
 
+    public void storeSeenItem(int itemId)
+    {
+        if (itemId > 0)
+        {
+            seenItems.add(itemId);
+        }
+    }
+
+    public boolean hasSeenAll(int[] itemIds)
+    {
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return false;
+        }
+
+        for (int itemId : itemIds)
+        {
+            if (!seenItems.contains(itemId))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public long countObtained(int[] itemIds)
     {
         if (itemIds == null || itemIds.length == 0)
@@ -208,5 +234,6 @@ public class CollectionLogService
     private void reset()
     {
         obtainedItems.clear();
+        seenItems.clear();
     }
 }

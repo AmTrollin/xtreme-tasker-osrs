@@ -62,6 +62,7 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CA;
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CLOGS;
@@ -230,6 +231,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int totalObtainedCount = plugin.countObtainedCollectionLogItems(itemIds);
         int obtainedCount = Math.max(0, totalObtainedCount - previousRequiredCount);
         int shownObtainedCount = Math.min(obtainedCount, requiredCount);
+        boolean isCountedSequence = collectionLogRequirementSequence(task, itemIds).size() > 1;
 
         Map<String, Boolean> obtainedByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
@@ -244,11 +246,12 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         boolean sameNameFamily = obtainedByItemName.size() == 1;
-        TaskGroupProgress groupProgress = plugin.getTaskGroupProgress(task);
-        boolean repeatedDistinctPool = !sameNameFamily && groupProgress != null && groupProgress.isGrouped();
-        String summaryText = sameNameFamily
+        boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
+        String summaryText = repeatedDistinctPool
+            ? repeatedCollectionLogRequirementSummary(totalObtainedCount, previousRequiredCount, true)
+            : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
-                : repeatedCollectionLogRequirementSummary(totalObtainedCount, previousRequiredCount, repeatedDistinctPool);
+            : "";
         return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
     }
 
@@ -320,21 +323,52 @@ public class XtremeTaskerOverlay extends Overlay {
             return Collections.emptyList();
         }
 
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group == null || group.isEmpty())
-        {
-            group = plugin.getDummyTasks();
-        }
-
         List<XtremeTask> sequence = new ArrayList<>();
-        for (XtremeTask candidate : group)
+        for (XtremeTask candidate : plugin.getDummyTasks())
         {
-            if (sameCollectionLogRequirementSequence(task, candidate, itemIds))
+            if (sameCollectionLogRequirementSignature(task, candidate, itemIds))
             {
                 sequence.add(candidate);
             }
         }
         return sequence;
+    }
+
+    private boolean sameCollectionLogRequirementSignature(XtremeTask target, XtremeTask candidate, int[] targetItemIds) {
+        if (target == null || candidate == null)
+        {
+            return false;
+        }
+
+        TaskVerification targetVerification = target.getVerification();
+        TaskVerification candidateVerification = candidate.getVerification();
+        if (target.getSource() != TaskSource.COLLECTION_LOG
+                || candidate.getSource() != TaskSource.COLLECTION_LOG
+                || target.getTier() != candidate.getTier()
+                || targetVerification == null
+                || candidateVerification == null
+                || targetVerification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || candidateVerification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return false;
+        }
+
+        int[] candidateItemIds = candidateVerification.getItemIds();
+        return canonicalItemIds(targetItemIds).equals(canonicalItemIds(candidateItemIds));
+    }
+
+    private String canonicalItemIds(int[] itemIds) {
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return "";
+        }
+
+        return Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .mapToObj(String::valueOf)
+                .collect(Collectors.joining(","));
     }
 
     private List<Integer> countedRequirementThresholds(List<XtremeTask> sequence) {

@@ -196,6 +196,11 @@ public class CollectionLogWidgetMonitor
         int itemId = (int) args[1];
         int quantity = (int) args[2];
 
+        if (itemId > 0)
+        {
+            collectionLogService.storeSeenItem(itemId);
+        }
+
         // quantity > 0 means the item has been obtained at least once.
         if (quantity > 0)
         {
