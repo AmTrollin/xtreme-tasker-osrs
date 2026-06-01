@@ -538,7 +538,7 @@ public final class TaskDetailsPopup
             y += 12;
 
             g.setColor(palette.UI_GOLD);
-            g.drawString("Eligible Collection Log Items", contentLeft, y);
+            g.drawString(collectionLogRequirementTitle(requirementPreview), contentLeft, y);
             y += ROW_HEIGHT;
 
             if (requirementPreview.showSummaryText())
@@ -956,6 +956,13 @@ public final class TaskDetailsPopup
     {
         TaskVerification verification = task == null ? null : task.getVerification();
         return verification != null && verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY;
+    }
+
+    private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
+    {
+        return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
+                ? "Collection Log Progress"
+                : "Eligible Collection Log Items";
     }
 
     private static String buildCompletionLine(CompletionInfo info, Long ticks)

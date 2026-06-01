@@ -806,7 +806,7 @@ public final class CurrentTabRenderer
         int y = yBaseline;
 
         g.setColor(uiGold);
-        g.drawString("Eligible Collection Log Items", x, y);
+        g.drawString(collectionLogRequirementTitle(requirementPreview), x, y);
         y += rowHeight;
 
         if (requirementPreview.showSummaryText())
@@ -880,6 +880,13 @@ public final class CurrentTabRenderer
         g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 62));
         g.drawLine(x, y, x + w, y);
         g.drawLine(x, y + h, x + w, y + h);
+    }
+
+    private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
+    {
+        return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
+                ? "Collection Log Progress"
+                : "Eligible Collection Log Items";
     }
 
     private void drawBadgesLeftAligned(Graphics2D g, FontMetrics fm, int panelX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
