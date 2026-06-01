@@ -1,6 +1,5 @@
 package com.amtrollin.xtremetasker.verification;
 
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
@@ -16,9 +15,6 @@ import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * Captures obtained collection log item IDs by listening to script 4100, which fires
@@ -30,7 +26,6 @@ import java.util.List;
  *
  * Approach sourced from RuneProfile / WikiSync / OSRS-Taskman plugins (BSD 2-Clause).
  */
-@Slf4j
 @Singleton
 public class CollectionLogWidgetMonitor
 {
@@ -54,12 +49,6 @@ public class CollectionLogWidgetMonitor
     private int tickClogScriptFired = -1;
     private boolean isAutoScanInProgress = false;
     private int pendingCollectionLogClickTicks = -1;
-    private int scanRequestedTick = -1;
-    private int scanSeenSlotCount = 0;
-    private int scanObtainedSlotCount = 0;
-    private final List<String> scanRawArgSamples = new ArrayList<>();
-    private final List<String> scanSeenSamples = new ArrayList<>();
-    private final List<String> scanObtainedSamples = new ArrayList<>();
 
     public void startUp()
     {
@@ -77,7 +66,6 @@ public class CollectionLogWidgetMonitor
         tickClogScriptFired = -1;
         isAutoScanInProgress = false;
         pendingCollectionLogClickTicks = -1;
-        resetScanLogState();
     }
 
     @Subscribe
@@ -108,19 +96,8 @@ public class CollectionLogWidgetMonitor
 
         if (tickClogScriptFired != -1 && tickClogScriptFired + 2 < client.getTickCount())
         {
-            logScanSummary("item draw scripts settled");
             tickClogScriptFired = -1;
             isAutoScanInProgress = false;
-        }
-
-        if (isAutoScanInProgress
-                && scanRequestedTick != -1
-                && tickClogScriptFired == -1
-                && scanRequestedTick + 4 < client.getTickCount())
-        {
-            log.info("CLOG scan requested but no item draw scripts fired within 4 ticks");
-            isAutoScanInProgress = false;
-            resetScanLogState();
         }
     }
 
@@ -138,25 +115,21 @@ public class CollectionLogWidgetMonitor
 
         if (isCollectionLogOpen())
         {
-            log.info("CLOG sync refresh requested while Collection Log is already open");
             requestCurrentPageScan();
             return true;
         }
 
         if (clickVisibleCollectionLogWidget())
         {
-            log.info("CLOG sync clicked visible Collection Log widget");
             return true;
         }
 
         if (clickJournalTabWidget())
         {
-            log.info("CLOG sync clicked journal tab; Collection Log click pending");
             pendingCollectionLogClickTicks = 1;
             return true;
         }
 
-        log.info("CLOG sync could not find a visible Collection Log or journal widget to click");
         return false;
     }
 
@@ -191,18 +164,15 @@ public class CollectionLogWidgetMonitor
 
         if (isAutoScanInProgress)
         {
-            log.info("CLOG setup script fired while auto-scan was already in progress");
             return;
         }
 
         // Don't scan when viewing another player's clog via POH adventure log.
         if (client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
         {
-            log.info("CLOG setup script ignored because POH host book is open");
             return;
         }
 
-        log.info("CLOG setup script fired; requesting current page scan");
         isAutoScanInProgress = true;
         requestCurrentPageScan();
     }
@@ -220,27 +190,20 @@ public class CollectionLogWidgetMonitor
         Object[] args = event.getScriptEvent().getArguments();
         if (args == null || args.length < 3)
         {
-            addSample(scanRawArgSamples, args == null ? "null" : Arrays.deepToString(args));
             return;
         }
-
-        addSample(scanRawArgSamples, Arrays.deepToString(args));
 
         int itemId = (int) args[1];
         int quantity = (int) args[2];
 
         if (itemId > 0)
         {
-            scanSeenSlotCount++;
-            addSample(scanSeenSamples, itemId + "x" + quantity);
             collectionLogService.storeSeenItem(itemId);
         }
 
         // quantity > 0 means the item has been obtained at least once.
         if (quantity > 0)
         {
-            scanObtainedSlotCount++;
-            addSample(scanObtainedSamples, itemId + "x" + quantity);
             collectionLogService.storeItem(itemId);
         }
     }
@@ -253,40 +216,8 @@ public class CollectionLogWidgetMonitor
 
     private void requestCurrentPageScan()
     {
-        scanRequestedTick = client.getTickCount();
-        scanSeenSlotCount = 0;
-        scanObtainedSlotCount = 0;
-        scanRawArgSamples.clear();
-        scanSeenSamples.clear();
-        scanObtainedSamples.clear();
-        log.info("CLOG current page scan requested at tick {}", scanRequestedTick);
         client.menuAction(-1, CLOG_SEARCH_WIDGET_ID, MenuAction.CC_OP, 1, -1, "Search", null);
         client.runScript(2240);
-    }
-
-    private void addSample(List<String> samples, String value)
-    {
-        if (samples.size() < 12)
-        {
-            samples.add(value);
-        }
-    }
-
-    private void logScanSummary(String reason)
-    {
-        log.info("CLOG scan summary ({}): seenSlots={}, obtainedSlots={}, rawArgSample={}, seenSample={}, obtainedSample={}",
-                reason, scanSeenSlotCount, scanObtainedSlotCount, scanRawArgSamples, scanSeenSamples, scanObtainedSamples);
-        resetScanLogState();
-    }
-
-    private void resetScanLogState()
-    {
-        scanRequestedTick = -1;
-        scanSeenSlotCount = 0;
-        scanObtainedSlotCount = 0;
-        scanRawArgSamples.clear();
-        scanSeenSamples.clear();
-        scanObtainedSamples.clear();
     }
 
     private boolean clickJournalTabWidget()
