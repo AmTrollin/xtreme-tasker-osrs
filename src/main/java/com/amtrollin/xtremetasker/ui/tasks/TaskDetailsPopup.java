@@ -392,11 +392,15 @@ public final class TaskDetailsPopup
             {
                 totalPx += ROW_HEIGHT; // counter summary
             }
+            if (requirementPreview.showCurrentProgressText())
+            {
+                totalPx += ROW_HEIGHT; // active task progress
+            }
             if (requirementPreview.showItemList())
             {
                 for (CollectionLogRequirementItem item : requirementPreview.getItems())
                 {
-                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + safe(item.getName()), fm, contentW).size();
+                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + collectionLogRequirementItemText(item), fm, contentW).size();
                 }
             }
         }
@@ -548,11 +552,18 @@ public final class TaskDetailsPopup
                 y += ROW_HEIGHT;
             }
 
+            if (requirementPreview.showCurrentProgressText())
+            {
+                g.setColor(palette.UI_GOLD);
+                g.drawString(TextUtils.truncateToWidth(requirementPreview.currentProgressText(), fm, contentW), contentLeft, y);
+                y += ROW_HEIGHT;
+            }
+
             if (requirementPreview.showItemList())
             {
                 for (CollectionLogRequirementItem item : requirementPreview.getItems())
                 {
-                    String lineText = "- " + safe(item.getName());
+                    String lineText = "- " + collectionLogRequirementItemText(item);
                     for (String line : TextUtils.wrapText(lineText, fm, contentW))
                     {
                         String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
@@ -950,6 +961,15 @@ public final class TaskDetailsPopup
     private static String safe(String s)
     {
         return s == null ? "" : s;
+    }
+
+    private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)
+    {
+        if (item == null)
+        {
+            return "";
+        }
+        return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
     }
 
     private static boolean isAchievementDiaryTask(XtremeTask task)

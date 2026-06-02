@@ -387,11 +387,15 @@ public final class CurrentTabRenderer
                 {
                     totalPx += rowHeight; // counter summary
                 }
+                if (requirementPreview.showCurrentProgressText())
+                {
+                    totalPx += rowHeight; // active task progress
+                }
                 if (requirementPreview.showItemList())
                 {
                     for (CollectionLogRequirementItem item : requirementPreview.getItems())
                     {
-                        totalPx += rowHeight * wrapText("- " + safe(item.getName()), fm, maxW).size();
+                        totalPx += rowHeight * wrapText("- " + collectionLogRequirementItemText(item), fm, maxW).size();
                     }
                 }
                 totalPx += 8;
@@ -816,11 +820,18 @@ public final class CurrentTabRenderer
             y += rowHeight;
         }
 
+        if (requirementPreview.showCurrentProgressText())
+        {
+            g.setColor(uiGold);
+            g.drawString(truncateToWidth(requirementPreview.currentProgressText(), fm, maxWidth), x, y);
+            y += rowHeight;
+        }
+
         if (requirementPreview.showItemList())
         {
             for (CollectionLogRequirementItem item : requirementPreview.getItems())
             {
-                String lineText = "- " + safe(item.getName());
+                String lineText = "- " + collectionLogRequirementItemText(item);
                 for (String line : wrapText(lineText, fm, maxWidth))
                 {
                     String drawLine = truncateToWidth(line, fm, maxWidth);
@@ -838,6 +849,15 @@ public final class CurrentTabRenderer
         }
 
         return y;
+    }
+
+    private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)
+    {
+        if (item == null)
+        {
+            return "";
+        }
+        return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
     }
 
     private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport)

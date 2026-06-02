@@ -225,17 +225,22 @@ public class XtremeTaskerOverlay extends Overlay {
         if (itemIds == null || itemIds.length == 0) return null;
         if (itemIds.length == 1) return null;
 
+        List<XtremeTask> requirementSequence = collectionLogRequirementSequence(task, itemIds);
+        boolean isCountedSequence = requirementSequence.size() > 1;
+        boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
+
         int requiredCount = collectionLogPreviewRequiredCount(task, verification, itemIds);
         requiredCount = Math.max(1, Math.min(requiredCount, itemIds.length));
         int previousRequiredCount = collectionLogPreviewPreviousRequiredCount(task, itemIds);
         int totalObtainedCount = plugin.countObtainedCollectionLogItems(itemIds);
         int obtainedCount = Math.max(0, totalObtainedCount - previousRequiredCount);
         int shownObtainedCount = Math.min(obtainedCount, requiredCount);
-        boolean isCountedSequence = collectionLogRequirementSequence(task, itemIds).size() > 1;
-        boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
+        RepeatedCollectionLogRequirementState repeatedRequirementState = repeatedDistinctPool
+                ? repeatedCollectionLogRequirementState(task, requirementSequence, countedRequirementThresholds(requirementSequence), totalObtainedCount)
+                : null;
 
         int appliedRemaining = repeatedDistinctPool
-                ? Math.max(0, Math.min(previousRequiredCount, totalObtainedCount))
+                ? repeatedRequirementState.countedObtainedCount
                 : 0;
         Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
@@ -265,11 +270,12 @@ public class XtremeTaskerOverlay extends Overlay {
 
         boolean sameNameFamily = statusByItemName.size() == 1;
         String summaryText = repeatedDistinctPool
-            ? repeatedCollectionLogRequirementSummary(totalObtainedCount, previousRequiredCount, true)
+            ? repeatedRequirementState.summaryText
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
+        String currentProgressText = repeatedDistinctPool ? repeatedRequirementState.currentProgressText : "";
+        return new CollectionLogRequirementPreview(summaryText, currentProgressText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
     }
 
     private static CollectionLogRequirementItem.Status higherPriorityRequirementStatus(
@@ -460,19 +466,115 @@ public class XtremeTaskerOverlay extends Overlay {
         }
     }
 
-    private String repeatedCollectionLogRequirementSummary(int totalObtainedCount, int previousRequiredCount, boolean repeatedDistinctPool) {
-        if (!repeatedDistinctPool)
+    private RepeatedCollectionLogRequirementState repeatedCollectionLogRequirementState(
+            XtremeTask task,
+            List<XtremeTask> sequence,
+            List<Integer> thresholds,
+            int totalObtainedCount)
+    {
+        if (sequence == null || sequence.isEmpty() || thresholds == null || thresholds.isEmpty())
         {
-            return "";
+            return new RepeatedCollectionLogRequirementState(0, "");
         }
 
-        int priorCount = Math.max(0, Math.min(previousRequiredCount, totalObtainedCount));
-        if (priorCount <= 0)
+        int completedIndex = -1;
+        for (int i = 0; i < sequence.size(); i++)
         {
-            return "";
+            XtremeTask groupedTask = sequence.get(i);
+            if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
+            {
+                completedIndex = i;
+            }
         }
-        int availableCount = Math.max(0, totalObtainedCount - priorCount);
-        return totalObtainedCount + " obtained; " + priorCount + " applied; " + availableCount + " available.";
+
+        int completedThreshold = thresholdAt(thresholds, completedIndex);
+        int currentDone = 0;
+        int currentRequired = 0;
+
+        int currentIndex = currentRequirementIndex(task, sequence);
+        if (currentIndex >= 0)
+        {
+            int previousThreshold = currentIndex <= 0 ? 0 : thresholdAt(thresholds, currentIndex - 1);
+            previousThreshold = Math.max(previousThreshold, completedThreshold);
+            int currentThreshold = Math.max(thresholdAt(thresholds, currentIndex), previousThreshold);
+            currentRequired = Math.max(1, currentThreshold - previousThreshold);
+            currentDone = Math.min(Math.max(0, totalObtainedCount - previousThreshold), currentRequired);
+        }
+
+        int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
+        int notYetAppliedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
+        return new RepeatedCollectionLogRequirementState(
+                appliedObtainedCount,
+                repeatedCollectionLogRequirementSummary(totalObtainedCount, appliedObtainedCount, notYetAppliedCount),
+                currentRequired > 0 ? "current " + currentDone + "/" + currentRequired : ""
+        );
+    }
+
+    private int currentRequirementIndex(XtremeTask task, List<XtremeTask> sequence)
+    {
+        XtremeTask current = plugin.getCurrentTask();
+        if (task == null
+                || task.getId() == null
+                || current == null
+                || current.getId() == null
+                || !Objects.equals(task.getId(), current.getId())
+                || plugin.isTaskCompleted(current))
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < sequence.size(); i++)
+        {
+            XtremeTask groupedTask = sequence.get(i);
+            if (groupedTask != null && Objects.equals(current.getId(), groupedTask.getId()))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int thresholdAt(List<Integer> thresholds, int index)
+    {
+        if (thresholds == null || thresholds.isEmpty() || index < 0)
+        {
+            return 0;
+        }
+        return Math.max(0, thresholds.get(Math.min(index, thresholds.size() - 1)));
+    }
+
+    private static String repeatedCollectionLogRequirementSummary(
+            int totalObtainedCount,
+            int countedObtainedCount,
+            int notCountedCount)
+    {
+        List<String> parts = new ArrayList<>();
+        parts.add(totalObtainedCount + " obtained");
+        if (countedObtainedCount > 0)
+        {
+            parts.add("applied " + countedObtainedCount);
+        }
+        if (notCountedCount > 0)
+        {
+            parts.add("not yet applied " + notCountedCount);
+        }
+        return String.join("; ", parts);
+    }
+
+    private static final class RepeatedCollectionLogRequirementState {
+        private final int countedObtainedCount;
+        private final String summaryText;
+        private final String currentProgressText;
+
+        private RepeatedCollectionLogRequirementState(int countedObtainedCount, String summaryText) {
+            this(countedObtainedCount, summaryText, "");
+        }
+
+        private RepeatedCollectionLogRequirementState(int countedObtainedCount, String summaryText, String currentProgressText) {
+            this.countedObtainedCount = countedObtainedCount;
+            this.summaryText = summaryText == null ? "" : summaryText;
+            this.currentProgressText = currentProgressText == null ? "" : currentProgressText;
+        }
     }
 
     private String pluralizeRequirementName(String name, int requiredCount) {
