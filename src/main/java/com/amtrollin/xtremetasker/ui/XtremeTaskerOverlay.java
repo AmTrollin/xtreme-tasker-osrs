@@ -502,11 +502,10 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
-        int notYetAppliedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
         return new RepeatedCollectionLogRequirementState(
                 appliedObtainedCount,
-                repeatedCollectionLogRequirementSummary(totalObtainedCount, appliedObtainedCount, notYetAppliedCount),
-                currentRequired > 0 ? "current " + currentDone + "/" + currentRequired : ""
+                repeatedCollectionLogRequirementSummary(totalObtainedCount),
+                currentRequired > 1 ? "current task: " + currentDone + "/" + currentRequired : ""
         );
     }
 
@@ -543,22 +542,9 @@ public class XtremeTaskerOverlay extends Overlay {
         return Math.max(0, thresholds.get(Math.min(index, thresholds.size() - 1)));
     }
 
-    private static String repeatedCollectionLogRequirementSummary(
-            int totalObtainedCount,
-            int countedObtainedCount,
-            int notCountedCount)
+    private static String repeatedCollectionLogRequirementSummary(int totalObtainedCount)
     {
-        List<String> parts = new ArrayList<>();
-        parts.add(totalObtainedCount + " obtained");
-        if (countedObtainedCount > 0)
-        {
-            parts.add("applied " + countedObtainedCount);
-        }
-        if (notCountedCount > 0)
-        {
-            parts.add("not yet applied " + notCountedCount);
-        }
-        return String.join("; ", parts);
+        return "total obtained: " + totalObtainedCount;
     }
 
     private static final class RepeatedCollectionLogRequirementState {
