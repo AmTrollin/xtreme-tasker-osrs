@@ -31,41 +31,7 @@ public class TaskDataTest
     // Temporary release allowlist for known CLOG entries that still need explicit verification blocks.
     // Keep shrinking this list until it is empty.
     private static final Set<String> KNOWN_CLOG_VERIFICATION_GAPS = Set.of(
-            "collection_log_medium_1-graceful-recolor_001_34396fc6b4",
-            "collection_log_master_get-1-cox-log-slot_001_e59260645f",
-            "collection_log_master_get-1-cox-log-slot_002_353c388cb7",
-            "collection_log_master_get-1-cox-log-slot_003_71b29b6c97",
-            "collection_log_master_get-1-cox-log-slot_004_22824dfd4e",
-            "collection_log_master_get-1-cox-log-slot_005_1e3865ac06",
-            "collection_log_master_get-1-cox-log-slot_006_fa04819e49",
-            "collection_log_master_get-1-cox-log-slot_007_ad500edf82",
-            "collection_log_master_get-1-cox-log-slot_008_cbf224d69a",
-            "collection_log_master_get-1-tob-log-slot_001_dcfb7e1d8d",
-            "collection_log_master_get-1-tob-log-slot_002_3819822a90",
-            "collection_log_master_get-1-tob-log-slot_003_804f2faeb8",
-            "collection_log_master_get-1-tob-log-slot_004_c088be6991",
-            "collection_log_master_get-1-tob-log-slot_005_c9dd6923b0",
-            "collection_log_master_get-1-tob-log-slot_006_d43145bb7c",
-            "collection_log_master_get-1-tob-log-slot_007_cb9466f94c",
-            "collection_log_master_get-1-toa-log-slot_001_6d92dacb40",
-            "collection_log_master_get-1-toa-log-slot_002_17df3889c5",
-            "collection_log_master_get-1-toa-log-slot_003_7b6fff0932",
-            "collection_log_master_get-1-toa-log-slot_004_38a7a9ab01",
-            "collection_log_master_get-1-toa-log-slot_005_5add26e17c",
-            "collection_log_master_get-1-toa-log-slot_006_c79b3c7aa2",
-            "collection_log_master_get-1-toa-log-slot_007_b687e6ac01",
-            "collection_log_master_get-1-toa-log-slot_008_bbf4cf3be3",
-            "collection_log_master_get-1-toa-log-slot_009_346a153e9d",
-            "collection_log_master_get-1-wildy-unique_001_fb9b585d48",
-            "collection_log_master_get-1-wildy-unique_002_424f53f7fa",
-            "collection_log_master_get-1-wildy-unique_003_5dc6b41f38",
-            "collection_log_master_get-1-wildy-unique_004_1dc61ee7fa",
-            "collection_log_master_get-1-wildy-unique_005_852bea39e4",
-            "collection_log_master_get-1-wildy-unique_006_f946294fb6",
-            "collection_log_master_get-1-wildy-unique_007_af69a6f0f0",
-            "collection_log_master_get-1-wildy-unique_008_55a8c90903",
-            "collection_log_master_get-1-wildy-unique_009_1e5f4ef2c5",
-            "collection_log_master_get-1-wildy-unique_010_646ed2dbe8"
+            "collection_log_medium_1-graceful-recolor_001_34396fc6b4"
     );
 
     @Test

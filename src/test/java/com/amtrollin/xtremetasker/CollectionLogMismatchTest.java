@@ -129,6 +129,112 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void olmletVariantsCountAsOneOlmletLogSlot()
+    {
+        int[] olmletVariantIds = new int[]{
+                24656,
+                24658,
+                20851,
+                22376,
+                22378,
+                22380,
+                22382,
+                22384
+        };
+
+        for (int olmletVariantId : olmletVariantIds)
+        {
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(olmletVariantId);
+            collectionLogService.storeItem(olmletVariantId);
+
+            assertTrue("Olmlet variant " + olmletVariantId + " should satisfy Olmlet",
+                    collectionLogService.hasSeenAll(new int[]{20851}));
+            assertEquals("Olmlet variant " + olmletVariantId + " should count as one Olmlet slot",
+                    1, collectionLogService.countObtained(new int[]{20851}));
+        }
+
+        CollectionLogService collectionLogService = new CollectionLogService();
+        for (int olmletVariantId : olmletVariantIds)
+        {
+            collectionLogService.storeItem(olmletVariantId);
+        }
+
+        assertEquals("Multiple Olmlet variants should still count as one Olmlet slot",
+                1, collectionLogService.countObtained(new int[]{20851}));
+    }
+
+    @Test
+    public void lilZikVariantsCountAsOneLilZikLogSlot()
+    {
+        int[] lilZikVariantIds = new int[]{
+                25749,
+                25748,
+                25750,
+                25751,
+                25752,
+                22473
+        };
+
+        for (int lilZikVariantId : lilZikVariantIds)
+        {
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(lilZikVariantId);
+            collectionLogService.storeItem(lilZikVariantId);
+
+            assertTrue("Lil' zik variant " + lilZikVariantId + " should satisfy Lil' zik",
+                    collectionLogService.hasSeenAll(new int[]{22473}));
+            assertEquals("Lil' zik variant " + lilZikVariantId + " should count as one Lil' zik slot",
+                    1, collectionLogService.countObtained(new int[]{22473}));
+        }
+
+        CollectionLogService collectionLogService = new CollectionLogService();
+        for (int lilZikVariantId : lilZikVariantIds)
+        {
+            collectionLogService.storeItem(lilZikVariantId);
+        }
+
+        assertEquals("Multiple Lil' zik variants should still count as one Lil' zik slot",
+                1, collectionLogService.countObtained(new int[]{22473}));
+    }
+
+    @Test
+    public void tumekensGuardianVariantsCountAsOneGuardianLogSlot()
+    {
+        int[] guardianVariantIds = new int[]{
+                27382,
+                27383,
+                27387,
+                27354,
+                27384,
+                27386,
+                27352,
+                27385
+        };
+
+        for (int guardianVariantId : guardianVariantIds)
+        {
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(guardianVariantId);
+            collectionLogService.storeItem(guardianVariantId);
+
+            assertTrue("Tumeken's guardian variant " + guardianVariantId + " should satisfy Tumeken's guardian",
+                    collectionLogService.hasSeenAll(new int[]{27352}));
+            assertEquals("Tumeken's guardian variant " + guardianVariantId + " should count as one guardian slot",
+                    1, collectionLogService.countObtained(new int[]{27352}));
+        }
+
+        CollectionLogService collectionLogService = new CollectionLogService();
+        for (int guardianVariantId : guardianVariantIds)
+        {
+            collectionLogService.storeItem(guardianVariantId);
+        }
+
+        assertEquals("Multiple Tumeken's guardian variants should still count as one guardian slot",
+                1, collectionLogService.countObtained(new int[]{27352}));
+    }
+
+    @Test
     public void restoredCollectionLogCacheMarksItemsAsSeenAgain()
     {
         CollectionLogService collectionLogService = new CollectionLogService();

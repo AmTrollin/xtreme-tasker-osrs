@@ -30,13 +30,35 @@ public class CollectionLogService
             Pattern.CASE_INSENSITIVE
     );
 
-    private static final Map<Integer, Integer> COLLECTION_LOG_INTERFACE_ITEM_ALIASES = Map.of(
-            25618, 10877, // Plain satchel interface item -> Plain satchel
-            25619, 10878, // Green satchel interface item -> Green satchel
-            25620, 10879, // Red satchel interface item -> Red satchel
-            25621, 10880, // Black satchel interface item -> Black satchel
-            25622, 10881, // Gold satchel interface item -> Gold satchel
-            25623, 10882  // Rune satchel interface item -> Rune satchel
+    private static final Map<Integer, Integer> COLLECTION_LOG_ITEM_ALIASES = Map.ofEntries(
+            Map.entry(24656, 20851), // Olmlet - Enraged Tektiny -> Olmlet
+            Map.entry(24658, 20851), // Olmlet - Flying Vespina -> Olmlet
+            Map.entry(22376, 20851), // Olmlet - Puppadile -> Olmlet
+            Map.entry(22378, 20851), // Olmlet - Tektiny -> Olmlet
+            Map.entry(22380, 20851), // Olmlet - Vanguard -> Olmlet
+            Map.entry(22382, 20851), // Olmlet - Vasa minirio -> Olmlet
+            Map.entry(22384, 20851), // Olmlet - Vespina -> Olmlet
+
+            Map.entry(25749, 22473), // Lil' zik - Lil' Bloat -> Lil' zik
+            Map.entry(25748, 22473), // Lil' zik - Lil' Maiden -> Lil' zik
+            Map.entry(25750, 22473), // Lil' zik - Lil' Nylo -> Lil' zik
+            Map.entry(25751, 22473), // Lil' zik - Lil' Sot -> Lil' zik
+            Map.entry(25752, 22473), // Lil' zik - Lil' Xarp -> Lil' zik
+
+            Map.entry(27382, 27352), // Tumeken's guardian - Akkhito -> Tumeken's guardian
+            Map.entry(27383, 27352), // Tumeken's guardian - Babi -> Tumeken's guardian
+            Map.entry(27387, 27352), // Tumeken's guardian - Elidinis' Damaged Guardian -> Tumeken's guardian
+            Map.entry(27354, 27352), // Tumeken's guardian - Elidinis' Guardian -> Tumeken's guardian
+            Map.entry(27384, 27352), // Tumeken's guardian - Kephriti -> Tumeken's guardian
+            Map.entry(27386, 27352), // Tumeken's guardian - Tumeken's Damaged Guardian -> Tumeken's guardian
+            Map.entry(27385, 27352), // Tumeken's guardian - Zebo -> Tumeken's guardian
+
+            Map.entry(25618, 10877), // Plain satchel interface item -> Plain satchel
+            Map.entry(25619, 10878), // Green satchel interface item -> Green satchel
+            Map.entry(25620, 10879), // Red satchel interface item -> Red satchel
+            Map.entry(25621, 10880), // Black satchel interface item -> Black satchel
+            Map.entry(25622, 10881), // Gold satchel interface item -> Gold satchel
+            Map.entry(25623, 10882)  // Rune satchel interface item -> Rune satchel
     );
 
     @Inject
@@ -261,6 +283,6 @@ public class CollectionLogService
 
     private int canonicalCollectionLogItemId(int itemId)
     {
-        return COLLECTION_LOG_INTERFACE_ITEM_ALIASES.getOrDefault(itemId, itemId);
+        return COLLECTION_LOG_ITEM_ALIASES.getOrDefault(itemId, itemId);
     }
 }

@@ -12,6 +12,7 @@ import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.Varbits;
+import net.runelite.api.gameval.VarbitID;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -31,7 +32,11 @@ public class PrerequisiteTrackerService
     private static final Pattern SKILL_PREREQ_PATTERN = Pattern.compile("^(\\d+)\\s+([A-Za-z][A-Za-z\\- ]+)$");
     private static final Pattern SKILL_PREREQ_PLUS_PATTERN = Pattern.compile("^(\\d+)\\+\\s+([A-Za-z][A-Za-z\\- ]+)$");
     private static final Pattern QUEST_PREREQ_PATTERN = Pattern.compile("^(.+?)\\s+quest$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern START_QUEST_PREREQ_PATTERN = Pattern.compile("^start\\s+(.+?)\\s+quest$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern START_QUEST_PREREQ_PATTERN = Pattern.compile("^start\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern BARBARIAN_FIREMAKING_PART_1_PATTERN = Pattern.compile(
+        "^part\\s+1\\s+of\\s+barbarian\\s+firemaking$",
+        Pattern.CASE_INSENSITIVE
+    );
     private static final Pattern QUEST_POINTS_PATTERN = Pattern.compile("^(\\d+)\\s+quest\\s+points?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMBAT_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+combat(?:\\s+level)?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOTAL_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+total\\s+level$", Pattern.CASE_INSENSITIVE);
@@ -233,6 +238,11 @@ public class PrerequisiteTrackerService
     {
         String normalized = cleanupToken(prerequisite).replaceFirst("(?i)^either\\s+", "");
 
+        if (BARBARIAN_FIREMAKING_PART_1_PATTERN.matcher(normalized).matches())
+        {
+            return isBarbarianFiremakingPart1Complete();
+        }
+
         Matcher skillMatcher = SKILL_PREREQ_PATTERN.matcher(normalized);
         if (skillMatcher.matches())
         {
@@ -306,7 +316,7 @@ public class PrerequisiteTrackerService
         Matcher startQuestMatcher = START_QUEST_PREREQ_PATTERN.matcher(normalized);
         if (startQuestMatcher.matches())
         {
-            Quest quest = findQuest(startQuestMatcher.group(1));
+            Quest quest = findQuestWithOptionalQuestSuffix(startQuestMatcher.group(1));
             if (quest == null)
             {
                 return false;
@@ -319,11 +329,17 @@ public class PrerequisiteTrackerService
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(normalized);
         if (questMatcher.matches())
         {
-            Quest quest = findQuest(questMatcher.group(1));
+            Quest quest = findQuestWithOptionalQuestSuffix(normalized);
             return quest != null && quest.getState(client) == QuestState.FINISHED;
         }
 
         return false;
+    }
+
+    private boolean isBarbarianFiremakingPart1Complete()
+    {
+        return client.getVarbitValue(VarbitID.BRUT_FIRE) > 0
+                || Quest.BARBARIAN_TRAINING.getState(client) == QuestState.FINISHED;
     }
 
     private Skill findSkill(String name)
@@ -334,6 +350,18 @@ public class PrerequisiteTrackerService
     private Quest findQuest(String name)
     {
         return questsByName.get(normalize(name));
+    }
+
+    private Quest findQuestWithOptionalQuestSuffix(String name)
+    {
+        Quest direct = findQuest(name);
+        if (direct != null)
+        {
+            return direct;
+        }
+
+        Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(name);
+        return questMatcher.matches() ? findQuest(questMatcher.group(1)) : null;
     }
 
     private void registerSkills()
@@ -352,7 +380,9 @@ public class PrerequisiteTrackerService
     {
         for (Quest quest : Quest.values())
         {
-            questsByName.put(normalize(quest.getName()), quest);
+            String questName = quest.getName();
+            questsByName.put(normalize(questName), quest);
+            questsByName.put(normalize(toNumericQuestName(questName)), quest);
         }
 
         Quest elementalWorkshopI = questsByName.get(normalize("Elemental Workshop I"));
@@ -360,6 +390,14 @@ public class PrerequisiteTrackerService
         {
             questsByName.put(normalize("Elemental Workshop 1"), elementalWorkshopI);
         }
+    }
+
+    private static String toNumericQuestName(String questName)
+    {
+        return questName
+                .replaceAll("\\bIII\\b", "3")
+                .replaceAll("\\bII\\b", "2")
+                .replaceAll("\\bI\\b", "1");
     }
 
     private void registerVarbits()
