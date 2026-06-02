@@ -69,6 +69,43 @@ public class CollectionLogMismatchTest
 
     @Test
     @SuppressWarnings("unchecked")
+    public void manualOnlyCollectionLogTaskIsNotMarkedAsSyncMismatch() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        setField(plugin, "collectionLogService", new CollectionLogService());
+
+        XtremeTask task = new XtremeTask(
+                "collection_log_medium_1-graceful-recolor_001_34396fc6b4",
+                "1 Graceful Recolor",
+                TaskSource.COLLECTION_LOG,
+                TaskTier.MEDIUM,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        tasks.clear();
+        tasks.add(task);
+
+        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        manualCompletedTaskIds.clear();
+        manualCompletedTaskIds.add(task.getId());
+
+        Method findMismatches = XtremeTaskerPlugin.class
+                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
+        findMismatches.setAccessible(true);
+
+        List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        assertTrue("Manual-only graceful recolor should stay out of sync mismatch review", mismatches.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     public void satchelInterfaceItemsCountForSatchelRequirements() throws Exception
     {
         int[][] satchelIds = new int[][]{
