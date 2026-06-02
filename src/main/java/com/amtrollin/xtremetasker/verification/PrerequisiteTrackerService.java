@@ -12,6 +12,7 @@ import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.Varbits;
+import net.runelite.api.gameval.VarbitID;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -32,6 +33,10 @@ public class PrerequisiteTrackerService
     private static final Pattern SKILL_PREREQ_PLUS_PATTERN = Pattern.compile("^(\\d+)\\+\\s+([A-Za-z][A-Za-z\\- ]+)$");
     private static final Pattern QUEST_PREREQ_PATTERN = Pattern.compile("^(.+?)\\s+quest$", Pattern.CASE_INSENSITIVE);
     private static final Pattern START_QUEST_PREREQ_PATTERN = Pattern.compile("^start\\s+(.+?)\\s+quest$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern BARBARIAN_FIREMAKING_PART_1_PATTERN = Pattern.compile(
+        "^part\\s+1\\s+of\\s+barbarian\\s+firemaking$",
+        Pattern.CASE_INSENSITIVE
+    );
     private static final Pattern QUEST_POINTS_PATTERN = Pattern.compile("^(\\d+)\\s+quest\\s+points?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMBAT_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+combat(?:\\s+level)?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOTAL_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+total\\s+level$", Pattern.CASE_INSENSITIVE);
@@ -233,6 +238,11 @@ public class PrerequisiteTrackerService
     {
         String normalized = cleanupToken(prerequisite).replaceFirst("(?i)^either\\s+", "");
 
+        if (BARBARIAN_FIREMAKING_PART_1_PATTERN.matcher(normalized).matches())
+        {
+            return isBarbarianFiremakingPart1Complete();
+        }
+
         Matcher skillMatcher = SKILL_PREREQ_PATTERN.matcher(normalized);
         if (skillMatcher.matches())
         {
@@ -324,6 +334,12 @@ public class PrerequisiteTrackerService
         }
 
         return false;
+    }
+
+    private boolean isBarbarianFiremakingPart1Complete()
+    {
+        return client.getVarbitValue(VarbitID.BRUT_FIRE) > 0
+                || Quest.BARBARIAN_TRAINING.getState(client) == QuestState.FINISHED;
     }
 
     private Skill findSkill(String name)
