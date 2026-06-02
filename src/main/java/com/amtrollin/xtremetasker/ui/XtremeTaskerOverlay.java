@@ -232,27 +232,64 @@ public class XtremeTaskerOverlay extends Overlay {
         int obtainedCount = Math.max(0, totalObtainedCount - previousRequiredCount);
         int shownObtainedCount = Math.min(obtainedCount, requiredCount);
         boolean isCountedSequence = collectionLogRequirementSequence(task, itemIds).size() > 1;
+        boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
 
-        Map<String, Boolean> obtainedByItemName = new LinkedHashMap<>();
+        int appliedRemaining = repeatedDistinctPool
+                ? Math.max(0, Math.min(previousRequiredCount, totalObtainedCount))
+                : 0;
+        Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
             String itemName = plugin.getItemName(itemId);
             boolean obtained = plugin.isCollectionLogItemObtained(itemId);
-            obtainedByItemName.merge(itemName, obtained, Boolean::logicalOr);
+            CollectionLogRequirementItem.Status status = CollectionLogRequirementItem.Status.MISSING;
+            if (obtained)
+            {
+                if (appliedRemaining > 0)
+                {
+                    status = CollectionLogRequirementItem.Status.APPLIED;
+                    appliedRemaining--;
+                }
+                else
+                {
+                    status = CollectionLogRequirementItem.Status.OBTAINED;
+                }
+            }
+
+            statusByItemName.merge(itemName, status, XtremeTaskerOverlay::higherPriorityRequirementStatus);
         }
 
-        List<CollectionLogRequirementItem> items = new ArrayList<>(obtainedByItemName.size());
-        for (Map.Entry<String, Boolean> entry : obtainedByItemName.entrySet()) {
+        List<CollectionLogRequirementItem> items = new ArrayList<>(statusByItemName.size());
+        for (Map.Entry<String, CollectionLogRequirementItem.Status> entry : statusByItemName.entrySet()) {
             items.add(new CollectionLogRequirementItem(entry.getKey(), entry.getValue()));
         }
 
-        boolean sameNameFamily = obtainedByItemName.size() == 1;
-        boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
+        boolean sameNameFamily = statusByItemName.size() == 1;
         String summaryText = repeatedDistinctPool
             ? repeatedCollectionLogRequirementSummary(totalObtainedCount, previousRequiredCount, true)
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
         return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
+    }
+
+    private static CollectionLogRequirementItem.Status higherPriorityRequirementStatus(
+            CollectionLogRequirementItem.Status first,
+            CollectionLogRequirementItem.Status second)
+    {
+        return requirementStatusPriority(second) > requirementStatusPriority(first) ? second : first;
+    }
+
+    private static int requirementStatusPriority(CollectionLogRequirementItem.Status status)
+    {
+        if (status == CollectionLogRequirementItem.Status.OBTAINED)
+        {
+            return 2;
+        }
+        if (status == CollectionLogRequirementItem.Status.APPLIED)
+        {
+            return 1;
+        }
+        return 0;
     }
 
     private int collectionLogPreviewRequiredCount(XtremeTask task, TaskVerification verification, int[] itemIds) {
@@ -434,7 +471,8 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             return "";
         }
-        return totalObtainedCount + " obtained; " + priorCount + " counted toward earlier completions.";
+        int availableCount = Math.max(0, totalObtainedCount - priorCount);
+        return totalObtainedCount + " obtained; " + priorCount + " applied; " + availableCount + " available.";
     }
 
     private String pluralizeRequirementName(String name, int requiredCount) {

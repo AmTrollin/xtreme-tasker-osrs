@@ -824,10 +824,10 @@ public final class CurrentTabRenderer
                 for (String line : wrapText(lineText, fm, maxWidth))
                 {
                     String drawLine = truncateToWidth(line, fm, maxWidth);
-                    g.setColor(item.isObtained() ? uiTextDim : uiText);
+                    g.setColor(item.isApplied() ? uiTextDim : item.isAvailable() ? uiGold : uiText);
                     g.drawString(drawLine, x, y);
 
-                    if (item.isObtained())
+                    if (item.isApplied())
                     {
                         drawStrikeThrough(g, fm, drawLine, x, y);
                     }

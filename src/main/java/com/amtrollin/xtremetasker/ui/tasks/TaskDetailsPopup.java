@@ -556,10 +556,10 @@ public final class TaskDetailsPopup
                     for (String line : TextUtils.wrapText(lineText, fm, contentW))
                     {
                         String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                        g.setColor(item.isObtained() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
+                        g.setColor(item.isApplied() ? palette.UI_TEXT_DIM : item.isAvailable() ? palette.UI_GOLD : palette.UI_TEXT);
                         g.drawString(drawLine, contentLeft, y);
 
-                        if (item.isObtained())
+                        if (item.isApplied())
                         {
                             drawStrikeThrough(g, fm, drawLine, contentLeft, y);
                         }
