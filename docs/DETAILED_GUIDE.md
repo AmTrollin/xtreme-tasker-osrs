@@ -86,6 +86,10 @@ Completions marked by you are shown as marked in task details; completions added
 
 Some Collection Log tasks use additional verification data, such as achievement diary completion or level-99 skill counts, when those goals are represented in the task list.
 
+Repeated counted Collection Log tasks show total obtained progress in task details. When the displayed task is also your current task and needs more than one item, the same line includes current task progress, such as `total obtained: 14 | current task: 2/5`.
+
+For repeated counted Collection Log tasks, obtained items already applied to earlier completions are dimmed and crossed out. Obtained items not yet applied are shown in gold.
+
 ### Review Notes
 
 If a manual sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the `Help` > `Sync` section shows a review note with a timestamp. This note persists across sessions until you review it, ignore it, or a future sync replaces it.

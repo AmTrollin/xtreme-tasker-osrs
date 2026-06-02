@@ -79,7 +79,9 @@ Single item Collection Log tasks skip the extra eligible items section.
 
 Tasks that require multiple of the same item show `Collection Log Progress`, such as `0/2 Ancient pages obtained`.
 
-For repeated counted Collection Log tasks, Xtreme Tasker may show how many items already counted toward earlier completions, such as `14 obtained; 10 counted toward earlier completions.`
+For repeated counted Collection Log tasks, Xtreme Tasker shows total obtained progress, such as `total obtained: 14`. When that repeated task is your current task and needs more than one item, the same line also shows current task progress, such as `total obtained: 14 | current task: 2/5`.
+
+For repeated counted Collection Log tasks, obtained items already applied to earlier completions are dimmed and crossed out. Obtained items not yet applied are shown in gold.
 
 Achievement Diary Collection Log tasks show `Obtained from Achievement Diary rewards.` because they are not normal item drops.
 
