@@ -18,8 +18,8 @@ public final class UiConstants
     public static final int ICON_BELOW_MINIMAP_ORB_EXTRA_Y = 18;
     public static final int ICON_ANCHOR_PAD = 4;
     public static final int ICON_FIXED_NUDGE_UP = 12;     // nudge icon upward in fixed layout
-    public static final int ICON_RESIZABLE_NUDGE_RIGHT = -3; // nudge visible icon right in resizable
-    public static final int ICON_RESIZABLE_NUDGE_DOWN = -2;  // nudge visible icon down in resizable
+    public static final int ICON_RESIZABLE_NUDGE_RIGHT = -5; // nudge visible icon right in resizable
+    public static final int ICON_RESIZABLE_NUDGE_DOWN = -3;  // nudge visible icon down in resizable
     public static final int ICON_ANCHOR_EXTRA_DOWN = 4;
     public static final int ICON_ANCHOR_RIGHT_OFFSET = 10;
 
