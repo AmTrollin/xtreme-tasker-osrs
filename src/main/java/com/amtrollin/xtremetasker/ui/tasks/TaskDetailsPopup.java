@@ -396,7 +396,7 @@ public final class TaskDetailsPopup
             {
                 for (CollectionLogRequirementItem item : requirementPreview.getItems())
                 {
-                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + safe(item.getName()), fm, contentW).size();
+                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + collectionLogRequirementItemText(item), fm, contentW).size();
                 }
             }
         }
@@ -543,8 +543,7 @@ public final class TaskDetailsPopup
 
             if (requirementPreview.showSummaryText())
             {
-                g.setColor(palette.UI_TEXT_DIM);
-                g.drawString(TextUtils.truncateToWidth(requirementPreview.summaryText(), fm, contentW), contentLeft, y);
+                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
                 y += ROW_HEIGHT;
             }
 
@@ -552,14 +551,14 @@ public final class TaskDetailsPopup
             {
                 for (CollectionLogRequirementItem item : requirementPreview.getItems())
                 {
-                    String lineText = "- " + safe(item.getName());
+                    String lineText = "- " + collectionLogRequirementItemText(item);
                     for (String line : TextUtils.wrapText(lineText, fm, contentW))
                     {
                         String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                        g.setColor(item.isObtained() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
+                        g.setColor(item.isApplied() ? palette.UI_TEXT_DIM : item.isAvailable() ? palette.UI_GOLD : palette.UI_TEXT);
                         g.drawString(drawLine, contentLeft, y);
 
-                        if (item.isObtained())
+                        if (item.isApplied())
                         {
                             drawStrikeThrough(g, fm, drawLine, contentLeft, y);
                         }
@@ -950,6 +949,43 @@ public final class TaskDetailsPopup
     private static String safe(String s)
     {
         return s == null ? "" : s;
+    }
+
+    private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)
+    {
+        if (item == null)
+        {
+            return "";
+        }
+        return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
+    }
+
+    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    {
+        String text = safe(summaryText);
+        String separator = " | ";
+        int separatorIndex = text.indexOf(separator);
+        if (separatorIndex < 0)
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        String prefix = text.substring(0, separatorIndex + separator.length());
+        String suffix = text.substring(separatorIndex + separator.length());
+        int prefixWidth = fm.stringWidth(prefix);
+        if (prefixWidth >= maxWidth)
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(prefix, x, y);
+        g.setColor(palette.UI_GOLD);
+        g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
     }
 
     private static boolean isAchievementDiaryTask(XtremeTask task)

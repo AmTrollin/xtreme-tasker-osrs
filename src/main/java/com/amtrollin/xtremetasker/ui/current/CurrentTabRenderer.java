@@ -391,7 +391,7 @@ public final class CurrentTabRenderer
                 {
                     for (CollectionLogRequirementItem item : requirementPreview.getItems())
                     {
-                        totalPx += rowHeight * wrapText("- " + safe(item.getName()), fm, maxW).size();
+                        totalPx += rowHeight * wrapText("- " + collectionLogRequirementItemText(item), fm, maxW).size();
                     }
                 }
                 totalPx += 8;
@@ -811,8 +811,7 @@ public final class CurrentTabRenderer
 
         if (requirementPreview.showSummaryText())
         {
-            g.setColor(uiTextDim);
-            g.drawString(truncateToWidth(requirementPreview.summaryText(), fm, maxWidth), x, y);
+            drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
             y += rowHeight;
         }
 
@@ -820,14 +819,14 @@ public final class CurrentTabRenderer
         {
             for (CollectionLogRequirementItem item : requirementPreview.getItems())
             {
-                String lineText = "- " + safe(item.getName());
+                String lineText = "- " + collectionLogRequirementItemText(item);
                 for (String line : wrapText(lineText, fm, maxWidth))
                 {
                     String drawLine = truncateToWidth(line, fm, maxWidth);
-                    g.setColor(item.isObtained() ? uiTextDim : uiText);
+                    g.setColor(item.isApplied() ? uiTextDim : item.isAvailable() ? uiGold : uiText);
                     g.drawString(drawLine, x, y);
 
-                    if (item.isObtained())
+                    if (item.isApplied())
                     {
                         drawStrikeThrough(g, fm, drawLine, x, y);
                     }
@@ -838,6 +837,43 @@ public final class CurrentTabRenderer
         }
 
         return y;
+    }
+
+    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    {
+        String text = safe(summaryText);
+        String separator = " | ";
+        int separatorIndex = text.indexOf(separator);
+        if (separatorIndex < 0)
+        {
+            g.setColor(uiTextDim);
+            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        String prefix = text.substring(0, separatorIndex + separator.length());
+        String suffix = text.substring(separatorIndex + separator.length());
+        int prefixWidth = fm.stringWidth(prefix);
+        if (prefixWidth >= maxWidth)
+        {
+            g.setColor(uiTextDim);
+            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        g.setColor(uiTextDim);
+        g.drawString(prefix, x, y);
+        g.setColor(uiGold);
+        g.drawString(truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
+    }
+
+    private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)
+    {
+        if (item == null)
+        {
+            return "";
+        }
+        return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
     }
 
     private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport)
