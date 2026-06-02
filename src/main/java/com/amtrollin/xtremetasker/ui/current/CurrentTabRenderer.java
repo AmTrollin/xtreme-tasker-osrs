@@ -387,10 +387,6 @@ public final class CurrentTabRenderer
                 {
                     totalPx += rowHeight; // counter summary
                 }
-                if (requirementPreview.showCurrentProgressText())
-                {
-                    totalPx += rowHeight; // active task progress
-                }
                 if (requirementPreview.showItemList())
                 {
                     for (CollectionLogRequirementItem item : requirementPreview.getItems())
@@ -815,15 +811,7 @@ public final class CurrentTabRenderer
 
         if (requirementPreview.showSummaryText())
         {
-            g.setColor(uiTextDim);
-            g.drawString(truncateToWidth(requirementPreview.summaryText(), fm, maxWidth), x, y);
-            y += rowHeight;
-        }
-
-        if (requirementPreview.showCurrentProgressText())
-        {
-            g.setColor(uiGold);
-            g.drawString(truncateToWidth(requirementPreview.currentProgressText(), fm, maxWidth), x, y);
+            drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
             y += rowHeight;
         }
 
@@ -849,6 +837,34 @@ public final class CurrentTabRenderer
         }
 
         return y;
+    }
+
+    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    {
+        String text = safe(summaryText);
+        String separator = " | ";
+        int separatorIndex = text.indexOf(separator);
+        if (separatorIndex < 0)
+        {
+            g.setColor(uiTextDim);
+            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        String prefix = text.substring(0, separatorIndex + separator.length());
+        String suffix = text.substring(separatorIndex + separator.length());
+        int prefixWidth = fm.stringWidth(prefix);
+        if (prefixWidth >= maxWidth)
+        {
+            g.setColor(uiTextDim);
+            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        g.setColor(uiTextDim);
+        g.drawString(prefix, x, y);
+        g.setColor(uiGold);
+        g.drawString(truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
     }
 
     private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)

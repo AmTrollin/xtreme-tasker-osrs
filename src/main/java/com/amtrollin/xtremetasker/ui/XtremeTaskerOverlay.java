@@ -274,8 +274,7 @@ public class XtremeTaskerOverlay extends Overlay {
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        String currentProgressText = repeatedDistinctPool ? repeatedRequirementState.currentProgressText : "";
-        return new CollectionLogRequirementPreview(summaryText, currentProgressText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
+        return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
     }
 
     private static CollectionLogRequirementItem.Status higherPriorityRequirementStatus(
@@ -504,8 +503,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
         return new RepeatedCollectionLogRequirementState(
                 appliedObtainedCount,
-                repeatedCollectionLogRequirementSummary(totalObtainedCount),
-                currentRequired > 1 ? "current task: " + currentDone + "/" + currentRequired : ""
+                repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
         );
     }
 
@@ -542,24 +540,19 @@ public class XtremeTaskerOverlay extends Overlay {
         return Math.max(0, thresholds.get(Math.min(index, thresholds.size() - 1)));
     }
 
-    private static String repeatedCollectionLogRequirementSummary(int totalObtainedCount)
+    private static String repeatedCollectionLogRequirementSummary(int totalObtainedCount, int currentDone, int currentRequired)
     {
-        return "total obtained: " + totalObtainedCount;
+        String summary = "total obtained: " + totalObtainedCount;
+        return currentRequired > 1 ? summary + " | current task: " + currentDone + "/" + currentRequired : summary;
     }
 
     private static final class RepeatedCollectionLogRequirementState {
         private final int countedObtainedCount;
         private final String summaryText;
-        private final String currentProgressText;
 
         private RepeatedCollectionLogRequirementState(int countedObtainedCount, String summaryText) {
-            this(countedObtainedCount, summaryText, "");
-        }
-
-        private RepeatedCollectionLogRequirementState(int countedObtainedCount, String summaryText, String currentProgressText) {
             this.countedObtainedCount = countedObtainedCount;
             this.summaryText = summaryText == null ? "" : summaryText;
-            this.currentProgressText = currentProgressText == null ? "" : currentProgressText;
         }
     }
 

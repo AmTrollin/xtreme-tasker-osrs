@@ -392,10 +392,6 @@ public final class TaskDetailsPopup
             {
                 totalPx += ROW_HEIGHT; // counter summary
             }
-            if (requirementPreview.showCurrentProgressText())
-            {
-                totalPx += ROW_HEIGHT; // active task progress
-            }
             if (requirementPreview.showItemList())
             {
                 for (CollectionLogRequirementItem item : requirementPreview.getItems())
@@ -547,15 +543,7 @@ public final class TaskDetailsPopup
 
             if (requirementPreview.showSummaryText())
             {
-                g.setColor(palette.UI_TEXT_DIM);
-                g.drawString(TextUtils.truncateToWidth(requirementPreview.summaryText(), fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
-            }
-
-            if (requirementPreview.showCurrentProgressText())
-            {
-                g.setColor(palette.UI_GOLD);
-                g.drawString(TextUtils.truncateToWidth(requirementPreview.currentProgressText(), fm, contentW), contentLeft, y);
+                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
                 y += ROW_HEIGHT;
             }
 
@@ -970,6 +958,34 @@ public final class TaskDetailsPopup
             return "";
         }
         return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
+    }
+
+    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    {
+        String text = safe(summaryText);
+        String separator = " | ";
+        int separatorIndex = text.indexOf(separator);
+        if (separatorIndex < 0)
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        String prefix = text.substring(0, separatorIndex + separator.length());
+        String suffix = text.substring(separatorIndex + separator.length());
+        int prefixWidth = fm.stringWidth(prefix);
+        if (prefixWidth >= maxWidth)
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(prefix, x, y);
+        g.setColor(palette.UI_GOLD);
+        g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
     }
 
     private static boolean isAchievementDiaryTask(XtremeTask task)
