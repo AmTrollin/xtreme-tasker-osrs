@@ -12,6 +12,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -102,6 +103,124 @@ public class CollectionLogMismatchTest
 
         List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
         assertTrue("Manual-only graceful recolor should stay out of sync mismatch review", mismatches.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void oneCompletedRepeatedForestryUniqueIsNotMarkedAsSyncMismatch() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        setField(plugin, "collectionLogService", collectionLogService);
+
+        int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
+        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        tasks.clear();
+        for (int i = 1; i <= 6; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-1-unique-from-forestry_00" + i + "_test",
+                    "Get 1 unique from Forestry",
+                    TaskTier.EASY,
+                    forestryItemIds,
+                    i
+            ));
+        }
+
+        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        manualCompletedTaskIds.clear();
+        manualCompletedTaskIds.add(tasks.get(0).getId());
+
+        collectionLogService.storeItem(28138);
+
+        Method findMismatches = XtremeTaskerPlugin.class
+                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
+        findMismatches.setAccessible(true);
+
+        List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        assertTrue("One completed Forestry task should be satisfied by one obtained Forestry unique",
+                mismatches.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void staleRepeatedForestryMismatchIsPrunedAfterCacheCatchesUp() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        setField(plugin, "collectionLogService", collectionLogService);
+
+        int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
+        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        tasks.clear();
+        for (int i = 1; i <= 6; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-1-unique-from-forestry_00" + i + "_test",
+                    "Get 1 unique from Forestry",
+                    TaskTier.EASY,
+                    forestryItemIds,
+                    i
+            ));
+        }
+
+        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        manualCompletedTaskIds.clear();
+        manualCompletedTaskIds.add(tasks.get(0).getId());
+
+        List<String> syncMismatchTaskIds = (List<String>) getField(plugin, "syncMismatchTaskIds");
+        syncMismatchTaskIds.clear();
+        syncMismatchTaskIds.add(tasks.get(0).getId());
+        setField(plugin, "syncMismatchTitle", "Review completed tasks");
+
+        collectionLogService.storeItem(28138);
+
+        assertTrue("Stale Forestry review row should disappear once live cache satisfies 1/6",
+                plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).isEmpty());
+        assertEquals("", getField(plugin, "syncMismatchTitle"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void repeatedCollectionLogMismatchKeepsDisplayedGroupOrder() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        setField(plugin, "collectionLogService", collectionLogService);
+
+        int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
+        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        tasks.clear();
+        for (int i = 1; i <= 6; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-1-unique-from-forestry_00" + i + "_test",
+                    "Get 1 unique from Forestry",
+                    TaskTier.EASY,
+                    forestryItemIds,
+                    i
+            ));
+        }
+
+        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        manualCompletedTaskIds.clear();
+        manualCompletedTaskIds.add(tasks.get(0).getId());
+        manualCompletedTaskIds.add(tasks.get(1).getId());
+
+        Map<String, Long> manualCompletionTimestamps = (Map<String, Long>) getField(plugin, "manualCompletionTimestamps");
+        manualCompletionTimestamps.clear();
+        manualCompletionTimestamps.put(tasks.get(0).getId(), 200L);
+        manualCompletionTimestamps.put(tasks.get(1).getId(), 100L);
+
+        collectionLogService.storeItem(28138);
+
+        Method findMismatches = XtremeTaskerPlugin.class
+                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
+        findMismatches.setAccessible(true);
+
+        List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        assertEquals("Only the second displayed Forestry completion should be reviewable", 1, mismatches.size());
+        assertEquals(tasks.get(1).getId(), mismatches.get(0).getId());
     }
 
     @Test
@@ -334,6 +453,31 @@ public class CollectionLogMismatchTest
                 name,
                 TaskSource.COLLECTION_LOG,
                 TaskTier.EASY,
+                null,
+                null,
+                null,
+                null,
+                null,
+                verification,
+                null
+        );
+    }
+
+    private static XtremeTask collectionLogTask(String id, String name, TaskTier tier, int[] itemIds, int count)
+    {
+        String itemIdsJson = java.util.Arrays.stream(itemIds)
+                .mapToObj(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(","));
+        TaskVerification verification = new Gson().fromJson(
+                "{\"method\":\"collection-log\",\"itemIds\":[" + itemIdsJson + "],\"count\":" + count + "}",
+                TaskVerification.class
+        );
+
+        return new XtremeTask(
+                id,
+                name,
+                TaskSource.COLLECTION_LOG,
+                tier,
                 null,
                 null,
                 null,

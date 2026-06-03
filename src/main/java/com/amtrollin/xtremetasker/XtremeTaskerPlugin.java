@@ -2392,7 +2392,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
                 List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
                 int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
-                List<XtremeTask> completedGroup = completedTasksFromGroupInCompletionOrder(group);
+                List<XtremeTask> completedGroup = completedTasksFromGroupInGroupOrder(group);
                 for (int i = desiredCompleted; i < completedGroup.size(); i++)
                 {
                     mismatches.add(completedGroup.get(i));
@@ -2421,13 +2421,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        for (XtremeTask groupedTask : completedTasksFromGroupInCompletionOrder(group))
+        for (XtremeTask groupedTask : completedTasksFromGroupInGroupOrder(group))
         {
             mismatches.add(groupedTask);
         }
     }
 
-    private List<XtremeTask> completedTasksFromGroupInCompletionOrder(List<XtremeTask> group)
+    private List<XtremeTask> completedTasksFromGroupInGroupOrder(List<XtremeTask> group)
     {
         if (group == null || group.isEmpty())
         {
@@ -2442,22 +2442,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 completed.add(groupedTask);
             }
         }
-
-        completed.sort((a, b) -> {
-            int byTimestamp = Long.compare(completionSortTimestamp(a), completionSortTimestamp(b));
-            if (byTimestamp != 0)
-            {
-                return byTimestamp;
-            }
-            return Integer.compare(group.indexOf(a), group.indexOf(b));
-        });
         return completed;
-    }
-
-    private long completionSortTimestamp(XtremeTask task)
-    {
-        CompletionInfo info = getCompletionInfo(task);
-        return info != null && info.timestamp > 0 ? info.timestamp : Long.MAX_VALUE;
     }
 
     private boolean isCollectionLogTaskCompleteInGame(XtremeTask task, TaskVerification verification)
@@ -2616,6 +2601,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public List<XtremeTask> getSyncMismatchTasks()
     {
+        pruneResolvedCollectionLogSyncMismatches();
         if (syncMismatchTaskIds.isEmpty())
         {
             return Collections.emptyList();
@@ -2635,6 +2621,59 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
         return out;
+    }
+
+    private void pruneResolvedCollectionLogSyncMismatches()
+    {
+        if (syncMismatchTaskIds.isEmpty()
+                || collectionLogService == null
+                || collectionLogService.getCapturedItemCount() <= 0)
+        {
+            return;
+        }
+
+        Map<String, XtremeTask> byId = tasks.stream()
+                .filter(Objects::nonNull)
+                .filter(task -> task.getId() != null)
+                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
+
+        boolean hasCollectionLogMismatch = false;
+        for (String id : syncMismatchTaskIds)
+        {
+            XtremeTask task = byId.get(id);
+            if (task != null && task.getSource() == TaskSource.COLLECTION_LOG)
+            {
+                hasCollectionLogMismatch = true;
+                break;
+            }
+        }
+        if (!hasCollectionLogMismatch)
+        {
+            return;
+        }
+
+        Set<String> currentCollectionLogMismatchIds = findCollectionLogSyncMismatches(true).stream()
+                .filter(Objects::nonNull)
+                .map(XtremeTask::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        boolean changed = syncMismatchTaskIds.removeIf(id -> {
+            XtremeTask task = byId.get(id);
+            return task != null
+                    && task.getSource() == TaskSource.COLLECTION_LOG
+                    && !currentCollectionLogMismatchIds.contains(id);
+        });
+
+        if (changed)
+        {
+            if (syncMismatchTaskIds.isEmpty())
+            {
+                syncMismatchTitle = "";
+            }
+            dirty = true;
+            persistIfPossible();
+        }
     }
 
     @Override
