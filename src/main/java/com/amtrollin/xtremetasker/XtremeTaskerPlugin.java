@@ -2637,31 +2637,34 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .filter(task -> task.getId() != null)
                 .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
 
-        boolean hasCollectionLogMismatch = false;
+        boolean hasCollectionLogItemMismatch = false;
         for (String id : syncMismatchTaskIds)
         {
             XtremeTask task = byId.get(id);
-            if (task != null && task.getSource() == TaskSource.COLLECTION_LOG)
+            TaskVerification verification = task == null ? null : task.getVerification();
+            if (task != null
+                    && task.getSource() == TaskSource.COLLECTION_LOG
+                    && verification != null
+                    && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
             {
-                hasCollectionLogMismatch = true;
+                hasCollectionLogItemMismatch = true;
                 break;
             }
         }
-        if (!hasCollectionLogMismatch)
+        if (!hasCollectionLogItemMismatch)
         {
             return;
         }
 
-        Set<String> currentCollectionLogMismatchIds = findCollectionLogSyncMismatches(true).stream()
-                .filter(Objects::nonNull)
-                .map(XtremeTask::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<String> currentCollectionLogMismatchIds = findCollectionLogItemSyncMismatchIds();
 
         boolean changed = syncMismatchTaskIds.removeIf(id -> {
             XtremeTask task = byId.get(id);
+            TaskVerification verification = task == null ? null : task.getVerification();
             return task != null
                     && task.getSource() == TaskSource.COLLECTION_LOG
+                    && verification != null
+                    && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
                     && !currentCollectionLogMismatchIds.contains(id);
         });
 
@@ -2673,6 +2676,80 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
             dirty = true;
             persistIfPossible();
+        }
+    }
+
+    private Set<String> findCollectionLogItemSyncMismatchIds()
+    {
+        Set<String> mismatchIds = new HashSet<>();
+        Set<String> processedCountedGroups = new HashSet<>();
+
+        for (XtremeTask task : tasks)
+        {
+            if (task == null || task.getSource() != TaskSource.COLLECTION_LOG || !isTaskCompleted(task))
+            {
+                continue;
+            }
+
+            TaskVerification verification = task.getVerification();
+            if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+            {
+                continue;
+            }
+
+            if (isCountedCollectionLogSync(verification))
+            {
+                String groupKey = countedCollectionLogGroupKey(task, verification);
+                if (groupKey == null || !processedCountedGroups.add(groupKey))
+                {
+                    continue;
+                }
+
+                int observedCount = observedCollectionLogSyncCount(task, verification);
+                List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
+                if (observedCount < 0)
+                {
+                    addCompletedTaskIdsFromGroup(mismatchIds, group);
+                    continue;
+                }
+
+                int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
+                List<XtremeTask> completedGroup = completedTasksFromGroupInGroupOrder(group);
+                for (int i = desiredCompleted; i < completedGroup.size(); i++)
+                {
+                    XtremeTask mismatchedTask = completedGroup.get(i);
+                    if (mismatchedTask != null && mismatchedTask.getId() != null)
+                    {
+                        mismatchIds.add(mismatchedTask.getId());
+                    }
+                }
+                continue;
+            }
+
+            ItemRequirement requirement = resolveCollectionLogRequirement(task);
+            if (requirement == null
+                    || collectionLogService.countObtained(requirement.itemIds) < requirement.requiredCount)
+            {
+                mismatchIds.add(task.getId());
+            }
+        }
+
+        return mismatchIds;
+    }
+
+    private void addCompletedTaskIdsFromGroup(Set<String> mismatchIds, List<XtremeTask> group)
+    {
+        if (mismatchIds == null || group == null || group.isEmpty())
+        {
+            return;
+        }
+
+        for (XtremeTask groupedTask : completedTasksFromGroupInGroupOrder(group))
+        {
+            if (groupedTask != null && groupedTask.getId() != null)
+            {
+                mismatchIds.add(groupedTask.getId());
+            }
         }
     }
 

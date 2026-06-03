@@ -182,6 +182,40 @@ public class CollectionLogMismatchTest
 
     @Test
     @SuppressWarnings("unchecked")
+    public void cacheCleanupDoesNotRecheckDiaryBackedCollectionLogReviewRows() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        setField(plugin, "collectionLogService", collectionLogService);
+
+        XtremeTask diaryTask = achievementDiaryTask(
+                "collection_log_easy_complete-the-ardougne-easy-diary_001_test",
+                "Complete the Ardougne easy diary"
+        );
+
+        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        tasks.clear();
+        tasks.add(diaryTask);
+
+        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        manualCompletedTaskIds.clear();
+        manualCompletedTaskIds.add(diaryTask.getId());
+
+        List<String> syncMismatchTaskIds = (List<String>) getField(plugin, "syncMismatchTaskIds");
+        syncMismatchTaskIds.clear();
+        syncMismatchTaskIds.add(diaryTask.getId());
+        setField(plugin, "syncMismatchTitle", "Review completed tasks");
+
+        collectionLogService.storeItem(28138);
+
+        List<XtremeTask> mismatches = plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG);
+        assertEquals("Diary-backed review row should be left for client-thread sync, not cache cleanup",
+                1, mismatches.size());
+        assertEquals(diaryTask.getId(), mismatches.get(0).getId());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     public void repeatedCollectionLogMismatchKeepsDisplayedGroupOrder() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -478,6 +512,28 @@ public class CollectionLogMismatchTest
                 name,
                 TaskSource.COLLECTION_LOG,
                 tier,
+                null,
+                null,
+                null,
+                null,
+                null,
+                verification,
+                null
+        );
+    }
+
+    private static XtremeTask achievementDiaryTask(String id, String name)
+    {
+        TaskVerification verification = new Gson().fromJson(
+                "{\"method\":\"achievement-diary\",\"region\":\"ardougne\",\"difficulty\":\"easy\"}",
+                TaskVerification.class
+        );
+
+        return new XtremeTask(
+                id,
+                name,
+                TaskSource.COLLECTION_LOG,
+                TaskTier.EASY,
                 null,
                 null,
                 null,
