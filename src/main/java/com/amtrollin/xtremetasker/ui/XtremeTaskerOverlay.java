@@ -216,6 +216,13 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(XtremeTask task) {
+        return buildCollectionLogRequirementPreview(task, true);
+    }
+
+    private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(
+            XtremeTask task,
+            boolean completedInstanceCanApplyAll)
+    {
         if (task == null || task.getSource() != TaskSource.COLLECTION_LOG) return null;
 
         TaskVerification verification = task.getVerification();
@@ -236,7 +243,12 @@ public class XtremeTaskerOverlay extends Overlay {
         int obtainedCount = Math.max(0, totalObtainedCount - previousRequiredCount);
         int shownObtainedCount = Math.min(obtainedCount, requiredCount);
         RepeatedCollectionLogRequirementState repeatedRequirementState = repeatedDistinctPool
-                ? repeatedCollectionLogRequirementState(task, requirementSequence, countedRequirementThresholds(requirementSequence), totalObtainedCount)
+                ? repeatedCollectionLogRequirementState(
+                        task,
+                        requirementSequence,
+                        countedRequirementThresholds(requirementSequence),
+                        totalObtainedCount,
+                        completedInstanceCanApplyAll)
                 : null;
 
         Map<Integer, CollectionLogRequirementItem.Status> statusByItemId = collectionLogRequirementStatuses(
@@ -524,7 +536,8 @@ public class XtremeTaskerOverlay extends Overlay {
             XtremeTask task,
             List<XtremeTask> sequence,
             List<Integer> thresholds,
-            int totalObtainedCount)
+            int totalObtainedCount,
+            boolean completedInstanceCanApplyAll)
     {
         if (sequence == null || sequence.isEmpty() || thresholds == null || thresholds.isEmpty())
         {
@@ -546,7 +559,10 @@ public class XtremeTaskerOverlay extends Overlay {
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
         int availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
 
-        if (plugin.isTaskCompleted(task) && isTaskGroupFullyCompleted(task))
+        int taskIndex = requirementIndex(task, sequence);
+        boolean taskThresholdIsCompleted = taskIndex >= 0 && completedThreshold >= thresholdAt(thresholds, taskIndex);
+        if ((completedInstanceCanApplyAll && taskThresholdIsCompleted)
+                || (plugin.isTaskCompleted(task) && isTaskGroupFullyCompleted(task)))
         {
             return new RepeatedCollectionLogRequirementState(
                     Math.max(0, totalObtainedCount),
@@ -601,6 +617,16 @@ public class XtremeTaskerOverlay extends Overlay {
                 || current.getId() == null
                 || !Objects.equals(task.getId(), current.getId())
                 || plugin.isTaskCompleted(current))
+        {
+            return -1;
+        }
+
+        return requirementIndex(task, sequence);
+    }
+
+    private int requirementIndex(XtremeTask task, List<XtremeTask> sequence)
+    {
+        if (task == null || task.getId() == null || sequence == null)
         {
             return -1;
         }
@@ -1063,7 +1089,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     useCondensedTaskRows() ? plugin::getTaskGroupProgress : null,
                     useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
                     plugin::getPrerequisiteStatuses,
-                    this::buildCollectionLogRequirementPreview,
+                    task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
                     client.getMouseCanvasPosition(),
                     resolveTaskIcon(taskDetailsPopup.task()),
                     plugin.showTips()
