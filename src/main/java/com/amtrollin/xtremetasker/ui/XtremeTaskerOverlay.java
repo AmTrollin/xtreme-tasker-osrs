@@ -546,7 +546,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
         int availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
 
-        if (plugin.isTaskCompleted(task))
+        if (plugin.isTaskCompleted(task) && isTaskGroupFullyCompleted(task))
         {
             return new RepeatedCollectionLogRequirementState(
                     Math.max(0, totalObtainedCount),
@@ -572,6 +572,24 @@ public class XtremeTaskerOverlay extends Overlay {
                 availableObtainedCount,
                 repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
         );
+    }
+
+    private boolean isTaskGroupFullyCompleted(XtremeTask task)
+    {
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.isEmpty())
+        {
+            return plugin.isTaskCompleted(task);
+        }
+
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask == null || !plugin.isTaskCompleted(groupedTask))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private int currentRequirementIndex(XtremeTask task, List<XtremeTask> sequence)
