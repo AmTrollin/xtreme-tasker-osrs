@@ -149,6 +149,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private int dragOffsetX = 0;
     private int dragOffsetY = 0;
     private XtremeTask pendingMarkAllIncompleteTask = null;
+    private boolean pendingMarkAllIncompleteGroupMode = false;
 
     private Integer panelXOverride = null;
     private Integer panelYOverride = null;
@@ -1631,9 +1632,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
         XtremeTask pending = pendingMarkAllIncompleteTask;
-        boolean multipleTasks = pending != null
-                && plugin.getTaskGroupProgress(pending) != null
-                && plugin.getTaskGroupProgress(pending).isGrouped();
+        boolean multipleTasks = pending != null && pendingMarkAllIncompleteGroupMode;
         String message = multipleTasks
                 ? "Mark ALL repeated task instances incomplete?"
                 : "Are you sure you want to mark this task incomplete?";
@@ -2173,6 +2172,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     && plugin.getTaskGroupProgress(task).isGrouped();
             if (groupedTask || !plugin.skipSingleIncompleteConfirmation()) {
                 pendingMarkAllIncompleteTask = task;
+                pendingMarkAllIncompleteGroupMode = groupedTask;
                 markIncompleteDontShowChecked = false;
             } else {
                 plugin.toggleTaskCompletedAndPersist(task);
@@ -2729,13 +2729,20 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public void requestMarkAllIncompleteConfirmation(XtremeTask task) {
+                requestMarkAllIncompleteConfirmation(task, false);
+            }
+
+            @Override
+            public void requestMarkAllIncompleteConfirmation(XtremeTask task, boolean groupMode) {
                 pendingMarkAllIncompleteTask = task;
+                pendingMarkAllIncompleteGroupMode = groupMode;
                 markIncompleteDontShowChecked = false;
             }
 
             @Override
             public void closeMarkAllIncompleteConfirmation() {
                 pendingMarkAllIncompleteTask = null;
+                pendingMarkAllIncompleteGroupMode = false;
                 markAllIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
                 markAllIncompleteYesBounds.setBounds(0, 0, 0, 0);
                 markAllIncompleteNoBounds.setBounds(0, 0, 0, 0);
@@ -2746,6 +2753,11 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public XtremeTask markAllIncompleteConfirmationTask() {
                 return pendingMarkAllIncompleteTask;
+            }
+
+            @Override
+            public boolean markAllIncompleteConfirmationGroupMode() {
+                return pendingMarkAllIncompleteGroupMode;
             }
 
             @Override
