@@ -305,8 +305,8 @@ public final class RulesTabRenderer {
             boolean isAllowanceHeader = line.equals("Boss combat training allowance");
             boolean isDataSubtitle = line.equals("Account progress sync")
                     || line.equals("Last sync result")
-                    || line.equals("Combat Achievements Sync")
-                    || line.equals("Collection Log Sync")
+                    || line.equals("Combat Achievements sync")
+                    || line.equals("Collection Log sync")
                     || line.equals(REVIEW_NEEDED_TITLE);
 
             // color + font
@@ -413,7 +413,7 @@ public final class RulesTabRenderer {
         boolean hasClogResult = lastCollectionLogSyncResult != null && !lastCollectionLogSyncResult.trim().isEmpty();
 
         lines.add(LINE_SYNC_SECTION_DIVIDER);
-        lines.add("Combat Achievements Sync");
+        lines.add("Combat Achievements sync");
         lines.add(LINE_SYNC_CA_BUTTON_ROW);
         lines.add("");
         if (hasCaResult)
@@ -433,7 +433,7 @@ public final class RulesTabRenderer {
         }
 
         lines.add(LINE_SYNC_SECTION_DIVIDER);
-        lines.add("Collection Log Sync");
+        lines.add("Collection Log sync");
         lines.addAll(TextUtils.wrapText(
                 "After earning new Collection Log items, open your Collection Log in game so RuneLite can refresh them before syncing.",
                 fm,
