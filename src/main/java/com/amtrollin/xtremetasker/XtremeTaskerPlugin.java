@@ -714,20 +714,24 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         log.trace("Saved state snapshot: currentTaskId={}, manualDone={}, syncedDone={}",
                 currentTaskId, manualCompletedTaskIds.size(), syncedCompletedTaskIds.size());
 
-        PersistedState state = buildPersistedState();
-        state.setAccountKey(accountKey);
-        String json = gson.toJson(state);
-        PersistedState parsed = parseAndValidateState(json, "new save");
-        if (parsed == null) {
-            log.warn("Refusing to save XtremeTasker state because the new snapshot failed validation.");
-            return;
-        }
         boolean allowCompletionRegression = allowCompletionRegressionSave;
         allowCompletionRegressionSave = false;
 
         String key = stateConfigKeyForAccount(accountKey);
         String previousJson = configManager.getConfiguration(CONFIG_GROUP, key);
         PersistedState previousState = parseAndValidateState(previousJson, "previous save");
+
+        PersistedState state = buildPersistedState();
+        state.setAccountKey(accountKey);
+        state.setIntentionalCompletionRegression(
+                allowCompletionRegression && hasCompletionRegression(previousState, state));
+
+        String json = gson.toJson(state);
+        PersistedState parsed = parseAndValidateState(json, "new save");
+        if (parsed == null) {
+            log.warn("Refusing to save XtremeTasker state because the new snapshot failed validation.");
+            return;
+        }
         if (isSuspiciousDataDrop(previousState, parsed)) {
             rotateStateBackups(accountKey, previousJson);
             flushConfigToDisk("suspicious-drop backup");
@@ -838,6 +842,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 rebuildTierCounts();
                 return;
             }
+        }
+
+        PersistedState higherProgressBackup = loadHigherProgressBackup(accountKey, state);
+        if (higherProgressBackup != null) {
+            state = higherProgressBackup;
+            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(state));
+            flushConfigToDisk("progress backup restore");
+            chat("[Xtreme Tasker] Progress save was restored from a newer-progress backup.");
         }
 
         applyPersistedState(state);
@@ -1011,7 +1023,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return false;
         }
 
-        return Objects.equals(safeTrim(previous.getCurrentTaskId()), safeTrim(next.getCurrentTaskId()));
+        return true;
+    }
+
+    private boolean hasCompletionRegression(PersistedState previous, PersistedState next) {
+        if (previous == null || next == null) {
+            return false;
+        }
+
+        Set<String> missing = completedIdSet(previous);
+        missing.removeAll(completedIdSet(next));
+        return !missing.isEmpty();
     }
 
     private boolean hasAnyIds(Set<String> ids) {
@@ -1115,6 +1137,47 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
         return null;
+    }
+
+    private PersistedState loadHigherProgressBackup(String accountKey, PersistedState primary) {
+        if (primary == null || primary.isIntentionalCompletionRegression()) {
+            return null;
+        }
+
+        Set<String> primaryCompleted = completedIdSet(primary);
+        PersistedState best = null;
+        for (int i = 1; i <= STATE_BACKUP_COUNT; i++) {
+            String backupJson = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i));
+            PersistedState backup = parseAndValidateState(backupJson, "backup " + i + " progress check");
+            if (backup == null) {
+                continue;
+            }
+
+            Set<String> recovered = completedIdSet(backup);
+            recovered.removeAll(primaryCompleted);
+            if (recovered.size() <= MAX_COMPLETION_REGRESSION_WITHOUT_CURRENT_TASK_CHANGE) {
+                continue;
+            }
+
+            if (best == null || isBetterProgressRecoveryCandidate(backup, best)) {
+                best = backup;
+            }
+        }
+
+        if (best != null) {
+            log.warn("Recovered XtremeTasker state for account {} from a backup with more completed tasks (primary={}, backup={})",
+                    accountKey, completedCount(primary), completedCount(best));
+        }
+        return best;
+    }
+
+    private boolean isBetterProgressRecoveryCandidate(PersistedState candidate, PersistedState currentBest) {
+        int candidateCompleted = completedCount(candidate);
+        int bestCompleted = completedCount(currentBest);
+        if (candidateCompleted != bestCompleted) {
+            return candidateCompleted > bestCompleted;
+        }
+        return candidate.getSavedAtEpochMillis() > currentBest.getSavedAtEpochMillis();
     }
 
     private void preserveCorruptState(String accountKey, String json) {

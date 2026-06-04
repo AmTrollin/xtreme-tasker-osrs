@@ -53,4 +53,6 @@ public class PersistedState {
     private Map<String, Long> taskTimeTicksById = new HashMap<>();
     /** Collection log item IDs RuneLite has exposed for this account. */
     private Set<Integer> collectionLogItemIds = new HashSet<>();
+    /** True only for saves created by an explicit user action that removes completed tasks. */
+    private boolean intentionalCompletionRegression = false;
 }
