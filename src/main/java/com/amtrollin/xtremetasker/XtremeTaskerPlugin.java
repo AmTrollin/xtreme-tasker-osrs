@@ -44,13 +44,19 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @PluginDescriptor(
@@ -97,6 +103,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static final int STATE_BACKUP_COUNT = 3;
     private static final int STATE_SCHEMA_VERSION = 1;
     private static final String STATE_CORRUPT_SUFFIX = "_corrupt";
+    private static final String STATE_FILE_DIR_NAME = "xtreme-tasker-states";
+    private static final String STATE_FILE_SUFFIX = ".json";
     private static final int MAX_COMPLETION_REGRESSION_WITHOUT_CURRENT_TASK_CHANGE = 3;
     private static final DateTimeFormatter SAVE_TIME_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -692,6 +700,82 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return stateConfigKeyForAccount(accountKey) + STATE_CORRUPT_SUFFIX;
     }
 
+    private Path stateFileForAccount(String accountKey) {
+        String safeAccountKey = safeTrim(accountKey);
+        if (safeAccountKey == null) {
+            safeAccountKey = "unknown";
+        }
+        safeAccountKey = safeAccountKey.replaceAll("[^A-Za-z0-9_-]", "_");
+        return Paths.get(System.getProperty("user.home"), ".runelite", STATE_FILE_DIR_NAME,
+                safeAccountKey + STATE_FILE_SUFFIX);
+    }
+
+    private Path stateBackupFileForAccount(String accountKey, int index) {
+        Path stateFile = stateFileForAccount(accountKey);
+        return stateFile.resolveSibling(stateFile.getFileName() + ".backup_" + index);
+    }
+
+    private Path stateCorruptFileForAccount(String accountKey) {
+        Path stateFile = stateFileForAccount(accountKey);
+        return stateFile.resolveSibling(stateFile.getFileName() + STATE_CORRUPT_SUFFIX);
+    }
+
+    private String readStateFileForAccount(String accountKey) {
+        Path path = stateFileForAccount(accountKey);
+        if (!Files.isRegularFile(path)) {
+            return null;
+        }
+
+        try {
+            return Files.readString(path, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("Failed to read XtremeTasker state file {}", path, e);
+            return null;
+        }
+    }
+
+    private void writeStateFileForAccount(String accountKey, String json) {
+        if (json == null || json.trim().isEmpty()) {
+            return;
+        }
+
+        Path path = stateFileForAccount(accountKey);
+        try {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, json, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("Failed to write XtremeTasker state file {}", path, e);
+        }
+    }
+
+    private String readStateBackupFileForAccount(String accountKey, int index) {
+        Path path = stateBackupFileForAccount(accountKey, index);
+        if (!Files.isRegularFile(path)) {
+            return null;
+        }
+
+        try {
+            return Files.readString(path, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("Failed to read XtremeTasker state backup file {}", path, e);
+            return null;
+        }
+    }
+
+    private void writeStateBackupFileForAccount(String accountKey, int index, String json) {
+        Path path = stateBackupFileForAccount(accountKey, index);
+        try {
+            Files.createDirectories(path.getParent());
+            if (json == null || json.trim().isEmpty()) {
+                Files.deleteIfExists(path);
+            } else {
+                Files.writeString(path, json, StandardCharsets.UTF_8);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to write XtremeTasker state backup file {}", path, e);
+        }
+    }
+
     // ---- Icon position persistence (global, not per-account) ----
     private static final String ICON_X_KEY = "iconX";
     private static final String ICON_Y_KEY = "iconY";
@@ -761,7 +845,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         allowCompletionRegressionSave = false;
 
         String key = stateConfigKeyForAccount(accountKey);
-        String previousJson = configManager.getConfiguration(CONFIG_GROUP, key);
+        String previousJson = readStateFileForAccount(accountKey);
+        if (previousJson == null || previousJson.trim().isEmpty()) {
+            previousJson = configManager.getConfiguration(CONFIG_GROUP, key);
+        }
         PersistedState previousState = parseAndValidateState(previousJson, "previous save");
 
         PersistedState state = buildPersistedState();
@@ -796,6 +883,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             rotateStateBackups(accountKey, previousJson);
         }
         configManager.setConfiguration(CONFIG_GROUP, key, json);
+        writeStateFileForAccount(accountKey, json);
         if (shouldFlushToDisk) {
             flushConfigToDisk("state save");
         }
@@ -844,13 +932,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        String json = configManager.getConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey));
+        String json = readStateFileForAccount(accountKey);
+        if (json == null || json.trim().isEmpty())
+        {
+            json = configManager.getConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey));
+        }
         if (json == null || json.trim().isEmpty())
         {
             PersistedState legacyState = loadBestMatchingLegacyState(accountKey);
             if (legacyState != null) {
                 legacyState.setAccountKey(accountKey);
-                configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(legacyState));
+                String legacyJson = gson.toJson(legacyState);
+                configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), legacyJson);
+                writeStateFileForAccount(accountKey, legacyJson);
                 flushConfigToDisk("legacy character save import");
                 chat("[Xtreme Tasker] Progress save was imported for " + getAccountDisplayNameForMessage() + ".");
                 applyPersistedState(legacyState);
@@ -863,7 +957,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
             PersistedState backup = loadNewestValidBackup(accountKey);
             if (backup != null) {
-                configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(backup));
+                String backupJson = gson.toJson(backup);
+                configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), backupJson);
+                writeStateFileForAccount(accountKey, backupJson);
                 flushConfigToDisk("backup restore");
                 chat("[Xtreme Tasker] Progress save was restored from a backup.");
                 applyPersistedState(backup);
@@ -887,7 +983,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             state = loadNewestValidBackup(accountKey);
 
             if (state != null) {
-                configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(state));
+                String repairedJson = gson.toJson(state);
+                configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), repairedJson);
+                writeStateFileForAccount(accountKey, repairedJson);
                 flushConfigToDisk("backup repair");
                 chat("[Xtreme Tasker] Progress save was repaired from a backup.");
             } else {
@@ -905,7 +1003,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (betterLegacyState != null && isBetterProgressRecoveryCandidate(betterLegacyState, state)) {
             betterLegacyState.setAccountKey(accountKey);
             state = betterLegacyState;
-            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(state));
+            String legacyJson = gson.toJson(state);
+            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), legacyJson);
+            writeStateFileForAccount(accountKey, legacyJson);
             flushConfigToDisk("legacy character progress import");
             chat("[Xtreme Tasker] Progress save was updated from a matching legacy backup for "
                     + getAccountDisplayNameForMessage() + ".");
@@ -914,11 +1014,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         PersistedState higherProgressBackup = loadHigherProgressBackup(accountKey, state);
         if (higherProgressBackup != null) {
             state = higherProgressBackup;
-            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(state));
+            String recoveryJson = gson.toJson(state);
+            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), recoveryJson);
+            writeStateFileForAccount(accountKey, recoveryJson);
             flushConfigToDisk("progress backup restore");
             chat("[Xtreme Tasker] Progress save was restored from a newer-progress backup.");
         }
 
+        writeStateFileForAccount(accountKey, gson.toJson(state));
         applyPersistedState(state);
         loadedStateAccountKey = accountKey;
         loadedStateAtMillis = System.currentTimeMillis();
@@ -1192,11 +1295,20 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         configManager.setConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, 1), currentJson);
+
+        for (int i = STATE_BACKUP_COUNT; i >= 2; i--) {
+            String previousBackup = readStateBackupFileForAccount(accountKey, i - 1);
+            writeStateBackupFileForAccount(accountKey, i, previousBackup);
+        }
+        writeStateBackupFileForAccount(accountKey, 1, currentJson);
     }
 
     private PersistedState loadNewestValidBackup(String accountKey) {
         for (int i = 1; i <= STATE_BACKUP_COUNT; i++) {
-            String backupJson = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i));
+            String backupJson = readStateBackupFileForAccount(accountKey, i);
+            if (backupJson == null || backupJson.trim().isEmpty()) {
+                backupJson = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i));
+            }
             PersistedState backup = parseAndValidateState(backupJson, "backup " + i);
             if (backup != null) {
                 log.warn("Recovered XtremeTasker state for account {} from backup {}", accountKey, i);
@@ -1236,11 +1348,72 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
 
+        for (PersistedState profileState : loadMatchingLegacyStatesFromProfileFiles(legacyAccountKey, characterName)) {
+            if (best == null || isBetterProgressRecoveryCandidate(profileState, best)) {
+                best = profileState;
+            }
+        }
+
         if (best != null) {
             log.warn("Imported legacy XtremeTasker state for character {} from shared account hash {} (completed={})",
                     characterName, legacyAccountKey, completedCount(best));
         }
         return best;
+    }
+
+    private List<PersistedState> loadMatchingLegacyStatesFromProfileFiles(String legacyAccountKey, String characterName) {
+        Path runeliteDir = Paths.get(System.getProperty("user.home"), ".runelite");
+        if (!Files.isDirectory(runeliteDir)) {
+            return Collections.emptyList();
+        }
+
+        List<PersistedState> states = new ArrayList<>();
+        try (Stream<Path> paths = Files.walk(runeliteDir, 4)) {
+            paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName() != null && path.getFileName().toString().endsWith(".properties"))
+                    .forEach(path -> loadMatchingLegacyStatesFromProfileFile(path, legacyAccountKey, characterName, states));
+        } catch (IOException e) {
+            log.warn("Failed to scan RuneLite profile files for XtremeTasker legacy saves.", e);
+        }
+        return states;
+    }
+
+    private void loadMatchingLegacyStatesFromProfileFile(
+            Path path,
+            String legacyAccountKey,
+            String characterName,
+            List<PersistedState> states)
+    {
+        Properties properties = new Properties();
+        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            properties.load(reader);
+        } catch (Exception e) {
+            log.debug("Skipped RuneLite profile file {} while scanning XtremeTasker legacy saves.", path, e);
+            return;
+        }
+
+        loadMatchingLegacyStateFromProperties(properties, legacyAccountKey, characterName,
+                stateConfigKeyForAccount(legacyAccountKey), "legacy profile primary save", states);
+        for (int i = 1; i <= STATE_BACKUP_COUNT; i++) {
+            loadMatchingLegacyStateFromProperties(properties, legacyAccountKey, characterName,
+                    stateBackupConfigKeyForAccount(legacyAccountKey, i), "legacy profile backup " + i, states);
+        }
+    }
+
+    private void loadMatchingLegacyStateFromProperties(
+            Properties properties,
+            String legacyAccountKey,
+            String characterName,
+            String stateKey,
+            String source,
+            List<PersistedState> states)
+    {
+        String json = properties.getProperty(CONFIG_GROUP + "." + stateKey);
+        PersistedState state = parseAndValidateState(json, source);
+        if (isPersistedStateForCharacter(state, characterName)
+                && legacyAccountKey.equals(safeTrim(state.getAccountKey()))) {
+            states.add(state);
+        }
     }
 
     private boolean isPersistedStateForCharacter(PersistedState state, String characterName) {
@@ -1268,7 +1441,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         Set<String> primaryCompleted = completedIdSet(primary);
         PersistedState best = null;
         for (int i = 1; i <= STATE_BACKUP_COUNT; i++) {
-            String backupJson = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i));
+            String backupJson = readStateBackupFileForAccount(accountKey, i);
+            if (backupJson == null || backupJson.trim().isEmpty()) {
+                backupJson = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i));
+            }
             PersistedState backup = parseAndValidateState(backupJson, "backup " + i + " progress check");
             if (backup == null) {
                 continue;
@@ -1306,6 +1482,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
         configManager.setConfiguration(CONFIG_GROUP, stateCorruptConfigKeyForAccount(accountKey), json);
+        Path path = stateCorruptFileForAccount(accountKey);
+        try {
+            Files.createDirectories(path.getParent());
+            Files.writeString(path, json, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.warn("Failed to preserve corrupt XtremeTasker state file {}", path, e);
+        }
     }
 
     private void applyPersistedState(PersistedState state) {
