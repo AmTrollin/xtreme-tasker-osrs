@@ -4,7 +4,7 @@ Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progr
 
 Xtreme Tasker turns OSRS into a long-term progression challenge by mixing Combat Achievements and Collection Log goals into one random task journey. The idea was inspired by Tedious' Collection Log Master game mode.
 
-This guide covers the basics. For save details, recovery notes, account switching behavior, and deeper explanations, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
+This README covers the basics. For save details, recovery notes, account switching behavior, and deeper explanations, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
 
 ## What It Does
 
@@ -15,7 +15,7 @@ This guide covers the basics. For save details, recovery notes, account switchin
 - Condense repeated task rolls into one row, while still counting each roll as its own task.
 - Automatically update bundled task data and highlight newly added tasks.
 - Manually sync Combat Achievement and Collection Log progress when you choose.
-- Save progress locally per account with automatic backups.
+- Save progress locally per character with automatic backups.
 
 ## Quick Start
 
@@ -33,7 +33,7 @@ Your current task and completion progress are saved locally through RuneLite.
 
 ## Overlay Tabs
 
-- `Current`: your active task, tier progress, roll/complete button, prereqs, eligible Collection Log items when useful, and wiki link.
+- `Current`: your active task, tier progress, roll/complete button, prereqs, eligible Collection Log items, and wiki link.
 - `Tasks`: the full task list with search, filters, sorting, details, and manual completion controls.
 - `Help`: rules, FAQ links, this README, and manual sync actions.
 
@@ -50,7 +50,7 @@ Use the Tasks tab to:
 - Mark tasks complete or incomplete.
 - Review newly added tasks when `See New Tasks` appears.
 
-Rows use simple status indicators:
+Rows use these status indicators:
 
 - Empty circle: incomplete.
 - Amber partial indicator: some repeated task instances are complete.
@@ -73,9 +73,9 @@ Repeated task details let you mark all instances complete, mark all incomplete a
 
 ## Collection Log Details
 
-Collection Log task details show eligible items when that list is useful. Items you already have are crossed out.
+When a Collection Log task has several possible items, task details show the eligible items. Items you already have are crossed out.
 
-Single item Collection Log tasks skip the extra eligible items section.
+Single-item Collection Log tasks skip that extra list.
 
 Tasks that require multiple of the same item show `Collection Log Progress`, such as `0/2 Ancient pages obtained`.
 
@@ -95,7 +95,7 @@ Use `See New Tasks` to toggle the Tasks tab between the newly added tasks and yo
 
 ## Manual Progress Sync
 
-Manual sync is only for account progress, not for updating the task list.
+Manual sync is for account progress, not task list updates.
 
 Completions marked by you are shown as marked in task details; completions added by `Sync CAs` or `Sync CLOGs` are shown as synced.
 
@@ -111,11 +111,11 @@ If sync finds tasks that are marked complete in Xtreme Tasker but not detected i
 
 ## Saves and Backups
 
-Progress saves locally through RuneLite and is stored per account.
+Progress saves locally through RuneLite and is stored per character.
 
 Xtreme Tasker saves important progress changes immediately, keeps three rolling backups, and tries to recover from missing or corrupt saves automatically.
 
-Saves include recovery info such as account hash, last known display name, readable save time, current task, completed task IDs, and retired task IDs.
+Saves include recovery info such as scoped account key, account hash, last known display name, readable save time, current task, completed task IDs, and retired task IDs.
 
 More details are in the [Detailed Guide](docs/DETAILED_GUIDE.md#progress-saves-and-backups).
 
@@ -141,7 +141,7 @@ Use the [Detailed Guide](docs/DETAILED_GUIDE.md) for deeper notes about task sou
 
 Xtreme Tasker follows the official Tasker ruleset and adds Xtreme Tasker-specific guidance for the expanded task list.
 
-The in game Help tab links to:
+The in-game Help tab links to:
 
 - TaskerFAQ for official Tasker rules.
 - This README for Xtreme Tasker notes.
