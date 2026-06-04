@@ -545,16 +545,17 @@ public class XtremeTaskerOverlay extends Overlay {
             return new RepeatedCollectionLogRequirementState(0, 0, "");
         }
 
-        int completedThreshold = 0;
+        int completedCount = 0;
         for (int i = 0; i < sequence.size(); i++)
         {
             XtremeTask groupedTask = sequence.get(i);
             if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
             {
-                completedThreshold = Math.max(completedThreshold, thresholdAt(thresholds, i));
+                completedCount++;
             }
         }
 
+        int completedThreshold = thresholdAt(thresholds, completedCount - 1);
         int currentDone = 0;
         int currentRequired = 0;
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
