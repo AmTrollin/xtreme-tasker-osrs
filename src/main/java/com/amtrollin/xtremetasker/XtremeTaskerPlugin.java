@@ -901,6 +901,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
 
+        PersistedState betterLegacyState = loadBestMatchingLegacyState(accountKey);
+        if (betterLegacyState != null && isBetterProgressRecoveryCandidate(betterLegacyState, state)) {
+            betterLegacyState.setAccountKey(accountKey);
+            state = betterLegacyState;
+            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(state));
+            flushConfigToDisk("legacy character progress import");
+            chat("[Xtreme Tasker] Progress save was updated from a matching legacy backup for "
+                    + getAccountDisplayNameForMessage() + ".");
+        }
+
         PersistedState higherProgressBackup = loadHigherProgressBackup(accountKey, state);
         if (higherProgressBackup != null) {
             state = higherProgressBackup;
