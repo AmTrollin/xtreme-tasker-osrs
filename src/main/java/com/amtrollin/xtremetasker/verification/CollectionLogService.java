@@ -11,6 +11,7 @@ import net.runelite.http.api.item.ItemPrice;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -72,6 +73,8 @@ public class CollectionLogService
 
     private final Set<Integer> obtainedItems = new HashSet<>();
     private final Set<Integer> seenItems = new HashSet<>();
+    private final Map<Integer, Long> obtainedItemOrder = new HashMap<>();
+    private long nextObtainedItemOrder = 1L;
 
     public void startUp()
     {
@@ -192,8 +195,7 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
-            obtainedItems.add(itemId);
-            obtainedItems.add(canonicalCollectionLogItemId(itemId));
+            markObtainedItem(itemId, null);
         }
     }
 
@@ -251,7 +253,17 @@ public class CollectionLogService
         return java.util.Collections.unmodifiableSet(obtainedItems);
     }
 
+    public Map<Integer, Long> getCachedItemOrder()
+    {
+        return java.util.Collections.unmodifiableMap(obtainedItemOrder);
+    }
+
     public void restoreCachedItemIds(Set<Integer> itemIds)
+    {
+        restoreCachedItemState(itemIds, null);
+    }
+
+    public void restoreCachedItemState(Set<Integer> itemIds, Map<Integer, Long> itemOrder)
     {
         if (itemIds == null || itemIds.isEmpty())
         {
@@ -262,8 +274,12 @@ public class CollectionLogService
         {
             if (itemId != null && itemId > 0)
             {
-                obtainedItems.add(itemId);
-                obtainedItems.add(canonicalCollectionLogItemId(itemId));
+                Long restoredOrder = itemOrder == null ? null : itemOrder.get(itemId);
+                if (restoredOrder == null && itemOrder != null)
+                {
+                    restoredOrder = itemOrder.get(canonicalCollectionLogItemId(itemId));
+                }
+                markObtainedItem(itemId, restoredOrder);
                 seenItems.add(itemId);
                 seenItems.add(canonicalCollectionLogItemId(itemId));
             }
@@ -279,6 +295,46 @@ public class CollectionLogService
     {
         obtainedItems.clear();
         seenItems.clear();
+        obtainedItemOrder.clear();
+        nextObtainedItemOrder = 1L;
+    }
+
+    public long getObtainedItemOrder(int itemId)
+    {
+        Long order = obtainedItemOrder.get(itemId);
+        if (order != null)
+        {
+            return order;
+        }
+        order = obtainedItemOrder.get(canonicalCollectionLogItemId(itemId));
+        return order == null ? Long.MAX_VALUE : order;
+    }
+
+    private void markObtainedItem(int itemId, Long restoredOrder)
+    {
+        int canonicalItemId = canonicalCollectionLogItemId(itemId);
+        obtainedItems.add(itemId);
+        obtainedItems.add(canonicalItemId);
+
+        Long order = restoredOrder != null && restoredOrder > 0 ? restoredOrder : existingOrder(itemId, canonicalItemId);
+        if (order == null)
+        {
+            order = nextObtainedItemOrder++;
+        }
+
+        obtainedItemOrder.putIfAbsent(itemId, order);
+        obtainedItemOrder.putIfAbsent(canonicalItemId, order);
+        nextObtainedItemOrder = Math.max(nextObtainedItemOrder, order + 1);
+    }
+
+    private Long existingOrder(int itemId, int canonicalItemId)
+    {
+        Long order = obtainedItemOrder.get(itemId);
+        if (order != null)
+        {
+            return order;
+        }
+        return obtainedItemOrder.get(canonicalItemId);
     }
 
     private int canonicalCollectionLogItemId(int itemId)
