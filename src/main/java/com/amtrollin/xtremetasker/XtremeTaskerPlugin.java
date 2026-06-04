@@ -625,6 +625,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private String getAccountKey() {
+        String legacyKey = getLegacyAccountKey();
+        String characterName = getCharacterNameForAccountKey();
+        if (legacyKey == null || characterName == null) {
+            return null;
+        }
+
+        return legacyKey + "_" + accountNameKey(characterName);
+    }
+
+    private String getLegacyAccountKey() {
         if (client.getGameState() != GameState.LOGGED_IN) {
             return null;
         }
@@ -635,6 +645,39 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return Long.toUnsignedString(hash);
+    }
+
+    private String getCharacterNameForAccountKey() {
+        try {
+            if (client.getLocalPlayer() == null) {
+                return null;
+            }
+            return safeTrim(client.getLocalPlayer().getName());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String accountNameKey(String characterName) {
+        String normalized = safeTrim(characterName);
+        if (normalized == null) {
+            return null;
+        }
+
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(normalized.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String legacyAccountKeyFromScopedKey(String accountKey) {
+        String trimmed = safeTrim(accountKey);
+        if (trimmed == null) {
+            return null;
+        }
+
+        int separator = trimmed.indexOf('_');
+        return separator <= 0 ? trimmed : trimmed.substring(0, separator);
     }
 
     private String stateConfigKeyForAccount(String accountKey) {
@@ -804,6 +847,20 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         String json = configManager.getConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey));
         if (json == null || json.trim().isEmpty())
         {
+            PersistedState legacyState = loadBestMatchingLegacyState(accountKey);
+            if (legacyState != null) {
+                legacyState.setAccountKey(accountKey);
+                configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(legacyState));
+                flushConfigToDisk("legacy character save import");
+                chat("[Xtreme Tasker] Progress save was imported for " + getAccountDisplayNameForMessage() + ".");
+                applyPersistedState(legacyState);
+                loadedStateAccountKey = accountKey;
+                loadedStateAtMillis = System.currentTimeMillis();
+                resolveCurrentTaskIfPossible();
+                rebuildTierCounts();
+                return;
+            }
+
             PersistedState backup = loadNewestValidBackup(accountKey);
             if (backup != null) {
                 configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), gson.toJson(backup));
@@ -1137,6 +1194,60 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
         return null;
+    }
+
+    private PersistedState loadBestMatchingLegacyState(String scopedAccountKey) {
+        String legacyAccountKey = legacyAccountKeyFromScopedKey(scopedAccountKey);
+        String characterName = getCharacterNameForAccountKey();
+        if (legacyAccountKey == null || characterName == null || legacyAccountKey.equals(scopedAccountKey)) {
+            return null;
+        }
+
+        PersistedState best = null;
+        PersistedState primary = parseAndValidateState(
+                configManager.getConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(legacyAccountKey)),
+                "legacy primary save"
+        );
+        if (isPersistedStateForCharacter(primary, characterName)) {
+            best = primary;
+        }
+
+        for (int i = 1; i <= STATE_BACKUP_COUNT; i++) {
+            PersistedState backup = parseAndValidateState(
+                    configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(legacyAccountKey, i)),
+                    "legacy backup " + i
+            );
+            if (!isPersistedStateForCharacter(backup, characterName)) {
+                continue;
+            }
+
+            if (best == null || isBetterProgressRecoveryCandidate(backup, best)) {
+                best = backup;
+            }
+        }
+
+        if (best != null) {
+            log.warn("Imported legacy XtremeTasker state for character {} from shared account hash {} (completed={})",
+                    characterName, legacyAccountKey, completedCount(best));
+        }
+        return best;
+    }
+
+    private boolean isPersistedStateForCharacter(PersistedState state, String characterName) {
+        if (state == null || characterName == null) {
+            return false;
+        }
+
+        String savedDisplayName = safeTrim(state.getAccountDisplayName());
+        String currentDisplayName = safeTrim(characterName);
+        return savedDisplayName != null
+                && currentDisplayName != null
+                && savedDisplayName.equalsIgnoreCase(currentDisplayName);
+    }
+
+    private String getAccountDisplayNameForMessage() {
+        String name = getCharacterNameForAccountKey();
+        return name == null ? "this character" : name;
     }
 
     private PersistedState loadHigherProgressBackup(String accountKey, PersistedState primary) {

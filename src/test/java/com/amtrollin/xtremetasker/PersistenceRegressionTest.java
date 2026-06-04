@@ -7,6 +7,7 @@ import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -32,6 +33,21 @@ public class PersistenceRegressionTest
                 isSuspiciousCompletionRegression(previous, next));
     }
 
+    @Test
+    public void accountNameKeySeparatesCharactersSharingLegacyHash() throws Exception
+    {
+        String xtremeTaskrKey = accountNameKey("XtremeTaskr");
+        String xtremeTaskrDifferentCaseKey = accountNameKey("xtremetaskr");
+        String amTrollinKey = accountNameKey("AmTrollin");
+
+        assertEquals("Character key should be stable across display-name case changes",
+                xtremeTaskrKey, xtremeTaskrDifferentCaseKey);
+        assertFalse("Different characters must not share the same scoped save key",
+                xtremeTaskrKey.equals(amTrollinKey));
+        assertEquals("17438951129000919538",
+                legacyAccountKeyFromScopedKey("17438951129000919538_" + xtremeTaskrKey));
+    }
+
     private static PersistedState stateWithManualCompletions(int completedCount, String currentTaskId)
     {
         PersistedState state = new PersistedState();
@@ -53,5 +69,23 @@ public class PersistenceRegressionTest
                 .getDeclaredMethod("isSuspiciousCompletionRegression", PersistedState.class, PersistedState.class);
         method.setAccessible(true);
         return (boolean) method.invoke(plugin, previous, next);
+    }
+
+    private static String accountNameKey(String characterName) throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        Method method = XtremeTaskerPlugin.class
+                .getDeclaredMethod("accountNameKey", String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(plugin, characterName);
+    }
+
+    private static String legacyAccountKeyFromScopedKey(String accountKey) throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        Method method = XtremeTaskerPlugin.class
+                .getDeclaredMethod("legacyAccountKeyFromScopedKey", String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(plugin, accountKey);
     }
 }
