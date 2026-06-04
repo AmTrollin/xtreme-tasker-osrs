@@ -127,8 +127,10 @@ public interface OverlayInputAccess
 
     boolean isMarkAllIncompleteConfirmOpen();
     void requestMarkAllIncompleteConfirmation(XtremeTask task);
+    void requestMarkAllIncompleteConfirmation(XtremeTask task, boolean groupMode);
     void closeMarkAllIncompleteConfirmation();
     XtremeTask markAllIncompleteConfirmationTask();
+    boolean markAllIncompleteConfirmationGroupMode();
     Rectangle markAllIncompleteConfirmBounds();
     Rectangle markAllIncompleteYesBounds();
     Rectangle markAllIncompleteNoBounds();

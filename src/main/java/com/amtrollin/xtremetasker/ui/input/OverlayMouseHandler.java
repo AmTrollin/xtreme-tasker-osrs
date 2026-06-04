@@ -75,8 +75,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             if (a.markAllIncompleteYesBounds().contains(p)) {
                 XtremeTask task = a.markAllIncompleteConfirmationTask();
                 if (task != null) {
-                    com.amtrollin.xtremetasker.models.TaskGroupProgress progress = a.plugin().getTaskGroupProgress(task);
-                    if (progress != null && progress.isGrouped()) {
+                    if (a.markAllIncompleteConfirmationGroupMode()) {
                         a.plugin().setTaskGroupCompletedCountAndPersist(task, 0);
                     } else if (a.plugin().isTaskCompleted(task)) {
                         if (a.markIncompleteDontShowChecked()) {
@@ -180,11 +179,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
                         if (wasDone) {
                             if (groupedMode && progress.isGrouped()) {
-                                a.requestMarkAllIncompleteConfirmation(t);
+                                a.requestMarkAllIncompleteConfirmation(t, true);
                             } else if (a.plugin().skipSingleIncompleteConfirmation()) {
                                 a.plugin().toggleTaskCompletedAndPersist(t);
                             } else {
-                                a.requestMarkAllIncompleteConfirmation(t);
+                                a.requestMarkAllIncompleteConfirmation(t, false);
                             }
                         } else if (groupedMode && progress.isGrouped()) {
                                 a.plugin().setTaskGroupCompletedCountAndPersist(t, progress.getTotal());
@@ -981,11 +980,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
             if (wasDone) {
                 com.amtrollin.xtremetasker.models.TaskGroupProgress progress = a.plugin().getTaskGroupProgress(task);
                 if (a.useCondensedTaskRows() && progress != null && progress.isGrouped()) {
-                    a.requestMarkAllIncompleteConfirmation(task);
+                    a.requestMarkAllIncompleteConfirmation(task, true);
                 } else if (a.plugin().skipSingleIncompleteConfirmation()) {
                     a.plugin().toggleTaskCompletedAndPersist(task);
                 } else {
-                    a.requestMarkAllIncompleteConfirmation(task);
+                    a.requestMarkAllIncompleteConfirmation(task, false);
                 }
             } else if (a.useCondensedTaskRows()) {
                 if (a.plugin().getTaskGroupProgress(task).isGrouped()) {

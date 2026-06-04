@@ -10,6 +10,8 @@ import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Collections;
 import java.util.Map;
@@ -436,6 +438,26 @@ public class CollectionLogMismatchTest
 
         assertTrue("Restored cache should mark persisted item ids as seen",
                 collectionLogService.hasSeenAll(new int[]{10878}));
+    }
+
+    @Test
+    public void collectionLogItemAcquisitionOrderIsPreservedAcrossRestore()
+    {
+        CollectionLogService collectionLogService = new CollectionLogService();
+        collectionLogService.storeItem(23285);
+        collectionLogService.storeItem(23291);
+
+        Map<Integer, Long> order = new HashMap<>(collectionLogService.getCachedItemOrder());
+        Set<Integer> itemIds = new HashSet<>(collectionLogService.getCachedItemIds());
+
+        CollectionLogService restored = new CollectionLogService();
+        restored.restoreCachedItemState(itemIds, order);
+        restored.storeItem(23288);
+
+        assertTrue("First restored item should keep the earliest order",
+                restored.getObtainedItemOrder(23285) < restored.getObtainedItemOrder(23291));
+        assertTrue("Newly captured items should sort after restored items",
+                restored.getObtainedItemOrder(23291) < restored.getObtainedItemOrder(23288));
     }
 
     @Test

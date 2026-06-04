@@ -36,6 +36,8 @@ import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.ProfileChanged;
+import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
@@ -356,6 +358,42 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         updateOverlayState();
         updateTaskHudState();
+    }
+
+    @Subscribe
+    public void onProfileChanged(ProfileChanged event) {
+        reloadActiveCharacterStateAfterProfileChange("RuneLite profile change");
+    }
+
+    @Subscribe
+    public void onRuneScapeProfileChanged(RuneScapeProfileChanged event) {
+        reloadActiveCharacterStateAfterProfileChange("RuneScape profile change");
+    }
+
+    private void reloadActiveCharacterStateAfterProfileChange(String reason) {
+        clientThread.invokeLater(() -> {
+            if (client.getGameState() != GameState.LOGGED_IN) {
+                return;
+            }
+
+            if (activeAccountKey != null) {
+                saveStateForAccount(activeAccountKey);
+            }
+
+            String key = getAccountKey();
+            if (key == null) {
+                beginAccountKeyStabilization(null);
+                return;
+            }
+
+            activeAccountKey = key;
+            loadStateForAccount(activeAccountKey);
+            dirty = false;
+            overlay.reloadIconPosition();
+            maybeFireVersionNudge();
+            rebuildTierCounts();
+            log.debug("Reloaded XtremeTasker state after {}", reason);
+        });
     }
 
     @Provides
@@ -1063,6 +1101,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setSyncedCompletionTimestamps(new HashMap<>(syncedCompletionTimestamps));
         state.setTaskTimeTicksById(new HashMap<>(taskTimeTicksById));
         state.setCollectionLogItemIds(new HashSet<>(collectionLogService.getCachedItemIds()));
+        state.setCollectionLogItemOrder(new HashMap<>(collectionLogService.getCachedItemOrder()));
         return state;
     }
 
@@ -1512,7 +1551,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (state.getTaskTimeTicksById() != null) {
             taskTimeTicksById.putAll(state.getTaskTimeTicksById());
         }
-        collectionLogService.restoreCachedItemIds(state.getCollectionLogItemIds());
+        collectionLogService.restoreCachedItemState(state.getCollectionLogItemIds(), state.getCollectionLogItemOrder());
 
         currentTaskId = safeTrim(state.getCurrentTaskId());
         lastSeenPackVersion = state.getLastSeenPackVersion();
@@ -1834,6 +1873,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     public int countObtainedCollectionLogItems(int[] itemIds) {
         return collectionLogService == null ? 0 : Math.toIntExact(collectionLogService.countObtained(itemIds));
+    }
+
+    public long getCollectionLogItemObtainedOrder(int itemId) {
+        return collectionLogService == null ? Long.MAX_VALUE : collectionLogService.getObtainedItemOrder(itemId);
     }
 
     public java.awt.image.BufferedImage getItemImage(int itemId) {
