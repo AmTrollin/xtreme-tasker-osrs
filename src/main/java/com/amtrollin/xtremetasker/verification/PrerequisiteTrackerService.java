@@ -207,15 +207,7 @@ public class PrerequisiteTrackerService
         Matcher diaryMatcher = DIARY_PREREQ_PATTERN.matcher(normalizedPrereq);
         if (diaryMatcher.matches())
         {
-            String regionKey = toDiaryRegionKey(diaryMatcher.group(1));
-            if (regionKey == null)
-            {
-                return false;
-            }
-
-            String difficultyKey = diaryMatcher.group(2).toUpperCase(Locale.ROOT);
-            Integer varbitId = varbitsByName.get("DIARY_" + regionKey + "_" + difficultyKey);
-            return varbitId != null && client.getVarbitValue(varbitId) > 0;
+            return isDiaryComplete(diaryMatcher.group(1), diaryMatcher.group(2));
         }
 
         String[] disjunctions = normalizedPrereq.split("(?i)\\s+or\\s+");
