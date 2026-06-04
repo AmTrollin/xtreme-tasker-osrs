@@ -91,6 +91,8 @@ public final class RulesTabRenderer {
         layout.syncClogReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncCaMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
         layout.syncClogMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
+        layout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
+        layout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
         int bx = panelX + panelPadding;
         int viewportW = panelWidth - 2 * panelPadding;
 
@@ -133,9 +135,8 @@ public final class RulesTabRenderer {
                         combatAchievementReviewCount,
                         collectionLogReviewCount)
                 : buildRulesLines(fm, viewportW - 8);
-        layout.totalContentRows = lines.size();
-
         int rb = rowBlock();
+        layout.totalContentRows = contentRows(lines, rb);
         int visibleRows = (rb <= 0) ? 0 : Math.max(0, viewportH / rb);
 
         int maxOffset = Math.max(0, layout.totalContentRows - visibleRows);
@@ -304,8 +305,8 @@ public final class RulesTabRenderer {
             boolean isAllowanceHeader = line.equals("Boss combat training allowance");
             boolean isDataSubtitle = line.equals("Account progress sync")
                     || line.equals("Last sync result")
-                    || line.equals("Combat Achievements Sync")
-                    || line.equals("Collection Log Sync")
+                    || line.equals("Combat Achievements sync")
+                    || line.equals("Collection Log sync")
                     || line.equals(REVIEW_NEEDED_TITLE);
 
             // color + font
@@ -412,7 +413,7 @@ public final class RulesTabRenderer {
         boolean hasClogResult = lastCollectionLogSyncResult != null && !lastCollectionLogSyncResult.trim().isEmpty();
 
         lines.add(LINE_SYNC_SECTION_DIVIDER);
-        lines.add("Combat Achievements Sync");
+        lines.add("Combat Achievements sync");
         lines.add(LINE_SYNC_CA_BUTTON_ROW);
         lines.add("");
         if (hasCaResult)
@@ -432,7 +433,7 @@ public final class RulesTabRenderer {
         }
 
         lines.add(LINE_SYNC_SECTION_DIVIDER);
-        lines.add("Collection Log Sync");
+        lines.add("Collection Log sync");
         lines.addAll(TextUtils.wrapText(
                 "After earning new Collection Log items, open your Collection Log in game so RuneLite can refresh them before syncing.",
                 fm,
@@ -667,6 +668,30 @@ public final class RulesTabRenderer {
 
     private static int clamp(int v, int max) {
         return Math.max(0, Math.min(max, v));
+    }
+
+    private int contentRows(List<String> lines, int rowBlock)
+    {
+        if (lines == null || lines.isEmpty() || rowBlock <= 0)
+        {
+            return 0;
+        }
+
+        int totalPx = 0;
+        for (String line : lines)
+        {
+            totalPx += lineHeightPx(line, rowBlock);
+        }
+        return Math.max(lines.size(), (totalPx + rowBlock - 1) / rowBlock);
+    }
+
+    private int lineHeightPx(String line, int rowBlock)
+    {
+        if (LINE_DATA_SYNC_TITLE.equals(line) || "Rules".equals(line))
+        {
+            return rowBlock + 16;
+        }
+        return rowBlock;
     }
 
     // Expose URL so overlay can use it for clicks without duplicating string

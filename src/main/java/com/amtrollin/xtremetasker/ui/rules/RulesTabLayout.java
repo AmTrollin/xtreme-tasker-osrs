@@ -20,6 +20,8 @@ public final class RulesTabLayout
     public final Rectangle syncClogReviewIgnoreButtonBounds = new Rectangle();
     public final Rectangle syncCaMarkedTasksToggleBounds = new Rectangle();
     public final Rectangle syncClogMarkedTasksToggleBounds = new Rectangle();
+    public final Rectangle scrollbarRailBounds = new Rectangle();
+    public final Rectangle scrollbarThumbBounds = new Rectangle();
 
     // Sub-tab toggles (rendered at top of help panel)
     public final Rectangle subTabRulesBounds = new Rectangle();

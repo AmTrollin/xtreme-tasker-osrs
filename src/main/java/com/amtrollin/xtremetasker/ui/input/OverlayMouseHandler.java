@@ -29,6 +29,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private static final int ICON_DRAG_THRESHOLD_SQ = 25; // 5px
     private boolean draggingTaskScrollbar = false;
     private int taskScrollbarGrabOffsetY = 0;
+    private boolean draggingRulesScrollbar = false;
+    private int rulesScrollbarGrabOffsetY = 0;
     private boolean draggingTaskDetailsScrollbar = false;
     private int taskDetailsScrollbarGrabOffsetY = 0;
     private boolean draggingSyncMismatchScrollbar = false;
@@ -540,14 +542,36 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         // RULES button click
         if (a.activeTab() == OverlayInputAccess.MainTab.RULES && button == MouseEvent.BUTTON1) {
+            if (a.rulesLayout().scrollbarRailBounds.width > 0) {
+                Rectangle thumb = a.rulesLayout().scrollbarThumbBounds;
+                Rectangle rail = a.rulesLayout().scrollbarRailBounds;
+
+                if (thumb.contains(p)) {
+                    draggingRulesScrollbar = true;
+                    rulesScrollbarGrabOffsetY = p.y - thumb.y;
+                    e.consume();
+                    return e;
+                }
+
+                if (rail.contains(p)) {
+                    draggingRulesScrollbar = true;
+                    rulesScrollbarGrabOffsetY = Math.max(0, thumb.height / 2);
+                    updateRulesScrollbarDrag(e.getY());
+                    e.consume();
+                    return e;
+                }
+            }
+
             // Sub-tab toggles
             if (a.rulesLayout().subTabRulesBounds.contains(p)) {
                 a.setRulesSubTab(RulesTabLayout.SubTab.RULES);
+                a.rulesScroll().reset();
                 e.consume();
                 return e;
             }
             if (a.rulesLayout().subTabDataSyncsBounds.contains(p)) {
                 a.setRulesSubTab(RulesTabLayout.SubTab.DATA_SYNCS);
+                a.rulesScroll().reset();
                 e.consume();
                 return e;
             }
@@ -1137,6 +1161,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncClogReviewButtonBounds.contains(p)
                         || a.rulesLayout().syncClogReviewIgnoreButtonBounds.contains(p)
+                        || a.rulesLayout().scrollbarThumbBounds.contains(p)
+                        || a.rulesLayout().scrollbarRailBounds.contains(p)
                 ))
                 // CURRENT tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && (
@@ -1251,6 +1277,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
+        if (draggingRulesScrollbar) {
+            updateRulesScrollbarDrag(e.getY());
+            e.consume();
+            return e;
+        }
+
         if (draggingTaskDetailsScrollbar) {
             updateTaskDetailsScrollbarDrag(e.getY());
             e.consume();
@@ -1292,6 +1324,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
         if (draggingTaskScrollbar) {
             draggingTaskScrollbar = false;
+            e.consume();
+        }
+        if (draggingRulesScrollbar) {
+            draggingRulesScrollbar = false;
             e.consume();
         }
         if (draggingTaskDetailsScrollbar) {
@@ -1368,6 +1404,30 @@ public final class OverlayMouseHandler extends MouseAdapter {
         double frac = (double) (thumbY - rail.y) / (double) trackH;
         int nextOffset = (int) Math.round(frac * maxOffset);
         a.taskDetailsScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
+    }
+
+    private void updateRulesScrollbarDrag(int mouseY) {
+        Rectangle rail = a.rulesLayout().scrollbarRailBounds;
+        Rectangle thumb = a.rulesLayout().scrollbarThumbBounds;
+        if (rail.height <= 0 || thumb.height <= 0) {
+            return;
+        }
+
+        int totalRows = a.rulesLayout().totalContentRows;
+        int rowBlock = a.rulesRowBlock();
+        int viewportH = a.rulesViewportBounds().height;
+        int visible = a.rulesScroll().visibleRows(viewportH, rowBlock);
+        int maxOffset = Math.max(0, totalRows - visible);
+        int trackH = Math.max(0, rail.height - thumb.height);
+        if (totalRows <= 0 || visible <= 0 || maxOffset <= 0 || trackH <= 0) {
+            a.rulesScroll().setOffsetRows(0, viewportH, rowBlock, totalRows);
+            return;
+        }
+
+        int thumbY = Math.max(rail.y, Math.min(mouseY - rulesScrollbarGrabOffsetY, rail.y + trackH));
+        double frac = (double) (thumbY - rail.y) / (double) trackH;
+        int nextOffset = (int) Math.round(frac * maxOffset);
+        a.rulesScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
     }
 
     private void updateSyncMismatchScrollbarDrag(int mouseY) {

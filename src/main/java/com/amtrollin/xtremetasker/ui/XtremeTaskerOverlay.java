@@ -943,10 +943,8 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         int panelW = PANEL_W_TASKS;
         int panelHeight = PANEL_H_TASKS;
-        // In fixed layout the canvas is only ~503px tall — clamp so the panel always fits.
-        if (!client.isResized()) {
-            panelHeight = Math.min(panelHeight, canvasH - 4);
-        }
+        // Clamp in every layout so inner scroll views use only visible panel space.
+        panelHeight = Math.min(panelHeight, Math.max(0, canvasH - 4));
 
         int panelX = (panelXOverride != null) ? panelXOverride : (canvasW - panelW) / 2;
         int panelY = (panelYOverride != null) ? panelYOverride : (canvasH - panelHeight) / 2;
@@ -1851,6 +1849,8 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesLayout.syncClogReviewIgnoreButtonBounds.setBounds(layout.syncClogReviewIgnoreButtonBounds);
         rulesLayout.syncCaMarkedTasksToggleBounds.setBounds(layout.syncCaMarkedTasksToggleBounds);
         rulesLayout.syncClogMarkedTasksToggleBounds.setBounds(layout.syncClogMarkedTasksToggleBounds);
+        rulesLayout.scrollbarRailBounds.setBounds(layout.scrollbarRailBounds);
+        rulesLayout.scrollbarThumbBounds.setBounds(layout.scrollbarThumbBounds);
         rulesLayout.subTabRulesBounds.setBounds(layout.subTabRulesBounds);
         rulesLayout.subTabDataSyncsBounds.setBounds(layout.subTabDataSyncsBounds);
 
@@ -1905,6 +1905,16 @@ public class XtremeTaskerOverlay extends Overlay {
         if (rulesLayout.totalContentRows > visible && visible > 0 && rulesLayout.viewportBounds.height > 0) {
             // Use the 520-width rows renderer for consistent scrollbar styling/placement
             taskRowsRendererTasks.drawScrollbar(g, rulesLayout.totalContentRows, visible, rulesScroll.offsetRows, rulesLayout.viewportBounds);
+            rulesLayout.scrollbarRailBounds.setBounds(taskRowsRendererTasks.scrollbarRailBounds(rulesLayout.viewportBounds));
+            rulesLayout.scrollbarThumbBounds.setBounds(taskRowsRendererTasks.scrollbarThumbBounds(
+                    rulesLayout.totalContentRows,
+                    visible,
+                    rulesScroll.offsetRows,
+                    rulesLayout.viewportBounds
+            ));
+        } else {
+            rulesLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
+            rulesLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
         }
     }
 
