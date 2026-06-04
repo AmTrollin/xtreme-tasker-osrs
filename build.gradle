@@ -3,7 +3,6 @@ plugins {
 }
 
 repositories {
-	mavenLocal()
 	maven {
 		url = 'https://repo.runelite.net'
 		content {
@@ -13,7 +12,7 @@ repositories {
 	mavenCentral()
 }
 
-def runeLiteVersion = 'latest.release'
+def runeLiteVersion = '1.12.28'
 
 dependencies {
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
@@ -42,7 +41,7 @@ processResources {
 }
 
 tasks.register('shadowJar', Jar) {
-    dependsOn configurations.testRuntimeClasspath
+    dependsOn classes
 
     manifest {
         attributes(
@@ -54,12 +53,6 @@ tasks.register('shadowJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     from sourceSets.main.output
-    from sourceSets.test.output
-    from {
-        configurations.testRuntimeClasspath.collect { file ->
-            file.isDirectory() ? file : zipTree(file)
-        }
-    }
 
     exclude 'META-INF/INDEX.LIST'
     exclude 'META-INF/*.SF'
