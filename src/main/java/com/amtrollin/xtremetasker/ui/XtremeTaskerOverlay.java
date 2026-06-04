@@ -239,26 +239,16 @@ public class XtremeTaskerOverlay extends Overlay {
                 ? repeatedCollectionLogRequirementState(task, requirementSequence, countedRequirementThresholds(requirementSequence), totalObtainedCount)
                 : null;
 
-        int appliedRemaining = repeatedDistinctPool
-                ? repeatedRequirementState.countedObtainedCount
-                : 0;
+        Map<Integer, CollectionLogRequirementItem.Status> statusByItemId = collectionLogRequirementStatuses(
+                itemIds,
+                repeatedDistinctPool,
+                repeatedRequirementState);
         Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
             String itemName = plugin.getItemName(itemId);
-            boolean obtained = plugin.isCollectionLogItemObtained(itemId);
-            CollectionLogRequirementItem.Status status = CollectionLogRequirementItem.Status.MISSING;
-            if (obtained)
-            {
-                if (appliedRemaining > 0)
-                {
-                    status = CollectionLogRequirementItem.Status.APPLIED;
-                    appliedRemaining--;
-                }
-                else
-                {
-                    status = CollectionLogRequirementItem.Status.OBTAINED;
-                }
-            }
+            CollectionLogRequirementItem.Status status = statusByItemId.getOrDefault(
+                    itemId,
+                    CollectionLogRequirementItem.Status.MISSING);
 
             statusByItemName.merge(itemName, status, XtremeTaskerOverlay::higherPriorityRequirementStatus);
         }
@@ -275,6 +265,72 @@ public class XtremeTaskerOverlay extends Overlay {
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
         return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
+    }
+
+    private Map<Integer, CollectionLogRequirementItem.Status> collectionLogRequirementStatuses(
+            int[] itemIds,
+            boolean repeatedDistinctPool,
+            RepeatedCollectionLogRequirementState repeatedRequirementState)
+    {
+        Map<Integer, CollectionLogRequirementItem.Status> statusByItemId = new HashMap<>();
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return statusByItemId;
+        }
+
+        List<Integer> obtainedItemIds = new ArrayList<>();
+        Map<Integer, Integer> itemIndex = new HashMap<>();
+        for (int i = 0; i < itemIds.length; i++)
+        {
+            int itemId = itemIds[i];
+            itemIndex.putIfAbsent(itemId, i);
+            if (plugin.isCollectionLogItemObtained(itemId))
+            {
+                obtainedItemIds.add(itemId);
+            }
+            else
+            {
+                statusByItemId.put(itemId, CollectionLogRequirementItem.Status.MISSING);
+            }
+        }
+
+        obtainedItemIds.sort((a, b) -> {
+            int byOrder = Long.compare(plugin.getCollectionLogItemObtainedOrder(a), plugin.getCollectionLogItemObtainedOrder(b));
+            if (byOrder != 0)
+            {
+                return byOrder;
+            }
+            return Integer.compare(itemIndex.getOrDefault(a, Integer.MAX_VALUE), itemIndex.getOrDefault(b, Integer.MAX_VALUE));
+        });
+
+        int appliedRemaining = repeatedDistinctPool && repeatedRequirementState != null
+                ? Math.max(0, repeatedRequirementState.appliedObtainedCount)
+                : 0;
+        int availableRemaining = repeatedDistinctPool && repeatedRequirementState != null
+                ? Math.max(0, repeatedRequirementState.availableObtainedCount)
+                : Integer.MAX_VALUE;
+
+        for (Integer itemId : obtainedItemIds)
+        {
+            CollectionLogRequirementItem.Status status;
+            if (appliedRemaining > 0)
+            {
+                status = CollectionLogRequirementItem.Status.APPLIED;
+                appliedRemaining--;
+            }
+            else if (availableRemaining > 0)
+            {
+                status = CollectionLogRequirementItem.Status.OBTAINED;
+                availableRemaining--;
+            }
+            else
+            {
+                status = CollectionLogRequirementItem.Status.APPLIED;
+            }
+            statusByItemId.put(itemId, status);
+        }
+
+        return statusByItemId;
     }
 
     private static CollectionLogRequirementItem.Status higherPriorityRequirementStatus(
@@ -386,7 +442,6 @@ public class XtremeTaskerOverlay extends Overlay {
         TaskVerification candidateVerification = candidate.getVerification();
         if (target.getSource() != TaskSource.COLLECTION_LOG
                 || candidate.getSource() != TaskSource.COLLECTION_LOG
-                || target.getTier() != candidate.getTier()
                 || targetVerification == null
                 || candidateVerification == null
                 || targetVerification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
@@ -473,22 +528,32 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         if (sequence == null || sequence.isEmpty() || thresholds == null || thresholds.isEmpty())
         {
-            return new RepeatedCollectionLogRequirementState(0, "");
+            return new RepeatedCollectionLogRequirementState(0, 0, "");
         }
 
-        int completedIndex = -1;
+        int completedThreshold = 0;
         for (int i = 0; i < sequence.size(); i++)
         {
             XtremeTask groupedTask = sequence.get(i);
             if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
             {
-                completedIndex = i;
+                completedThreshold = Math.max(completedThreshold, thresholdAt(thresholds, i));
             }
         }
 
-        int completedThreshold = thresholdAt(thresholds, completedIndex);
         int currentDone = 0;
         int currentRequired = 0;
+        int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
+        int availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
+
+        if (plugin.isTaskCompleted(task))
+        {
+            return new RepeatedCollectionLogRequirementState(
+                    Math.max(0, totalObtainedCount),
+                    0,
+                    repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
+            );
+        }
 
         int currentIndex = currentRequirementIndex(task, sequence);
         if (currentIndex >= 0)
@@ -498,11 +563,13 @@ public class XtremeTaskerOverlay extends Overlay {
             int currentThreshold = Math.max(thresholdAt(thresholds, currentIndex), previousThreshold);
             currentRequired = Math.max(1, currentThreshold - previousThreshold);
             currentDone = Math.min(Math.max(0, totalObtainedCount - previousThreshold), currentRequired);
+            appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, previousThreshold + currentDone));
+            availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
         }
 
-        int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
         return new RepeatedCollectionLogRequirementState(
                 appliedObtainedCount,
+                availableObtainedCount,
                 repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
         );
     }
@@ -523,7 +590,7 @@ public class XtremeTaskerOverlay extends Overlay {
         for (int i = 0; i < sequence.size(); i++)
         {
             XtremeTask groupedTask = sequence.get(i);
-            if (groupedTask != null && Objects.equals(current.getId(), groupedTask.getId()))
+            if (groupedTask != null && Objects.equals(task.getId(), groupedTask.getId()))
             {
                 return i;
             }
@@ -547,11 +614,13 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private static final class RepeatedCollectionLogRequirementState {
-        private final int countedObtainedCount;
+        private final int appliedObtainedCount;
+        private final int availableObtainedCount;
         private final String summaryText;
 
-        private RepeatedCollectionLogRequirementState(int countedObtainedCount, String summaryText) {
-            this.countedObtainedCount = countedObtainedCount;
+        private RepeatedCollectionLogRequirementState(int appliedObtainedCount, int availableObtainedCount, String summaryText) {
+            this.appliedObtainedCount = appliedObtainedCount;
+            this.availableObtainedCount = availableObtainedCount;
             this.summaryText = summaryText == null ? "" : summaryText;
         }
     }
