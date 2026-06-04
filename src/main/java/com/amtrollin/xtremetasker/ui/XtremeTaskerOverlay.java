@@ -561,9 +561,8 @@ public class XtremeTaskerOverlay extends Overlay {
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
         int availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
 
-        int taskIndex = requirementIndex(task, sequence);
-        boolean taskThresholdIsCompleted = taskIndex >= 0 && completedThreshold >= thresholdAt(thresholds, taskIndex);
-        if ((completedInstanceCanApplyAll && taskThresholdIsCompleted)
+        boolean exactInstanceCompleted = plugin.isTaskCompleted(task);
+        if ((completedInstanceCanApplyAll && exactInstanceCompleted)
                 || (plugin.isTaskCompleted(task) && isTaskGroupFullyCompleted(task)))
         {
             return new RepeatedCollectionLogRequirementState(
