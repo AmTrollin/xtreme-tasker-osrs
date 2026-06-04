@@ -91,6 +91,8 @@ public final class RulesTabRenderer {
         layout.syncClogReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncCaMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
         layout.syncClogMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
+        layout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
+        layout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
         int bx = panelX + panelPadding;
         int viewportW = panelWidth - 2 * panelPadding;
 
@@ -133,9 +135,8 @@ public final class RulesTabRenderer {
                         combatAchievementReviewCount,
                         collectionLogReviewCount)
                 : buildRulesLines(fm, viewportW - 8);
-        layout.totalContentRows = lines.size();
-
         int rb = rowBlock();
+        layout.totalContentRows = contentRows(lines, rb);
         int visibleRows = (rb <= 0) ? 0 : Math.max(0, viewportH / rb);
 
         int maxOffset = Math.max(0, layout.totalContentRows - visibleRows);
@@ -667,6 +668,30 @@ public final class RulesTabRenderer {
 
     private static int clamp(int v, int max) {
         return Math.max(0, Math.min(max, v));
+    }
+
+    private int contentRows(List<String> lines, int rowBlock)
+    {
+        if (lines == null || lines.isEmpty() || rowBlock <= 0)
+        {
+            return 0;
+        }
+
+        int totalPx = 0;
+        for (String line : lines)
+        {
+            totalPx += lineHeightPx(line, rowBlock);
+        }
+        return Math.max(lines.size(), (totalPx + rowBlock - 1) / rowBlock);
+    }
+
+    private int lineHeightPx(String line, int rowBlock)
+    {
+        if (LINE_DATA_SYNC_TITLE.equals(line) || "Rules".equals(line))
+        {
+            return rowBlock + 16;
+        }
+        return rowBlock;
     }
 
     // Expose URL so overlay can use it for clicks without duplicating string
