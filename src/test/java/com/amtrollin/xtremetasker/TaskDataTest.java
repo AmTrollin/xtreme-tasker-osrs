@@ -150,6 +150,61 @@ public class TaskDataTest
                 staleAllowlist.isEmpty());
     }
 
+    @Test
+    public void taskPackTextHasNoObviousReleaseArtifacts()
+    {
+        JsonObject pack = loadTaskPack();
+        JsonArray tasks = pack.getAsJsonArray("tasks");
+
+        List<String> issues = new ArrayList<>();
+        List<String> textFields = Arrays.asList("name", "prereqs", "wikiTitle", "wikiUrl", "description", "tip");
+        for (JsonElement taskElement : tasks)
+        {
+            JsonObject task = taskElement.getAsJsonObject();
+            String taskId = optionalString(task, "id");
+
+            for (String field : textFields)
+            {
+                if (!task.has(field) || task.get(field).isJsonNull())
+                {
+                    continue;
+                }
+
+                String value = task.get(field).getAsString();
+                if (value.indexOf('\u00A0') >= 0)
+                {
+                    issues.add(taskId + " " + field + " contains a non-breaking space");
+                }
+                if (!value.equals(value.trim()))
+                {
+                    issues.add(taskId + " " + field + " has leading/trailing whitespace");
+                }
+                if (value.contains("you's"))
+                {
+                    issues.add(taskId + " " + field + " contains \"you's\"");
+                }
+                if (value.contains("The ides of Milk"))
+                {
+                    issues.add(taskId + " " + field + " has inconsistent Ides of Milk capitalization");
+                }
+                if (value.equals("The Ides of Milk"))
+                {
+                    issues.add(taskId + " " + field + " should include the quest suffix");
+                }
+                if (value.contains("This means must"))
+                {
+                    issues.add(taskId + " " + field + " contains truncated/awkward strategy text");
+                }
+                if ("description".equals(field) && value.endsWith("..."))
+                {
+                    issues.add(taskId + " description appears truncated");
+                }
+            }
+        }
+
+        assertTrue("Task text release artifacts found: " + issues, issues.isEmpty());
+    }
+
     private static JsonObject loadTaskPack()
     {
         InputStream in = TaskDataTest.class.getClassLoader().getResourceAsStream("task_data/tasks.json");
