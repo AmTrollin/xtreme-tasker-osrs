@@ -943,10 +943,8 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         int panelW = PANEL_W_TASKS;
         int panelHeight = PANEL_H_TASKS;
-        // In fixed layout the canvas is only ~503px tall — clamp so the panel always fits.
-        if (!client.isResized()) {
-            panelHeight = Math.min(panelHeight, canvasH - 4);
-        }
+        // Clamp in every layout so inner scroll views use only visible panel space.
+        panelHeight = Math.min(panelHeight, Math.max(0, canvasH - 4));
 
         int panelX = (panelXOverride != null) ? panelXOverride : (canvasW - panelW) / 2;
         int panelY = (panelYOverride != null) ? panelYOverride : (canvasH - panelHeight) / 2;
