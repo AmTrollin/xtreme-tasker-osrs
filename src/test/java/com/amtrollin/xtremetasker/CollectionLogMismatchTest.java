@@ -391,6 +391,35 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void chargedAndUnchargedRaidItemsCountAsOneLogSlot()
+    {
+        int[][] chargedItemPairs = new int[][]{
+                {22323, 22481}, // Sanguinesti staff
+                {22325, 22486}, // Scythe of vitur
+                {28547, 28549}  // Tumeken's shadow
+        };
+
+        for (int[] chargedItemPair : chargedItemPairs)
+        {
+            int canonicalItemId = chargedItemPair[0];
+            int alternateItemId = chargedItemPair[1];
+
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(alternateItemId);
+            collectionLogService.storeItem(alternateItemId);
+
+            assertTrue("Alternate item " + alternateItemId + " should satisfy canonical item " + canonicalItemId,
+                    collectionLogService.hasSeenAll(new int[]{canonicalItemId}));
+            assertEquals("Alternate item " + alternateItemId + " should count as one canonical slot",
+                    1, collectionLogService.countObtained(new int[]{canonicalItemId}));
+            assertEquals("Charged and uncharged aliases in one requirement should not double-count",
+                    1, collectionLogService.countObtained(new int[]{canonicalItemId, alternateItemId}));
+            assertTrue("Charged and uncharged aliases in one requirement should be satisfied by either form",
+                    collectionLogService.hasSeenAll(new int[]{canonicalItemId, alternateItemId}));
+        }
+    }
+
+    @Test
     public void tumekensGuardianVariantsCountAsOneGuardianLogSlot()
     {
         int[] guardianVariantIds = new int[]{

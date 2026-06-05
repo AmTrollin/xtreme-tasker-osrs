@@ -46,6 +46,10 @@ public class CollectionLogService
             Map.entry(25751, 22473), // Lil' zik - Lil' Sot -> Lil' zik
             Map.entry(25752, 22473), // Lil' zik - Lil' Xarp -> Lil' zik
 
+            Map.entry(22481, 22323), // Sanguinesti staff (uncharged) -> Sanguinesti staff
+            Map.entry(22486, 22325), // Scythe of vitur (uncharged) -> Scythe of vitur
+            Map.entry(28549, 28547), // Tumeken's shadow (uncharged) -> Tumeken's shadow
+
             Map.entry(27382, 27352), // Tumeken's guardian - Akkhito -> Tumeken's guardian
             Map.entry(27383, 27352), // Tumeken's guardian - Babi -> Tumeken's guardian
             Map.entry(27387, 27352), // Tumeken's guardian - Elidinis' Damaged Guardian -> Tumeken's guardian
@@ -215,13 +219,28 @@ public class CollectionLogService
             return false;
         }
 
+        Set<Integer> requiredCanonicalItemIds = new HashSet<>();
         for (int itemId : itemIds)
         {
-            if (!seenItems.contains(itemId))
+            if (itemId > 0)
+            {
+                requiredCanonicalItemIds.add(canonicalCollectionLogItemId(itemId));
+            }
+        }
+
+        if (requiredCanonicalItemIds.isEmpty())
+        {
+            return false;
+        }
+
+        for (int itemId : requiredCanonicalItemIds)
+        {
+            if (!hasSeenItem(itemId))
             {
                 return false;
             }
         }
+
         return true;
     }
 
@@ -232,10 +251,14 @@ public class CollectionLogService
             return 0;
         }
 
+        Set<Integer> countedCanonicalItemIds = new HashSet<>();
         long count = 0;
         for (int itemId : itemIds)
         {
-            if (isItemObtained(itemId))
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            if (canonicalItemId > 0
+                    && countedCanonicalItemIds.add(canonicalItemId)
+                    && isItemObtained(canonicalItemId))
             {
                 count++;
             }
