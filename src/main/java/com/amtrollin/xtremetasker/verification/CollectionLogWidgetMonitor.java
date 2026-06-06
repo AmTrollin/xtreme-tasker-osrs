@@ -8,8 +8,8 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -210,7 +210,7 @@ public class CollectionLogWidgetMonitor
 
     private boolean isCollectionLogOpen()
     {
-        Widget collectionLog = client.getWidget(WidgetInfo.COLLECTION_LOG);
+        Widget collectionLog = client.getWidget(ComponentID.COLLECTION_LOG_CONTAINER);
         return isVisible(collectionLog);
     }
 
@@ -222,9 +222,9 @@ public class CollectionLogWidgetMonitor
 
     private boolean clickJournalTabWidget()
     {
-        return clickWidget(client.getWidget(WidgetInfo.FIXED_VIEWPORT_QUESTS_TAB), "Quest List", 1)
-                || clickWidget(client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_QUESTS_TAB), "Quest List", 1)
-                || clickWidget(client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_BOTTOM_LINE_QUESTS_ICON), "Quest List", 1);
+        return clickWidget(client.getWidget(ComponentID.FIXED_VIEWPORT_QUESTS_TAB), "Quest List", 1)
+                || clickWidget(client.getWidget(ComponentID.RESIZABLE_VIEWPORT_QUESTS_TAB), "Quest List", 1)
+                || clickWidget(client.getWidget(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_QUESTS_ICON), "Quest List", 1);
     }
 
     private boolean clickVisibleCollectionLogWidget()
@@ -252,8 +252,8 @@ public class CollectionLogWidgetMonitor
             return false;
         }
 
-        if (widget.getId() != WidgetInfo.COLLECTION_LOG.getId()
-                && widget.getId() != WidgetInfo.COLLECTION_LOG_ENTRY.getId()
+        if (widget.getId() != ComponentID.COLLECTION_LOG_CONTAINER
+                && widget.getId() != ComponentID.COLLECTION_LOG_ENTRY
                 && widgetHasCollectionLogAction(widget))
         {
             int op = collectionLogActionOp(widget);

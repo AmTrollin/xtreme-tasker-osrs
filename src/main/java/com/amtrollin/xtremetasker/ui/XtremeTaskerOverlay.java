@@ -41,8 +41,8 @@ import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import lombok.Getter;
 import net.runelite.api.Client;
+import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseWheelListener;
@@ -3072,7 +3072,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private Point computeIconPosition(int canvasWidth, int canvasHeight) {
         // Fixed layout: always anchor to the XP drops orb — ignore any saved/drag override.
         if (!client.isResized()) {
-            Widget xpOrb = client.getWidget(WidgetInfo.MINIMAP_XP_ORB);
+            Widget xpOrb = client.getWidget(ComponentID.MINIMAP_XP_ORB);
             if (xpOrb != null) {
                 Rectangle b = xpOrb.getBounds();
                 int x = b.x - ICON_ANCHOR_PAD - ICON_WIDTH;
@@ -3089,8 +3089,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // Initialize from widget bounds once — but ONLY when bounds are valid (non-zero).
         // If the layout just switched from fixed the widget may not be ready yet; retry next frame.
         if (!resizableOffsetInitialized) {
-            Widget mapArea = client.getWidget(WidgetInfo.RESIZABLE_MINIMAP_DRAW_AREA);
-            if (mapArea == null) mapArea = client.getWidget(WidgetInfo.RESIZABLE_MINIMAP_STONES_DRAW_AREA);
+            Widget mapArea = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_MINIMAP_DRAW_AREA);
+            if (mapArea == null) mapArea = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_MINIMAP_DRAW_AREA);
             if (mapArea != null && mapArea.getBounds().width > 0 && mapArea.getBounds().height > 0) {
                 Rectangle b = mapArea.getBounds();
                 int defaultX = b.x + (b.width - ICON_WIDTH) / 2 + ICON_ANCHOR_RIGHT_OFFSET;
