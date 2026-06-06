@@ -185,12 +185,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private boolean dirty = false;
     private boolean allowCompletionRegressionSave = false;
     private int flushTickCounter = 0;
-    private int pendingCollectionLogSyncTicks = -1;
-    private int pendingCollectionLogSyncBaselineCapturedItems = -1;
-    private int pendingCollectionLogSyncSettledTicks = 0;
-    private boolean pendingCollectionLogSyncObservedActivity = false;
-    private static final int COLLECTION_LOG_SYNC_MAX_WAIT_TICKS = 20;
-    private static final int COLLECTION_LOG_SYNC_SETTLE_TICKS = 2;
     private static final int FLUSH_EVERY_TICKS = 10; // ~6s (game tick ~0.6s)
 
     private final Map<String, Integer> caTaskIdsByName = new HashMap<>();
@@ -1630,7 +1624,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         combatAchievementSyncedTasksExpanded = false;
         collectionLogSyncedTasksExpanded = false;
         knownTaskIds.clear();
-        clearPendingCollectionLogSyncState();
         lastSyncedTaskNames.clear();
         collectionLogService.resetCachedItemIds();
         clearSyncMismatchReviewState();
@@ -1724,22 +1717,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public void setCollectionLogSyncedTasksExpanded(boolean expanded)
     {
         collectionLogSyncedTasksExpanded = expanded;
-    }
-
-    private void beginPendingCollectionLogSyncWait()
-    {
-        pendingCollectionLogSyncTicks = COLLECTION_LOG_SYNC_MAX_WAIT_TICKS;
-        pendingCollectionLogSyncBaselineCapturedItems = collectionLogService.getCapturedItemCount();
-        pendingCollectionLogSyncSettledTicks = 0;
-        pendingCollectionLogSyncObservedActivity = false;
-    }
-
-    private void clearPendingCollectionLogSyncState()
-    {
-        pendingCollectionLogSyncTicks = -1;
-        pendingCollectionLogSyncBaselineCapturedItems = -1;
-        pendingCollectionLogSyncSettledTicks = 0;
-        pendingCollectionLogSyncObservedActivity = false;
     }
 
     private void migrateLegacyLastSyncResultIfNeeded()
@@ -2226,40 +2203,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             dirty = true;
         }
 
-        if (pendingCollectionLogSyncTicks >= 0)
-        {
-            pendingCollectionLogSyncTicks--;
-
-            int capturedNow = collectionLogService.getCapturedItemCount();
-            boolean capturedChanged = capturedNow > pendingCollectionLogSyncBaselineCapturedItems;
-            if (capturedChanged)
-            {
-                pendingCollectionLogSyncBaselineCapturedItems = capturedNow;
-                pendingCollectionLogSyncObservedActivity = true;
-            }
-
-            boolean scanInProgress = collectionLogService.isCollectionLogScanInProgress();
-            if (scanInProgress)
-            {
-                pendingCollectionLogSyncObservedActivity = true;
-                pendingCollectionLogSyncSettledTicks = 0;
-            }
-            else if (pendingCollectionLogSyncObservedActivity)
-            {
-                pendingCollectionLogSyncSettledTicks++;
-            }
-
-            boolean timedOut = pendingCollectionLogSyncTicks <= 0;
-            boolean settledAfterActivity = pendingCollectionLogSyncObservedActivity
-                    && !scanInProgress
-                    && pendingCollectionLogSyncSettledTicks >= COLLECTION_LOG_SYNC_SETTLE_TICKS;
-            if (timedOut || settledAfterActivity)
-            {
-                clearPendingCollectionLogSyncState();
-                runCollectionLogSyncFromCache();
-            }
-        }
-
         if (!dirty)
         {
             flushTickCounter = 0;
@@ -2718,16 +2661,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         setLastSyncedTaskNames(TaskSource.COLLECTION_LOG, null);
-        clientThread.invokeLater(() -> {
-            boolean refreshRequested = collectionLogService.requestCollectionLogOpenOrRefresh();
-            if (refreshRequested && client.getGameState() == GameState.LOGGED_IN)
-            {
-                beginPendingCollectionLogSyncWait();
-                return;
-            }
-
-            runCollectionLogSyncFromCache();
-        });
+        clientThread.invokeLater(this::runCollectionLogSyncFromCache);
     }
 
     private void runCollectionLogSyncFromCache()
@@ -2943,7 +2877,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public boolean isCollectionLogSyncPending()
     {
-        return pendingCollectionLogSyncTicks >= 0;
+        return false;
     }
 
     private void setSyncMismatchTasksForSource(TaskSource source, List<XtremeTask> mismatches)

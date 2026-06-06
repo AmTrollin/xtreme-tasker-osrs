@@ -185,16 +185,6 @@ public class CollectionLogService
                 || seenItems.contains(canonicalCollectionLogItemId(itemId));
     }
 
-    public boolean requestCollectionLogOpenOrRefresh()
-    {
-        return widgetMonitor.requestCollectionLogOpenOrRefresh();
-    }
-
-    public boolean isCollectionLogScanInProgress()
-    {
-        return widgetMonitor.isCollectionLogScanInProgress();
-    }
-
     public void storeItem(int itemId)
     {
         if (itemId > 0)
