@@ -192,7 +192,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static final int COLLECTION_LOG_SYNC_MAX_WAIT_TICKS = 20;
     private static final int COLLECTION_LOG_SYNC_SETTLE_TICKS = 2;
     private static final int FLUSH_EVERY_TICKS = 10; // ~6s (game tick ~0.6s)
-    private Thread shutdownSaveHook;
 
     private final Map<String, Integer> caTaskIdsByName = new HashMap<>();
     private final Map<String, Integer> caTaskIdsByNormalizedName = new HashMap<>();
@@ -260,7 +259,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     protected void startUp() {
         log.info("Xtreme Tasker started");
 
-        registerShutdownSaveHook();
         collectionLogService.startUp();
 
         updateOverlayState();
@@ -291,7 +289,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         log.info("Xtreme Tasker stopped");
 
         collectionLogService.shutDown();
-        unregisterShutdownSaveHook();
 
         saveActiveState("plugin shutdown");
 
@@ -322,33 +319,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         taskPackLoaded = false;
 
         rebuildTierCounts();
-    }
-
-    private void registerShutdownSaveHook() {
-        if (shutdownSaveHook != null) {
-            return;
-        }
-
-        shutdownSaveHook = new Thread(() -> saveActiveState("JVM shutdown hook"), "xtreme-tasker-save");
-        try {
-            Runtime.getRuntime().addShutdownHook(shutdownSaveHook);
-        } catch (IllegalStateException e) {
-            log.debug("Could not register shutdown save hook because JVM shutdown is already in progress.", e);
-            shutdownSaveHook = null;
-        }
-    }
-
-    private void unregisterShutdownSaveHook() {
-        if (shutdownSaveHook == null) {
-            return;
-        }
-
-        try {
-            Runtime.getRuntime().removeShutdownHook(shutdownSaveHook);
-        } catch (IllegalStateException ignored) {
-            // JVM shutdown is already in progress; let the hook run.
-        }
-        shutdownSaveHook = null;
     }
 
     private synchronized void saveActiveState(String reason) {
