@@ -106,7 +106,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static final String STATE_CORRUPT_SUFFIX = "_corrupt";
     private static final String STATE_FILE_DIR_NAME = "xtreme-tasker-states";
     private static final String STATE_FILE_SUFFIX = ".json";
-    private static final int MAX_COMPLETION_REGRESSION_WITHOUT_CURRENT_TASK_CHANGE = 3;
     private static final DateTimeFormatter SAVE_TIME_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     private static final List<TaskTier> PROGRESSION = List.of(
@@ -183,16 +182,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private int loadedPackVersion = 0;
 
     private boolean dirty = false;
-    private boolean allowCompletionRegressionSave = false;
     private int flushTickCounter = 0;
-    private int pendingCollectionLogSyncTicks = -1;
-    private int pendingCollectionLogSyncBaselineCapturedItems = -1;
-    private int pendingCollectionLogSyncSettledTicks = 0;
-    private boolean pendingCollectionLogSyncObservedActivity = false;
-    private static final int COLLECTION_LOG_SYNC_MAX_WAIT_TICKS = 20;
-    private static final int COLLECTION_LOG_SYNC_SETTLE_TICKS = 2;
     private static final int FLUSH_EVERY_TICKS = 10; // ~6s (game tick ~0.6s)
-    private Thread shutdownSaveHook;
 
     private final Map<String, Integer> caTaskIdsByName = new HashMap<>();
     private final Map<String, Integer> caTaskIdsByNormalizedName = new HashMap<>();
@@ -215,12 +206,51 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private boolean combatAchievementSyncedTasksExpanded = false;
     private boolean collectionLogSyncedTasksExpanded = false;
 
+    List<XtremeTask> tasksForTesting()
+    {
+        return tasks;
+    }
+
+    Set<String> manualCompletedTaskIdsForTesting()
+    {
+        return manualCompletedTaskIds;
+    }
+
+    Set<String> syncedCompletedTaskIdsForTesting()
+    {
+        return syncedCompletedTaskIds;
+    }
+
+    Map<String, Long> manualCompletionTimestampsForTesting()
+    {
+        return manualCompletionTimestamps;
+    }
+
+    List<String> syncMismatchTaskIdsForTesting()
+    {
+        return syncMismatchTaskIds;
+    }
+
+    String syncMismatchTitleForTesting()
+    {
+        return syncMismatchTitle;
+    }
+
+    void setCollectionLogServiceForTesting(CollectionLogService collectionLogService)
+    {
+        this.collectionLogService = collectionLogService;
+    }
+
+    void setSyncMismatchTitleForTesting(String syncMismatchTitle)
+    {
+        this.syncMismatchTitle = syncMismatchTitle;
+    }
+
 
     @Override
     protected void startUp() {
         log.info("Xtreme Tasker started");
 
-        registerShutdownSaveHook();
         collectionLogService.startUp();
 
         updateOverlayState();
@@ -251,7 +281,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         log.info("Xtreme Tasker stopped");
 
         collectionLogService.shutDown();
-        unregisterShutdownSaveHook();
 
         saveActiveState("plugin shutdown");
 
@@ -282,33 +311,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         taskPackLoaded = false;
 
         rebuildTierCounts();
-    }
-
-    private void registerShutdownSaveHook() {
-        if (shutdownSaveHook != null) {
-            return;
-        }
-
-        shutdownSaveHook = new Thread(() -> saveActiveState("JVM shutdown hook"), "xtreme-tasker-save");
-        try {
-            Runtime.getRuntime().addShutdownHook(shutdownSaveHook);
-        } catch (IllegalStateException e) {
-            log.debug("Could not register shutdown save hook because JVM shutdown is already in progress.", e);
-            shutdownSaveHook = null;
-        }
-    }
-
-    private void unregisterShutdownSaveHook() {
-        if (shutdownSaveHook == null) {
-            return;
-        }
-
-        try {
-            Runtime.getRuntime().removeShutdownHook(shutdownSaveHook);
-        } catch (IllegalStateException ignored) {
-            // JVM shutdown is already in progress; let the hook run.
-        }
-        shutdownSaveHook = null;
     }
 
     private synchronized void saveActiveState(String reason) {
@@ -703,7 +705,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
     }
 
-    private String accountNameKey(String characterName) {
+    String accountNameKey(String characterName) {
         String normalized = safeTrim(characterName);
         if (normalized == null) {
             return null;
@@ -715,7 +717,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .encodeToString(normalized.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String legacyAccountKeyFromScopedKey(String accountKey) {
+    String legacyAccountKeyFromScopedKey(String accountKey) {
         String trimmed = safeTrim(accountKey);
         if (trimmed == null) {
             return null;
@@ -871,15 +873,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         if (!canSaveForAccount(accountKey)) {
-            allowCompletionRegressionSave = false;
             return;
         }
 
         log.trace("Saved state snapshot: currentTaskId={}, manualDone={}, syncedDone={}",
                 currentTaskId, manualCompletedTaskIds.size(), syncedCompletedTaskIds.size());
-
-        boolean allowCompletionRegression = allowCompletionRegressionSave;
-        allowCompletionRegressionSave = false;
 
         String key = stateConfigKeyForAccount(accountKey);
         String previousJson = readStateFileForAccount(accountKey);
@@ -890,8 +888,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         PersistedState state = buildPersistedState();
         state.setAccountKey(accountKey);
-        state.setIntentionalCompletionRegression(
-                allowCompletionRegression && hasCompletionRegression(previousState, state));
 
         String json = gson.toJson(state);
         PersistedState parsed = parseAndValidateState(json, "new save");
@@ -899,22 +895,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             log.warn("Refusing to save XtremeTasker state because the new snapshot failed validation.");
             return;
         }
-        if (isSuspiciousDataDrop(previousState, parsed)) {
-            rotateStateBackups(accountKey, previousJson);
-            flushConfigToDisk("suspicious-drop backup");
-            log.warn("Refusing to save suspiciously empty XtremeTasker state over existing progress for account {}", accountKey);
-            chat("[Xtreme Tasker] Progress save was skipped because it looked like it would wipe existing data. Your previous progress was backed up.");
-            return;
-        }
-        if (!allowCompletionRegression && isSuspiciousCompletionRegression(previousState, parsed)) {
-            rotateStateBackups(accountKey, previousJson);
-            flushConfigToDisk("suspicious-regression backup");
-            log.warn("Refusing to save suspicious XtremeTasker completion regression for account {} (previous={}, next={})",
-                    accountKey, completedCount(previousState), completedCount(parsed));
-            chat("[Xtreme Tasker] Progress save was skipped because it looked like it would roll back completed tasks. Your previous progress was backed up.");
-            return;
-        }
-
         boolean shouldFlushToDisk = previousState == null || isRecoveryRelevantStateChange(previousState, parsed);
         if (shouldFlushToDisk) {
             rotateStateBackups(accountKey, previousJson);
@@ -1034,28 +1014,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 rebuildTierCounts();
                 return;
             }
-        }
-
-        PersistedState betterLegacyState = loadBestMatchingLegacyState(accountKey);
-        if (betterLegacyState != null && isBetterProgressRecoveryCandidate(betterLegacyState, state)) {
-            betterLegacyState.setAccountKey(accountKey);
-            state = betterLegacyState;
-            String legacyJson = gson.toJson(state);
-            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), legacyJson);
-            writeStateFileForAccount(accountKey, legacyJson);
-            flushConfigToDisk("legacy character progress import");
-            chat("[Xtreme Tasker] Progress save was updated from a matching legacy backup for "
-                    + getAccountDisplayNameForMessage() + ".");
-        }
-
-        PersistedState higherProgressBackup = loadHigherProgressBackup(accountKey, state);
-        if (higherProgressBackup != null) {
-            state = higherProgressBackup;
-            String recoveryJson = gson.toJson(state);
-            configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), recoveryJson);
-            writeStateFileForAccount(accountKey, recoveryJson);
-            flushConfigToDisk("progress backup restore");
-            chat("[Xtreme Tasker] Progress save was restored from a newer-progress backup.");
         }
 
         writeStateFileForAccount(accountKey, gson.toJson(state));
@@ -1198,54 +1156,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
         return true;
-    }
-
-    private boolean isSuspiciousDataDrop(PersistedState previous, PersistedState next) {
-        if (previous == null || next == null) {
-            return false;
-        }
-
-        int previousCompleted = completedCount(previous);
-        int nextCompleted = completedCount(next);
-        boolean nextHasAnyProgress = nextCompleted > 0
-                || hasAnyIds(next.getRetiredTaskIds())
-                || (next.getCurrentTaskId() != null && !next.getCurrentTaskId().trim().isEmpty());
-
-        return previousCompleted >= 3 && !nextHasAnyProgress;
-    }
-
-    private boolean isSuspiciousCompletionRegression(PersistedState previous, PersistedState next) {
-        if (previous == null || next == null) {
-            return false;
-        }
-
-        Set<String> previousCompleted = completedIdSet(previous);
-        Set<String> nextCompleted = completedIdSet(next);
-        if (previousCompleted.size() < 10) {
-            return false;
-        }
-
-        Set<String> missing = new HashSet<>(previousCompleted);
-        missing.removeAll(nextCompleted);
-        if (missing.size() <= MAX_COMPLETION_REGRESSION_WITHOUT_CURRENT_TASK_CHANGE) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private boolean hasCompletionRegression(PersistedState previous, PersistedState next) {
-        if (previous == null || next == null) {
-            return false;
-        }
-
-        Set<String> missing = completedIdSet(previous);
-        missing.removeAll(completedIdSet(next));
-        return !missing.isEmpty();
-    }
-
-    private boolean hasAnyIds(Set<String> ids) {
-        return ids != null && !ids.isEmpty();
     }
 
     private int completedCount(PersistedState state) {
@@ -1471,41 +1381,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return name == null ? "this character" : name;
     }
 
-    private PersistedState loadHigherProgressBackup(String accountKey, PersistedState primary) {
-        if (primary == null || primary.isIntentionalCompletionRegression()) {
-            return null;
-        }
-
-        Set<String> primaryCompleted = completedIdSet(primary);
-        PersistedState best = null;
-        for (int i = 1; i <= STATE_BACKUP_COUNT; i++) {
-            String backupJson = readStateBackupFileForAccount(accountKey, i);
-            if (backupJson == null || backupJson.trim().isEmpty()) {
-                backupJson = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i));
-            }
-            PersistedState backup = parseAndValidateState(backupJson, "backup " + i + " progress check");
-            if (backup == null) {
-                continue;
-            }
-
-            Set<String> recovered = completedIdSet(backup);
-            recovered.removeAll(primaryCompleted);
-            if (recovered.size() <= MAX_COMPLETION_REGRESSION_WITHOUT_CURRENT_TASK_CHANGE) {
-                continue;
-            }
-
-            if (best == null || isBetterProgressRecoveryCandidate(backup, best)) {
-                best = backup;
-            }
-        }
-
-        if (best != null) {
-            log.warn("Recovered XtremeTasker state for account {} from a backup with more completed tasks (primary={}, backup={})",
-                    accountKey, completedCount(primary), completedCount(best));
-        }
-        return best;
-    }
-
     private boolean isBetterProgressRecoveryCandidate(PersistedState candidate, PersistedState currentBest) {
         int candidateCompleted = completedCount(candidate);
         int bestCompleted = completedCount(currentBest);
@@ -1620,7 +1495,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         combatAchievementSyncedTasksExpanded = false;
         collectionLogSyncedTasksExpanded = false;
         knownTaskIds.clear();
-        clearPendingCollectionLogSyncState();
         lastSyncedTaskNames.clear();
         collectionLogService.resetCachedItemIds();
         clearSyncMismatchReviewState();
@@ -1714,22 +1588,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public void setCollectionLogSyncedTasksExpanded(boolean expanded)
     {
         collectionLogSyncedTasksExpanded = expanded;
-    }
-
-    private void beginPendingCollectionLogSyncWait()
-    {
-        pendingCollectionLogSyncTicks = COLLECTION_LOG_SYNC_MAX_WAIT_TICKS;
-        pendingCollectionLogSyncBaselineCapturedItems = collectionLogService.getCapturedItemCount();
-        pendingCollectionLogSyncSettledTicks = 0;
-        pendingCollectionLogSyncObservedActivity = false;
-    }
-
-    private void clearPendingCollectionLogSyncState()
-    {
-        pendingCollectionLogSyncTicks = -1;
-        pendingCollectionLogSyncBaselineCapturedItems = -1;
-        pendingCollectionLogSyncSettledTicks = 0;
-        pendingCollectionLogSyncObservedActivity = false;
     }
 
     private void migrateLegacyLastSyncResultIfNeeded()
@@ -2086,7 +1944,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             // Remove from both sets so the task becomes truly incomplete.
             // (syncedCompletedTaskIds alone would keep it stuck as complete.)
             markTaskIncomplete(id);
-            allowCompletionRegressionSave = true;
         }
         else
         {
@@ -2125,11 +1982,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         int desired = Math.max(0, Math.min(group.size(), completedCount));
         int existingCompleted = getTaskGroupProgress(task).getCompleted();
-        if (desired < existingCompleted)
-        {
-            allowCompletionRegressionSave = true;
-        }
-
         int remainingToAdd = desired - existingCompleted;
         int remainingToRemove = existingCompleted - desired;
         long now = System.currentTimeMillis();
@@ -2214,40 +2066,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             taskTimeTicksById.merge(currentTaskId, 1L, Long::sum);
             dirty = true;
-        }
-
-        if (pendingCollectionLogSyncTicks >= 0)
-        {
-            pendingCollectionLogSyncTicks--;
-
-            int capturedNow = collectionLogService.getCapturedItemCount();
-            boolean capturedChanged = capturedNow > pendingCollectionLogSyncBaselineCapturedItems;
-            if (capturedChanged)
-            {
-                pendingCollectionLogSyncBaselineCapturedItems = capturedNow;
-                pendingCollectionLogSyncObservedActivity = true;
-            }
-
-            boolean scanInProgress = collectionLogService.isCollectionLogScanInProgress();
-            if (scanInProgress)
-            {
-                pendingCollectionLogSyncObservedActivity = true;
-                pendingCollectionLogSyncSettledTicks = 0;
-            }
-            else if (pendingCollectionLogSyncObservedActivity)
-            {
-                pendingCollectionLogSyncSettledTicks++;
-            }
-
-            boolean timedOut = pendingCollectionLogSyncTicks <= 0;
-            boolean settledAfterActivity = pendingCollectionLogSyncObservedActivity
-                    && !scanInProgress
-                    && pendingCollectionLogSyncSettledTicks >= COLLECTION_LOG_SYNC_SETTLE_TICKS;
-            if (timedOut || settledAfterActivity)
-            {
-                clearPendingCollectionLogSyncState();
-                runCollectionLogSyncFromCache();
-            }
         }
 
         if (!dirty)
@@ -2708,16 +2526,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         setLastSyncedTaskNames(TaskSource.COLLECTION_LOG, null);
-        clientThread.invokeLater(() -> {
-            boolean refreshRequested = collectionLogService.requestCollectionLogOpenOrRefresh();
-            if (refreshRequested && client.getGameState() == GameState.LOGGED_IN)
-            {
-                beginPendingCollectionLogSyncWait();
-                return;
-            }
-
-            runCollectionLogSyncFromCache();
-        });
+        clientThread.invokeLater(this::runCollectionLogSyncFromCache);
     }
 
     private void runCollectionLogSyncFromCache()
@@ -2756,7 +2565,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
     }
 
-    private List<XtremeTask> findCollectionLogSyncMismatches(boolean collectionLogCacheAvailable)
+    List<XtremeTask> findCollectionLogSyncMismatches(boolean collectionLogCacheAvailable)
     {
         List<XtremeTask> mismatches = new ArrayList<>();
         Set<String> processedCountedGroups = new HashSet<>();
@@ -2933,7 +2742,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public boolean isCollectionLogSyncPending()
     {
-        return pendingCollectionLogSyncTicks >= 0;
+        return false;
     }
 
     private void setSyncMismatchTasksForSource(TaskSource source, List<XtremeTask> mismatches)
@@ -3265,7 +3074,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        allowCompletionRegressionSave = true;
         Set<String> ids = tasksToMark.stream()
                 .filter(Objects::nonNull)
                 .map(XtremeTask::getId)

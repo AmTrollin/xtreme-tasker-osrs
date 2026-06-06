@@ -8,8 +8,6 @@ import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.google.gson.Gson;
 import org.junit.Test;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,12 +21,11 @@ import static org.junit.Assert.assertTrue;
 public class CollectionLogMismatchTest
 {
     @Test
-    @SuppressWarnings("unchecked")
     public void collectionLogRequirementNotFoundBySyncIsMarkedAsMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
-        setField(plugin, "collectionLogService", collectionLogService);
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
 
         TaskVerification verification = new Gson().fromJson(
                 "{\"method\":\"collection-log\",\"itemIds\":[10878],\"count\":1}",
@@ -49,33 +46,28 @@ public class CollectionLogMismatchTest
                 null
         );
 
-        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        List<XtremeTask> tasks = plugin.tasksForTesting();
         tasks.clear();
         tasks.add(task);
 
-        Set<String> syncedCompletedTaskIds = (Set<String>) getField(plugin, "syncedCompletedTaskIds");
+        Set<String> syncedCompletedTaskIds = plugin.syncedCompletedTaskIdsForTesting();
         syncedCompletedTaskIds.clear();
         syncedCompletedTaskIds.add(task.getId());
 
-        Method findMismatches = XtremeTaskerPlugin.class
-                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
-        findMismatches.setAccessible(true);
-
-        List<XtremeTask> mismatchesWhenNotFound = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        List<XtremeTask> mismatchesWhenNotFound = plugin.findCollectionLogSyncMismatches(true);
         assertEquals("Completed CLOG requirement not found by sync should mismatch", 1, mismatchesWhenNotFound.size());
         assertEquals(task.getId(), mismatchesWhenNotFound.get(0).getId());
 
         collectionLogService.storeItem(10878);
-        List<XtremeTask> mismatchesWhenObtained = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        List<XtremeTask> mismatchesWhenObtained = plugin.findCollectionLogSyncMismatches(true);
         assertTrue("Obtained requirement should no longer mismatch", mismatchesWhenObtained.isEmpty());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void manualOnlyCollectionLogTaskIsNotMarkedAsSyncMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        setField(plugin, "collectionLogService", new CollectionLogService());
+        plugin.setCollectionLogServiceForTesting(new CollectionLogService());
 
         XtremeTask task = new XtremeTask(
                 "collection_log_medium_1-graceful-recolor_001_34396fc6b4",
@@ -91,32 +83,27 @@ public class CollectionLogMismatchTest
                 null
         );
 
-        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        List<XtremeTask> tasks = plugin.tasksForTesting();
         tasks.clear();
         tasks.add(task);
 
-        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(task.getId());
 
-        Method findMismatches = XtremeTaskerPlugin.class
-                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
-        findMismatches.setAccessible(true);
-
-        List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
         assertTrue("Manual-only graceful recolor should stay out of sync mismatch review", mismatches.isEmpty());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void oneCompletedRepeatedForestryUniqueIsNotMarkedAsSyncMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
-        setField(plugin, "collectionLogService", collectionLogService);
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
 
         int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
-        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        List<XtremeTask> tasks = plugin.tasksForTesting();
         tasks.clear();
         for (int i = 1; i <= 6; i++)
         {
@@ -129,31 +116,26 @@ public class CollectionLogMismatchTest
             ));
         }
 
-        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(tasks.get(0).getId());
 
         collectionLogService.storeItem(28138);
 
-        Method findMismatches = XtremeTaskerPlugin.class
-                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
-        findMismatches.setAccessible(true);
-
-        List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
         assertTrue("One completed Forestry task should be satisfied by one obtained Forestry unique",
                 mismatches.isEmpty());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void staleRepeatedForestryMismatchIsPrunedAfterCacheCatchesUp() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
-        setField(plugin, "collectionLogService", collectionLogService);
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
 
         int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
-        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        List<XtremeTask> tasks = plugin.tasksForTesting();
         tasks.clear();
         for (int i = 1; i <= 6; i++)
         {
@@ -166,47 +148,46 @@ public class CollectionLogMismatchTest
             ));
         }
 
-        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(tasks.get(0).getId());
 
-        List<String> syncMismatchTaskIds = (List<String>) getField(plugin, "syncMismatchTaskIds");
+        List<String> syncMismatchTaskIds = plugin.syncMismatchTaskIdsForTesting();
         syncMismatchTaskIds.clear();
         syncMismatchTaskIds.add(tasks.get(0).getId());
-        setField(plugin, "syncMismatchTitle", "Review completed tasks");
+        plugin.setSyncMismatchTitleForTesting("Review completed tasks");
 
         collectionLogService.storeItem(28138);
 
         assertTrue("Stale Forestry review row should disappear once live cache satisfies 1/6",
                 plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).isEmpty());
-        assertEquals("", getField(plugin, "syncMismatchTitle"));
+        assertEquals("", plugin.syncMismatchTitleForTesting());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void cacheCleanupDoesNotRecheckDiaryBackedCollectionLogReviewRows() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
-        setField(plugin, "collectionLogService", collectionLogService);
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
 
         XtremeTask diaryTask = achievementDiaryTask(
                 "collection_log_easy_complete-the-ardougne-easy-diary_001_test",
                 "Complete the Ardougne easy diary"
         );
 
-        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        List<XtremeTask> tasks = plugin.tasksForTesting();
         tasks.clear();
         tasks.add(diaryTask);
 
-        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(diaryTask.getId());
 
-        List<String> syncMismatchTaskIds = (List<String>) getField(plugin, "syncMismatchTaskIds");
+        List<String> syncMismatchTaskIds = plugin.syncMismatchTaskIdsForTesting();
         syncMismatchTaskIds.clear();
         syncMismatchTaskIds.add(diaryTask.getId());
-        setField(plugin, "syncMismatchTitle", "Review completed tasks");
+        plugin.setSyncMismatchTitleForTesting("Review completed tasks");
 
         collectionLogService.storeItem(28138);
 
@@ -217,15 +198,14 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void repeatedCollectionLogMismatchKeepsDisplayedGroupOrder() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
-        setField(plugin, "collectionLogService", collectionLogService);
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
 
         int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
-        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        List<XtremeTask> tasks = plugin.tasksForTesting();
         tasks.clear();
         for (int i = 1; i <= 6; i++)
         {
@@ -238,29 +218,24 @@ public class CollectionLogMismatchTest
             ));
         }
 
-        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(tasks.get(0).getId());
         manualCompletedTaskIds.add(tasks.get(1).getId());
 
-        Map<String, Long> manualCompletionTimestamps = (Map<String, Long>) getField(plugin, "manualCompletionTimestamps");
+        Map<String, Long> manualCompletionTimestamps = plugin.manualCompletionTimestampsForTesting();
         manualCompletionTimestamps.clear();
         manualCompletionTimestamps.put(tasks.get(0).getId(), 200L);
         manualCompletionTimestamps.put(tasks.get(1).getId(), 100L);
 
         collectionLogService.storeItem(28138);
 
-        Method findMismatches = XtremeTaskerPlugin.class
-                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
-        findMismatches.setAccessible(true);
-
-        List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
         assertEquals("Only the second displayed Forestry completion should be reviewable", 1, mismatches.size());
         assertEquals(tasks.get(1).getId(), mismatches.get(0).getId());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void satchelInterfaceItemsCountForSatchelRequirements() throws Exception
     {
         int[][] satchelIds = new int[][]{
@@ -276,7 +251,7 @@ public class CollectionLogMismatchTest
         {
             XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
             CollectionLogService collectionLogService = new CollectionLogService();
-            setField(plugin, "collectionLogService", collectionLogService);
+            plugin.setCollectionLogServiceForTesting(collectionLogService);
 
             int realItemId = ids[0];
             int interfaceItemId = ids[1];
@@ -299,22 +274,18 @@ public class CollectionLogMismatchTest
                     null
             );
 
-            List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+            List<XtremeTask> tasks = plugin.tasksForTesting();
             tasks.clear();
             tasks.add(task);
 
-            Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+            Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
             manualCompletedTaskIds.clear();
             manualCompletedTaskIds.add(task.getId());
 
             collectionLogService.storeSeenItem(interfaceItemId);
             collectionLogService.storeItem(interfaceItemId);
 
-            Method findMismatches = XtremeTaskerPlugin.class
-                    .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
-            findMismatches.setAccessible(true);
-
-            List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+            List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
             assertTrue("Satchel interface item " + interfaceItemId + " should satisfy satchel requirement " + realItemId,
                     mismatches.isEmpty());
         }
@@ -490,12 +461,11 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void repeatedCountedCollectionLogCompletionNotFoundBySyncIsMarkedAsMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
-        setField(plugin, "collectionLogService", collectionLogService);
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
 
         XtremeTask first = countedCollectionLogTask(
                 "collection_log_easy_get-the-next-tier-of-metal-boots_001_test",
@@ -508,20 +478,16 @@ public class CollectionLogMismatchTest
                 2
         );
 
-        List<XtremeTask> tasks = (List<XtremeTask>) getField(plugin, "tasks");
+        List<XtremeTask> tasks = plugin.tasksForTesting();
         tasks.clear();
         tasks.add(first);
         tasks.add(second);
 
-        Set<String> manualCompletedTaskIds = (Set<String>) getField(plugin, "manualCompletedTaskIds");
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(first.getId());
 
-        Method findMismatches = XtremeTaskerPlugin.class
-                .getDeclaredMethod("findCollectionLogSyncMismatches", boolean.class);
-        findMismatches.setAccessible(true);
-
-        List<XtremeTask> mismatches = (List<XtremeTask>) findMismatches.invoke(plugin, true);
+        List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
         assertEquals("Repeated counted CLOG completion not found by sync should be reviewable", 1, mismatches.size());
         assertEquals(first.getId(), mismatches.get(0).getId());
     }
@@ -595,17 +561,4 @@ public class CollectionLogMismatchTest
         );
     }
 
-    private static void setField(Object target, String fieldName, Object value) throws Exception
-    {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
-    }
-
-    private static Object getField(Object target, String fieldName) throws Exception
-    {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        return field.get(target);
-    }
 }
