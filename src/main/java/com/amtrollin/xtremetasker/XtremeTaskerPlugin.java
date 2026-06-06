@@ -16,7 +16,6 @@ import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.amtrollin.xtremetasker.verification.CombatAchievementService;
 import com.amtrollin.xtremetasker.verification.PrerequisiteTrackerService;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.Setter;
@@ -147,8 +146,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private ChatMessageManager chatMessageManager;
     @Inject
     private ItemManager itemManager;
-
-    private final Gson gson = new GsonBuilder().create();
+    @Inject
+    private Gson gson;
     private final Random random = new Random();
 
     private final Set<String> manualCompletedTaskIds = new HashSet<>();
