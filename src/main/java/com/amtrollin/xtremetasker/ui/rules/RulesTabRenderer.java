@@ -435,7 +435,7 @@ public final class RulesTabRenderer {
         lines.add(LINE_SYNC_SECTION_DIVIDER);
         lines.add("Collection Log sync");
         lines.addAll(TextUtils.wrapText(
-                "After earning new Collection Log items, open your Collection Log in game so RuneLite can refresh them before syncing.",
+                "Open your Collection Log in game so RuneLite can refresh them before syncing.",
                 fm,
                 maxWidth
         ));
