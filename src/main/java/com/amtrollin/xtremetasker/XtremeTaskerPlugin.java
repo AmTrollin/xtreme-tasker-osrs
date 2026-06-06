@@ -215,6 +215,46 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private boolean combatAchievementSyncedTasksExpanded = false;
     private boolean collectionLogSyncedTasksExpanded = false;
 
+    List<XtremeTask> tasksForTesting()
+    {
+        return tasks;
+    }
+
+    Set<String> manualCompletedTaskIdsForTesting()
+    {
+        return manualCompletedTaskIds;
+    }
+
+    Set<String> syncedCompletedTaskIdsForTesting()
+    {
+        return syncedCompletedTaskIds;
+    }
+
+    Map<String, Long> manualCompletionTimestampsForTesting()
+    {
+        return manualCompletionTimestamps;
+    }
+
+    List<String> syncMismatchTaskIdsForTesting()
+    {
+        return syncMismatchTaskIds;
+    }
+
+    String syncMismatchTitleForTesting()
+    {
+        return syncMismatchTitle;
+    }
+
+    void setCollectionLogServiceForTesting(CollectionLogService collectionLogService)
+    {
+        this.collectionLogService = collectionLogService;
+    }
+
+    void setSyncMismatchTitleForTesting(String syncMismatchTitle)
+    {
+        this.syncMismatchTitle = syncMismatchTitle;
+    }
+
 
     @Override
     protected void startUp() {
@@ -703,7 +743,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
     }
 
-    private String accountNameKey(String characterName) {
+    String accountNameKey(String characterName) {
         String normalized = safeTrim(characterName);
         if (normalized == null) {
             return null;
@@ -715,7 +755,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .encodeToString(normalized.getBytes(StandardCharsets.UTF_8));
     }
 
-    private String legacyAccountKeyFromScopedKey(String accountKey) {
+    String legacyAccountKeyFromScopedKey(String accountKey) {
         String trimmed = safeTrim(accountKey);
         if (trimmed == null) {
             return null;
@@ -1214,7 +1254,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return previousCompleted >= 3 && !nextHasAnyProgress;
     }
 
-    private boolean isSuspiciousCompletionRegression(PersistedState previous, PersistedState next) {
+    boolean isSuspiciousCompletionRegression(PersistedState previous, PersistedState next) {
         if (previous == null || next == null) {
             return false;
         }
@@ -2756,7 +2796,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
     }
 
-    private List<XtremeTask> findCollectionLogSyncMismatches(boolean collectionLogCacheAvailable)
+    List<XtremeTask> findCollectionLogSyncMismatches(boolean collectionLogCacheAvailable)
     {
         List<XtremeTask> mismatches = new ArrayList<>();
         Set<String> processedCountedGroups = new HashSet<>();

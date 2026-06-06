@@ -3,7 +3,6 @@ package com.amtrollin.xtremetasker;
 import com.amtrollin.xtremetasker.models.persistence.PersistedState;
 import org.junit.Test;
 
-import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -14,7 +13,7 @@ import static org.junit.Assert.assertTrue;
 public class PersistenceRegressionTest
 {
     @Test
-    public void completionDropWithDifferentCurrentTaskIsSuspicious() throws Exception
+    public void completionDropWithDifferentCurrentTaskIsSuspicious()
     {
         PersistedState previous = stateWithManualCompletions(12, "task_12");
         PersistedState next = stateWithManualCompletions(6, "task_6");
@@ -24,7 +23,7 @@ public class PersistenceRegressionTest
     }
 
     @Test
-    public void smallCompletionDropIsNotSuspicious() throws Exception
+    public void smallCompletionDropIsNotSuspicious()
     {
         PersistedState previous = stateWithManualCompletions(12, "task_12");
         PersistedState next = stateWithManualCompletions(10, "task_10");
@@ -34,7 +33,7 @@ public class PersistenceRegressionTest
     }
 
     @Test
-    public void accountNameKeySeparatesCharactersSharingLegacyHash() throws Exception
+    public void accountNameKeySeparatesCharactersSharingLegacyHash()
     {
         String xtremeTaskrKey = accountNameKey("XtremeTaskr");
         String xtremeTaskrDifferentCaseKey = accountNameKey("xtremetaskr");
@@ -62,30 +61,20 @@ public class PersistenceRegressionTest
     }
 
     private static boolean isSuspiciousCompletionRegression(PersistedState previous, PersistedState next)
-            throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        Method method = XtremeTaskerPlugin.class
-                .getDeclaredMethod("isSuspiciousCompletionRegression", PersistedState.class, PersistedState.class);
-        method.setAccessible(true);
-        return (boolean) method.invoke(plugin, previous, next);
+        return plugin.isSuspiciousCompletionRegression(previous, next);
     }
 
-    private static String accountNameKey(String characterName) throws Exception
+    private static String accountNameKey(String characterName)
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        Method method = XtremeTaskerPlugin.class
-                .getDeclaredMethod("accountNameKey", String.class);
-        method.setAccessible(true);
-        return (String) method.invoke(plugin, characterName);
+        return plugin.accountNameKey(characterName);
     }
 
-    private static String legacyAccountKeyFromScopedKey(String accountKey) throws Exception
+    private static String legacyAccountKeyFromScopedKey(String accountKey)
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        Method method = XtremeTaskerPlugin.class
-                .getDeclaredMethod("legacyAccountKeyFromScopedKey", String.class);
-        method.setAccessible(true);
-        return (String) method.invoke(plugin, accountKey);
+        return plugin.legacyAccountKeyFromScopedKey(accountKey);
     }
 }

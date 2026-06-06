@@ -16,13 +16,12 @@ import net.runelite.api.gameval.VarbitID;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.IntUnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -55,15 +54,22 @@ public class PrerequisiteTrackerService
     private final Map<String, Skill> skillsByName = new HashMap<>();
     private final Map<String, Quest> questsByName = new HashMap<>();
     private final Map<String, Integer> varbitsByName = new HashMap<>();
+    private final IntUnaryOperator varbitReader;
 
     @Inject
     private Client client;
 
     public PrerequisiteTrackerService()
     {
+        this(null);
+    }
+
+    PrerequisiteTrackerService(IntUnaryOperator varbitReader)
+    {
         registerSkills();
         registerQuests();
         registerVarbits();
+        this.varbitReader = varbitReader;
     }
 
     public List<PrerequisiteStatus> evaluate(@NonNull String prereqs)
@@ -105,7 +111,7 @@ public class PrerequisiteTrackerService
             return false;
         }
 
-        int value = client.getVarbitValue(varbitId);
+        int value = getVarbitValue(varbitId);
         Integer requiredValue = diaryCompletionThreshold(regionKey, difficultyKey);
         return requiredValue == null ? value > 0 : value >= requiredValue;
     }
@@ -330,8 +336,8 @@ public class PrerequisiteTrackerService
 
     private boolean isBarbarianFiremakingPart1Complete()
     {
-        return client.getVarbitValue(VarbitID.BRUT_FIRE) > 0
-                || Quest.BARBARIAN_TRAINING.getState(client) == QuestState.FINISHED;
+        return getVarbitValue(VarbitID.BRUT_FIRE) > 0
+                || (client != null && Quest.BARBARIAN_TRAINING.getState(client) == QuestState.FINISHED);
     }
 
     private Skill findSkill(String name)
@@ -394,22 +400,75 @@ public class PrerequisiteTrackerService
 
     private void registerVarbits()
     {
-        for (Field field : Varbits.class.getFields())
-        {
-            if (!Modifier.isStatic(field.getModifiers()) || field.getType() != int.class)
-            {
-                continue;
-            }
+        registerDiaryVarbits();
 
-            try
-            {
-                varbitsByName.put(field.getName(), field.getInt(null));
-            }
-            catch (IllegalAccessException ignored)
-            {
-                // Best-effort cache; inaccessible fields are skipped.
-            }
-        }
+        registerVarbit("SLAYER_POINTS", Varbits.SLAYER_POINTS);
+        registerVarbit("NMZ_POINTS", Varbits.NMZ_POINTS);
+        registerVarbit("TITHE_FARM_POINTS", Varbits.TITHE_FARM_POINTS);
+        registerVarbit("BA_GC", Varbits.BA_GC);
+
+        registerVarbit("KOUREND_FAVOR_ARCEUUS", Varbits.KOUREND_FAVOR_ARCEUUS);
+        registerVarbit("KOUREND_FAVOR_HOSIDIUS", Varbits.KOUREND_FAVOR_HOSIDIUS);
+        registerVarbit("KOUREND_FAVOR_LOVAKENGJ", Varbits.KOUREND_FAVOR_LOVAKENGJ);
+        registerVarbit("KOUREND_FAVOR_PISCARILIUS", Varbits.KOUREND_FAVOR_PISCARILIUS);
+        registerVarbit("KOUREND_FAVOR_SHAYZIEN", Varbits.KOUREND_FAVOR_SHAYZIEN);
+    }
+
+    private void registerDiaryVarbits()
+    {
+        registerVarbit("DIARY_ARDOUGNE_EASY", Varbits.DIARY_ARDOUGNE_EASY);
+        registerVarbit("DIARY_ARDOUGNE_MEDIUM", Varbits.DIARY_ARDOUGNE_MEDIUM);
+        registerVarbit("DIARY_ARDOUGNE_HARD", Varbits.DIARY_ARDOUGNE_HARD);
+        registerVarbit("DIARY_ARDOUGNE_ELITE", Varbits.DIARY_ARDOUGNE_ELITE);
+        registerVarbit("DIARY_DESERT_EASY", Varbits.DIARY_DESERT_EASY);
+        registerVarbit("DIARY_DESERT_MEDIUM", Varbits.DIARY_DESERT_MEDIUM);
+        registerVarbit("DIARY_DESERT_HARD", Varbits.DIARY_DESERT_HARD);
+        registerVarbit("DIARY_DESERT_ELITE", Varbits.DIARY_DESERT_ELITE);
+        registerVarbit("DIARY_FALADOR_EASY", Varbits.DIARY_FALADOR_EASY);
+        registerVarbit("DIARY_FALADOR_MEDIUM", Varbits.DIARY_FALADOR_MEDIUM);
+        registerVarbit("DIARY_FALADOR_HARD", Varbits.DIARY_FALADOR_HARD);
+        registerVarbit("DIARY_FALADOR_ELITE", Varbits.DIARY_FALADOR_ELITE);
+        registerVarbit("DIARY_FREMENNIK_EASY", Varbits.DIARY_FREMENNIK_EASY);
+        registerVarbit("DIARY_FREMENNIK_MEDIUM", Varbits.DIARY_FREMENNIK_MEDIUM);
+        registerVarbit("DIARY_FREMENNIK_HARD", Varbits.DIARY_FREMENNIK_HARD);
+        registerVarbit("DIARY_FREMENNIK_ELITE", Varbits.DIARY_FREMENNIK_ELITE);
+        registerVarbit("DIARY_KANDARIN_EASY", Varbits.DIARY_KANDARIN_EASY);
+        registerVarbit("DIARY_KANDARIN_MEDIUM", Varbits.DIARY_KANDARIN_MEDIUM);
+        registerVarbit("DIARY_KANDARIN_HARD", Varbits.DIARY_KANDARIN_HARD);
+        registerVarbit("DIARY_KANDARIN_ELITE", Varbits.DIARY_KANDARIN_ELITE);
+        registerVarbit("DIARY_KARAMJA_EASY", Varbits.DIARY_KARAMJA_EASY);
+        registerVarbit("DIARY_KARAMJA_MEDIUM", Varbits.DIARY_KARAMJA_MEDIUM);
+        registerVarbit("DIARY_KARAMJA_HARD", Varbits.DIARY_KARAMJA_HARD);
+        registerVarbit("DIARY_KARAMJA_ELITE", Varbits.DIARY_KARAMJA_ELITE);
+        registerVarbit("DIARY_KOUREND_EASY", Varbits.DIARY_KOUREND_EASY);
+        registerVarbit("DIARY_KOUREND_MEDIUM", Varbits.DIARY_KOUREND_MEDIUM);
+        registerVarbit("DIARY_KOUREND_HARD", Varbits.DIARY_KOUREND_HARD);
+        registerVarbit("DIARY_KOUREND_ELITE", Varbits.DIARY_KOUREND_ELITE);
+        registerVarbit("DIARY_LUMBRIDGE_EASY", Varbits.DIARY_LUMBRIDGE_EASY);
+        registerVarbit("DIARY_LUMBRIDGE_MEDIUM", Varbits.DIARY_LUMBRIDGE_MEDIUM);
+        registerVarbit("DIARY_LUMBRIDGE_HARD", Varbits.DIARY_LUMBRIDGE_HARD);
+        registerVarbit("DIARY_LUMBRIDGE_ELITE", Varbits.DIARY_LUMBRIDGE_ELITE);
+        registerVarbit("DIARY_MORYTANIA_EASY", Varbits.DIARY_MORYTANIA_EASY);
+        registerVarbit("DIARY_MORYTANIA_MEDIUM", Varbits.DIARY_MORYTANIA_MEDIUM);
+        registerVarbit("DIARY_MORYTANIA_HARD", Varbits.DIARY_MORYTANIA_HARD);
+        registerVarbit("DIARY_MORYTANIA_ELITE", Varbits.DIARY_MORYTANIA_ELITE);
+        registerVarbit("DIARY_VARROCK_EASY", Varbits.DIARY_VARROCK_EASY);
+        registerVarbit("DIARY_VARROCK_MEDIUM", Varbits.DIARY_VARROCK_MEDIUM);
+        registerVarbit("DIARY_VARROCK_HARD", Varbits.DIARY_VARROCK_HARD);
+        registerVarbit("DIARY_VARROCK_ELITE", Varbits.DIARY_VARROCK_ELITE);
+        registerVarbit("DIARY_WESTERN_EASY", Varbits.DIARY_WESTERN_EASY);
+        registerVarbit("DIARY_WESTERN_MEDIUM", Varbits.DIARY_WESTERN_MEDIUM);
+        registerVarbit("DIARY_WESTERN_HARD", Varbits.DIARY_WESTERN_HARD);
+        registerVarbit("DIARY_WESTERN_ELITE", Varbits.DIARY_WESTERN_ELITE);
+        registerVarbit("DIARY_WILDERNESS_EASY", Varbits.DIARY_WILDERNESS_EASY);
+        registerVarbit("DIARY_WILDERNESS_MEDIUM", Varbits.DIARY_WILDERNESS_MEDIUM);
+        registerVarbit("DIARY_WILDERNESS_HARD", Varbits.DIARY_WILDERNESS_HARD);
+        registerVarbit("DIARY_WILDERNESS_ELITE", Varbits.DIARY_WILDERNESS_ELITE);
+    }
+
+    private void registerVarbit(String name, int varbitId)
+    {
+        varbitsByName.put(name, varbitId);
     }
 
     private String toDiaryRegionKey(String diaryRegion)
@@ -481,27 +540,27 @@ public class PrerequisiteTrackerService
         if (label.equals("slayer") || label.contains("slayer"))
         {
             Integer varbit = varbitsByName.get("SLAYER_POINTS");
-            return varbit != null ? client.getVarbitValue(varbit) : null;
+            return varbit != null ? getVarbitValue(varbit) : null;
         }
 
         if (label.contains("nightmarezone") || label.equals("nmz"))
         {
             int nmzRewardPoints = client.getVarpValue(VarPlayer.NMZ_REWARD_POINTS);
             Integer nmzPointsVarbit = varbitsByName.get("NMZ_POINTS");
-            int nmzPoints = nmzPointsVarbit != null ? client.getVarbitValue(nmzPointsVarbit) : 0;
+            int nmzPoints = nmzPointsVarbit != null ? getVarbitValue(nmzPointsVarbit) : 0;
             return Math.max(nmzRewardPoints, nmzPoints);
         }
 
         if (label.contains("tithefarm"))
         {
             Integer varbit = varbitsByName.get("TITHE_FARM_POINTS");
-            return varbit != null ? client.getVarbitValue(varbit) : null;
+            return varbit != null ? getVarbitValue(varbit) : null;
         }
 
         if (label.contains("barbarianassault") || label.contains("honour"))
         {
             Integer varbit = varbitsByName.get("BA_GC");
-            return varbit != null ? client.getVarbitValue(varbit) : null;
+            return varbit != null ? getVarbitValue(varbit) : null;
         }
 
         if (label.contains("chambersofxeric") || label.equals("cox") || label.equals("raids") || label.equals("raid"))
@@ -522,7 +581,7 @@ public class PrerequisiteTrackerService
 
         if (label.contains("tai bwo") || label.contains("wannai"))
         {
-            return client.getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP);
+            return getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP);
         }
 
         if (label.contains("arceuus"))
@@ -563,7 +622,12 @@ public class PrerequisiteTrackerService
     private Integer getVarbitByName(String varbitName)
     {
         Integer varbit = varbitsByName.get(varbitName);
-        return varbit != null ? client.getVarbitValue(varbit) : null;
+        return varbit != null ? getVarbitValue(varbit) : null;
+    }
+
+    private int getVarbitValue(int varbitId)
+    {
+        return varbitReader == null ? client.getVarbitValue(varbitId) : varbitReader.applyAsInt(varbitId);
     }
 
     private static int valueOrZero(Integer value)
