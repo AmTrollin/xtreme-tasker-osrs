@@ -168,7 +168,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean iconPositionLoaded = false;
     private boolean panelPositionLoaded = false;
 
-    private static final int PANEL_W_TASKS = 520;
+    private static final int PANEL_W_TASKS = 740;
     private static final int PANEL_H_TASKS = 590;
 
 

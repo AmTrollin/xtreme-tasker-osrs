@@ -140,9 +140,10 @@ public final class TaskRowsRenderer {
         TaskRowsLayout layout = new TaskRowsLayout();
         layout.rowBounds.clear();
 
-        int viewportX = panelX + panelPadding;
+        int viewportX = panelBounds.x + panelPadding;
         int viewportY = cursorYBaseline - fm.getAscent();
-        int viewportH = (panelBounds.y + panelBounds.height) - viewportY - panelPadding;        int viewportW = panelWidth - 2 * panelPadding;
+        int viewportH = (panelBounds.y + panelBounds.height) - viewportY - panelPadding;
+        int viewportW = Math.max(0, panelBounds.width - 2 * panelPadding);
         if (viewportH < 0) viewportH = 0;
 
         layout.viewportBounds.setBounds(viewportX, viewportY, viewportW, viewportH);

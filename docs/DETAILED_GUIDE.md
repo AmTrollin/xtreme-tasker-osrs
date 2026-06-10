@@ -6,7 +6,7 @@ For the shorter user guide, see the [main README](../README.md).
 
 ## Overview
 
-Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progressive random task list built from Combat Achievements and Collection Log goals.
+Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progressive random task list built from Combat Achievements, Collection Log goals, and Diary Achievements.
 
 The plugin adds an in-game overlay for rolling tasks, tracking completion, viewing tier progress, filtering the full task list, and syncing progress RuneLite can already see.
 
@@ -25,7 +25,7 @@ Both the `Current` and `Tasks` tabs include a `[Keyboard hints]` control at the 
 The Tasks tab includes:
 
 - Search by task text.
-- Source filters for all tasks, Combat Achievements, and Collection Log tasks.
+- Source filters for all tasks, Combat Achievements, Collection Log tasks, and Diary Achievement tasks.
 - Status filters for all, incomplete, and complete tasks.
 - Tier scope filtering for the current tier or all tiers.
 - Sorting by source, tier, completion date, and time spent where applicable.
@@ -58,7 +58,7 @@ When sorting by completion date or time spent, repeated task instances are shown
 
 Tasks come from the bundled `tasks.json` file and are grouped by tier.
 
-Combat Achievement tasks use OSRS Combat Achievement data. Collection Log tasks use Collection Log entries and a few related account checks, such as achievement diary or skill requirements where a task definition needs them.
+Combat Achievement tasks use OSRS Combat Achievement data. Collection Log tasks use Collection Log entries. Diary Achievement tasks use in-game achievement diary completion state. A few Collection Log-style progression tasks also use related account checks, such as level-99 skill requirements, where a task definition needs them.
 
 Grandmaster Combat Achievement tasks are currently grouped into the Master tier for Xtreme Tasker progression.
 
@@ -74,17 +74,19 @@ Task list updates do not affect account progress.
 
 Xtreme Tasker does not play the game for you or complete actions automatically. Sync buttons only mark plugin tasks complete when RuneLite can already see the relevant account state.
 
-Completions marked by you are shown as marked in task details; completions added by `Sync CAs` or `Sync CLOGs` are shown as synced.
+Completions marked by you are shown as marked in task details; completions added by `Sync CAs` or `Sync CLOGs+DAs` are shown as synced.
 
 ### Combat Achievements
 
 `Sync CAs` checks completed Combat Achievements and marks matching Xtreme Tasker tasks complete.
 
-### Collection Log
+### Collection Logs and Diary Achievements
 
-`Sync CLOGs` checks Collection Log items that RuneLite has cached. After earning new Collection Log items, open your Collection Log in-game so RuneLite can refresh them before syncing.
+`Sync CLOGs+DAs` checks Collection Log items that RuneLite has cached and Diary Achievements RuneLite can already see. After earning new Collection Log items, open your Collection Log in-game so RuneLite can refresh them before syncing. Diary Achievements do not need the Collection Log cache.
 
-Some Collection Log tasks also use verification data such as achievement diary completion or level-99 skill counts.
+Diary Achievement tasks show their diary region and tier in task details and sync from in-game diary completion state.
+
+Some Collection Log tasks also use verification data such as level-99 skill counts.
 
 Repeated counted Collection Log tasks show total obtained progress in task details. When the displayed task is also your current task and needs more than one item, the same line includes current task progress, such as `total obtained: 14 | current task: 2/5`.
 
@@ -98,11 +100,7 @@ Use `Review` to open the mismatch list. From there you can select individual tas
 
 Use `Ignore` when you do not want to change anything. Ignoring only clears the current note; if a future sync still finds mismatches, the note will appear again.
 
-For Collection Log reviews, the mismatch check depends on RuneLite's cached Collection Log data. Cached items carry across sessions, but newly earned log items may not appear until you open the Collection Log in game and sync again.
-
-### Achievement Diaries
-
-Some Collection Log style tasks are verified through achievement diary state.
+For Collection Log reviews, item mismatch checks depend on RuneLite's cached Collection Log data. Cached items carry across sessions, but newly earned log items may not appear until you open the Collection Log in game and sync again. Diary Achievement reviews use diary completion state.
 
 ## Progress Saves and Backups
 
@@ -167,7 +165,7 @@ Useful JSON fields for recovery:
 Plugin config includes:
 
 - `Show task HUD`: show or hide the small current-task HUD.
-- `Roll source`: roll all tasks, only Combat Achievement tasks, or only Collection Log tasks.
+- `Roll source`: roll all tasks, only Combat Achievement tasks, or only Collection Log and Diary Achievement tasks.
 - `Condense repeated tasks`: show repeated task rolls as one grouped row with per-instance completion controls.
 
 ## Rules

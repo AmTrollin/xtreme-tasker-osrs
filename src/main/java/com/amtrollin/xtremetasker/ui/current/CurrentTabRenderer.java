@@ -168,7 +168,6 @@ public final class CurrentTabRenderer
         // ── Task name row ──────────────────────────────────────────────────────
         Font savedNameFont = g.getFont();
         if (current != null) g.setFont(FontManager.getRunescapeBoldFont());
-        FontMetrics nameFm = g.getFontMetrics();
 
         // "Current task:" label uses the smaller regular font
         Font prefixFont = FontManager.getRunescapeFont();
@@ -182,39 +181,48 @@ public final class CurrentTabRenderer
         Font timerFont = FontManager.getRunescapeFont().deriveFont(Font.PLAIN, 14f);
         FontMetrics timerFm = g.getFontMetrics(timerFont);
         boolean showTimer = current != null && taskTimeTicks != null && taskTimeTicks > 0;
-        final int timerGap = 6;
+        final int timerGap = 5;
 
-        // Wiki button dimensions (computed early so name can use full width)
+        // Wiki button dimensions; rendered contextually inside the details body.
         String wikiUrl = current != null ? current.getWikiUrl() : null;
         boolean hasWiki = wikiUrl != null && !wikiUrl.trim().isEmpty();
         int wikiW = hasWiki ? fm.stringWidth(wikiButtonText) + 16 : 0;
 
         int maxNameW = panelWidth - 2 * panelPadding;
 
-        // Icon after task name (smaller)
-        final int taskIconSize = 40;
-        final int taskIconGap = 6;
+        // Current task hero stack
+        final int taskIconSize = 48;
         boolean hasIcon = taskIcon != null && current != null;
-        int iconReserve = hasIcon ? taskIconSize + taskIconGap : 0;
+        final int buttonHeight = rowHeight + 10;
+        final int innerW = panelWidth - 2 * panelPadding;
+        final int buttonWidth = innerW / 2;
+        final int buttonGap = 24;
 
         // Classic layout: fixed vertical block between dividers
-        final int vertPad = 10;
-        final int lineGap = 4;
-        final int nameLineH = hasIcon ? taskIconSize : nameLargeFm.getHeight();
-        final int blockH = prefixFm.getHeight() + lineGap + nameLineH
-                + (showTimer ? timerGap + timerFm.getHeight() : 0);
+        final int vertPad = 8;
+        final int labelGap = 4;
+        final int titleGap = 4;
+        final int blockH = prefixFm.getHeight()
+                + labelGap
+                + (hasIcon ? taskIconSize + titleGap : 0)
+                + nameLargeFm.getHeight()
+                + (showTimer ? timerGap + timerFm.getHeight() : 0)
+                + buttonGap
+                + buttonHeight;
         final int blockTopY  = topDivY + vertPad;
         final int line1Base  = blockTopY + prefixFm.getAscent();
-        final int line2TopY  = blockTopY + prefixFm.getHeight() + lineGap;
-        final int line2Base  = line2TopY + (nameLineH + nameLargeFm.getAscent() - nameLargeFm.getDescent()) / 2;
-        final int timerTopY  = line2TopY + nameLineH + timerGap;
+        final int iconTopY = blockTopY + prefixFm.getHeight() + labelGap;
+        final int titleTopY = hasIcon ? iconTopY + taskIconSize + titleGap : iconTopY;
+        final int titleBaseY = titleTopY + nameLargeFm.getAscent();
+        final int timerTopY  = titleTopY + nameLargeFm.getHeight() + timerGap;
         final int timerBase  = timerTopY + timerFm.getAscent();
+        final int actionTopY = (showTimer ? timerTopY + timerFm.getHeight() : titleTopY + nameLargeFm.getHeight()) + buttonGap;
 
         // Fill region between the two dividers with dark brown
         if (current != null)
         {
-            int fillBotY = blockTopY + blockH + vertPad + prefixFm.getHeight() + lineGap - fm.getAscent();
-            g.setColor(new Color(30, 20, 12, 210));
+            int fillBotY = blockTopY + blockH + vertPad;
+            g.setColor(new Color(26, 17, 10, 225));
             g.fillRect(panelX + panelPadding, topDivY + 1, panelWidth - 2 * panelPadding, fillBotY - topDivY - 1);
         }
 
@@ -227,24 +235,24 @@ public final class CurrentTabRenderer
             int labelX = panelX + panelPadding + 6;
             g.drawString("Current task:", labelX, line1Base);
 
-            // Line 2: icon + name, larger bold font, centered
-            g.setFont(nameLargeFont);
-            String name = currentLineProvider != null ? currentLineProvider.apply(current) : "";
-            name = truncateToWidth(name, nameLargeFm, maxNameW - iconReserve);
-            int nameW = nameLargeFm.stringWidth(name);
-            int blockW = iconReserve + nameW;
-            int blockStartX = panelX + panelPadding + Math.max(0, (maxNameW - blockW) / 2);
-
+            // Icon and task name, centered as a calmer stack.
             if (hasIcon)
             {
-                g.drawImage(taskIcon, blockStartX, line2TopY, taskIconSize, taskIconSize, null);
+                int iconX = panelX + panelPadding + Math.max(0, (maxNameW - taskIconSize) / 2);
+                g.drawImage(taskIcon, iconX, iconTopY, taskIconSize, taskIconSize, null);
             }
 
-            int nameX = blockStartX + iconReserve;
+            g.setFont(nameLargeFont);
+            String name = currentLineProvider != null ? currentLineProvider.apply(current) : "";
+            name = truncateToWidth(name, nameLargeFm, maxNameW);
+            int nameW = nameLargeFm.stringWidth(name);
+            int nameX = panelX + panelPadding + Math.max(0, (maxNameW - nameW) / 2);
             g.setColor(uiGold);
-            g.drawString(name, nameX, line2Base);
+            g.drawString(name, nameX, titleBaseY);
 
-            // Timer line: centered below name+icon, inside brown block
+            g.setFont(savedNameFont);
+
+            // Timer line: centered below the title, inside brown block
             if (showTimer)
             {
                 long seconds = Math.round(taskTimeTicks * 0.6);
@@ -255,6 +263,16 @@ public final class CurrentTabRenderer
                 g.setColor(uiTextDim);
                 g.drawString(timerText, timerX, timerBase);
             }
+
+            int btnX = panelX + panelPadding + (innerW - buttonWidth) / 2;
+            if (!currentCompleted)
+            {
+                layout.completeButtonBounds.setBounds(btnX, actionTopY, buttonWidth, buttonHeight);
+            }
+            else
+            {
+                layout.rollButtonBounds.setBounds(btnX, actionTopY, buttonWidth, buttonHeight);
+            }
         }
         else
         {
@@ -263,66 +281,25 @@ public final class CurrentTabRenderer
 
         if (current != null) g.setFont(savedNameFont);
 
-        // Place bottom divider just after the content block, with padding.
-        // Adding prefixFm.getHeight()+lineGap to the bottom pad mathematically
-        // centers the name/icon row (not the label) between the two dividers.
+        // Place bottom divider just after the task hero.
         if (current != null)
         {
-            cursorYBaseline = blockTopY + blockH + vertPad + prefixFm.getHeight() + lineGap;
+            cursorYBaseline = blockTopY + blockH + vertPad;
         }
         else
         {
             cursorYBaseline = line1Base + prefixFm.getHeight() + prefixFm.getDescent() + 42;
         }
 
-        // ── Divider + badges row (outside scroll) ──────────────────────────────
+        // ── Divider below current task hero ────────────────────────────────────
         if (current != null)
         {
             int divX = panelX + panelPadding;
             int divW = panelWidth - 2 * panelPadding;
-            int divY = cursorYBaseline - fm.getAscent();
+            int divY = cursorYBaseline;
             g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
             g.drawLine(divX, divY, divX + divW, divY);
-            cursorYBaseline += 10;
-
-            // Badges left-aligned; wiki button right-aligned on the same baseline
-            int badgeRowY = cursorYBaseline - fm.getAscent();
-            drawBadgesLeftAligned(g, fm, panelX, badgeRowY, currentSource, current.getTier(), mousePoint);
-
-            if (hasWiki)
-            {
-                int btnH = rowHeight + 6;
-                int wikiX = panelX + panelWidth - panelPadding - wikiW;
-                int wikiY = badgeRowY + (20 - btnH) / 2;
-                layout.wikiButtonBounds.setBounds(wikiX, wikiY, wikiW, btnH);
-
-                drawBevelBox(g, layout.wikiButtonBounds, new Color(30, 25, 18, 220));
-
-                int textW = fm.stringWidth(wikiButtonText);
-                g.setColor(uiText);
-                g.drawString(wikiButtonText,
-                        layout.wikiButtonBounds.x + (layout.wikiButtonBounds.width - textW) / 2,
-                        centeredTextBaseline(layout.wikiButtonBounds, fm));
-            }
-
-            cursorYBaseline += 20 + 12;
-
-            int buttonHeight = rowHeight + 10;
-            int innerW = panelWidth - 2 * panelPadding;
-            int buttonWidth = innerW / 2;
-            int btnX = panelX + panelPadding + (innerW - buttonWidth) / 2;
-            int btnY = cursorYBaseline - fm.getAscent();
-
-            if (!currentCompleted)
-            {
-                layout.completeButtonBounds.setBounds(btnX, btnY, buttonWidth, buttonHeight);
-            }
-            else
-            {
-                layout.rollButtonBounds.setBounds(btnX, btnY, buttonWidth, buttonHeight);
-            }
-
-            cursorYBaseline += buttonHeight + 16;
+            cursorYBaseline = divY + 14 + fm.getAscent();
         }
 
         // ── Scrollable details body (description + prereqs) ────────────────────
@@ -340,12 +317,17 @@ public final class CurrentTabRenderer
             boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
             boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
             String desc = showAchievementDiaryNote
-                    ? achievementDiaryDescription(current)
+                    ? diaryTaskDescription(current)
                     : (hideDescription ? null : current.getDescription());
             boolean hasDesc = desc != null && !desc.trim().isEmpty();
+            boolean hasBadges = currentSource != null || current.getTier() != null;
             String tip = showTips ? current.getTip() : null;
             boolean hasTip = tip != null && !tip.trim().isEmpty();
             if (hasTip) tip = tip.trim();
+            if (hasBadges)
+            {
+                totalPx += rowHeight + 8;
+            }
             if (hasDesc)
             {
                 totalPx += rowHeight; // "Description" header
@@ -426,6 +408,25 @@ public final class CurrentTabRenderer
             // Draw content shifted by scroll
             int y = cursorYBaseline - clampedScroll;
 
+            if (hasBadges)
+            {
+                drawBadgesLeftAligned(g, fm, panelX + DETAILS_INSET_X, y - fm.getAscent(), currentSource, current.getTier(), mousePoint);
+                if (hasWiki)
+                {
+                    int wikiX = panelX + panelWidth - panelPadding - 14 - wikiW;
+                    int wikiY = y - fm.getAscent() + (rowHeight + 4 - buttonHeight) / 2;
+                    layout.wikiButtonBounds.setBounds(wikiX, wikiY, wikiW, buttonHeight);
+                    drawBevelBox(g, layout.wikiButtonBounds, new Color(30, 25, 18, 220));
+
+                    int textW = fm.stringWidth(wikiButtonText);
+                    g.setColor(uiText);
+                    g.drawString(wikiButtonText,
+                            layout.wikiButtonBounds.x + (layout.wikiButtonBounds.width - textW) / 2,
+                            centeredTextBaseline(layout.wikiButtonBounds, fm));
+                }
+                y += rowHeight + 8;
+            }
+
             if (hasDesc)
             {
                 g.setColor(uiGold);
@@ -498,10 +499,10 @@ public final class CurrentTabRenderer
         else
         {
             // No active task — recent completion, roll button, then filter notice below it
-            int buttonHeight = rowHeight + 10;
-            int innerW = panelWidth - 2 * panelPadding;
-            int buttonWidth = innerW / 2;
-            int btnX = panelX + panelPadding + (innerW - buttonWidth) / 2;
+            int emptyButtonHeight = rowHeight + 10;
+            int emptyInnerW = panelWidth - 2 * panelPadding;
+            int emptyButtonWidth = emptyInnerW / 2;
+            int btnX = panelX + panelPadding + (emptyInnerW - emptyButtonWidth) / 2;
             int btnY = cursorYBaseline - fm.getAscent() + 18;
 
             if (recentCompletedTask != null && recentCompletionInfo != null)
@@ -511,20 +512,20 @@ public final class CurrentTabRenderer
                         fm,
                         panelX,
                         cursorYBaseline - fm.getAscent() + 8,
-                        innerW,
+                        emptyInnerW,
                         recentCompletedTask,
                         recentCompletionInfo,
                         recentTaskTimeTicks
                 ) + 14;
             }
 
-            layout.rollButtonBounds.setBounds(btnX, btnY, buttonWidth, buttonHeight);
+            layout.rollButtonBounds.setBounds(btnX, btnY, emptyButtonWidth, emptyButtonHeight);
 
             // Roll-source filter notice below the button
             Font savedFont = g.getFont();
             g.setFont(FontManager.getRunescapeSmallFont());
             FontMetrics sfm = g.getFontMetrics();
-            int noticeBaselineY = btnY + buttonHeight + rowHeight;
+            int noticeBaselineY = btnY + emptyButtonHeight + rowHeight;
 
             if (rollSkipNotice != null && !rollSkipNotice.isEmpty())
             {
@@ -884,22 +885,25 @@ public final class CurrentTabRenderer
             return;
         }
 
-        final int scrollBarW = 4;
-        int railX = viewport.x + viewport.width - panelPadding - 2;
-        int railY = viewport.y + 4;
-        int railH = Math.max(1, viewport.height - 8);
+        final int scrollBarW = 5;
+        int railX = viewport.x + viewport.width - panelPadding - scrollBarW;
+        int railY = viewport.y;
+        int railH = Math.max(1, viewport.height);
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 45));
-        g.fillRoundRect(railX, railY, scrollBarW, railH, 4, 4);
+        g.setColor(new Color(0, 0, 0, 60));
+        g.fillRect(railX, railY, scrollBarW, railH);
 
         float thumbRatio = (float) viewportH / (float) totalPx;
-        int thumbH = Math.max(14, (int) (railH * thumbRatio));
+        int thumbH = Math.max(12, (int) (railH * thumbRatio));
         int maxScrollPx = Math.max(1, totalPx - viewportH);
         float scrollRatio = Math.max(0f, Math.min(1f, (float) scrollPx / (float) maxScrollPx));
         int thumbY = railY + (int) ((railH - thumbH) * scrollRatio);
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 175));
-        g.fillRoundRect(railX, thumbY, scrollBarW, thumbH, 4, 4);
+        Rectangle thumb = new Rectangle(railX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+        drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));
+        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
     private void drawCurrentViewportFrame(Graphics2D g, Rectangle viewport)
@@ -1031,6 +1035,17 @@ public final class CurrentTabRenderer
 
         String detail = region == null ? difficulty : difficulty == null ? region : region + " - " + difficulty;
         return "Diary Achievement: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
+    }
+
+    private static String diaryTaskDescription(XtremeTask task)
+    {
+        String description = task == null ? null : task.getDescription();
+        if (description != null && !description.trim().isEmpty())
+        {
+            return description.trim();
+        }
+
+        return achievementDiaryDescription(task);
     }
 
     private static String titleCase(String value)

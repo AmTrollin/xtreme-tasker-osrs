@@ -3982,6 +3982,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Ardougne Diary easy tasks. Tasks revolve around areas in and near Ardougne, such as Yanille and Port Khazard. \n\nTaskmaster: Two-Pints, who can be found at Flying Horse Inn in East Ardougne.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4000,6 +4001,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Desert Diary easy tasks. Tasks revolve around areas within the Kharidian Desert, such as Pollnivneach, Nardah, and Sophanem.\n\nTaskmaster: Jarr is located at Shantay Pass, just south of Al Kharid.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4018,6 +4020,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Falador Diary easy tasks. Tasks revolve around areas in and near Falador, such as Burthorpe, Rimmington, and Taverley.\n\nTaskmaster: Sir Rebral is located in the courtyard of the White Knights' Castle in Falador.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4036,6 +4039,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Fremennik Diary easy tasks. Tasks revolve around areas within the Fremennik Province, such as Neitiznot and Jatizso, Miscellania and Etceteria, the God Wars Dungeon, Lunar Isle, and Waterbirth Island.\n\nTaskmaster: Thorodin is located just south of Rellekka.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4054,6 +4058,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kandarin Diary easy tasks. Tasks revolve around areas in and near the northern part of Kandarin, such as Seers' Village, Catherby, and the Barbarian Outpost.\n\nTaskmaster: The 'Wedge' is located by the gates of Camelot.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4072,6 +4077,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Karamja Diary easy tasks. Tasks revolve around areas within Karamja, which include the Kharazi Jungle and Mor Ul Rek.\n\nTaskmaster: Pirate Jackie the Fruit can be found at the Brimhaven Agility Arena entrance.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4090,6 +4096,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kourend & Kebos Diary easy tasks. Tasks revolve around areas in Great Kourend as well as the Kebos Lowlands.\n\nTaskmaster: The taskmaster is located south-east in the courtyard for Kourend Castle in the centre of Great Kourend.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4108,6 +4115,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Lumbridge & Draynor Diary easy tasks. Tasks revolve around areas in and around Lumbridge, such as Draynor Village, Al Kharid, Dorgesh-Kaan, and Zanaris.\n\nTaskmaster: Hatius Cosaintus is located just outside of Lumbridge Castle.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4126,6 +4134,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Morytania Diary easy tasks. Tasks revolve around areas within and around Morytania, such as Paterdomus, Harmony Island, and Mos Le'Harmless.\n\nTaskmaster: Le-sabre is located just west of Canifis.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4144,6 +4153,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Varrock Diary easy tasks. Tasks revolve around areas in and near Varrock, such as the Barbarian Village and Edgeville.\n\nTaskmaster: Toby is located just south-east of the centre of Varrock.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4162,6 +4172,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Western Provinces Diary easy tasks. Tasks revolve around areas in the western provinces of Gielinor, such as the Tree Gnome Stronghold, Feldip Hills, Tirannwn, and Ape Atoll.\n\nTaskmaster: Elder gnome child is located just south of the Grand Tree.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -4180,6 +4191,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Wilderness Diary easy tasks. Tasks are exclusively done within the Wilderness. Therefore, players should be prepared for attacks from player killers.\n\nTaskmaster: The Lesser Fanatic (named Jeffery) is located in Edgeville, by the bridge.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10363,6 +10375,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Ardougne Diary medium tasks. Tasks revolve around areas in and near Ardougne, such as Yanille and Port Khazard. \n\nTaskmaster: Two-Pints, who can be found at Flying Horse Inn in East Ardougne.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10381,6 +10394,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Desert Diary medium tasks. Tasks revolve around areas within the Kharidian Desert, such as Pollnivneach, Nardah, and Sophanem.\n\nTaskmaster: Jarr is located at Shantay Pass, just south of Al Kharid.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10399,6 +10413,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Falador Diary medium tasks. Tasks revolve around areas in and near Falador, such as Burthorpe, Rimmington, and Taverley.\n\nTaskmaster: Sir Rebral is located in the courtyard of the White Knights' Castle in Falador.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10417,6 +10432,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Fremennik Diary medium tasks. Tasks revolve around areas within the Fremennik Province, such as Neitiznot and Jatizso, Miscellania and Etceteria, the God Wars Dungeon, Lunar Isle, and Waterbirth Island.\n\nTaskmaster: Thorodin is located just south of Rellekka.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10435,6 +10451,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kandarin Diary medium tasks. Tasks revolve around areas in and near the northern part of Kandarin, such as Seers' Village, Catherby, and the Barbarian Outpost.\n\nTaskmaster: The 'Wedge' is located by the gates of Camelot.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10453,6 +10470,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Karamja Diary medium tasks. Tasks revolve around areas within Karamja, which include the Kharazi Jungle and Mor Ul Rek.\n\nTaskmaster: Pirate Jackie the Fruit can be found at the Brimhaven Agility Arena entrance.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10471,6 +10489,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kourend & Kebos Diary medium tasks. Tasks revolve around areas in Great Kourend as well as the Kebos Lowlands.\n\nTaskmaster: The taskmaster is located south-east in the courtyard for Kourend Castle in the centre of Great Kourend.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10489,6 +10508,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Lumbridge & Draynor Diary medium tasks. Tasks revolve around areas in and around Lumbridge, such as Draynor Village, Al Kharid, Dorgesh-Kaan, and Zanaris.\n\nTaskmaster: Hatius Cosaintus is located just outside of Lumbridge Castle.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10507,6 +10527,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Morytania Diary medium tasks. Tasks revolve around areas within and around Morytania, such as Paterdomus, Harmony Island, and Mos Le'Harmless.\n\nTaskmaster: Le-sabre is located just west of Canifis.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10525,6 +10546,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Varrock Diary medium tasks. Tasks revolve around areas in and near Varrock, such as the Barbarian Village and Edgeville.\n\nTaskmaster: Toby is located just south-east of the centre of Varrock.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10543,6 +10565,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Western Provinces Diary medium tasks. Tasks revolve around areas in the western provinces of Gielinor, such as the Tree Gnome Stronghold, Feldip Hills, Tirannwn, and Ape Atoll.\n\nTaskmaster: Elder gnome child is located just south of the Grand Tree.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -10561,6 +10584,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Wilderness Diary medium tasks. Tasks are exclusively done within the Wilderness. Therefore, players should be prepared for attacks from player killers.\n\nTaskmaster: The Lesser Fanatic (named Jeffery) is located in Edgeville, by the bridge.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -18938,6 +18962,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Ardougne Diary hard tasks. Tasks revolve around areas in and near Ardougne, such as Yanille and Port Khazard. \n\nTaskmaster: Two-Pints, who can be found at Flying Horse Inn in East Ardougne.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -18956,6 +18981,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Desert Diary hard tasks. Tasks revolve around areas within the Kharidian Desert, such as Pollnivneach, Nardah, and Sophanem.\n\nTaskmaster: Jarr is located at Shantay Pass, just south of Al Kharid.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -18974,6 +19000,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Falador Diary hard tasks. Tasks revolve around areas in and near Falador, such as Burthorpe, Rimmington, and Taverley.\n\nTaskmaster: Sir Rebral is located in the courtyard of the White Knights' Castle in Falador.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -18992,6 +19019,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Fremennik Diary hard tasks. Tasks revolve around areas within the Fremennik Province, such as Neitiznot and Jatizso, Miscellania and Etceteria, the God Wars Dungeon, Lunar Isle, and Waterbirth Island.\n\nTaskmaster: Thorodin is located just south of Rellekka.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19010,6 +19038,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kandarin Diary hard tasks. Tasks revolve around areas in and near the northern part of Kandarin, such as Seers' Village, Catherby, and the Barbarian Outpost.\n\nTaskmaster: The 'Wedge' is located by the gates of Camelot.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19028,6 +19057,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Karamja Diary hard tasks. Tasks revolve around areas within Karamja, which include the Kharazi Jungle and Mor Ul Rek.\n\nTaskmaster: Pirate Jackie the Fruit can be found at the Brimhaven Agility Arena entrance.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19046,6 +19076,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kourend & Kebos Diary hard tasks. Tasks revolve around areas in Great Kourend as well as the Kebos Lowlands.\n\nTaskmaster: The taskmaster is located south-east in the courtyard for Kourend Castle in the centre of Great Kourend.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19064,6 +19095,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Lumbridge & Draynor Diary hard tasks. Tasks revolve around areas in and around Lumbridge, such as Draynor Village, Al Kharid, Dorgesh-Kaan, and Zanaris.\n\nTaskmaster: Hatius Cosaintus is located just outside of Lumbridge Castle.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19082,6 +19114,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Morytania Diary hard tasks. Tasks revolve around areas within and around Morytania, such as Paterdomus, Harmony Island, and Mos Le'Harmless.\n\nTaskmaster: Le-sabre is located just west of Canifis.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19100,6 +19133,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Varrock Diary hard tasks. Tasks revolve around areas in and near Varrock, such as the Barbarian Village and Edgeville.\n\nTaskmaster: Toby is located just south-east of the centre of Varrock.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19118,6 +19152,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Western Provinces Diary hard tasks. Tasks revolve around areas in the western provinces of Gielinor, such as the Tree Gnome Stronghold, Feldip Hills, Tirannwn, and Ape Atoll.\n\nTaskmaster: Elder gnome child is located just south of the Grand Tree.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -19136,6 +19171,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Wilderness Diary hard tasks. Tasks are exclusively done within the Wilderness. Therefore, players should be prepared for attacks from player killers.\n\nTaskmaster: The Lesser Fanatic (named Jeffery) is located in Edgeville, by the bridge.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29667,6 +29703,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Ardougne Diary elite tasks. Tasks revolve around areas in and near Ardougne, such as Yanille and Port Khazard. \n\nTaskmaster: Two-Pints, who can be found at Flying Horse Inn in East Ardougne.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29685,6 +29722,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Desert Diary elite tasks. Tasks revolve around areas within the Kharidian Desert, such as Pollnivneach, Nardah, and Sophanem.\n\nTaskmaster: Jarr is located at Shantay Pass, just south of Al Kharid.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29703,6 +29741,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Falador Diary elite tasks. Tasks revolve around areas in and near Falador, such as Burthorpe, Rimmington, and Taverley.\n\nTaskmaster: Sir Rebral is located in the courtyard of the White Knights' Castle in Falador.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29721,6 +29760,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Fremennik Diary elite tasks. Tasks revolve around areas within the Fremennik Province, such as Neitiznot and Jatizso, Miscellania and Etceteria, the God Wars Dungeon, Lunar Isle, and Waterbirth Island.\n\nTaskmaster: Thorodin is located just south of Rellekka.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29739,6 +29779,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kandarin Diary elite tasks. Tasks revolve around areas in and near the northern part of Kandarin, such as Seers' Village, Catherby, and the Barbarian Outpost.\n\nTaskmaster: The 'Wedge' is located by the gates of Camelot.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29757,6 +29798,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Karamja Diary elite tasks. Tasks revolve around areas within Karamja, which include the Kharazi Jungle and Mor Ul Rek.\n\nTaskmaster: Pirate Jackie the Fruit can be found at the Brimhaven Agility Arena entrance.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29775,6 +29817,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Kourend & Kebos Diary elite tasks. Tasks revolve around areas in Great Kourend as well as the Kebos Lowlands.\n\nTaskmaster: The taskmaster is located south-east in the courtyard for Kourend Castle in the centre of Great Kourend.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29793,6 +29836,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Lumbridge & Draynor Diary elite tasks. Tasks revolve around areas in and around Lumbridge, such as Draynor Village, Al Kharid, Dorgesh-Kaan, and Zanaris.\n\nTaskmaster: Hatius Cosaintus is located just outside of Lumbridge Castle.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29811,6 +29855,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Morytania Diary elite tasks. Tasks revolve around areas within and around Morytania, such as Paterdomus, Harmony Island, and Mos Le'Harmless.\n\nTaskmaster: Le-sabre is located just west of Canifis.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29829,6 +29874,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Varrock Diary elite tasks. Tasks revolve around areas in and near Varrock, such as the Barbarian Village and Edgeville.\n\nTaskmaster: Toby is located just south-east of the centre of Varrock.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29847,6 +29893,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Western Provinces Diary elite tasks. Tasks revolve around areas in the western provinces of Gielinor, such as the Tree Gnome Stronghold, Feldip Hills, Tirannwn, and Ape Atoll.\n\nTaskmaster: Elder gnome child is located just south of the Grand Tree.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -29865,6 +29912,7 @@
       },
       "displayItemId": 19476,
       "tip": "None",
+      "description": "Complete all Wilderness Diary elite tasks. Tasks are exclusively done within the Wilderness. Therefore, players should be prepared for attacks from player killers.\n\nTaskmaster: The Lesser Fanatic (named Jeffery) is located in Edgeville, by the bridge.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Achievement_Diaries.png/320px-Achievement_Diaries.png",
       "version": 1
     },
@@ -44834,13 +44882,13 @@
     },
     {
       "id": "collection_log_medium_get-a-boss-pet_91c8bea3e1",
-      "name": "Get a Boss Pet",
+      "name": "Get a new Boss pet",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "version": 1,
       "prereqs": "None",
       "wikiTitle": "Pet List",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Pet_list",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Pet#Boss_pets",
       "displayItemId": 20851,
       "verification": {
         "method": "collection-log",

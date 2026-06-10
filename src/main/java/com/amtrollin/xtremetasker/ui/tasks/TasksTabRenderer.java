@@ -21,6 +21,8 @@ import java.util.function.Function;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 
 public final class TasksTabRenderer {
+    private static final int TASKS_CONTROLS_COLUMN_W = 298;
+
     private final UiPalette palette;
 
     public TasksTabRenderer(UiPalette palette) {
@@ -83,37 +85,44 @@ public final class TasksTabRenderer {
 
         cursorYBaseline += tierTabH + 12;
 
-        // -----------------------------
-        // Controls (search/filter/sort)
-        // -----------------------------
-        cursorYBaseline = controlsRenderer.render(
+            final int contentTopBaseline = cursorYBaseline;
+            final int columnsGap = 10;
+            final int controlsColumnW = Math.min(TASKS_CONTROLS_COLUMN_W, Math.max(250, innerW - columnsGap - 220));
+            final int listColumnW = Math.max(220, innerW - controlsColumnW - columnsGap);
+            final int controlsColumnX = panelX + PANEL_PADDING;
+            final int listColumnX = controlsColumnX + controlsColumnW + columnsGap;
+
+            controlsRenderer.render(
                 g,
                 fm,
-                panelX,
-                cursorYBaseline,
+                controlsColumnX,
+                contentTopBaseline,
                 state.controlsLayout(),
                 state.taskQuery(),
                 TaskLabelFormatter.tierLabel(activeTier),
-                panelBounds.width,
+                controlsColumnW,
                 hoverX,
                 hoverY,
                 plugin.hasNewTasks()
-        );
+            );
+
+            int dividerTop = contentTopBaseline - fm.getAscent();
+            int dividerBottom = panelBounds.y + panelBounds.height - PANEL_PADDING - fm.getHeight() - 8;
+            if (dividerBottom > dividerTop + 10) {
+                int dividerX = listColumnX - (columnsGap / 2);
+                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 45));
+                g.drawLine(dividerX, dividerTop, dividerX, dividerBottom);
+            }
+
+            int listCursorBaseline = contentTopBaseline;
 
         // -----------------------------
-        // Progress line (with spacing + divider)
+        // Progress line
         // -----------------------------
-        final int dividerPadTop = 5;
-        final int dividerPadBottom = 12;
+        final int progressPadTop = 8;
         final int progressPadBottom = 8;
 
-        cursorYBaseline += dividerPadTop;
-
-        g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 55));
-        int lineY = cursorYBaseline - fm.getAscent();
-        g.drawLine(panelX + PANEL_PADDING, lineY, panelX + panelBounds.width - PANEL_PADDING, lineY);
-
-        cursorYBaseline += dividerPadBottom;
+            listCursorBaseline += progressPadTop;
 
         Font oldFont = g.getFont();
         g.setFont(FontManager.getRunescapeSmallFont());
@@ -124,13 +133,13 @@ public final class TasksTabRenderer {
         String barLabel = TaskLabelFormatter.tierLabel(activeTier) + ": " + progressLabel;
 
         int barH = Math.max(20, pfm.getHeight() + 8);
-        int barY = cursorYBaseline - pfm.getAscent();
-        drawRsProgressBar(g, pfm, panelX + PANEL_PADDING, barY, innerW, barH, pctVal, barLabel);
+        int barY = listCursorBaseline - pfm.getAscent();
+        drawRsProgressBar(g, pfm, listColumnX, barY, listColumnW, barH, pctVal, barLabel);
 
         g.setFont(oldFont);
         fm = g.getFontMetrics();
 
-        cursorYBaseline += barH + progressPadBottom + 6;
+        listCursorBaseline += barH + progressPadBottom + 6;
 
         g.setColor(new Color(
                 palette.UI_TEXT_DIM.getRed(),
@@ -140,16 +149,16 @@ public final class TasksTabRenderer {
         ));
 
         int hintVisualOffset = -5;
-        String taskHint = "Task list: click circle to toggle status, click row for details";
+        String taskHint = "Task list: ";
         boolean condenseBlocked = state.taskQuery().sortByDate || state.taskQuery().sortByTimeTicks;
         boolean condensedView = plugin.condenseRepeatedTasks()
                 && !condenseBlocked;
         int modeReserve = drawTaskViewModeHint(
                 g,
                 fm,
-                panelX + PANEL_PADDING,
-                cursorYBaseline + hintVisualOffset,
-                innerW,
+            listColumnX,
+            listCursorBaseline + hintVisualOffset,
+            listColumnW,
                 condensedView,
                 condenseBlocked,
                 hoverX,
@@ -163,12 +172,12 @@ public final class TasksTabRenderer {
                 170
         ));
         g.drawString(
-                TextUtils.truncateToWidth(taskHint, fm, Math.max(0, innerW - modeReserve - 12)),
-                panelX + PANEL_PADDING,
-                cursorYBaseline + hintVisualOffset
+            TextUtils.truncateToWidth(taskHint, fm, Math.max(0, listColumnW - modeReserve - 12)),
+            listColumnX,
+            listCursorBaseline + hintVisualOffset
         );
 
-        cursorYBaseline += fm.getHeight() - 1;
+        listCursorBaseline += fm.getHeight() - 1;
 
         // -----------------------------
         // Tasks list
@@ -182,17 +191,17 @@ public final class TasksTabRenderer {
         int listMaxBottom = keyboardButtonTop - 3;
 
         Rectangle listPanelBounds = new Rectangle(
-                panelBounds.x,
+                listColumnX - PANEL_PADDING,
                 panelBounds.y,
-                panelBounds.width,
+                listColumnW + (PANEL_PADDING * 2),
                 Math.max(0, listMaxBottom + PANEL_PADDING - panelBounds.y)
         );
 
         if (tasks.isEmpty()) {
-            int emptyTop = cursorYBaseline - fm.getAscent();
+            int emptyTop = listCursorBaseline - fm.getAscent();
             int emptyH = Math.max(0, listMaxBottom - emptyTop);
 
-            Rectangle emptyViewport = new Rectangle(panelX + PANEL_PADDING, emptyTop, innerW, emptyH);
+            Rectangle emptyViewport = new Rectangle(listColumnX, emptyTop, listColumnW, emptyH);
 
             state.taskListViewportBounds().setBounds(emptyViewport);
             state.taskScrollbarRailBounds().setBounds(0, 0, 0, 0);
@@ -222,7 +231,7 @@ public final class TasksTabRenderer {
             return;
         }
 
-        int listTop = cursorYBaseline - fm.getAscent();
+        int listTop = listCursorBaseline - fm.getAscent();
         final int LIST_TOP_INSET = 5;
         listTop += LIST_TOP_INSET;
 
@@ -253,8 +262,8 @@ public final class TasksTabRenderer {
         TaskRowsLayout layout = rowsRenderer.render(
                 g,
                 fm,
-                panelX,
-                cursorYBaseline,
+            listColumnX,
+            listCursorBaseline,
                 listPanelBounds,
                 tasks,
                 sel,

@@ -342,7 +342,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 boolean changed = false;
 
                 // ----------------------------
-                // 0) Filters / Sort header collapse toggles
+                // 0) Filters / Sort clear links
                 // ----------------------------
                 if (a.controlsLayout().clearFilters.width > 0
                         && a.controlsLayout().clearFilters.contains(p)) {
@@ -368,19 +368,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     e.consume();
                     return e;
                 }
-                if (a.controlsLayout().filtersHeaderBounds.width > 0
-                        && a.controlsLayout().filtersHeaderBounds.contains(p)) {
-                    a.controlsLayout().filtersExpanded = !a.controlsLayout().filtersExpanded;
-                    e.consume();
-                    return e;
-                }
-                if (a.controlsLayout().sortHeaderBounds.width > 0
-                        && a.controlsLayout().sortHeaderBounds.contains(p)) {
-                    a.controlsLayout().sortExpanded = !a.controlsLayout().sortExpanded;
-                    e.consume();
-                    return e;
-                }
-
                 // ----------------------------
                 // 1) SOURCE filter (single-select)
                 // ----------------------------
@@ -1177,9 +1164,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.activeTab() == OverlayInputAccess.MainTab.TASKS && (
                         // tier tabs
                         containsAny(a.tierTabBounds(), p)
-                        // expand/collapse headers
-                        || cl.filtersHeaderBounds.contains(p)
-                        || cl.sortHeaderBounds.contains(p)
                         || cl.searchBox.contains(p)
                         || (cl.clearFilters.width > 0 && cl.clearFilters.contains(p))
                         || (cl.clearSort.width > 0 && cl.clearSort.contains(p))
@@ -1187,6 +1171,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || cl.filterSourceAll.contains(p)
                         || cl.filterCA.contains(p)
                         || cl.filterCL.contains(p)
+                        || cl.filterDA.contains(p)
                         || cl.filterStatusAll.contains(p)
                         || cl.filterIncomplete.contains(p)
                         || cl.filterComplete.contains(p)

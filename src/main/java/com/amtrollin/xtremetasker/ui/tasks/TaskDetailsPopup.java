@@ -187,7 +187,7 @@ public final class TaskDetailsPopup
         // Popup bounds (smaller)
         if (bounds.width <= 0 || bounds.height <= 0)
         {
-            int w = (int) (panelBounds.width * 0.82);
+            int w = Math.max(280, (int) (panelBounds.width * 0.49));
             int h = (int) (panelBounds.height * 0.70);
             int x = panelBounds.x + (panelBounds.width - w) / 2;
             int y = panelBounds.y + (panelBounds.height - h) / 2;
@@ -343,7 +343,7 @@ public final class TaskDetailsPopup
         boolean hideDescription = hasRequirementPreview || task.getSource() == TaskSource.COLLECTION_LOG;
         boolean showDescriptionSection = !hideDescription || showAchievementDiaryNote;
         String desc = showAchievementDiaryNote
-                ? achievementDiaryDescription(task)
+                ? diaryTaskDescription(task)
                 : (hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim());
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
         int totalPx = 0;
@@ -1011,6 +1011,17 @@ public final class TaskDetailsPopup
 
         String detail = region == null ? difficulty : difficulty == null ? region : region + " - " + difficulty;
         return "Diary Achievement: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
+    }
+
+    private static String diaryTaskDescription(XtremeTask task)
+    {
+        String description = task == null ? null : task.getDescription();
+        if (description != null && !description.trim().isEmpty())
+        {
+            return description.trim();
+        }
+
+        return achievementDiaryDescription(task);
     }
 
     private static String titleCase(String value)
