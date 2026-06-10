@@ -1,6 +1,4 @@
 package com.amtrollin.xtremetasker.verification;
-
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
@@ -18,7 +16,6 @@ import javax.inject.Singleton;
  * args[2] = quantity (0 means not yet obtained).
  */
 @Singleton
-@Slf4j
 public class CollectionLogWidgetMonitor
 {
     // Script fired for each item slot in the collection log. args[1]=itemId, args[2]=quantity.
@@ -85,7 +82,6 @@ public class CollectionLogWidgetMonitor
         }
 
         isAutoScanInProgress = true;
-        log.info("Xtreme Tasker tea-flask-clog-diagnostic collection log setup script fired; requesting safe page rescan via runScript(2240)");
         client.runScript(2240);
     }
 
@@ -108,12 +104,6 @@ public class CollectionLogWidgetMonitor
         int itemId = (int) args[1];
         int quantity = (int) args[2];
 
-        if (quantity > 0 || isTeaFlaskDiagnosticRange(itemId))
-        {
-            log.info("Xtreme Tasker tea-flask-clog-diagnostic widget script=4100 itemId={} quantity={}",
-                    itemId, quantity);
-        }
-
         if (itemId > 0)
         {
             collectionLogService.storeSeenItem(itemId);
@@ -124,11 +114,5 @@ public class CollectionLogWidgetMonitor
         {
             collectionLogService.storeItem(itemId);
         }
-    }
-
-    private static boolean isTeaFlaskDiagnosticRange(int itemId)
-    {
-        return (itemId >= 10850 && itemId <= 10890)
-                || (itemId >= 25600 && itemId <= 25630);
     }
 }

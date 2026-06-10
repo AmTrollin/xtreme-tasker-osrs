@@ -2302,9 +2302,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
         {
             ItemRequirement requirement = resolveCollectionLogRequirement(task);
-            int observedCount = requirement == null ? -1 : Math.toIntExact(collectionLogService.countObtained(requirement.itemIds));
-            logTeaFlaskSyncDiagnostic(task, requirement, observedCount);
-            return observedCount;
+            return requirement == null ? -1 : Math.toIntExact(collectionLogService.countObtained(requirement.itemIds));
         }
 
         if (verification.getType() == TaskVerification.VerificationType.SKILL
@@ -2314,25 +2312,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return -1;
-    }
-
-    private void logTeaFlaskSyncDiagnostic(XtremeTask task, ItemRequirement requirement, int observedCount)
-    {
-        if (task == null || task.getName() == null
-                || !task.getName().toLowerCase(Locale.ROOT).contains("tea flask"))
-        {
-            return;
-        }
-
-        log.info("Xtreme Tasker tea-flask-clog-diagnostic sync taskId={} taskName='{}' requirementItemIds={} requiredCount={} observedCount={} cachedItemIds={} manuallyCompleted={} syncedCompleted={}",
-                task.getId(),
-                task.getName(),
-                requirement == null ? "null" : Arrays.toString(requirement.itemIds),
-                requirement == null ? null : requirement.requiredCount,
-                observedCount,
-                collectionLogService == null ? "null" : collectionLogService.getCachedItemIds(),
-                task.getId() != null && manualCompletedTaskIds.contains(task.getId()),
-                task.getId() != null && syncedCompletedTaskIds.contains(task.getId()));
     }
 
     private String countedCollectionLogGroupKey(XtremeTask task, TaskVerification verification)
