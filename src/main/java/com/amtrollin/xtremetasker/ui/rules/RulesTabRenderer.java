@@ -306,7 +306,7 @@ public final class RulesTabRenderer {
             boolean isDataSubtitle = line.equals("Account progress sync")
                     || line.equals("Last sync result")
                     || line.equals("Combat Achievements sync")
-                    || line.equals("Collection Log sync")
+                    || line.equals("Collection Logs + Diary Achievements sync")
                     || line.equals(REVIEW_NEEDED_TITLE);
 
             // color + font
@@ -433,9 +433,9 @@ public final class RulesTabRenderer {
         }
 
         lines.add(LINE_SYNC_SECTION_DIVIDER);
-        lines.add("Collection Log sync");
+        lines.add("Collection Logs + Diary Achievements sync");
         lines.addAll(TextUtils.wrapText(
-                "Open your Collection Log in game so RuneLite can refresh them before syncing.",
+                "Open your Collection Log in game so RuneLite can refresh CLOG items before syncing. Diary Achievements sync from your in-game diary progress.",
                 fm,
                 maxWidth
         ));
@@ -447,7 +447,7 @@ public final class RulesTabRenderer {
         }
         else if (hasClogResult)
         {
-            addSyncResultInfoLines(lines, "Last CLOG sync", lastCollectionLogSyncResult, lastCollectionLogSyncResultAtLocalTime, fm, maxWidth);
+            addSyncResultInfoLines(lines, "Last CLOG/DA sync", lastCollectionLogSyncResult, lastCollectionLogSyncResultAtLocalTime, fm, maxWidth);
         }
         addMarkedTaskLines(lines,
             lastCollectionLogSyncedTaskNames,
@@ -455,7 +455,7 @@ public final class RulesTabRenderer {
             LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX,
             fm,
             maxWidth);
-        addReviewLines(lines, collectionLogReviewCount, "CLOG", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
+        addReviewLines(lines, collectionLogReviewCount, "CLOG/DA", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
 
         lines.add("");
         lines.add("");

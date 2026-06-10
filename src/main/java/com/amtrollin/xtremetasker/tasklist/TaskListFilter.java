@@ -64,6 +64,9 @@ public final class TaskListFilter
                     case CLOGS:
                         ok = isCollectionLogTask(t);
                         break;
+                    case DAS:
+                        ok = isDiaryAchievementTask(t);
+                        break;
                     default:
                         ok = true;
                         break;
@@ -127,6 +130,18 @@ public final class TaskListFilter
         if (!src.isEmpty())
         {
             return src.contains("collection");
+        }
+
+        return false;
+    }
+
+    private static boolean isDiaryAchievementTask(XtremeTask t)
+    {
+
+        String src = safeLower(String.valueOf(t.getSource()));
+        if (!src.isEmpty())
+        {
+            return src.contains("diary");
         }
 
         return false;

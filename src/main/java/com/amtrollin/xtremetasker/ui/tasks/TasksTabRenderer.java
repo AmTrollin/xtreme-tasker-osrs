@@ -426,7 +426,7 @@ public final class TasksTabRenderer {
         String title = "Keyboard hints";
         String[][] sections = {
                 {"Tasks:", "Space/Enter - toggle selected task status", "Up/Down - move through the task list", "Left/Right - switch tier tab"},
-                {"Filters:", "1/2/3 - toggle source (all, CAs, CLs)", "Q/W/E - toggle status (all, complete, incomplete)", "A - toggle tier"},
+                {"Filters:", "1/2/3/4 - toggle source (all, CAs, CLs, DAs)", "Q/W/E - toggle status (all, complete, incomplete)", "A - toggle tier"},
                 {"Sorts:", "S - source", "T - tier", "D - completion date", "M - time spent", "R - reset sorting"}
         };
 
@@ -484,6 +484,8 @@ public final class TasksTabRenderer {
             filters.add("CAs");
         } else if (q.sourceFilter == TaskListQuery.SourceFilter.CLOGS) {
             filters.add("CLs");
+        } else if (q.sourceFilter == TaskListQuery.SourceFilter.DAS) {
+            filters.add("DAs");
         }
 
         if (q.statusFilter == TaskListQuery.StatusFilter.COMPLETE) {

@@ -251,7 +251,7 @@ public final class TaskRowsRenderer {
             final int pillH = 14;
             final int pillArc = 4;
             final int pillGap = 4;
-            int srcW = Math.max(sfm.stringWidth("CA"), sfm.stringWidth("CL")) + pillPadX * 2; // fixed width for all sources
+            int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("DA"))) + pillPadX * 2; // fixed width for all sources
             int tierW = sfm.stringWidth("Master") + pillPadX * 2; // fixed width for all tiers
             int newW = sfm.stringWidth("NEW") + pillPadX * 2;
             int progressW = (progress != null && progress.isGrouped()) ? sfm.stringWidth(progress.label()) + 6 : 0;
@@ -553,7 +553,7 @@ public final class TaskRowsRenderer {
     }
 
     /**
-     * Draws a CA/CL source badge. Canonical shared implementation — all HUD/panel locations should call this.
+     * Draws a source badge. Canonical shared implementation — all HUD/panel locations should call this.
      * Sets font to RunescapeSmallFont internally and restores the previous font before returning.
      * @return the width of the badge drawn
      */

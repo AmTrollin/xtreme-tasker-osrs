@@ -21,13 +21,14 @@ import java.util.List;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.sourceLabel;
+import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
 
 public final class CurrentTabRenderer
 {
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Diary Achievement rewards.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
     private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
@@ -339,7 +340,7 @@ public final class CurrentTabRenderer
             boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
             boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
             String desc = showAchievementDiaryNote
-                    ? ACHIEVEMENT_DIARY_NOTE
+                    ? achievementDiaryDescription(current)
                     : (hideDescription ? null : current.getDescription());
             boolean hasDesc = desc != null && !desc.trim().isEmpty();
             String tip = showTips ? current.getTip() : null;
@@ -541,7 +542,7 @@ public final class CurrentTabRenderer
             {
                 final int iconSize = sfm.getAscent() + 2;
                 final int iconGap = 4;
-                String filterLabel = rollSourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "Combat Achievement" : "Collection Log";
+                String filterLabel = rollSourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "Combat Achievement" : "CLOG/DA";
                 String notice = "Rolling " + filterLabel + " tasks only";
                 int noticeW = sfm.stringWidth(notice);
                 int rowW = noticeW + iconGap + iconSize;
@@ -932,7 +933,7 @@ public final class CurrentTabRenderer
         final int badgeGap = 4;
         if (src != null)
         {
-            String srcText = (src == TaskSource.COMBAT_ACHIEVEMENT) ? "CA" : "CL";
+            String srcText = shortSource(src);
             int w = TaskRowsRenderer.drawSourceBadge(g, x, yTop, srcText, edgeDark, edgeLight, uiGold, uiText);
             Rectangle srcBounds = new Rectangle(x, yTop, w, rowHeight + 4);
             if (mousePoint != null && srcBounds.contains(mousePoint))
@@ -968,7 +969,7 @@ public final class CurrentTabRenderer
         final int badgeGap = 4;
 
         FontMetrics sfm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
-        String srcText = src != null ? ((src == TaskSource.COMBAT_ACHIEVEMENT) ? "CA" : "CL") : null;
+        String srcText = src != null ? shortSource(src) : null;
         String tierText = tier != null ? tierLabel(tier) : null;
 
         int srcW = srcText != null ? Math.max(26, sfm.stringWidth(srcText) + 16) : 0;
@@ -1011,6 +1012,51 @@ public final class CurrentTabRenderer
     {
         TaskVerification verification = task == null ? null : task.getVerification();
         return verification != null && verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY;
+    }
+
+    private static String achievementDiaryDescription(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null)
+        {
+            return ACHIEVEMENT_DIARY_NOTE;
+        }
+
+        String region = titleCase(verification.getRegion());
+        String difficulty = titleCase(verification.getDifficulty());
+        if (region == null && difficulty == null)
+        {
+            return ACHIEVEMENT_DIARY_NOTE;
+        }
+
+        String detail = region == null ? difficulty : difficulty == null ? region : region + " - " + difficulty;
+        return "Diary Achievement: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
+    }
+
+    private static String titleCase(String value)
+    {
+        if (value == null || value.trim().isEmpty())
+        {
+            return null;
+        }
+
+        String trimmed = value.trim().replace('-', ' ').replace('_', ' ');
+        StringBuilder out = new StringBuilder(trimmed.length());
+        boolean capitalize = true;
+        for (int i = 0; i < trimmed.length(); i++)
+        {
+            char ch = trimmed.charAt(i);
+            if (Character.isWhitespace(ch))
+            {
+                out.append(ch);
+                capitalize = true;
+                continue;
+            }
+
+            out.append(capitalize ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
+            capitalize = false;
+        }
+        return out.toString();
     }
 
 }

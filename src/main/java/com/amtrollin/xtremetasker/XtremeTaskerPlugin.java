@@ -85,7 +85,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                         if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
                             return t.getSource() == TaskSource.COMBAT_ACHIEVEMENT;
                         } else if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                            return t.getSource() == TaskSource.COLLECTION_LOG;
+                            return isCollectionLogSyncSource(t.getSource());
                         }
                         return true;
                     })
@@ -1799,7 +1799,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
                         return t.getSource() == TaskSource.COMBAT_ACHIEVEMENT;
                     } else if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                        return t.getSource() == TaskSource.COLLECTION_LOG;
+                        return isCollectionLogSyncSource(t.getSource());
                     }
                     return true;
                 })
@@ -1858,9 +1858,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return task.getSource() == TaskSource.COMBAT_ACHIEVEMENT;
         }
         if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-            return task.getSource() == TaskSource.COLLECTION_LOG;
+            return isCollectionLogSyncSource(task.getSource());
         }
         return true;
+    }
+
+    private static boolean isCollectionLogSyncSource(TaskSource source)
+    {
+        return source == TaskSource.COLLECTION_LOG || source == TaskSource.DIARY_ACHIEVEMENT;
     }
 
     private String buildSourceFilteredRollNotice(
@@ -1868,8 +1873,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             TaskTier currentTier,
             TaskTier rollTier
     ) {
-        String sourceLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CAs" : "CLogs";
-        String otherLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CLogs" : "CAs";
+        String sourceLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CAs" : "CLOGs/DAs";
+        String otherLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CLOGs/DAs" : "CAs";
         String currentTierLabel = prettyTier(currentTier);
         String rollTierLabel = prettyTier(rollTier);
 
@@ -2209,7 +2214,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         for (XtremeTask task : tasks)
         {
-            if (task.getSource() != TaskSource.COLLECTION_LOG)
+            if (!isCollectionLogSyncSource(task.getSource()))
             {
                 continue;
             }
@@ -2388,7 +2393,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         List<XtremeTask> group = new ArrayList<>();
         for (XtremeTask candidate : tasks)
         {
-            if (candidate == null || candidate.getSource() != TaskSource.COLLECTION_LOG)
+            if (candidate == null || !isCollectionLogSyncSource(candidate.getSource()))
             {
                 continue;
             }
@@ -2536,23 +2541,21 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         setLastSyncedTaskNames(TaskSource.COLLECTION_LOG, newlySyncedTaskIds);
         int capturedItems = collectionLogService.getCapturedItemCount();
         setSyncMismatchTasksForSource(TaskSource.COLLECTION_LOG,
-                capturedItems > 0
-                        ? findCollectionLogSyncMismatches(true)
-                        : Collections.emptyList());
+                findCollectionLogSyncMismatches(capturedItems > 0));
 
         if (newlySynced > 0)
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! " + newlySynced + " new task(s) marked complete based on your collection log."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/DA sync done! " + newlySynced + " new task(s) marked complete based on your collection log and diary progress."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
         else if (capturedItems == 0)
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! No items are cached yet this session - open your Collection Log, then sync again."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/DA sync done! No CLOG items are cached yet this session - open your Collection Log, then sync again. Diary Achievements were checked from in-game diary progress."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
         else
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! No new completions found."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/DA sync done! No new completions found."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
 
@@ -2572,7 +2575,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         for (XtremeTask task : tasks)
         {
-            if (task.getSource() != TaskSource.COLLECTION_LOG || !isTaskCompleted(task))
+            if (!isCollectionLogSyncSource(task.getSource()) || !isTaskCompleted(task))
             {
                 continue;
             }
@@ -2759,7 +2762,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         syncMismatchTaskIds.removeIf(id -> {
             XtremeTask task = byId.get(id);
-            return task == null || task.getSource() == source;
+            return task == null || matchesSyncMismatchSource(task, source);
         });
 
         Set<String> seen = new HashSet<>();
@@ -2768,7 +2771,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             for (XtremeTask task : mismatches)
             {
                 if (task != null
-                        && task.getSource() == source
+                        && matchesSyncMismatchSource(task, source)
                         && task.getId() != null
                         && seen.add(task.getId()))
                 {
@@ -2812,7 +2815,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             return "";
         }
-        String label = source == TaskSource.COMBAT_ACHIEVEMENT ? "CA" : "CLOG";
+        String label = source == TaskSource.COMBAT_ACHIEVEMENT ? "CA" : "CLOG/DA";
         return " Review " + count + " " + label + " plugin completion(s) not found in game data.";
     }
 
@@ -2980,8 +2983,23 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return getSyncMismatchTasks().stream()
-                .filter(task -> task != null && task.getSource() == source)
+                .filter(task -> matchesSyncMismatchSource(task, source))
                 .collect(Collectors.toList());
+    }
+
+    private static boolean matchesSyncMismatchSource(XtremeTask task, TaskSource source)
+    {
+        if (task == null || source == null)
+        {
+            return false;
+        }
+
+        if (source == TaskSource.COLLECTION_LOG)
+        {
+            return isCollectionLogSyncSource(task.getSource());
+        }
+
+        return task.getSource() == source;
     }
 
     @Override
@@ -3044,7 +3062,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         syncMismatchTaskIds.removeIf(id -> {
             XtremeTask task = byId.get(id);
-            return task == null || task.getSource() == source;
+            return task == null || matchesSyncMismatchSource(task, source);
         });
         if (syncMismatchTaskIds.isEmpty())
         {
@@ -3134,7 +3152,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     .count();
 
             long tasksWithDiaryReq = tasks.stream()
-                    .filter(t -> t.getSource() == TaskSource.COLLECTION_LOG)
+                    .filter(t -> t.getSource() == TaskSource.DIARY_ACHIEVEMENT)
                     .filter(t -> {
                         TaskVerification v = t.getVerification();
                         return v != null && v.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY
@@ -3154,20 +3172,24 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             long totalClogTasks = tasks.stream()
                     .filter(t -> t.getSource() == TaskSource.COLLECTION_LOG)
                     .count();
+            long totalDiaryTasks = tasks.stream()
+                    .filter(t -> t.getSource() == TaskSource.DIARY_ACHIEVEMENT)
+                    .count();
+            long totalCollectionLogSyncTasks = totalClogTasks + totalDiaryTasks;
 
             if (capturedItems == 0)
             {
                 chat("CLOG debug: 0 items cached. Open the Collection Log in-game to populate."
                         + " Tasks with requirements loaded: clog=" + tasksWithClogReq
                         + " diary=" + tasksWithDiaryReq
-                        + " skill=" + tasksWithSkillReq + "/" + totalClogTasks + " total.");
+                        + " skill=" + tasksWithSkillReq + "/" + totalCollectionLogSyncTasks + " total.");
             }
             else
             {
                 chat("CLOG debug: " + capturedItems + " item(s) cached: " + cachedIds
                         + ". Tasks with requirements loaded: clog=" + tasksWithClogReq
                         + " diary=" + tasksWithDiaryReq
-                        + " skill=" + tasksWithSkillReq + "/" + totalClogTasks + " total.");
+                        + " skill=" + tasksWithSkillReq + "/" + totalCollectionLogSyncTasks + " total.");
             }
         });
     }

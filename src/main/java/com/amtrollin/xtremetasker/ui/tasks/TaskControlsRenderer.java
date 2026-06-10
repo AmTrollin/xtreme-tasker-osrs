@@ -264,14 +264,16 @@ public class TaskControlsRenderer
         drawLabelCell(g, fm, rowX, rowTop, labelColW, rowH, SOURCE_LABEL, leftPad);
 
         final String SRC_ALL = "All";
-        final String SRC_CA = "Combat Achievements";
-        final String SRC_CL = "Collection Log";
+        final String SRC_CA = "CAs";
+        final String SRC_CL = "CLOGs";
+        final String SRC_DA = "DAs";
 
         int availableSource = (rowX + rowW - rightPad) - pillsStartX;
 
         int wAll = pillWidth(fm, SRC_ALL, pillPadX, 42, availableSource);
-        int wCA = pillWidth(fm, SRC_CA, pillPadX, 70, availableSource);
-        int wCL = pillWidth(fm, SRC_CL, pillPadX, 70, availableSource);
+        int wCA = pillWidth(fm, SRC_CA, pillPadX, 42, availableSource);
+        int wCL = pillWidth(fm, SRC_CL, pillPadX, 52, availableSource);
+        int wDA = pillWidth(fm, SRC_DA, pillPadX, 42, availableSource);
 
         int sx = pillsStartX;
         layout.filterSourceAll.setBounds(sx, rowTop, wAll, rowH);
@@ -281,10 +283,14 @@ public class TaskControlsRenderer
         sx += wCA + chipGap;
 
         layout.filterCL.setBounds(sx, rowTop, wCL, rowH);
+        sx += wCL + chipGap;
+
+        layout.filterDA.setBounds(sx, rowTop, wDA, rowH);
 
         drawPill(g, fm, layout.filterSourceAll, SRC_ALL, query.sourceFilter == TaskListQuery.SourceFilter.ALL);
         drawPill(g, fm, layout.filterCA, SRC_CA, query.sourceFilter == TaskListQuery.SourceFilter.CA);
         drawPill(g, fm, layout.filterCL, SRC_CL, query.sourceFilter == TaskListQuery.SourceFilter.CLOGS);
+        drawPill(g, fm, layout.filterDA, SRC_DA, query.sourceFilter == TaskListQuery.SourceFilter.DAS);
 
         cursorY += rowH + 6;
 
@@ -349,6 +355,7 @@ public class TaskControlsRenderer
             layout.filterSourceAll.setBounds(0, 0, 0, 0);
             layout.filterCA.setBounds(0, 0, 0, 0);
             layout.filterCL.setBounds(0, 0, 0, 0);
+            layout.filterDA.setBounds(0, 0, 0, 0);
             layout.filterStatusAll.setBounds(0, 0, 0, 0);
             layout.filterIncomplete.setBounds(0, 0, 0, 0);
             layout.filterComplete.setBounds(0, 0, 0, 0);
@@ -876,6 +883,7 @@ public class TaskControlsRenderer
         String src = "";
         if (query.sourceFilter == TaskListQuery.SourceFilter.CA) src = "CA";
         else if (query.sourceFilter == TaskListQuery.SourceFilter.CLOGS) src = "CL";
+        else if (query.sourceFilter == TaskListQuery.SourceFilter.DAS) src = "DA";
 
         String tier = (query.tierScope == TaskListQuery.TierScope.THIS_TIER)
                 ? activeTierLabel + " tier" : "";

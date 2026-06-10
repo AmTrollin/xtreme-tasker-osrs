@@ -66,6 +66,7 @@ import java.util.stream.Collectors;
 
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CA;
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CLOGS;
+import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.DAS;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 import static com.amtrollin.xtremetasker.ui.style.UiStrings.*;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
@@ -218,6 +219,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(XtremeTask task) {
         return buildCollectionLogRequirementPreview(task, true);
+    }
+
+    private static boolean isCollectionLogSyncSource(TaskSource source)
+    {
+        return source == TaskSource.COLLECTION_LOG || source == TaskSource.DIARY_ACHIEVEMENT;
     }
 
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(
@@ -1168,7 +1174,7 @@ public class XtremeTaskerOverlay extends Overlay {
         drawPopupCloseX(g, syncMismatchCloseBounds);
 
         boolean hasCollectionLogReview = mismatches.stream()
-                .anyMatch(task -> task.getSource() == TaskSource.COLLECTION_LOG);
+                .anyMatch(task -> isCollectionLogSyncSource(task.getSource()));
         boolean hasCombatAchievementReview = mismatches.stream()
                 .anyMatch(task -> task.getSource() == TaskSource.COMBAT_ACHIEVEMENT);
         g.setColor(P.UI_GOLD);
@@ -1179,7 +1185,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         else if (hasCollectionLogReview)
         {
-            reviewMessage = "CLOG tasks marked complete in Xtreme Tasker but not detected in-game after sync";
+            reviewMessage = "CLOG/DA tasks marked complete in Xtreme Tasker but not detected in-game after sync";
         }
         else
         {
@@ -1857,7 +1863,7 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesViewportBounds.setBounds(layout.viewportBounds);
 
         if (rulesLayout.syncClogsButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogsButtonBounds, "Sync CLOGs", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogsButtonBounds, "Sync CLOGs+DAs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCAsButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "Sync CAs", P.BTN_DISABLED_BG);
@@ -2077,6 +2083,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
         if (code == KeyEvent.VK_3) {
             taskQuery.sourceFilter = (taskQuery.sourceFilter == CLOGS) ? TaskListQuery.SourceFilter.ALL : CLOGS;
+            resetTaskListViewAfterQueryChange();
+            return true;
+        }
+        if (code == KeyEvent.VK_4) {
+            taskQuery.sourceFilter = (taskQuery.sourceFilter == DAS) ? TaskListQuery.SourceFilter.ALL : DAS;
             resetTaskListViewAfterQueryChange();
             return true;
         }
@@ -2392,7 +2403,7 @@ public class XtremeTaskerOverlay extends Overlay {
                             if (rsf == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
                                 taskQuery.sourceFilter = TaskListQuery.SourceFilter.CA;
                             } else if (rsf == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.CLOGS;
+                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.ALL;
                             } else {
                                 taskQuery.sourceFilter = TaskListQuery.SourceFilter.ALL;
                             }

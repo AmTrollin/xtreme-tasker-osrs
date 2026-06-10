@@ -15,7 +15,8 @@ public class TaskListQuery
     {
         ALL,
         CA,
-        CLOGS
+        CLOGS,
+        DAS
     }
 
     public enum StatusFilter
@@ -53,6 +54,11 @@ public class TaskListQuery
     public boolean isFilterCL()
     {
         return sourceFilter == SourceFilter.ALL || sourceFilter == SourceFilter.CLOGS;
+    }
+
+    public boolean isFilterDA()
+    {
+        return sourceFilter == SourceFilter.ALL || sourceFilter == SourceFilter.DAS;
     }
 
     public boolean isFilterIncomplete()

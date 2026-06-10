@@ -390,6 +390,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     changed = toggleSingleSelectSource(TaskListQuery.SourceFilter.CA);
                 } else if (a.controlsLayout().filterCL.contains(p)) {
                     changed = toggleSingleSelectSource(TaskListQuery.SourceFilter.CLOGS);
+                } else if (a.controlsLayout().filterDA.contains(p)) {
+                    changed = toggleSingleSelectSource(TaskListQuery.SourceFilter.DAS);
                 }
 
                 // ----------------------------

@@ -56,7 +56,10 @@ public class TaskDataTest
             String tier = requiredString(task, "tier", i);
 
             assertTrue("duplicate task id: " + id, ids.add(id));
-            assertTrue("invalid source for task " + id, "COLLECTION_LOG".equals(source) || "COMBAT_ACHIEVEMENT".equals(source));
+            assertTrue("invalid source for task " + id,
+                    "COLLECTION_LOG".equals(source)
+                            || "COMBAT_ACHIEVEMENT".equals(source)
+                            || "DIARY_ACHIEVEMENT".equals(source));
             assertTrue("invalid tier for task " + id,
                     "EASY".equals(tier)
                             || "MEDIUM".equals(tier)
