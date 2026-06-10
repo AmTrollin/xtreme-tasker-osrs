@@ -128,11 +128,11 @@ public class PrerequisiteTrackerService
             case "EASY":
                 return 10;
             case "MEDIUM":
-                return 22;
+                return 19;
             case "HARD":
-                return 32;
+                return 10;
             case "ELITE":
-                return 44;
+                return 5;
             default:
                 return null;
         }
@@ -436,10 +436,10 @@ public class PrerequisiteTrackerService
         registerVarbit("DIARY_KANDARIN_MEDIUM", Varbits.DIARY_KANDARIN_MEDIUM);
         registerVarbit("DIARY_KANDARIN_HARD", Varbits.DIARY_KANDARIN_HARD);
         registerVarbit("DIARY_KANDARIN_ELITE", Varbits.DIARY_KANDARIN_ELITE);
-        registerVarbit("DIARY_KARAMJA_EASY", Varbits.DIARY_KARAMJA_EASY);
-        registerVarbit("DIARY_KARAMJA_MEDIUM", Varbits.DIARY_KARAMJA_MEDIUM);
-        registerVarbit("DIARY_KARAMJA_HARD", Varbits.DIARY_KARAMJA_HARD);
-        registerVarbit("DIARY_KARAMJA_ELITE", Varbits.DIARY_KARAMJA_ELITE);
+        registerVarbit("DIARY_KARAMJA_EASY", VarbitID.KARAMJA_EASY_COUNT);
+        registerVarbit("DIARY_KARAMJA_MEDIUM", VarbitID.KARAMJA_MED_COUNT);
+        registerVarbit("DIARY_KARAMJA_HARD", VarbitID.KARAMJA_HARD_COUNT);
+        registerVarbit("DIARY_KARAMJA_ELITE", VarbitID.KARAMJA_ELITE_COUNT);
         registerVarbit("DIARY_KOUREND_EASY", Varbits.DIARY_KOUREND_EASY);
         registerVarbit("DIARY_KOUREND_MEDIUM", Varbits.DIARY_KOUREND_MEDIUM);
         registerVarbit("DIARY_KOUREND_HARD", Varbits.DIARY_KOUREND_HARD);
