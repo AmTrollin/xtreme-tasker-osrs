@@ -60,6 +60,7 @@ public class CollectionLogService
 
             Map.entry(10860, 10859), // Tea flask animation item -> Tea flask
             Map.entry(10861, 10859), // Tea flask animation item -> Tea flask
+            Map.entry(25617, 10859), // Tea flask interface item -> Tea flask
 
             Map.entry(25618, 10877), // Plain satchel interface item -> Plain satchel
             Map.entry(25619, 10878), // Green satchel interface item -> Green satchel

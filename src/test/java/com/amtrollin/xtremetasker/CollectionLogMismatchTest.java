@@ -292,12 +292,13 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    public void teaFlaskAnimationItemsCountForTeaFlaskRequirement()
+    public void teaFlaskAlternateItemsCountForTeaFlaskRequirement()
     {
         int[] teaFlaskIds = new int[]{
                 10859,
                 10860,
-                10861
+                10861,
+                25617
         };
 
         for (int teaFlaskId : teaFlaskIds)
