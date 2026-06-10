@@ -249,7 +249,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     @Override
     protected void startUp() {
-        log.info("Xtreme Tasker started");
+        log.info("Xtreme Tasker started - build marker v2-karamja-diary-diagnostics-20260610");
 
         collectionLogService.startUp();
 
@@ -2540,14 +2540,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                         ? findCollectionLogSyncMismatches(true)
                         : Collections.emptyList());
 
-        if (capturedItems == 0)
-        {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! No items are cached yet this session - open your Collection Log, then sync again."
-                    + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
-        }
-        else if (newlySynced > 0)
+        log.info("Xtreme Tasker Collection Log sync diagnostic - build marker v2-karamja-diary-diagnostics-20260610; capturedItems={}, newlySynced={}, newlySyncedTaskIds={}",
+                capturedItems, newlySynced, newlySyncedTaskIds);
+
+        if (newlySynced > 0)
         {
             setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! " + newlySynced + " new task(s) marked complete based on your collection log."
+                    + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
+        }
+        else if (capturedItems == 0)
+        {
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! No items are cached yet this session - open your Collection Log, then sync again."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
         else
