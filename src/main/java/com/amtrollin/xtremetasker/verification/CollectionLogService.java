@@ -130,6 +130,12 @@ public class CollectionLogService
     private void resolveAndStoreByName(String itemName)
     {
         List<ItemPrice> results = itemManager.search(itemName);
+        if (isTeaFlaskDiagnosticName(itemName))
+        {
+            log.info("Xtreme Tasker tea-flask-clog-diagnostic chat itemName='{}' searchResults={}",
+                    itemName, summarizeItemSearchResults(results));
+        }
+
         if (results == null || results.isEmpty())
         {
             log.debug("Collection log chat capture could not resolve item ID for '{}'", itemName);
@@ -177,6 +183,37 @@ public class CollectionLogService
         return value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
+    private static boolean isTeaFlaskDiagnosticName(String value)
+    {
+        return normalizeItemName(value).contains("teaflask");
+    }
+
+    private static String summarizeItemSearchResults(List<ItemPrice> results)
+    {
+        if (results == null || results.isEmpty())
+        {
+            return "[]";
+        }
+
+        StringBuilder summary = new StringBuilder("[");
+        int limit = Math.min(results.size(), 10);
+        for (int i = 0; i < limit; i++)
+        {
+            ItemPrice result = results.get(i);
+            if (i > 0)
+            {
+                summary.append(", ");
+            }
+            summary.append(result.getId()).append(":").append(result.getName());
+        }
+        if (results.size() > limit)
+        {
+            summary.append(", ... total=").append(results.size());
+        }
+        summary.append(']');
+        return summary.toString();
+    }
+
     public boolean isItemObtained(int itemId)
     {
         return obtainedItems.contains(itemId)
@@ -193,6 +230,7 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
+            logTeaFlaskDiagnostic("storeItem", itemId);
             markObtainedItem(itemId, null);
         }
     }
@@ -201,6 +239,7 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
+            logTeaFlaskDiagnostic("storeSeenItem", itemId);
             seenItems.add(itemId);
             seenItems.add(canonicalCollectionLogItemId(itemId));
         }
@@ -342,6 +381,25 @@ public class CollectionLogService
         obtainedItemOrder.putIfAbsent(itemId, order);
         obtainedItemOrder.putIfAbsent(canonicalItemId, order);
         nextObtainedItemOrder = Math.max(nextObtainedItemOrder, order + 1);
+    }
+
+    private void logTeaFlaskDiagnostic(String action, int itemId)
+    {
+        if (itemId == 10859
+                || itemId == 10860
+                || itemId == 10861
+                || itemId == 25617
+                || (itemId >= 10850 && itemId <= 10890)
+                || (itemId >= 25600 && itemId <= 25630))
+        {
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            log.info("Xtreme Tasker tea-flask-clog-diagnostic {} itemId={} canonicalItemId={} teaFlaskObtainedBefore={} cachedItemIds={}",
+                    action,
+                    itemId,
+                    canonicalItemId,
+                    obtainedItems.contains(10859),
+                    obtainedItems);
+        }
     }
 
     private Long existingOrder(int itemId, int canonicalItemId)
