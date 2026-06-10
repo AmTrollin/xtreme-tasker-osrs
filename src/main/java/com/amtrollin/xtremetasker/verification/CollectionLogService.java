@@ -2,7 +2,10 @@ package com.amtrollin.xtremetasker.verification;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -28,6 +31,10 @@ public class CollectionLogService
     // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
             "New item added to your collection log:\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern CLOG_RECEIVED_ITEM_PATTERN = Pattern.compile(
+            "^You have received\\s+(?:[\\d,]+\\s*x\\s*)?(.+?)\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -74,6 +81,9 @@ public class CollectionLogService
     private EventBus eventBus;
 
     @Inject
+    private Client client;
+
+    @Inject
     private CollectionLogWidgetMonitor widgetMonitor;
 
     @Inject
@@ -118,13 +128,27 @@ public class CollectionLogService
         String clean = raw.replaceAll("<[^>]+>", "").trim();
 
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
-        if (!m.find())
+        if (m.find())
         {
+            String itemName = m.group(1).trim();
+            resolveAndStoreByName(itemName);
             return;
         }
 
-        String itemName = m.group(1).trim();
-        resolveAndStoreByName(itemName);
+        Matcher receivedMatcher = CLOG_RECEIVED_ITEM_PATTERN.matcher(clean);
+        if (isCollectionLogOpen() && receivedMatcher.find())
+        {
+            String itemName = receivedMatcher.group(1).trim();
+            log.info("Xtreme Tasker tea-flask-clog-diagnostic collection-log received chat itemName='{}' raw='{}'",
+                    itemName, clean);
+            resolveAndStoreByName(itemName);
+        }
+    }
+
+    private boolean isCollectionLogOpen()
+    {
+        Widget collectionLog = client == null ? null : client.getWidget(ComponentID.COLLECTION_LOG_CONTAINER);
+        return collectionLog != null && !collectionLog.isHidden();
     }
 
     private void resolveAndStoreByName(String itemName)
