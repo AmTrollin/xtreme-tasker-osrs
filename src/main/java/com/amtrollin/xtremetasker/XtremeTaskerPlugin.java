@@ -249,7 +249,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     @Override
     protected void startUp() {
-        log.info("Xtreme Tasker started - build marker v2-karamja-diary-diagnostics-20260610");
+        log.info("Xtreme Tasker started");
 
         collectionLogService.startUp();
 
@@ -2539,9 +2539,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 capturedItems > 0
                         ? findCollectionLogSyncMismatches(true)
                         : Collections.emptyList());
-
-        log.info("Xtreme Tasker Collection Log sync diagnostic - build marker v2-karamja-diary-diagnostics-20260610; capturedItems={}, newlySynced={}, newlySyncedTaskIds={}",
-                capturedItems, newlySynced, newlySyncedTaskIds);
 
         if (newlySynced > 0)
         {

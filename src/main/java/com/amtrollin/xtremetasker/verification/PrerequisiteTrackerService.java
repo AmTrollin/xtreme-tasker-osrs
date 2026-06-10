@@ -2,7 +2,6 @@ package com.amtrollin.xtremetasker.verification;
 
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
@@ -27,7 +26,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Singleton
-@Slf4j
 public class PrerequisiteTrackerService
 {
     private static final Pattern SKILL_PREREQ_PATTERN = Pattern.compile("^(\\d+)\\s+([A-Za-z][A-Za-z\\- ]+)$");
@@ -115,15 +113,7 @@ public class PrerequisiteTrackerService
 
         int value = getVarbitValue(varbitId);
         Integer requiredValue = diaryCompletionThreshold(regionKey, difficultyKey);
-        boolean complete = requiredValue == null ? value > 0 : value >= requiredValue;
-
-        if ("KARAMJA".equals(regionKey))
-        {
-            log.info("Xtreme Tasker Karamja diary diagnostic - build marker v2-karamja-diary-diagnostics-20260610; difficulty={}, varbitId={}, value={}, required={}, complete={}",
-                    difficultyKey, varbitId, value, requiredValue, complete);
-        }
-
-        return complete;
+        return requiredValue == null ? value > 0 : value >= requiredValue;
     }
 
     private Integer diaryCompletionThreshold(String regionKey, String difficultyKey)
