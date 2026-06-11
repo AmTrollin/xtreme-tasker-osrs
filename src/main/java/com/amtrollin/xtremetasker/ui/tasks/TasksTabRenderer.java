@@ -489,11 +489,13 @@ public final class TasksTabRenderer {
             filters.add("New tasks");
         }
 
-        if (q.sourceFilter == TaskListQuery.SourceFilter.CA) {
+        if (!q.isSourceAllSelected() && q.sourceCASelected) {
             filters.add("CAs");
-        } else if (q.sourceFilter == TaskListQuery.SourceFilter.CLOGS) {
-            filters.add("CLs");
-        } else if (q.sourceFilter == TaskListQuery.SourceFilter.DAS) {
+        }
+        if (!q.isSourceAllSelected() && q.sourceClogsSelected) {
+            filters.add("CLOGs");
+        }
+        if (!q.isSourceAllSelected() && q.sourceDasSelected) {
             filters.add("ADs");
         }
 

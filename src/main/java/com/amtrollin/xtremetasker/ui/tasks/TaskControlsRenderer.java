@@ -238,10 +238,11 @@ public class TaskControlsRenderer
 
         layout.filterDA.setBounds(sx, rowTop, wDA, rowH);
 
-        drawPill(g, fm, layout.filterSourceAll, SRC_ALL, query.sourceFilter == TaskListQuery.SourceFilter.ALL);
-        drawPill(g, fm, layout.filterCA, SRC_CA, query.sourceFilter == TaskListQuery.SourceFilter.CA);
-        drawPill(g, fm, layout.filterCL, SRC_CL, query.sourceFilter == TaskListQuery.SourceFilter.CLOGS);
-        drawPill(g, fm, layout.filterDA, SRC_DA, query.sourceFilter == TaskListQuery.SourceFilter.DAS);
+        boolean sourceAll = query.isSourceAllSelected();
+        drawPill(g, fm, layout.filterSourceAll, SRC_ALL, sourceAll);
+        drawPill(g, fm, layout.filterCA, SRC_CA, !sourceAll && query.sourceCASelected);
+        drawPill(g, fm, layout.filterCL, SRC_CL, !sourceAll && query.sourceClogsSelected);
+        drawPill(g, fm, layout.filterDA, SRC_DA, !sourceAll && query.sourceDasSelected);
 
         cursorY += rowH + 6;
 
