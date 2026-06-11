@@ -44,7 +44,7 @@ Both `Current` and `Tasks` include a `[Keyboard hints]` button at the bottom of 
 Use the Tasks tab to:
 
 - Search for tasks.
-- Filter by source, status, and tier.
+- Filter by one or more sources, status, and tier.
 - Sort by status, tier, completion date, or time spent.
 - Open a task's details.
 - Mark tasks complete or incomplete.
@@ -56,6 +56,8 @@ Rows use these status indicators:
 - Amber partial indicator: some repeated task instances are complete.
 - Green completed indicator: complete.
 - `NEW`: task was added by a task data update.
+
+Source filters can combine CAs, CLOGs, and ADs. Selecting all three sources returns the filter to `All`.
 
 ![Tasks tab](docs/images/TasksTab.png)
 
