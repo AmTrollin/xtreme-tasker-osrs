@@ -95,6 +95,31 @@ public class TaskDataTest
     }
 
     @Test
+    public void sourceFilterSupportsMultipleSelectedSources()
+    {
+        List<XtremeTask> tasks = Arrays.asList(
+                new XtremeTask("ca", "A Combat Achievement", TaskSource.COMBAT_ACHIEVEMENT, TaskTier.EASY),
+                new XtremeTask("cl", "A Collection Log task", TaskSource.COLLECTION_LOG, TaskTier.EASY),
+                new XtremeTask("ad", "An Achievement Diary task", TaskSource.DIARY_ACHIEVEMENT, TaskTier.EASY)
+        );
+
+        TaskListQuery query = new TaskListQuery();
+        query.toggleSource(TaskListQuery.SourceFilter.CA);
+        query.toggleSource(TaskListQuery.SourceFilter.CLOGS);
+
+        Set<String> ids = TaskListPipeline.apply(tasks, query, task -> false).stream()
+                .map(XtremeTask::getId)
+                .collect(Collectors.toSet());
+        assertEquals(Set.of("ca", "cl"), ids);
+
+        query.toggleSource(TaskListQuery.SourceFilter.DAS);
+
+        assertTrue("Selecting all three source filters should normalize to All", query.isSourceAllSelected());
+        List<XtremeTask> allResults = TaskListPipeline.apply(tasks, query, task -> false);
+        assertEquals(3, allResults.size());
+    }
+
+    @Test
     public void collectionLogTasksHaveVerificationCoverage()
     {
         JsonObject pack = loadTaskPack();

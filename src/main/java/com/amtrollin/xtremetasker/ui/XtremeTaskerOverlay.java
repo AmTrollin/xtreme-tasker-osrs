@@ -2070,24 +2070,24 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (code == KeyEvent.VK_1) {
-            taskQuery.sourceFilter = TaskListQuery.SourceFilter.ALL;
+            taskQuery.selectAllSources();
             resetTaskListViewAfterQueryChange();
             return true;
         }
 
         if (code == KeyEvent.VK_2) {
-            taskQuery.sourceFilter = (taskQuery.sourceFilter == CA) ? TaskListQuery.SourceFilter.ALL : CA;
+            taskQuery.toggleSource(CA);
             resetTaskListViewAfterQueryChange();
             return true;
         }
 
         if (code == KeyEvent.VK_3) {
-            taskQuery.sourceFilter = (taskQuery.sourceFilter == CLOGS) ? TaskListQuery.SourceFilter.ALL : CLOGS;
+            taskQuery.toggleSource(CLOGS);
             resetTaskListViewAfterQueryChange();
             return true;
         }
         if (code == KeyEvent.VK_4) {
-            taskQuery.sourceFilter = (taskQuery.sourceFilter == DAS) ? TaskListQuery.SourceFilter.ALL : DAS;
+            taskQuery.toggleSource(DAS);
             resetTaskListViewAfterQueryChange();
             return true;
         }
@@ -2401,11 +2401,11 @@ public class XtremeTaskerOverlay extends Overlay {
                             tasksSourceFilterInitialized = true;
                             XtremeTaskerConfig.RollSourceFilter rsf = plugin.getRollSourceFilter();
                             if (rsf == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
-                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.CA;
+                                taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
                             } else if (rsf == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.ALL;
+                                taskQuery.selectAllSources();
                             } else {
-                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.ALL;
+                                taskQuery.selectAllSources();
                             }
                         }
 

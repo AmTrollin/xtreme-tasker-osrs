@@ -9,7 +9,7 @@ public class TaskListQuery
     public int searchSelEnd = -1;
 
     // =========================
-    // Single-select filters
+    // Source filters
     // =========================
     public enum SourceFilter
     {
@@ -27,6 +27,9 @@ public class TaskListQuery
     }
 
     public SourceFilter sourceFilter = SourceFilter.ALL;
+    public boolean sourceCASelected = true;
+    public boolean sourceClogsSelected = true;
+    public boolean sourceDasSelected = true;
     public StatusFilter statusFilter = StatusFilter.ALL;
 
     // TaskListQuery
@@ -48,17 +51,122 @@ public class TaskListQuery
     // =========================
     public boolean isFilterCA()
     {
-        return sourceFilter == SourceFilter.ALL || sourceFilter == SourceFilter.CA;
+        return isSourceAllSelected() || sourceCASelected;
     }
 
     public boolean isFilterCL()
     {
-        return sourceFilter == SourceFilter.ALL || sourceFilter == SourceFilter.CLOGS;
+        return isSourceAllSelected() || sourceClogsSelected;
     }
 
     public boolean isFilterDA()
     {
-        return sourceFilter == SourceFilter.ALL || sourceFilter == SourceFilter.DAS;
+        return isSourceAllSelected() || sourceDasSelected;
+    }
+
+    public boolean isSourceAllSelected()
+    {
+        return sourceCASelected && sourceClogsSelected && sourceDasSelected;
+    }
+
+    public void selectAllSources()
+    {
+        sourceCASelected = true;
+        sourceClogsSelected = true;
+        sourceDasSelected = true;
+        sourceFilter = SourceFilter.ALL;
+    }
+
+    public void setOnlySource(SourceFilter source)
+    {
+        if (source == null || source == SourceFilter.ALL)
+        {
+            selectAllSources();
+            return;
+        }
+
+        sourceCASelected = source == SourceFilter.CA;
+        sourceClogsSelected = source == SourceFilter.CLOGS;
+        sourceDasSelected = source == SourceFilter.DAS;
+        sourceFilter = source;
+    }
+
+    public boolean toggleSource(SourceFilter source)
+    {
+        if (source == null)
+        {
+            return false;
+        }
+
+        boolean beforeCA = sourceCASelected;
+        boolean beforeClogs = sourceClogsSelected;
+        boolean beforeDas = sourceDasSelected;
+
+        if (source == SourceFilter.ALL)
+        {
+            selectAllSources();
+            return beforeCA != sourceCASelected || beforeClogs != sourceClogsSelected || beforeDas != sourceDasSelected;
+        }
+
+        if (isSourceAllSelected())
+        {
+            setOnlySource(source);
+            return true;
+        }
+
+        switch (source)
+        {
+            case CA:
+                sourceCASelected = !sourceCASelected;
+                break;
+            case CLOGS:
+                sourceClogsSelected = !sourceClogsSelected;
+                break;
+            case DAS:
+                sourceDasSelected = !sourceDasSelected;
+                break;
+            default:
+                break;
+        }
+
+        if (!sourceCASelected && !sourceClogsSelected && !sourceDasSelected)
+        {
+            selectAllSources();
+        }
+        else if (isSourceAllSelected())
+        {
+            sourceFilter = SourceFilter.ALL;
+        }
+        else
+        {
+            updateLegacySourceFilter();
+        }
+
+        return beforeCA != sourceCASelected || beforeClogs != sourceClogsSelected || beforeDas != sourceDasSelected;
+    }
+
+    public void updateLegacySourceFilter()
+    {
+        if (isSourceAllSelected())
+        {
+            sourceFilter = SourceFilter.ALL;
+        }
+        else if (sourceCASelected && !sourceClogsSelected && !sourceDasSelected)
+        {
+            sourceFilter = SourceFilter.CA;
+        }
+        else if (!sourceCASelected && sourceClogsSelected && !sourceDasSelected)
+        {
+            sourceFilter = SourceFilter.CLOGS;
+        }
+        else if (!sourceCASelected && !sourceClogsSelected && sourceDasSelected)
+        {
+            sourceFilter = SourceFilter.DAS;
+        }
+        else
+        {
+            sourceFilter = SourceFilter.ALL;
+        }
     }
 
     public boolean isFilterIncomplete()
