@@ -1010,7 +1010,7 @@ public final class TaskDetailsPopup
         }
 
         String detail = region == null ? difficulty : difficulty == null ? region : region + " - " + difficulty;
-        return "Diary Achievement: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
+        return "Achievement Diary: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
     }
 
     private static String diaryTaskDescription(XtremeTask task)

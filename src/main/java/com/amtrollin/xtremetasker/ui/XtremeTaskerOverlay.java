@@ -169,7 +169,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean panelPositionLoaded = false;
 
     private static final int PANEL_W_TASKS = 740;
-    private static final int PANEL_H_TASKS = 590;
+    private static final int PANEL_H_TASKS = 545;
 
 
     // ---- animations (extracted) ----
@@ -1185,7 +1185,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         else if (hasCollectionLogReview)
         {
-            reviewMessage = "CLOG/DA tasks marked complete in Xtreme Tasker but not detected in-game after sync";
+            reviewMessage = "CLOG/AD tasks marked complete in Xtreme Tasker but not detected in-game after sync";
         }
         else
         {
@@ -1863,10 +1863,10 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesViewportBounds.setBounds(layout.viewportBounds);
 
         if (rulesLayout.syncClogsButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogsButtonBounds, "Sync CLOGs+DAs", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogsButtonBounds, "SYNC CLOGs + ADs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCAsButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "Sync CAs", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "SYNC CAs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
@@ -3154,7 +3154,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderPadY() {
-        return client.isResized() ? 4 : 3;
+        return client.isResized() ? 3 : 2;
     }
 
     private Dimension headerLogoSize(int panelW) {
@@ -3167,7 +3167,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderLogoMaxHeight() {
-        return client.isResized() ? 110 : 94;
+        return client.isResized() ? 92 : 80;
     }
 
     // ---- panel sizing helpers ----

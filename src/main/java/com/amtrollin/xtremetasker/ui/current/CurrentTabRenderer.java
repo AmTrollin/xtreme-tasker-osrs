@@ -136,447 +136,720 @@ public final class CurrentTabRenderer
         g.drawString(progress, panelX + panelPadding, cursorYBaseline);
         cursorYBaseline += rowHeight + 14;
 
-        // ── Divider above current task ─────────────────────────────────────────
+        // ── Current task area starts below progress ────────────────────────────
         final int topDivY = cursorYBaseline - fm.getAscent();
-        {
-            int divX = panelX + panelPadding;
-            int divW = panelWidth - 2 * panelPadding;
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
-            g.drawLine(divX, topDivY, divX + divW, topDivY);
-        }
         cursorYBaseline += 10;
 
         // ── Rolling state ──────────────────────────────────────────────────────
         if (rolling)
         {
-            g.setColor(uiText);
-            g.drawString("Rolling...", panelX + panelPadding, cursorYBaseline);
-            cursorYBaseline += rowHeight + 4;
-
-            Font savedRollFont = g.getFont();
-            g.setFont(FontManager.getRunescapeFont());
-            FontMetrics rollFm = g.getFontMetrics();
-            String animName = currentLineProvider != null ? currentLineProvider.apply(current) : "...";
-            animName = truncateToWidth(animName, rollFm, panelWidth - 2 * panelPadding);
-            g.setColor(uiGold);
-            g.drawString(animName, panelX + panelPadding, cursorYBaseline);
-            g.setFont(savedRollFont);
-
-            return layout;
-        }
-
-        // ── Task name row ──────────────────────────────────────────────────────
-        Font savedNameFont = g.getFont();
-        if (current != null) g.setFont(FontManager.getRunescapeBoldFont());
-
-        // "Current task:" label uses the smaller regular font
-        Font prefixFont = FontManager.getRunescapeFont();
-        FontMetrics prefixFm = g.getFontMetrics(prefixFont);
-
-        // Task name uses a larger bold font
-        Font nameLargeFont = (current != null) ? FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f) : g.getFont();
-        FontMetrics nameLargeFm = g.getFontMetrics(nameLargeFont);
-
-        // Timer font — slightly larger than the small font
-        Font timerFont = FontManager.getRunescapeFont().deriveFont(Font.PLAIN, 14f);
-        FontMetrics timerFm = g.getFontMetrics(timerFont);
-        boolean showTimer = current != null && taskTimeTicks != null && taskTimeTicks > 0;
-        final int timerGap = 5;
-
-        // Wiki button dimensions; rendered contextually inside the details body.
-        String wikiUrl = current != null ? current.getWikiUrl() : null;
-        boolean hasWiki = wikiUrl != null && !wikiUrl.trim().isEmpty();
-        int wikiW = hasWiki ? fm.stringWidth(wikiButtonText) + 16 : 0;
-
-        int maxNameW = panelWidth - 2 * panelPadding;
-
-        // Current task hero stack
-        final int taskIconSize = 48;
-        boolean hasIcon = taskIcon != null && current != null;
-        final int buttonHeight = rowHeight + 10;
-        final int innerW = panelWidth - 2 * panelPadding;
-        final int buttonWidth = innerW / 2;
-        final int buttonGap = 24;
-
-        // Classic layout: fixed vertical block between dividers
-        final int vertPad = 8;
-        final int labelGap = 4;
-        final int titleGap = 4;
-        final int blockH = prefixFm.getHeight()
-                + labelGap
-                + (hasIcon ? taskIconSize + titleGap : 0)
-                + nameLargeFm.getHeight()
-                + (showTimer ? timerGap + timerFm.getHeight() : 0)
-                + buttonGap
-                + buttonHeight;
-        final int blockTopY  = topDivY + vertPad;
-        final int line1Base  = blockTopY + prefixFm.getAscent();
-        final int iconTopY = blockTopY + prefixFm.getHeight() + labelGap;
-        final int titleTopY = hasIcon ? iconTopY + taskIconSize + titleGap : iconTopY;
-        final int titleBaseY = titleTopY + nameLargeFm.getAscent();
-        final int timerTopY  = titleTopY + nameLargeFm.getHeight() + timerGap;
-        final int timerBase  = timerTopY + timerFm.getAscent();
-        final int actionTopY = (showTimer ? timerTopY + timerFm.getHeight() : titleTopY + nameLargeFm.getHeight()) + buttonGap;
-
-        // Fill region between the two dividers with dark brown
-        if (current != null)
-        {
-            int fillBotY = blockTopY + blockH + vertPad;
-            g.setColor(new Color(26, 17, 10, 225));
-            g.fillRect(panelX + panelPadding, topDivY + 1, panelWidth - 2 * panelPadding, fillBotY - topDivY - 1);
+            return renderRollingCurrentSplit(
+                    g,
+                    fm,
+                    panelX,
+                    topDivY,
+                    panelBounds,
+                    current,
+                    currentLineProvider,
+                    layout
+            );
         }
 
         if (current != null)
         {
-            // Line 1: "Current task:" left-aligned, smaller regular font
-
-            g.setFont(prefixFont);
-            g.setColor(Color.WHITE);
-            int labelX = panelX + panelPadding + 6;
-            g.drawString("Current task:", labelX, line1Base);
-
-            // Icon and task name, centered as a calmer stack.
-            if (hasIcon)
-            {
-                int iconX = panelX + panelPadding + Math.max(0, (maxNameW - taskIconSize) / 2);
-                g.drawImage(taskIcon, iconX, iconTopY, taskIconSize, taskIconSize, null);
-            }
-
-            g.setFont(nameLargeFont);
-            String name = currentLineProvider != null ? currentLineProvider.apply(current) : "";
-            name = truncateToWidth(name, nameLargeFm, maxNameW);
-            int nameW = nameLargeFm.stringWidth(name);
-            int nameX = panelX + panelPadding + Math.max(0, (maxNameW - nameW) / 2);
-            g.setColor(uiGold);
-            g.drawString(name, nameX, titleBaseY);
-
-            g.setFont(savedNameFont);
-
-            // Timer line: centered below the title, inside brown block
-            if (showTimer)
-            {
-                long seconds = Math.round(taskTimeTicks * 0.6);
-                String timerText = formatTicks(seconds);
-                int timerW = timerFm.stringWidth(timerText);
-                int timerX = panelX + panelPadding + (maxNameW - timerW) / 2;
-                g.setFont(timerFont);
-                g.setColor(uiTextDim);
-                g.drawString(timerText, timerX, timerBase);
-            }
-
-            int btnX = panelX + panelPadding + (innerW - buttonWidth) / 2;
-            if (!currentCompleted)
-            {
-                layout.completeButtonBounds.setBounds(btnX, actionTopY, buttonWidth, buttonHeight);
-            }
-            else
-            {
-                layout.rollButtonBounds.setBounds(btnX, actionTopY, buttonWidth, buttonHeight);
-            }
+            return renderActiveCurrentSplit(
+                    g,
+                    fm,
+                    panelX,
+                    topDivY,
+                    panelBounds,
+                    current,
+                    currentCompleted,
+                    currentLineProvider,
+                    prerequisiteStatusProvider,
+                    collectionLogRequirementPreviewProvider,
+                    currentSource,
+                    mousePoint,
+                    scrollOffsetPx,
+                    viewportH,
+                    showTips,
+                    taskIcon,
+                    taskTimeTicks,
+                    layout
+            );
         }
-        else
+
+        return renderEmptyCurrentSplit(
+                g,
+                fm,
+                panelX,
+                topDivY,
+                panelBounds,
+                rollSourceFilter,
+                rollSkipNotice,
+                mousePoint,
+                recentCompletedTask,
+                recentCompletionInfo,
+                recentTaskTimeTicks,
+                layout
+        );
+
+    }
+
+    private CurrentTabLayout renderRollingCurrentSplit(
+            Graphics2D g,
+            FontMetrics fm,
+            int panelX,
+            int topDivY,
+            Rectangle panelBounds,
+            XtremeTask current,
+            Function<XtremeTask, String> currentLineProvider,
+            CurrentTabLayout layout
+    )
+    {
+        int innerW = panelWidth - 2 * panelPadding;
+        int gap = 12;
+        int leftW = Math.max(190, (innerW - gap) / 2);
+        int rightW = Math.max(180, innerW - leftW - gap);
+        int leftX = panelX + panelPadding;
+        int rightX = leftX + leftW + gap;
+
+        int contentTop = topDivY + 10;
+        int hintFooterH = fm.getHeight() + panelPadding + 22;
+        int contentBottom = panelBounds.y + panelBounds.height - hintFooterH;
+        int contentH = Math.max(rowHeight * 7, contentBottom - contentTop);
+
+        Rectangle leftCard = new Rectangle(leftX, contentTop - 6, leftW, contentH + 12);
+        drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
+
+        int dividerX = rightX - gap / 2;
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
+
+        drawRollingIdentityColumn(g, leftCard, current, currentLineProvider);
+
+        layout.viewportBounds.setBounds(rightX, contentTop, rightW, contentH);
+        layout.totalContentPx = 0;
+        return layout;
+    }
+
+    private CurrentTabLayout renderEmptyCurrentSplit(
+            Graphics2D g,
+            FontMetrics fm,
+            int panelX,
+            int topDivY,
+            Rectangle panelBounds,
+            XtremeTaskerConfig.RollSourceFilter rollSourceFilter,
+            String rollSkipNotice,
+            java.awt.Point mousePoint,
+            XtremeTask recentCompletedTask,
+            CompletionInfo recentCompletionInfo,
+            Long recentTaskTimeTicks,
+            CurrentTabLayout layout
+    )
+    {
+        int innerW = panelWidth - 2 * panelPadding;
+        int gap = 12;
+        int leftW = Math.max(190, (innerW - gap) / 2);
+        int rightW = Math.max(180, innerW - leftW - gap);
+        int leftX = panelX + panelPadding;
+        int rightX = leftX + leftW + gap;
+
+        int contentTop = topDivY + 10;
+        int hintFooterH = fm.getHeight() + panelPadding + 22;
+        int contentBottom = panelBounds.y + panelBounds.height - hintFooterH;
+        int contentH = Math.max(rowHeight * 7, contentBottom - contentTop);
+
+        Rectangle leftCard = new Rectangle(leftX, contentTop - 6, leftW, contentH + 12);
+        drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
+
+        int dividerX = rightX - gap / 2;
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
+
+        drawEmptyCurrentIdentityColumn(
+                g,
+                fm,
+                leftCard,
+                rollSourceFilter,
+                rollSkipNotice,
+                mousePoint,
+                recentCompletedTask,
+                recentCompletionInfo,
+                recentTaskTimeTicks,
+                layout
+        );
+
+        layout.viewportBounds.setBounds(rightX, contentTop, rightW, contentH);
+        layout.totalContentPx = 0;
+        return layout;
+    }
+
+    private CurrentTabLayout renderActiveCurrentSplit(
+            Graphics2D g,
+            FontMetrics fm,
+            int panelX,
+            int topDivY,
+            Rectangle panelBounds,
+            XtremeTask current,
+            boolean currentCompleted,
+            Function<XtremeTask, String> currentLineProvider,
+            Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            TaskSource currentSource,
+            java.awt.Point mousePoint,
+            int scrollOffsetPx,
+            int viewportH,
+            boolean showTips,
+            java.awt.image.BufferedImage taskIcon,
+            Long taskTimeTicks,
+            CurrentTabLayout layout
+    )
+    {
+        int innerW = panelWidth - 2 * panelPadding;
+        int gap = 12;
+        int leftW = Math.max(190, (innerW - gap) / 2);
+        int rightW = Math.max(180, innerW - leftW - gap);
+        int leftX = panelX + panelPadding;
+        int rightX = leftX + leftW + gap;
+
+        int contentTop = topDivY + 10;
+        int hintFooterH = fm.getHeight() + panelPadding + 22;
+        int contentBottom = panelBounds.y + panelBounds.height - hintFooterH;
+        int contentH = Math.max(rowHeight * 7, contentBottom - contentTop);
+
+        Rectangle leftCard = new Rectangle(leftX, contentTop - 6, leftW, contentH + 12);
+        drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
+
+        int dividerX = rightX - gap / 2;
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
+
+        int wikiTop = leftCard.y + 10;
+        drawDetailsWikiButton(g, fm, rightX, rightW, wikiTop, current, layout);
+
+        drawCurrentTaskIdentityColumn(
+                g,
+                fm,
+                leftCard,
+                current,
+                currentCompleted,
+                currentLineProvider,
+                currentSource,
+                mousePoint,
+                taskIcon,
+                taskTimeTicks,
+                layout
+        );
+
+        int detailsX = rightX + DETAILS_INSET_X;
+        int detailsW = Math.max(40, rightW - DETAILS_INSET_X * 2 - 12);
+        int detailsTop = contentTop;
+        if (layout.wikiButtonBounds.width > 0)
         {
-            drawEmptyCurrentHeader(g, prefixFm, panelX, maxNameW, line1Base);
+            detailsTop = Math.max(detailsTop, layout.wikiButtonBounds.y + layout.wikiButtonBounds.height + 8);
         }
+        int detailsH = Math.max(0, contentTop + contentH - detailsTop);
+        int totalPx = measureCurrentDetails(
+                g,
+                fm,
+                detailsW,
+                current,
+                prerequisiteStatusProvider,
+                collectionLogRequirementPreviewProvider,
+                showTips
+        );
+        layout.totalContentPx = totalPx;
 
-        if (current != null) g.setFont(savedNameFont);
+        int vpH = viewportH > 0 ? Math.min(viewportH, detailsH) : detailsH;
+        layout.viewportBounds.setBounds(rightX, detailsTop, rightW, vpH);
 
-        // Place bottom divider just after the task hero.
-        if (current != null)
-        {
-            cursorYBaseline = blockTopY + blockH + vertPad;
-        }
-        else
-        {
-            cursorYBaseline = line1Base + prefixFm.getHeight() + prefixFm.getDescent() + 42;
-        }
+        int clampedScroll = Math.max(0, Math.min(scrollOffsetPx, Math.max(0, totalPx - vpH)));
+        Shape oldClip = g.getClip();
+        drawCurrentViewportFrame(g, new Rectangle(rightX, contentTop, rightW, contentH));
+        g.setClip(layout.viewportBounds);
 
-        // ── Divider below current task hero ────────────────────────────────────
-        if (current != null)
-        {
-            int divX = panelX + panelPadding;
-            int divW = panelWidth - 2 * panelPadding;
-            int divY = cursorYBaseline;
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
-            g.drawLine(divX, divY, divX + divW, divY);
-            cursorYBaseline = divY + 14 + fm.getAscent();
-        }
+        int y = detailsTop + fm.getAscent() + 4 - clampedScroll;
+        drawCurrentDetails(
+                g,
+                fm,
+                detailsX,
+                y,
+                detailsW,
+                current,
+                prerequisiteStatusProvider,
+                collectionLogRequirementPreviewProvider,
+                showTips
+        );
 
-        // ── Scrollable details body (description + prereqs) ────────────────────
-        if (current != null)
-        {
-            int x = panelX + panelPadding + DETAILS_INSET_X;
-            int maxW = panelWidth - 2 * (panelPadding + DETAILS_INSET_X);
-
-            // Measure total content height first (needed for scroll clamping + scrollbar)
-            int totalPx = 0;
-            CollectionLogRequirementPreview requirementPreview = collectionLogRequirementPreviewProvider == null
-                    ? null
-                    : collectionLogRequirementPreviewProvider.apply(current);
-            boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
-            boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
-            boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
-            String desc = showAchievementDiaryNote
-                    ? diaryTaskDescription(current)
-                    : (hideDescription ? null : current.getDescription());
-            boolean hasDesc = desc != null && !desc.trim().isEmpty();
-            boolean hasBadges = currentSource != null || current.getTier() != null;
-            String tip = showTips ? current.getTip() : null;
-            boolean hasTip = tip != null && !tip.trim().isEmpty();
-            if (hasTip) tip = tip.trim();
-            if (hasBadges)
-            {
-                totalPx += rowHeight + 8;
-            }
-            if (hasDesc)
-            {
-                totalPx += rowHeight; // "Description" header
-                List<String> descLines = wrapText(desc, fm, maxW);
-                totalPx += rowHeight * Math.min(descLines.size(), 7);
-                totalPx += 8;
-            }
-            totalPx += rowHeight; // "Prereqs" header
-            String prereqs = current.getPrereqs();
-            boolean hasPrereqs = prereqs != null && !prereqs.trim().isEmpty();
-            if (hasPrereqs)
-            {
-                List<PrerequisiteStatus> statuses = (prerequisiteStatusProvider == null)
-                        ? List.of() : prerequisiteStatusProvider.apply(current);
-                if (statuses == null || statuses.isEmpty())
-                {
-                    String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
-                    for (String line : formatted.split("\n"))
-                    {
-                        totalPx += rowHeight * wrapText(line, fm, maxW).size();
-                    }
-                }
-                else
-                {
-                    for (PrerequisiteStatus s : statuses)
-                    {
-                        totalPx += rowHeight * wrapText("- " + s.getText(), fm, maxW).size();
-                    }
-                }
-            }
-            else
-            {
-                totalPx += rowHeight; // "None"
-            }
-            totalPx += 8;
-            if (hasRequirementPreview)
-            {
-                totalPx += rowHeight; // "Eligible Collection Log Items" header
-                if (requirementPreview.showSummaryText())
-                {
-                    totalPx += rowHeight; // counter summary
-                }
-                if (requirementPreview.showItemList())
-                {
-                    for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                    {
-                        totalPx += rowHeight * wrapText("- " + collectionLogRequirementItemText(item), fm, maxW).size();
-                    }
-                }
-                totalPx += 8;
-            }
-            if (hasTip)
-            {
-                if (hasDesc) totalPx += rowHeight; // blank line before tip only when desc present
-                List<String> tipMeasureLines = wrapText(tip, fm, Math.max(hasDesc ? maxW - 8 : maxW, 40));
-                totalPx += rowHeight * Math.min(tipMeasureLines.size(), 5);
-                totalPx += 8;
-            }
-            totalPx += fm.getAscent() + 8;
-
-            layout.totalContentPx = totalPx;
-
-            // Viewport top = cursorYBaseline minus ascent so text starts at cursorYBaseline
-            int vpTop = cursorYBaseline - fm.getAscent();
-            int hintFooterH = fm.getHeight() + panelPadding + 22;
-            int actualAvailableH = Math.max(10, panelBounds.y + panelBounds.height - hintFooterH - vpTop);
-            int vpH = viewportH > 0 ? Math.min(viewportH, actualAvailableH) : Math.min(totalPx, actualAvailableH);
-            layout.viewportBounds.setBounds(panelX, vpTop, panelWidth, vpH);
-
-            // Clamp scroll
-            int clampedScroll = Math.max(0, Math.min(scrollOffsetPx, Math.max(0, totalPx - vpH)));
-
-            // Clip to viewport
-            Shape oldClip = g.getClip();
-            drawCurrentViewportFrame(g, layout.viewportBounds);
-            g.setClip(panelX, vpTop, panelWidth, vpH);
-
-            // Draw content shifted by scroll
-            int y = cursorYBaseline - clampedScroll;
-
-            if (hasBadges)
-            {
-                drawBadgesLeftAligned(g, fm, panelX + DETAILS_INSET_X, y - fm.getAscent(), currentSource, current.getTier(), mousePoint);
-                if (hasWiki)
-                {
-                    int wikiX = panelX + panelWidth - panelPadding - 14 - wikiW;
-                    int wikiY = y - fm.getAscent() + (rowHeight + 4 - buttonHeight) / 2;
-                    layout.wikiButtonBounds.setBounds(wikiX, wikiY, wikiW, buttonHeight);
-                    drawBevelBox(g, layout.wikiButtonBounds, new Color(30, 25, 18, 220));
-
-                    int textW = fm.stringWidth(wikiButtonText);
-                    g.setColor(uiText);
-                    g.drawString(wikiButtonText,
-                            layout.wikiButtonBounds.x + (layout.wikiButtonBounds.width - textW) / 2,
-                            centeredTextBaseline(layout.wikiButtonBounds, fm));
-                }
-                y += rowHeight + 8;
-            }
-
-            if (hasDesc)
-            {
-                g.setColor(uiGold);
-                g.drawString("Description", x, y);
-                y += rowHeight;
-
-                g.setColor(uiText);
-                y = drawWrapped(g, fm, desc, x, y, maxW, 7);
-                y += 8;
-            }
-
-            g.setColor(uiGold);
-            g.drawString("Prereqs", x, y);
-            y += rowHeight;
-
-            if (hasPrereqs)
-            {
-                List<PrerequisiteStatus> statuses = (prerequisiteStatusProvider == null)
-                        ? List.of() : prerequisiteStatusProvider.apply(current);
-
-                if (statuses == null || statuses.isEmpty())
-                {
-                    g.setColor(uiTextDim);
-                    String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
-                    y = drawWrapped(g, fm, formatted, x, y, maxW, 6);
-                }
-                else
-                {
-                    g.setColor(uiTextDim);
-                    y = drawPrerequisites(g, fm, x, y, maxW, statuses, 6);
-                }
-            }
-            else
-            {
-                g.setColor(uiTextDim);
-                g.drawString("None", x, y);
-                y += rowHeight;
-            }
-            y += 8;
-
-            if (hasRequirementPreview)
-            {
-                y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview);
-                y += 8;
-            }
-
-            if (hasTip)
-            {
-                if (hasDesc) y += rowHeight; // blank line before tip only when desc present
-                int tipIndent = hasDesc ? 8 : 0;
-                List<String> tipLines = wrapText(tip, fm, Math.max(maxW - tipIndent, 40));
-                g.setColor(uiTextDim);
-                if (!tipLines.isEmpty())
-                {
-                    g.drawString("Tip: " + tipLines.get(0), x + tipIndent, y);
-                    y += rowHeight;
-                    for (int i = 1; i < Math.min(tipLines.size(), 5); i++)
-                    {
-                        g.drawString(tipLines.get(i), x + tipIndent, y);
-                        y += rowHeight;
-                    }
-                }
-                y += 8;
-            }
-
-            g.setClip(oldClip);
-
-            drawCurrentScrollbar(g, totalPx, vpH, clampedScroll, layout.viewportBounds);
-        }
-        else
-        {
-            // No active task — recent completion, roll button, then filter notice below it
-            int emptyButtonHeight = rowHeight + 10;
-            int emptyInnerW = panelWidth - 2 * panelPadding;
-            int emptyButtonWidth = emptyInnerW / 2;
-            int btnX = panelX + panelPadding + (emptyInnerW - emptyButtonWidth) / 2;
-            int btnY = cursorYBaseline - fm.getAscent() + 18;
-
-            if (recentCompletedTask != null && recentCompletionInfo != null)
-            {
-                btnY = drawRecentCompletionSummary(
-                        g,
-                        fm,
-                        panelX,
-                        cursorYBaseline - fm.getAscent() + 8,
-                        emptyInnerW,
-                        recentCompletedTask,
-                        recentCompletionInfo,
-                        recentTaskTimeTicks
-                ) + 14;
-            }
-
-            layout.rollButtonBounds.setBounds(btnX, btnY, emptyButtonWidth, emptyButtonHeight);
-
-            // Roll-source filter notice below the button
-            Font savedFont = g.getFont();
-            g.setFont(FontManager.getRunescapeSmallFont());
-            FontMetrics sfm = g.getFontMetrics();
-            int noticeBaselineY = btnY + emptyButtonHeight + rowHeight;
-
-            if (rollSkipNotice != null && !rollSkipNotice.isEmpty())
-            {
-                int maxNoticeW = panelWidth - 2 * panelPadding;
-                List<String> noticeLines = wrapText(rollSkipNotice, sfm, maxNoticeW);
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 210));
-                for (String line : noticeLines)
-                {
-                    int lineX = panelX + panelPadding + (maxNoticeW - sfm.stringWidth(line)) / 2;
-                    g.drawString(line, lineX, noticeBaselineY);
-                    noticeBaselineY += sfm.getHeight();
-                }
-            }
-            else if (rollSourceFilter != null && rollSourceFilter != XtremeTaskerConfig.RollSourceFilter.ALL)
-            {
-                final int iconSize = sfm.getAscent() + 2;
-                final int iconGap = 4;
-                String filterLabel = rollSourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "Combat Achievement" : "CLOG/DA";
-                String notice = "Rolling " + filterLabel + " tasks only";
-                int noticeW = sfm.stringWidth(notice);
-                int rowW = noticeW + iconGap + iconSize;
-                int noticeX = panelX + (panelWidth - rowW) / 2;
-
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 200));
-                g.drawString(notice, noticeX, noticeBaselineY);
-
-                int iconX = noticeX + noticeW + iconGap;
-                int iconY = noticeBaselineY - sfm.getAscent();
-
-                drawQuestionIcon(g, iconX, iconY, iconSize);
-
-                layout.rollSourceIconBounds.setBounds(iconX, iconY, iconSize, iconSize);
-
-                if (mousePoint != null && layout.rollSourceIconBounds.contains(mousePoint))
-                {
-                    String tip = "You can change this in the plugin settings";
-                    int tipW = sfm.stringWidth(tip) + 10;
-                    int tipH = sfm.getHeight() + 4;
-                    int tipX = iconX + (iconSize - tipW) / 2;
-                    int tipY = iconY + iconSize + 2;
-                    if (tipX < panelX + panelPadding) tipX = panelX + panelPadding;
-                    if (tipX + tipW > panelX + panelWidth) tipX = panelX + panelWidth - tipW;
-                    g.setColor(uiTextDim);
-                    g.drawString(tip, tipX + 5, tipY + ((tipH - sfm.getHeight()) / 2) + sfm.getAscent());
-                }
-            }
-
-            g.setFont(savedFont);
-        }
+        g.setClip(oldClip);
+        drawCurrentScrollbar(g, totalPx, vpH, clampedScroll, layout.viewportBounds);
 
         return layout;
+    }
+
+    private void drawDetailsWikiButton(
+            Graphics2D g,
+            FontMetrics fm,
+            int rightX,
+            int rightW,
+            int yTop,
+            XtremeTask current,
+            CurrentTabLayout layout
+    )
+    {
+        String wikiUrl = current.getWikiUrl();
+        if (wikiUrl == null || wikiUrl.trim().isEmpty())
+        {
+            return;
+        }
+
+        String wikiLabel = "Wiki";
+        int wikiW = Math.max(44, fm.stringWidth(wikiLabel) + 18);
+        int wikiH = rowHeight + 6;
+        int wikiX = rightX + DETAILS_INSET_X;
+        layout.wikiButtonBounds.setBounds(wikiX, yTop, wikiW, wikiH);
+        drawBevelBox(g, layout.wikiButtonBounds, new Color(30, 25, 18, 220));
+
+        int textW = fm.stringWidth(wikiLabel);
+        g.setColor(uiText);
+        g.drawString(wikiLabel,
+                layout.wikiButtonBounds.x + (layout.wikiButtonBounds.width - textW) / 2,
+                centeredTextBaseline(layout.wikiButtonBounds, fm));
+    }
+
+    private void drawEmptyCurrentIdentityColumn(
+            Graphics2D g,
+            FontMetrics fm,
+            Rectangle card,
+            XtremeTaskerConfig.RollSourceFilter rollSourceFilter,
+            String rollSkipNotice,
+            java.awt.Point mousePoint,
+            XtremeTask recentCompletedTask,
+            CompletionInfo recentCompletionInfo,
+            Long recentTaskTimeTicks,
+            CurrentTabLayout layout
+    )
+    {
+        Font savedFont = g.getFont();
+        Font prefixFont = FontManager.getRunescapeFont();
+        Font titleFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f);
+        Font smallFont = FontManager.getRunescapeSmallFont();
+        FontMetrics prefixFm = g.getFontMetrics(prefixFont);
+        FontMetrics titleFm = g.getFontMetrics(titleFont);
+        FontMetrics smallFm = g.getFontMetrics(smallFont);
+
+        int x = card.x + 18;
+        int innerW = card.width - 36;
+        int y = card.y + Math.max(18, card.height / 18);
+
+        g.setFont(prefixFont);
+        g.setColor(Color.WHITE);
+        g.drawString("No current task", x, y + prefixFm.getAscent());
+        y += prefixFm.getHeight() + Math.max(24, card.height / 11);
+
+        if (recentCompletedTask != null && recentCompletionInfo != null)
+        {
+            y = drawRecentCompletionSummary(g, fm, card.x + 6, y, innerW, recentCompletedTask, recentCompletionInfo, recentTaskTimeTicks);
+            y += Math.max(22, card.height / 12);
+        }
+        else
+        {
+            g.setFont(titleFont);
+            String title = "No active task";
+            int titleX = x + Math.max(0, (innerW - titleFm.stringWidth(title)) / 2);
+            g.setColor(uiGold);
+            g.drawString(title, titleX, y + titleFm.getAscent());
+            y += titleFm.getHeight() + 12;
+
+            g.setFont(prefixFont);
+            String prompt = truncateToWidth("Roll a task when you're ready.", prefixFm, innerW);
+            int promptX = x + Math.max(0, (innerW - prefixFm.stringWidth(prompt)) / 2);
+            g.setColor(uiTextDim);
+            g.drawString(prompt, promptX, y + prefixFm.getAscent());
+            y += prefixFm.getHeight() + Math.max(28, card.height / 10);
+        }
+
+        int buttonH = rowHeight + 10;
+        int buttonW = Math.max(110, Math.min(innerW, card.width - 36));
+        int buttonX = card.x + (card.width - buttonW) / 2;
+        int buttonY = Math.min(card.y + card.height - buttonH - 54, y);
+        layout.rollButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
+
+        int noticeBaselineY = buttonY + buttonH + Math.max(rowHeight + 2, card.height / 15);
+        g.setFont(smallFont);
+        if (rollSkipNotice != null && !rollSkipNotice.isEmpty())
+        {
+            List<String> noticeLines = wrapText(rollSkipNotice, smallFm, innerW);
+            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 210));
+            for (String line : noticeLines)
+            {
+                int lineX = x + Math.max(0, (innerW - smallFm.stringWidth(line)) / 2);
+                g.drawString(line, lineX, noticeBaselineY);
+                noticeBaselineY += smallFm.getHeight();
+            }
+        }
+        else if (rollSourceFilter != null && rollSourceFilter != XtremeTaskerConfig.RollSourceFilter.ALL)
+        {
+            final int iconSize = smallFm.getAscent() + 2;
+            final int iconGap = 4;
+            String filterLabel = rollSourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "Combat Achievement" : "CLOG/AD";
+            String notice = "Rolling " + filterLabel + " tasks only";
+            int noticeW = smallFm.stringWidth(notice);
+            int rowW = noticeW + iconGap + iconSize;
+            int noticeX = x + Math.max(0, (innerW - rowW) / 2);
+
+            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 200));
+            g.drawString(notice, noticeX, noticeBaselineY);
+
+            int iconX = noticeX + noticeW + iconGap;
+            int iconY = noticeBaselineY - smallFm.getAscent();
+            drawQuestionIcon(g, iconX, iconY, iconSize);
+            layout.rollSourceIconBounds.setBounds(iconX, iconY, iconSize, iconSize);
+
+            if (mousePoint != null && layout.rollSourceIconBounds.contains(mousePoint))
+            {
+                String tip = "You can change this in the plugin settings";
+                int tipW = smallFm.stringWidth(tip) + 10;
+                int tipX = iconX + (iconSize - tipW) / 2;
+                if (tipX < card.x + 8) tipX = card.x + 8;
+                if (tipX + tipW > card.x + card.width - 8) tipX = card.x + card.width - 8 - tipW;
+                g.setColor(uiTextDim);
+                g.drawString(tip, tipX + 5, iconY + iconSize + smallFm.getAscent() + 2);
+            }
+        }
+
+        g.setFont(savedFont);
+    }
+
+    private void drawRollingIdentityColumn(
+            Graphics2D g,
+            Rectangle card,
+            XtremeTask current,
+            Function<XtremeTask, String> currentLineProvider
+    )
+    {
+        Font savedFont = g.getFont();
+        Font prefixFont = FontManager.getRunescapeFont();
+        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f);
+        FontMetrics prefixFm = g.getFontMetrics(prefixFont);
+        FontMetrics nameFm = g.getFontMetrics(nameFont);
+
+        int x = card.x + 18;
+        int innerW = card.width - 36;
+        int y = card.y + Math.max(18, card.height / 18);
+
+        g.setFont(prefixFont);
+        g.setColor(Color.WHITE);
+        g.drawString("Rolling...", x, y + prefixFm.getAscent());
+
+        String animName = currentLineProvider != null && current != null ? currentLineProvider.apply(current) : "...";
+        animName = animName == null || animName.trim().isEmpty() ? "..." : animName.trim();
+        List<String> nameLines = wrapText(animName, nameFm, innerW);
+        int lineCount = Math.max(1, Math.min(nameLines.size(), 2));
+        int blockH = lineCount * nameFm.getHeight();
+        int nameY = card.y + (card.height - blockH) / 2;
+
+        g.setFont(nameFont);
+        g.setColor(uiGold);
+        for (int i = 0; i < lineCount; i++)
+        {
+            String line = truncateToWidth(nameLines.get(i), nameFm, innerW);
+            int lineX = x + Math.max(0, (innerW - nameFm.stringWidth(line)) / 2);
+            g.drawString(line, lineX, nameY + nameFm.getAscent());
+            nameY += nameFm.getHeight();
+        }
+
+        g.setFont(savedFont);
+    }
+
+    private void drawCurrentTaskIdentityColumn(
+            Graphics2D g,
+            FontMetrics fm,
+            Rectangle card,
+            XtremeTask current,
+            boolean currentCompleted,
+            Function<XtremeTask, String> currentLineProvider,
+            TaskSource currentSource,
+            java.awt.Point mousePoint,
+            java.awt.image.BufferedImage taskIcon,
+            Long taskTimeTicks,
+            CurrentTabLayout layout
+    )
+    {
+        Font savedFont = g.getFont();
+        Font prefixFont = FontManager.getRunescapeFont();
+        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f);
+        Font timerFont = FontManager.getRunescapeFont().deriveFont(Font.PLAIN, 14f);
+        FontMetrics prefixFm = g.getFontMetrics(prefixFont);
+        FontMetrics nameFm = g.getFontMetrics(nameFont);
+        FontMetrics timerFm = g.getFontMetrics(timerFont);
+
+        int x = card.x + 18;
+        int innerW = card.width - 36;
+        int y = card.y + Math.max(18, card.height / 18);
+
+        g.setFont(prefixFont);
+        g.setColor(Color.WHITE);
+        g.drawString("Current task:", x, y + prefixFm.getAscent());
+        y += prefixFm.getHeight() + Math.max(14, card.height / 24);
+
+        int metaTop = y;
+        drawBadgesRightAligned(g, fm, card.x + card.width - 12, metaTop, currentSource, current.getTier(), mousePoint);
+        y += rowHeight + Math.max(20, card.height / 13);
+
+        int iconSize = 58;
+        if (taskIcon != null)
+        {
+            int iconX = x + Math.max(0, (innerW - iconSize) / 2);
+            g.drawImage(taskIcon, iconX, y, iconSize, iconSize, null);
+            y += iconSize + Math.max(10, card.height / 30);
+        }
+
+        g.setFont(nameFont);
+        String name = currentLineProvider != null ? currentLineProvider.apply(current) : current.getName();
+        List<String> nameLines = wrapText(name, nameFm, innerW);
+        g.setColor(uiGold);
+        int drawn = 0;
+        for (String line : nameLines)
+        {
+            if (drawn >= 2)
+            {
+                break;
+            }
+
+            String drawLine = truncateToWidth(line, nameFm, innerW);
+            int lineX = x + Math.max(0, (innerW - nameFm.stringWidth(drawLine)) / 2);
+            g.drawString(drawLine, lineX, y + nameFm.getAscent());
+            y += nameFm.getHeight();
+            drawn++;
+        }
+
+        boolean showTimer = taskTimeTicks != null && taskTimeTicks > 0;
+        if (showTimer)
+        {
+            y += Math.max(8, card.height / 36);
+            long seconds = Math.round(taskTimeTicks * 0.6);
+            String timerText = formatTicks(seconds);
+            int timerX = x + Math.max(0, (innerW - timerFm.stringWidth(timerText)) / 2);
+            g.setFont(timerFont);
+            g.setColor(uiTextDim);
+            g.drawString(timerText, timerX, y + timerFm.getAscent());
+            y += timerFm.getHeight();
+        }
+
+        int buttonH = rowHeight + 10;
+        int buttonW = Math.max(110, Math.min(innerW, card.width - 36));
+        int buttonX = card.x + (card.width - buttonW) / 2;
+        int buttonY = Math.min(card.y + card.height - buttonH - 34, y + Math.max(30, card.height / 10));
+        if (!currentCompleted)
+        {
+            layout.completeButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
+        }
+        else
+        {
+            layout.rollButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
+        }
+
+        g.setFont(savedFont);
+    }
+
+    private int measureCurrentDetails(
+            Graphics2D g,
+            FontMetrics fm,
+            int maxW,
+            XtremeTask current,
+            Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            boolean showTips
+    )
+    {
+        int totalPx = 0;
+        CollectionLogRequirementPreview requirementPreview = collectionLogRequirementPreviewProvider == null
+                ? null
+                : collectionLogRequirementPreviewProvider.apply(current);
+        boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
+        boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
+        boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
+        String desc = showAchievementDiaryNote
+                ? diaryTaskDescription(current)
+                : (hideDescription ? null : current.getDescription());
+        boolean hasDesc = desc != null && !desc.trim().isEmpty();
+        String tip = showTips ? current.getTip() : null;
+        boolean hasTip = tip != null && !tip.trim().isEmpty();
+        if (hasTip)
+        {
+            tip = tip.trim();
+        }
+
+        if (hasDesc)
+        {
+            totalPx += rowHeight;
+            totalPx += rowHeight * Math.min(wrapText(desc, fm, maxW).size(), 7);
+            totalPx += 8;
+        }
+
+        totalPx += rowHeight;
+        String prereqs = current.getPrereqs();
+        boolean hasPrereqs = prereqs != null && !prereqs.trim().isEmpty();
+        if (hasPrereqs)
+        {
+            List<PrerequisiteStatus> statuses = prerequisiteStatusProvider == null
+                    ? List.of()
+                    : prerequisiteStatusProvider.apply(current);
+            if (statuses == null || statuses.isEmpty())
+            {
+                String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
+                for (String line : formatted.split("\n"))
+                {
+                    totalPx += rowHeight * wrapText(line, fm, maxW).size();
+                }
+            }
+            else
+            {
+                for (PrerequisiteStatus status : statuses)
+                {
+                    totalPx += rowHeight * wrapText("- " + status.getText(), fm, maxW).size();
+                }
+            }
+        }
+        else
+        {
+            totalPx += rowHeight;
+        }
+        totalPx += 8;
+
+        if (hasRequirementPreview)
+        {
+            totalPx += rowHeight;
+            if (requirementPreview.showSummaryText())
+            {
+                totalPx += rowHeight;
+            }
+            if (requirementPreview.showItemList())
+            {
+                for (CollectionLogRequirementItem item : requirementPreview.getItems())
+                {
+                    totalPx += rowHeight * wrapText("- " + collectionLogRequirementItemText(item), fm, maxW).size();
+                }
+            }
+            totalPx += 8;
+        }
+
+        if (hasTip)
+        {
+            if (hasDesc)
+            {
+                totalPx += rowHeight;
+            }
+            totalPx += rowHeight * Math.min(wrapText(tip, fm, Math.max(hasDesc ? maxW - 8 : maxW, 40)).size(), 5);
+            totalPx += 8;
+        }
+
+        return totalPx + fm.getAscent() + 8;
+    }
+
+    private int drawCurrentDetails(
+            Graphics2D g,
+            FontMetrics fm,
+            int x,
+            int y,
+            int maxW,
+            XtremeTask current,
+            Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            boolean showTips
+    )
+    {
+        CollectionLogRequirementPreview requirementPreview = collectionLogRequirementPreviewProvider == null
+                ? null
+                : collectionLogRequirementPreviewProvider.apply(current);
+        boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
+        boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
+        boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
+        String desc = showAchievementDiaryNote
+                ? diaryTaskDescription(current)
+                : (hideDescription ? null : current.getDescription());
+        boolean hasDesc = desc != null && !desc.trim().isEmpty();
+        String prereqs = current.getPrereqs();
+        boolean hasPrereqs = prereqs != null && !prereqs.trim().isEmpty();
+        String tip = showTips ? current.getTip() : null;
+        boolean hasTip = tip != null && !tip.trim().isEmpty();
+        if (hasTip)
+        {
+            tip = tip.trim();
+        }
+
+        if (hasDesc)
+        {
+            g.setColor(uiGold);
+            g.drawString("Description", x, y);
+            y += rowHeight;
+
+            g.setColor(uiText);
+            y = drawWrapped(g, fm, desc, x, y, maxW, 7);
+            y += 8;
+        }
+
+        g.setColor(uiGold);
+        g.drawString("Prereqs", x, y);
+        y += rowHeight;
+
+        if (hasPrereqs)
+        {
+            List<PrerequisiteStatus> statuses = prerequisiteStatusProvider == null
+                    ? List.of()
+                    : prerequisiteStatusProvider.apply(current);
+
+            if (statuses == null || statuses.isEmpty())
+            {
+                g.setColor(uiTextDim);
+                String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
+                y = drawWrapped(g, fm, formatted, x, y, maxW, 6);
+            }
+            else
+            {
+                g.setColor(uiTextDim);
+                y = drawPrerequisites(g, fm, x, y, maxW, statuses, 6);
+            }
+        }
+        else
+        {
+            g.setColor(uiTextDim);
+            g.drawString("None", x, y);
+            y += rowHeight;
+        }
+        y += 8;
+
+        if (hasRequirementPreview)
+        {
+            y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview);
+            y += 8;
+        }
+
+        if (hasTip)
+        {
+            if (hasDesc)
+            {
+                y += rowHeight;
+            }
+            int tipIndent = hasDesc ? 8 : 0;
+            List<String> tipLines = wrapText(tip, fm, Math.max(maxW - tipIndent, 40));
+            g.setColor(uiTextDim);
+            if (!tipLines.isEmpty())
+            {
+                g.drawString("Tip: " + tipLines.get(0), x + tipIndent, y);
+                y += rowHeight;
+                for (int i = 1; i < Math.min(tipLines.size(), 5); i++)
+                {
+                    g.drawString(tipLines.get(i), x + tipIndent, y);
+                    y += rowHeight;
+                }
+            }
+            y += 8;
+        }
+
+        return y;
     }
 
     private static String prettyTier(TaskTier t)
@@ -645,7 +918,7 @@ public final class CurrentTabRenderer
     {
         int x = panelX + panelPadding;
         int y = topY;
-        int lineH = fm.getHeight();
+        int lineH = fm.getHeight() + 4;
 
         String label = "Most recent completed:";
         label = truncateToWidth(label, fm, innerW);
@@ -886,7 +1159,7 @@ public final class CurrentTabRenderer
         }
 
         final int scrollBarW = 5;
-        int railX = viewport.x + viewport.width - panelPadding - scrollBarW;
+        int railX = viewport.x + viewport.width - scrollBarW - 2;
         int railY = viewport.y;
         int railH = Math.max(1, viewport.height);
 
@@ -913,10 +1186,14 @@ public final class CurrentTabRenderer
             return;
         }
 
-        int x = viewport.x + panelPadding + DETAILS_INSET_X;
+        int x = viewport.x + DETAILS_INSET_X;
         int y = viewport.y - 6;
-        int w = viewport.width - 2 * (panelPadding + DETAILS_INSET_X);
+        int w = viewport.width - 2 * DETAILS_INSET_X - 12;
         int h = viewport.height + 12;
+        if (w <= 0)
+        {
+            return;
+        }
 
         g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 62));
         g.drawLine(x, y, x + w, y);
@@ -949,6 +1226,34 @@ public final class CurrentTabRenderer
         if (tier != null)
         {
             TaskRowsRenderer.drawSourceBadge(g, x, yTop, tierLabel(tier), edgeDark, edgeLight, uiGold, uiText);
+        }
+    }
+
+    private void drawBadgesRightAligned(Graphics2D g, FontMetrics fm, int rightX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
+    {
+        if (src == null && tier == null) return;
+
+        FontMetrics sfm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
+        String srcText = src != null ? shortSource(src) : null;
+        String tierText = tier != null ? tierLabel(tier) : null;
+        int badgeGap = srcText != null && tierText != null ? 4 : 0;
+        int srcW = srcText == null ? 0 : Math.max(24, sfm.stringWidth(srcText) + 14);
+        int tierW = tierText == null ? 0 : Math.max(24, sfm.stringWidth(tierText) + 14);
+        int x = rightX - srcW - badgeGap - tierW;
+
+        if (srcText != null)
+        {
+            int actualW = TaskRowsRenderer.drawSourceBadge(g, x, yTop, srcText, edgeDark, edgeLight, uiGold, uiText);
+            Rectangle srcBounds = new Rectangle(x, yTop, actualW, rowHeight + 4);
+            if (mousePoint != null && srcBounds.contains(mousePoint))
+            {
+                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds);
+            }
+            x += actualW + badgeGap;
+        }
+        if (tierText != null)
+        {
+            TaskRowsRenderer.drawSourceBadge(g, x, yTop, tierText, edgeDark, edgeLight, uiGold, uiText);
         }
     }
 
@@ -1034,7 +1339,7 @@ public final class CurrentTabRenderer
         }
 
         String detail = region == null ? difficulty : difficulty == null ? region : region + " - " + difficulty;
-        return "Diary Achievement: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
+        return "Achievement Diary: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
     }
 
     private static String diaryTaskDescription(XtremeTask task)

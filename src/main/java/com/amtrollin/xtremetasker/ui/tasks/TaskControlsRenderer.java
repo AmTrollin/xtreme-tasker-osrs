@@ -6,11 +6,13 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import net.runelite.client.ui.FontManager;
 
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 
@@ -129,7 +131,7 @@ public class TaskControlsRenderer
         // ================================
         cursorY += 5; // small gap above search
         int searchRowTop = cursorY - fm.getAscent();
-        int searchRowH = rowHeight + 6;
+        int searchRowH = rowHeight + 10;
 
         layout.searchBox.setBounds(rowX, searchRowTop, rowW, searchRowH);
 
@@ -182,23 +184,26 @@ public class TaskControlsRenderer
         g.drawString(truncateToWidth(caretText, fm, layout.searchBox.width - 16), textX, baseY);
 
         // extra padding below search (you wanted this)
-        cursorY += searchRowH + 12;
+        cursorY += searchRowH + 18;
 
         // ================================
         // Row 2: Filters header + applied state
         // ================================
+        cursorY += 6;
         layout.filtersExpanded = true;
         layout.filtersHeaderBounds.setBounds(0, 0, 0, 0);
+        FontMetrics bodyFm = fm;
+        java.awt.Font savedHeaderFont = g.getFont();
+        java.awt.Font sectionHeaderFont = net.runelite.client.ui.FontManager.getRunescapeBoldFont().deriveFont(java.awt.Font.BOLD, 16f);
+        g.setFont(sectionHeaderFont);
+        FontMetrics headerFm = g.getFontMetrics();
         g.setColor(uiGold);
         g.drawString("Filters", rowX + leftPad, cursorY);
-        drawHeaderRule(g, rowX + leftPad + fm.stringWidth("Filters") + 8, cursorY - fm.getAscent() + fm.getHeight() / 2, rowX + rowW);
+        drawHeaderClearLink(g, headerFm, bodyFm, layout.clearFilters, rowX, rowW, leftPad, cursorY, "Filters", mouseX, mouseY);
+        g.setFont(savedHeaderFont);
+        fm = bodyFm;
 
-        cursorY += fm.getHeight() + 2;
-        boolean hasActiveFilters = query.sourceFilter != TaskListQuery.SourceFilter.ALL
-                || query.statusFilter != TaskListQuery.StatusFilter.ALL
-                || query.tierScope != TaskListQuery.TierScope.ALL_TIERS;
-        drawClearLinkLine(g, fm, hasActiveFilters, layout.clearFilters, rowX + leftPad, rowW - leftPad, cursorY, mouseX, mouseY);
-        cursorY += fm.getHeight() + 6;
+        cursorY += headerFm.getHeight() + 3;
 
         // ================================
         // Rows 3-5: Filter chips (only shown when expanded)
@@ -212,7 +217,7 @@ public class TaskControlsRenderer
         final String SRC_ALL = "All";
         final String SRC_CA = "CAs";
         final String SRC_CL = "CLOGs";
-        final String SRC_DA = "DAs";
+        final String SRC_DA = "ADs";
 
         int availableSource = (rowX + rowW - rightPad) - pillsStartX;
 
@@ -294,21 +299,24 @@ public class TaskControlsRenderer
         drawTierScopePill(g, fm, layout.filterTierThis, T_THIS, query.tierScope == TaskListQuery.TierScope.THIS_TIER);
         drawPill(g, fm, layout.filterTierAll, T_ALL, query.tierScope == TaskListQuery.TierScope.ALL_TIERS);
 
-        cursorY += rowH + 10;
+        cursorY += rowH + 20;
 
 // ================================
 // Row 6: Sort header + applied state
 // ================================
+        cursorY += 8;
         layout.sortExpanded = true;
         layout.sortHeaderBounds.setBounds(0, 0, 0, 0);
+        savedHeaderFont = g.getFont();
+        g.setFont(sectionHeaderFont);
+        headerFm = g.getFontMetrics();
         g.setColor(uiGold);
         g.drawString("Sort", rowX + leftPad, cursorY);
-        drawHeaderRule(g, rowX + leftPad + fm.stringWidth("Sort") + 8, cursorY - fm.getAscent() + fm.getHeight() / 2, rowX + rowW);
+        drawHeaderClearLink(g, headerFm, bodyFm, layout.clearSort, rowX, rowW, leftPad, cursorY, "Sort", mouseX, mouseY);
+        g.setFont(savedHeaderFont);
+        fm = bodyFm;
 
-        cursorY += fm.getHeight() + 2;
-        boolean hasActiveSorts = query.sortByCompletion || query.sortByTier || query.sortByDate || query.sortByTimeTicks;
-        drawClearLinkLine(g, fm, hasActiveSorts, layout.clearSort, rowX + leftPad, rowW - leftPad, cursorY, mouseX, mouseY);
-        cursorY += fm.getHeight() + 6;
+        cursorY += headerFm.getHeight() + 3;
 
 // ================================
 // Row 7: Sort chips (filters-style: label cell + chips only)
@@ -366,25 +374,11 @@ public class TaskControlsRenderer
                 ? "Time spent"
                 : (query.longestFirst ? "Longest first" : "Shortest first");
 
-// Desired widths
-        String completionMax =
-                (fm.stringWidth("Incomplete first") >= fm.stringWidth("Status"))
-                        ? "Incomplete first" : "Status";
-        String tierMax =
-                (fm.stringWidth("Master tier first") >= fm.stringWidth("Easy tier first"))
-                        ? "Master tier first" : "Easy tier first";
-        String dateMax =
-                (fm.stringWidth("Most recent first") >= fm.stringWidth("Completion date"))
-                        ? "Most recent first" : "Completion date";
-        String timeMax =
-                (fm.stringWidth("Longest first") >= fm.stringWidth("Time spent"))
-                        ? "Longest first" : "Time spent";
-
         int columnW = Math.max(minW, (availableSort - chipGap) / 2);
-        int wCompletion = Math.min(columnW, pillWidth(fm, completionMax, pillPadX, minW, columnW));
-        int wTier = Math.min(columnW, pillWidth(fm, tierMax, pillPadX, minW, columnW));
-        int wDate = Math.min(columnW, pillWidth(fm, dateMax, pillPadX, minW, columnW));
-        int wTimeTicks = Math.min(columnW, pillWidth(fm, timeMax, pillPadX, minW, columnW));
+        int wCompletion = columnW;
+        int wTier = columnW;
+        int wDate = columnW;
+        int wTimeTicks = columnW;
 
         int sx2 = pillsStartX;
         layout.sortCompletion.setBounds(sx2, rowTop, wCompletion, rowH);
@@ -472,9 +466,9 @@ public class TaskControlsRenderer
 
     private void drawLabelCell(Graphics2D g, FontMetrics fm, int rowX, int rowTop, int labelColW, int rowH, String label, int leftPad)
     {
-        // Plain label — no box, no bevel, just gold text
+        // Plain label — no box, no bevel, just subdued text
         int baseline = rowTop + ((rowH - fm.getHeight()) / 2) + fm.getAscent();
-        g.setColor(withAlpha(uiGold, 160));
+        g.setColor(withAlpha(uiTextDim, 170));
         g.drawString(label, rowX + leftPad, baseline);
     }
 
@@ -693,38 +687,44 @@ public class TaskControlsRenderer
         g.drawLine(x1, y, x2, y);
     }
 
-    private void drawClearLinkLine(
+    private void drawHeaderClearLink(
             Graphics2D g,
-            FontMetrics fm,
-            boolean canClear,
+            FontMetrics headerFm,
+            FontMetrics clearFm,
             Rectangle clearBounds,
-            int x,
-            int width,
+            int rowX,
+            int rowW,
+            int leftPad,
             int baselineY,
+            String title,
             int mouseX,
             int mouseY
     )
     {
         final String clearLabel = "[clear]";
-        int clearW = fm.stringWidth(clearLabel) + 10;
+        int clearW = clearFm.stringWidth(clearLabel) + 10;
+        int clearX = rowX + rowW - clearW;
+        int clearBaselineY = baselineY - headerFm.getAscent() + ((headerFm.getHeight() - clearFm.getHeight()) / 2) + clearFm.getAscent();
+        int clearTop = clearBaselineY - clearFm.getAscent() - 1;
+        clearBounds.setBounds(clearX, clearTop, clearW, clearFm.getHeight() + 2);
 
-        if (canClear && width > clearW)
+        int ruleX1 = rowX + leftPad + headerFm.stringWidth(title) + 10;
+        int ruleX2 = clearX - 8;
+        drawHeaderRule(g, ruleX1, baselineY - headerFm.getAscent() + headerFm.getHeight() / 2, ruleX2);
+
+        boolean hovered = clearBounds.contains(mouseX, mouseY);
+        g.setColor(new Color(
+                uiTextDim.getRed(),
+                uiTextDim.getGreen(),
+                uiTextDim.getBlue(),
+                hovered ? 230 : 180
+        ));
+        if (rowW > clearW)
         {
-            int clearX = x;
-            int clearTop = baselineY - fm.getAscent() - 1;
-            clearBounds.setBounds(clearX, clearTop, clearW, fm.getHeight() + 2);
-            boolean hovered = clearBounds.contains(mouseX, mouseY);
-            g.setColor(new Color(
-                    uiTextDim.getRed(),
-                    uiTextDim.getGreen(),
-                    uiTextDim.getBlue(),
-                    hovered ? 230 : 180
-            ));
-            g.drawString(clearLabel, clearX + 5, baselineY);
-        }
-        else
-        {
-            clearBounds.setBounds(0, 0, 0, 0);
+            Font savedFont = g.getFont();
+            g.setFont(FontManager.getRunescapeFont());
+            g.drawString(clearLabel, clearX + 5, clearBaselineY);
+            g.setFont(savedFont);
         }
     }
 

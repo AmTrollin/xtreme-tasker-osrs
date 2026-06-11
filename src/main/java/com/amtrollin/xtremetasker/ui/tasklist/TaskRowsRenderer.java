@@ -252,7 +252,7 @@ public final class TaskRowsRenderer {
             final int pillH = 14;
             final int pillArc = 4;
             final int pillGap = 4;
-            int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("DA"))) + pillPadX * 2; // fixed width for all sources
+            int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2; // fixed width for all sources
             int tierW = sfm.stringWidth("Master") + pillPadX * 2; // fixed width for all tiers
             int newW = sfm.stringWidth("NEW") + pillPadX * 2;
             int progressW = (progress != null && progress.isGrouped()) ? sfm.stringWidth(progress.label()) + 6 : 0;
@@ -467,28 +467,38 @@ public final class TaskRowsRenderer {
             return null;
         }
 
+        String dateText = null;
         if (showCompletionMeta && completionInfoProvider != null)
         {
             CompletionInfo info = completionInfoProvider.apply(task);
-            if (info == null)
+            if (info != null)
             {
-                return null;
+                dateText = info.timestamp <= 0
+                        ? "date ?"
+                        : new SimpleDateFormat("MMM d").format(new Date(info.timestamp));
             }
-            if (info.timestamp <= 0)
-            {
-                return "date ?";
-            }
-            return new SimpleDateFormat("MMM d").format(new Date(info.timestamp));
         }
 
+        String timeText = null;
         if (showTimeMeta && taskTicksProvider != null)
         {
             Long ticks = taskTicksProvider.apply(task);
-            if (ticks == null || ticks <= 0)
-            {
-                return "time ?";
-            }
-            return formatDuration(Math.round(ticks * 0.6));
+            timeText = ticks == null || ticks <= 0
+                    ? "time ?"
+                    : formatDuration(Math.round(ticks * 0.6));
+        }
+
+        if (dateText != null && timeText != null)
+        {
+            return dateText + " | " + timeText;
+        }
+        if (dateText != null)
+        {
+            return dateText;
+        }
+        if (timeText != null)
+        {
+            return timeText;
         }
 
         return null;

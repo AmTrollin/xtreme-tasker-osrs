@@ -38,6 +38,10 @@ public final class RulesTabRenderer {
     private static final String LINE_SYNC_SECTION_DIVIDER = "[SYNC_SECTION_DIVIDER]";
     private static final String LINE_DATA_SYNC_TITLE = "[DATA_SYNC_TITLE]";
     private static final String REVIEW_NEEDED_TITLE = "Review needed";
+    private static final String SYNC_HELPER_TEXT =
+            "Use these buttons to detect tasks you've already completed. Progress sync is separate from task list updates.";
+    private static final String CLOG_SYNC_HELPER_TEXT =
+            "Open your Collection Log in game so RuneLite can refresh CLOG items before syncing. Achievement Diaries sync from your in-game diary progress.";
     private static final BufferedImage REVIEW_NEEDED_ICON = loadReviewNeededIconSafe();
 
     public RulesTabRenderer(
@@ -96,21 +100,27 @@ public final class RulesTabRenderer {
         int bx = panelX + panelPadding;
         int viewportW = panelWidth - 2 * panelPadding;
 
-        int pillH = rowHeight + 4;
-        int controlW = viewportW / 2;
-        int pillW = controlW / 2;
-        int controlX = bx + (viewportW - controlW) / 2;
-        int pillTopY = cursorYBaseline - fm.getAscent() + 2;
+        layout.subTabRulesBounds.setBounds(0, 0, 0, 0);
+        layout.subTabDataSyncsBounds.setBounds(0, 0, 0, 0);
 
-        layout.subTabRulesBounds.setBounds(controlX, pillTopY, pillW, pillH);
-        layout.subTabDataSyncsBounds.setBounds(controlX + pillW, pillTopY, pillW, pillH);
+        int navTop = cursorYBaseline - fm.getAscent() + 2;
+        int navH = rowHeight + 8;
+        int navW = Math.min(viewportW / 2, Math.max(220, fm.stringWidth("Rules") + fm.stringWidth("Sync") + 90));
+        int navX = bx + (viewportW - navW) / 2;
+        int navLeftW = navW / 2;
+        layout.subTabRulesBounds.setBounds(navX, navTop, navLeftW, navH);
+        layout.subTabDataSyncsBounds.setBounds(navX + navLeftW, navTop, navW - navLeftW, navH);
+        drawSegmentedControl(
+                g,
+                fm,
+                layout.subTabRulesBounds,
+                "Rules",
+                layout.subTabDataSyncsBounds,
+                "Sync",
+                activeSubTab != RulesTabLayout.SubTab.DATA_SYNCS
+        );
 
-        drawSegmentedControl(g, fm,
-                layout.subTabRulesBounds, "Rules",
-                layout.subTabDataSyncsBounds, "Sync",
-                activeSubTab == RulesTabLayout.SubTab.RULES);
-
-        int viewportY = pillTopY + pillH + 6;
+        int viewportY = navTop + navH + 12;
         int viewportH = (panelBounds.y + panelBounds.height) - viewportY - panelPadding;
         if (viewportH < 0) viewportH = 0;
 
@@ -119,22 +129,32 @@ public final class RulesTabRenderer {
         // Offset the cursor baseline to match the new viewportY
         int adjustedBaseline = viewportY + fm.getAscent();
 
-        List<String> lines = (activeSubTab == RulesTabLayout.SubTab.DATA_SYNCS)
-                ? buildDataSyncLines(
-                        fm,
-                        viewportW - 8,
-                        lastCombatAchievementSyncResult,
-                        lastCombatAchievementSyncResultAtLocalTime,
-                        lastCollectionLogSyncResult,
-                        lastCollectionLogSyncResultAtLocalTime,
-                        lastCombatAchievementSyncedTaskNames,
-                        lastCollectionLogSyncedTaskNames,
-                        showCombatAchievementSyncedTaskNames,
-                        showCollectionLogSyncedTaskNames,
-                        collectionLogSyncPending,
-                        combatAchievementReviewCount,
-                        collectionLogReviewCount)
-                : buildRulesLines(fm, viewportW - 8);
+        if (activeSubTab == RulesTabLayout.SubTab.DATA_SYNCS)
+        {
+            return renderDataSyncColumns(
+                    g,
+                    fm,
+                    layout,
+                    bx,
+                    viewportY,
+                    viewportW,
+                    viewportH,
+                    scrollOffsetRows,
+                    lastCombatAchievementSyncResult,
+                    lastCombatAchievementSyncResultAtLocalTime,
+                    lastCollectionLogSyncResult,
+                    lastCollectionLogSyncResultAtLocalTime,
+                    lastCombatAchievementSyncedTaskNames,
+                    lastCollectionLogSyncedTaskNames,
+                    showCombatAchievementSyncedTaskNames,
+                    showCollectionLogSyncedTaskNames,
+                    collectionLogSyncPending,
+                    combatAchievementReviewCount,
+                    collectionLogReviewCount
+            );
+        }
+
+        List<String> lines = buildRulesLines(fm, viewportW - 8);
         int rb = rowBlock();
         layout.totalContentRows = contentRows(lines, rb);
         int visibleRows = (rb <= 0) ? 0 : Math.max(0, viewportH / rb);
@@ -306,7 +326,7 @@ public final class RulesTabRenderer {
             boolean isDataSubtitle = line.equals("Account progress sync")
                     || line.equals("Last sync result")
                     || line.equals("Combat Achievements sync")
-                    || line.equals("Collection Logs + Diary Achievements sync")
+                    || line.equals("Collection Logs + Achievement Diaries sync")
                     || line.equals(REVIEW_NEEDED_TITLE);
 
             // color + font
@@ -339,6 +359,287 @@ public final class RulesTabRenderer {
         g.setClip(oldClip);
         g.setFont(normalFont);
         return layout;
+    }
+
+    private RulesTabLayout renderDataSyncColumns(
+            Graphics2D g,
+            FontMetrics fm,
+            RulesTabLayout layout,
+            int bx,
+            int viewportY,
+            int viewportW,
+            int viewportH,
+            int scrollOffsetRows,
+            String lastCombatAchievementSyncResult,
+            String lastCombatAchievementSyncResultAtLocalTime,
+            String lastCollectionLogSyncResult,
+            String lastCollectionLogSyncResultAtLocalTime,
+            List<String> lastCombatAchievementSyncedTaskNames,
+            List<String> lastCollectionLogSyncedTaskNames,
+            boolean showCombatAchievementSyncedTaskNames,
+            boolean showCollectionLogSyncedTaskNames,
+            boolean collectionLogSyncPending,
+            int combatAchievementReviewCount,
+            int collectionLogReviewCount
+    )
+    {
+        int gap = 18;
+        int dividerX = bx + viewportW / 2;
+        int colW = Math.max(120, (viewportW - gap) / 2);
+        int leftX = bx;
+        int rightX = dividerX + gap / 2;
+        int rb = rowBlock();
+        List<String> helperLines = new ArrayList<>();
+        helperLines.addAll(TextUtils.wrapText(SYNC_HELPER_TEXT, fm, viewportW - 8));
+        helperLines.addAll(TextUtils.wrapText(CLOG_SYNC_HELPER_TEXT, fm, viewportW - 8));
+        int helperRowsPx = Math.max(1, helperLines.size()) * rb;
+        int columnsTopY = viewportY + helperRowsPx + 18;
+        int columnsViewportH = Math.max(0, viewportH - (columnsTopY - viewportY));
+
+        List<String> caLines = buildCombatAchievementSyncColumn(
+                fm,
+                colW - 8,
+                lastCombatAchievementSyncResult,
+                lastCombatAchievementSyncResultAtLocalTime,
+                lastCombatAchievementSyncedTaskNames,
+                showCombatAchievementSyncedTaskNames,
+                combatAchievementReviewCount
+        );
+        List<String> clogLines = buildCollectionLogSyncColumn(
+                fm,
+                colW - 8,
+                lastCollectionLogSyncResult,
+                lastCollectionLogSyncResultAtLocalTime,
+                lastCollectionLogSyncedTaskNames,
+                showCollectionLogSyncedTaskNames,
+                collectionLogSyncPending,
+                collectionLogReviewCount
+        );
+
+        int caRows = contentRows(caLines, rb);
+        int clogRows = contentRows(clogLines, rb);
+        layout.totalContentRows = Math.max(caRows, clogRows);
+        int visibleRows = rb <= 0 ? 0 : Math.max(0, columnsViewportH / rb);
+        int start = clamp(scrollOffsetRows, Math.max(0, layout.totalContentRows - visibleRows));
+        int end = visibleRows <= 0 ? 0 : start + visibleRows;
+
+        Shape oldClip = g.getClip();
+        g.setClip(layout.viewportBounds);
+
+        int helperY = viewportY + fm.getAscent();
+        g.setColor(uiTextDim);
+        for (String line : helperLines)
+        {
+            String drawLine = TextUtils.truncateToWidth(line, fm, viewportW - 8);
+            g.drawString(drawLine, bx + Math.max(0, (viewportW - fm.stringWidth(drawLine)) / 2), helperY);
+            helperY += rb;
+        }
+
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.drawLine(dividerX, columnsTopY, dividerX, viewportY + viewportH - 2);
+
+        drawSyncColumn(g, fm, layout, caLines, leftX, columnsTopY + fm.getAscent(), colW, start, end);
+        drawSyncColumn(g, fm, layout, clogLines, rightX, columnsTopY + fm.getAscent(), colW, start, end);
+
+        g.setClip(oldClip);
+        return layout;
+    }
+
+    private List<String> buildCombatAchievementSyncColumn(
+            FontMetrics fm,
+            int maxWidth,
+            String lastCombatAchievementSyncResult,
+            String lastCombatAchievementSyncResultAtLocalTime,
+            List<String> lastCombatAchievementSyncedTaskNames,
+            boolean showCombatAchievementSyncedTaskNames,
+            int combatAchievementReviewCount
+    )
+    {
+        List<String> lines = new ArrayList<>();
+        boolean hasCaResult = lastCombatAchievementSyncResult != null && !lastCombatAchievementSyncResult.trim().isEmpty();
+
+        lines.add("Combat Achievements sync");
+        lines.add("");
+        lines.add(LINE_SYNC_CA_BUTTON_ROW);
+        lines.add("");
+        if (hasCaResult)
+        {
+            addSyncResultInfoLines(lines, "Last CA sync", lastCombatAchievementSyncResult, lastCombatAchievementSyncResultAtLocalTime, fm, maxWidth);
+        }
+        addMarkedTaskLines(lines,
+                lastCombatAchievementSyncedTaskNames,
+                showCombatAchievementSyncedTaskNames,
+                LINE_SYNC_CA_MARKED_TOGGLE_PREFIX,
+                fm,
+                maxWidth);
+        addReviewLines(lines, combatAchievementReviewCount, "CA", fm, maxWidth, LINE_SYNC_CA_REVIEW_ACTIONS_ROW);
+        lines.add("");
+        return lines;
+    }
+
+    private List<String> buildCollectionLogSyncColumn(
+            FontMetrics fm,
+            int maxWidth,
+            String lastCollectionLogSyncResult,
+            String lastCollectionLogSyncResultAtLocalTime,
+            List<String> lastCollectionLogSyncedTaskNames,
+            boolean showCollectionLogSyncedTaskNames,
+            boolean collectionLogSyncPending,
+            int collectionLogReviewCount
+    )
+    {
+        List<String> lines = new ArrayList<>();
+        boolean hasClogResult = lastCollectionLogSyncResult != null && !lastCollectionLogSyncResult.trim().isEmpty();
+
+        lines.add("Collection Logs + Achievement Diaries sync");
+        lines.add("");
+        lines.add(LINE_SYNC_CLOG_BUTTON_ROW);
+        lines.add("");
+        if (collectionLogSyncPending)
+        {
+            addSyncPendingLines(lines, fm, maxWidth);
+        }
+        else if (hasClogResult)
+        {
+            addSyncResultInfoLines(lines, "Last CLOG/AD sync", lastCollectionLogSyncResult, lastCollectionLogSyncResultAtLocalTime, fm, maxWidth);
+        }
+        addMarkedTaskLines(lines,
+                lastCollectionLogSyncedTaskNames,
+                showCollectionLogSyncedTaskNames,
+                LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX,
+                fm,
+                maxWidth);
+        addReviewLines(lines, collectionLogReviewCount, "CLOG/AD", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
+        lines.add("");
+        return lines;
+    }
+
+    private void drawSyncColumn(
+            Graphics2D g,
+            FontMetrics fm,
+            RulesTabLayout layout,
+            List<String> lines,
+            int x,
+            int firstBaselineY,
+            int colW,
+            int start,
+            int end
+    )
+    {
+        Font normalFont = g.getFont();
+        int rb = rowBlock();
+        int drawY = firstBaselineY;
+        int safeEnd = Math.min(lines.size(), end);
+
+        for (int idx = start; idx < safeEnd; idx++)
+        {
+            String line = lines.get(idx);
+            if (LINE_SYNC_CA_BUTTON_ROW.equals(line) || LINE_SYNC_CLOG_BUTTON_ROW.equals(line))
+            {
+                int btnW = Math.max(96, Math.min(colW - 8, colW / 2 + 28));
+                int btnH = rowHeight + 10;
+                int btnX = x + Math.max(0, (colW - btnW) / 2);
+                int by = drawY - fm.getAscent();
+                if (LINE_SYNC_CA_BUTTON_ROW.equals(line))
+                {
+                    layout.syncCAsButtonBounds.setBounds(btnX, by, btnW, btnH);
+                }
+                else
+                {
+                    layout.syncClogsButtonBounds.setBounds(btnX, by, btnW, btnH);
+                }
+                drawY += rb;
+                continue;
+            }
+
+            if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line) || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line))
+            {
+                int gap = 6;
+                int reviewW = Math.max(fm.stringWidth("Review") + 18, 76);
+                int ignoreW = Math.max(fm.stringWidth("Ignore") + 18, 72);
+                int btnH = rowHeight + 10;
+                int by = drawY - fm.getAscent();
+                int groupW = reviewW + gap + ignoreW;
+                int groupX = x + Math.max(0, (colW - groupW) / 2);
+                if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line))
+                {
+                    layout.syncCaReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
+                    layout.syncCaReviewIgnoreButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
+                }
+                else
+                {
+                    layout.syncClogReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
+                    layout.syncClogReviewIgnoreButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
+                }
+                drawY += rb;
+                continue;
+            }
+
+            if (line.startsWith(LINE_SYNC_CA_MARKED_TOGGLE_PREFIX)
+                    || line.startsWith(LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX))
+            {
+                String marker = line.startsWith(LINE_SYNC_CA_MARKED_TOGGLE_PREFIX)
+                        ? LINE_SYNC_CA_MARKED_TOGGLE_PREFIX
+                        : LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX;
+                String label = line.substring(marker.length()).trim();
+                String drawText = TextUtils.truncateToWidth(label, fm, colW - 8);
+                int by = drawY - fm.getAscent();
+                int textX = x + Math.max(0, (colW - fm.stringWidth(drawText)) / 2);
+                g.setColor(white);
+                g.drawString(drawText, textX, drawY);
+                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 180));
+                g.drawLine(textX, drawY + 2, textX + Math.max(0, fm.stringWidth(drawText)), drawY + 2);
+                int boundsW = Math.min(colW - 8, fm.stringWidth(drawText) + 4);
+                int boundsX = textX - 2;
+                if (LINE_SYNC_CA_MARKED_TOGGLE_PREFIX.equals(marker))
+                {
+                    layout.syncCaMarkedTasksToggleBounds.setBounds(boundsX, by, Math.max(0, boundsW), rowHeight + 8);
+                }
+                else
+                {
+                    layout.syncClogMarkedTasksToggleBounds.setBounds(boundsX, by, Math.max(0, boundsW), rowHeight + 8);
+                }
+                drawY += rb;
+                continue;
+            }
+
+            if (line.trim().isEmpty())
+            {
+                drawY += rb;
+                continue;
+            }
+
+            boolean isTitle = line.equals("Combat Achievements sync")
+                    || line.equals("Collection Logs + Achievement Diaries sync")
+                    || line.equals(REVIEW_NEEDED_TITLE);
+            if (isTitle)
+            {
+                g.setColor(uiGold);
+                g.setFont(normalFont);
+                fm = g.getFontMetrics();
+                if (line.equals(REVIEW_NEEDED_TITLE))
+                {
+                    int textW = fm.stringWidth(REVIEW_NEEDED_TITLE);
+                    drawReviewNeededTitle(g, fm, x + Math.max(0, (colW - textW) / 2), drawY, colW);
+                }
+                else
+                {
+                    String drawText = TextUtils.truncateToWidth(line, fm, colW - 8);
+                    g.drawString(drawText, x + Math.max(0, (colW - fm.stringWidth(drawText)) / 2), drawY);
+                }
+                g.setFont(normalFont);
+                fm = g.getFontMetrics();
+            }
+            else
+            {
+                g.setColor(uiTextDim);
+                String drawText = TextUtils.truncateToWidth(line, fm, colW - 8);
+                g.drawString(drawText, x + Math.max(0, (colW - fm.stringWidth(drawText)) / 2), drawY);
+            }
+            drawY += rb;
+        }
+
+        g.setFont(normalFont);
     }
 
     private List<String> buildRulesLines(FontMetrics fm, int maxWidth) {
@@ -386,11 +687,7 @@ public final class RulesTabRenderer {
     private List<String> buildDataSyncLines(FontMetrics fm, int maxWidth) {
         List<String> lines = new ArrayList<>();
         lines.add("");
-        lines.add(LINE_DATA_SYNC_TITLE);
-        lines.add("Account progress sync");
-        String progressDesc =
-                "Use these buttons to detect tasks you've already completed. Progress sync is separate from task list updates.";
-        lines.addAll(TextUtils.wrapText(progressDesc, fm, maxWidth));
+        lines.addAll(TextUtils.wrapText(SYNC_HELPER_TEXT, fm, maxWidth));
         return lines;
     }
 
@@ -433,9 +730,9 @@ public final class RulesTabRenderer {
         }
 
         lines.add(LINE_SYNC_SECTION_DIVIDER);
-        lines.add("Collection Logs + Diary Achievements sync");
+        lines.add("Collection Logs + Achievement Diaries sync");
         lines.addAll(TextUtils.wrapText(
-                "Open your Collection Log in game so RuneLite can refresh CLOG items before syncing. Diary Achievements sync from your in-game diary progress.",
+                "Open your Collection Log in game so RuneLite can refresh CLOG items before syncing. Achievement Diaries sync from your in-game diary progress.",
                 fm,
                 maxWidth
         ));
@@ -447,7 +744,7 @@ public final class RulesTabRenderer {
         }
         else if (hasClogResult)
         {
-            addSyncResultInfoLines(lines, "Last CLOG/DA sync", lastCollectionLogSyncResult, lastCollectionLogSyncResultAtLocalTime, fm, maxWidth);
+            addSyncResultInfoLines(lines, "Last CLOG/AD sync", lastCollectionLogSyncResult, lastCollectionLogSyncResultAtLocalTime, fm, maxWidth);
         }
         addMarkedTaskLines(lines,
             lastCollectionLogSyncedTaskNames,
@@ -455,7 +752,7 @@ public final class RulesTabRenderer {
             LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX,
             fm,
             maxWidth);
-        addReviewLines(lines, collectionLogReviewCount, "CLOG/DA", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
+        addReviewLines(lines, collectionLogReviewCount, "CLOG/AD", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
 
         lines.add("");
         lines.add("");

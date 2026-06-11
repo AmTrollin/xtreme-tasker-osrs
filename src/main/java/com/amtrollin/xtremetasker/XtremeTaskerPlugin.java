@@ -1873,8 +1873,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             TaskTier currentTier,
             TaskTier rollTier
     ) {
-        String sourceLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CAs" : "CLOGs/DAs";
-        String otherLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CLOGs/DAs" : "CAs";
+        String sourceLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CAs" : "CLOGs/ADs";
+        String otherLabel = sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY ? "CLOGs/ADs" : "CAs";
         String currentTierLabel = prettyTier(currentTier);
         String rollTierLabel = prettyTier(rollTier);
 
@@ -2545,17 +2545,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         if (newlySynced > 0)
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/DA sync done! " + newlySynced + " new task(s) marked complete based on your collection log and diary progress."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! " + newlySynced + " new task(s) marked complete based on your collection log and achievement diary progress."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
         else if (capturedItems == 0)
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/DA sync done! No CLOG items are cached yet this session - open your Collection Log, then sync again. Diary Achievements were checked from in-game diary progress."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! No CLOG items are cached yet this session - open your Collection Log, then sync again. Achievement Diaries were checked from in-game diary progress."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
         else
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/DA sync done! No new completions found."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! No new completions found."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
 
@@ -2815,7 +2815,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             return "";
         }
-        String label = source == TaskSource.COMBAT_ACHIEVEMENT ? "CA" : "CLOG/DA";
+        String label = source == TaskSource.COMBAT_ACHIEVEMENT ? "CA" : "CLOG/AD";
         return " Review " + count + " " + label + " plugin completion(s) not found in game data.";
     }
 

@@ -12,7 +12,7 @@ public class TaskControlsLayout
     public boolean filtersExpanded = true;
     public boolean sortExpanded = true;
 
-    // Source (single select): ALL / CA / CLOGs / DAs
+    // Source (single select): ALL / CA / CLOGs / ADs
     public final Rectangle filterSourceAll = new Rectangle();
     public final Rectangle filterCA = new Rectangle();
     public final Rectangle filterCL = new Rectangle();
