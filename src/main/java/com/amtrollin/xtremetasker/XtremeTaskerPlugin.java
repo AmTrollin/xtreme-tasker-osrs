@@ -2540,14 +2540,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                         ? findCollectionLogSyncMismatches(true)
                         : Collections.emptyList());
 
-        if (capturedItems == 0)
-        {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! No items are cached yet this session - open your Collection Log, then sync again."
-                    + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
-        }
-        else if (newlySynced > 0)
+        if (newlySynced > 0)
         {
             setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! " + newlySynced + " new task(s) marked complete based on your collection log."
+                    + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
+        }
+        else if (capturedItems == 0)
+        {
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "Collection Log sync done! No items are cached yet this session - open your Collection Log, then sync again."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
         }
         else

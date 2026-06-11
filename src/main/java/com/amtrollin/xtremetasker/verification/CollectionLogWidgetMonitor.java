@@ -1,6 +1,9 @@
 package com.amtrollin.xtremetasker.verification;
-
+import net.runelite.api.Client;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -17,6 +20,11 @@ public class CollectionLogWidgetMonitor
 {
     // Script fired for each item slot in the collection log. args[1]=itemId, args[2]=quantity.
     private static final int CLOG_ITEM_DRAW_SCRIPT = 4100;
+    // Script fired when the collection log interface is set up / a page is loaded.
+    private static final int CLOG_SETUP_SCRIPT = 7797;
+
+    @Inject
+    private Client client;
 
     @Inject
     private EventBus eventBus;
@@ -24,14 +32,57 @@ public class CollectionLogWidgetMonitor
     @Inject
     private CollectionLogService collectionLogService;
 
+    private int tickClogScriptFired = -1;
+    private boolean isAutoScanInProgress = false;
+
     public void startUp()
     {
         eventBus.register(this);
+        reset();
     }
 
     public void shutDown()
     {
         eventBus.unregister(this);
+    }
+
+    private void reset()
+    {
+        tickClogScriptFired = -1;
+        isAutoScanInProgress = false;
+    }
+
+    @Subscribe
+    public void onGameTick(GameTick event)
+    {
+        if (tickClogScriptFired != -1 && tickClogScriptFired + 2 < client.getTickCount())
+        {
+            tickClogScriptFired = -1;
+            isAutoScanInProgress = false;
+        }
+    }
+
+    @Subscribe
+    public void onScriptPostFired(ScriptPostFired event)
+    {
+        if (event.getScriptId() != CLOG_SETUP_SCRIPT)
+        {
+            return;
+        }
+
+        if (isAutoScanInProgress)
+        {
+            return;
+        }
+
+        // Don't scan when viewing another player's clog via POH adventure log.
+        if (client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
+        {
+            return;
+        }
+
+        isAutoScanInProgress = true;
+        client.runScript(2240);
     }
 
     @Subscribe
@@ -41,6 +92,8 @@ public class CollectionLogWidgetMonitor
         {
             return;
         }
+
+        tickClogScriptFired = client.getTickCount();
 
         Object[] args = event.getScriptEvent().getArguments();
         if (args == null || args.length < 3)

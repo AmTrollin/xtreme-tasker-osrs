@@ -2,7 +2,10 @@ package com.amtrollin.xtremetasker.verification;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -28,6 +31,10 @@ public class CollectionLogService
     // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
             "New item added to your collection log:\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern CLOG_RECEIVED_ITEM_PATTERN = Pattern.compile(
+            "^You have received\\s+(?:[\\d,]+\\s*x\\s*)?(.+?)\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -58,6 +65,10 @@ public class CollectionLogService
             Map.entry(27386, 27352), // Tumeken's guardian - Tumeken's Damaged Guardian -> Tumeken's guardian
             Map.entry(27385, 27352), // Tumeken's guardian - Zebo -> Tumeken's guardian
 
+            Map.entry(10860, 10859), // Tea flask animation item -> Tea flask
+            Map.entry(10861, 10859), // Tea flask animation item -> Tea flask
+            Map.entry(25617, 10859), // Tea flask interface item -> Tea flask
+
             Map.entry(25618, 10877), // Plain satchel interface item -> Plain satchel
             Map.entry(25619, 10878), // Green satchel interface item -> Green satchel
             Map.entry(25620, 10879), // Red satchel interface item -> Red satchel
@@ -68,6 +79,9 @@ public class CollectionLogService
 
     @Inject
     private EventBus eventBus;
+
+    @Inject
+    private Client client;
 
     @Inject
     private CollectionLogWidgetMonitor widgetMonitor;
@@ -114,13 +128,25 @@ public class CollectionLogService
         String clean = raw.replaceAll("<[^>]+>", "").trim();
 
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
-        if (!m.find())
+        if (m.find())
         {
+            String itemName = m.group(1).trim();
+            resolveAndStoreByName(itemName);
             return;
         }
 
-        String itemName = m.group(1).trim();
-        resolveAndStoreByName(itemName);
+        Matcher receivedMatcher = CLOG_RECEIVED_ITEM_PATTERN.matcher(clean);
+        if (isCollectionLogOpen() && receivedMatcher.find())
+        {
+            String itemName = receivedMatcher.group(1).trim();
+            resolveAndStoreByName(itemName);
+        }
+    }
+
+    private boolean isCollectionLogOpen()
+    {
+        Widget collectionLog = client == null ? null : client.getWidget(ComponentID.COLLECTION_LOG_CONTAINER);
+        return collectionLog != null && !collectionLog.isHidden();
     }
 
     private void resolveAndStoreByName(String itemName)

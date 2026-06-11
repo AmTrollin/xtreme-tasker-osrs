@@ -292,6 +292,38 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void teaFlaskAlternateItemsCountForTeaFlaskRequirement()
+    {
+        int[] teaFlaskIds = new int[]{
+                10859,
+                10860,
+                10861,
+                25617
+        };
+
+        for (int teaFlaskId : teaFlaskIds)
+        {
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(teaFlaskId);
+            collectionLogService.storeItem(teaFlaskId);
+
+            assertTrue("Tea flask item " + teaFlaskId + " should satisfy Tea flask",
+                    collectionLogService.hasSeenAll(new int[]{10859}));
+            assertEquals("Tea flask item " + teaFlaskId + " should count as one Tea flask slot",
+                    1, collectionLogService.countObtained(new int[]{10859}));
+        }
+
+        CollectionLogService collectionLogService = new CollectionLogService();
+        for (int teaFlaskId : teaFlaskIds)
+        {
+            collectionLogService.storeItem(teaFlaskId);
+        }
+
+        assertEquals("Multiple Tea flask item IDs should still count as one Tea flask slot",
+                1, collectionLogService.countObtained(new int[]{10859}));
+    }
+
+    @Test
     public void olmletVariantsCountAsOneOlmletLogSlot()
     {
         int[] olmletVariantIds = new int[]{
