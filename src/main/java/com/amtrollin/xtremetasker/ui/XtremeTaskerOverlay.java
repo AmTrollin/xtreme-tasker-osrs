@@ -175,8 +175,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int ICON_RESIZABLE_DEFAULT_RIGHT_MARGIN = 62;
     private static final int ICON_RESIZABLE_DEFAULT_Y = 165;
 
-    private static final int PANEL_W_TASKS = 740;
-    private static final int PANEL_H_TASKS = 545;
+    private static final int PANEL_W_TASKS = 690;
+    private static final int PANEL_H_TASKS = 460;
 
 
     // ---- animations (extracted) ----
@@ -3212,7 +3212,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderLogoMaxHeight() {
-        return client.isResized() ? 92 : 80;
+        return client.isResized() ? 82 : 70;
     }
 
     // ---- panel sizing helpers ----
