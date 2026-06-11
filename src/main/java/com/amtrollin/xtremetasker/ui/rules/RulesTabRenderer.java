@@ -41,7 +41,7 @@ public final class RulesTabRenderer {
     private static final String SYNC_HELPER_TEXT =
             "Use these buttons to detect tasks you've already completed. Progress sync is separate from task list updates.";
     private static final String CLOG_SYNC_HELPER_TEXT =
-            "Open your Collection Log in game so RuneLite can refresh CLOG items before syncing. Achievement Diaries sync from your in-game diary progress.";
+            "\n\nOpen your Collection Log in-game before syncing so RuneLite can update your latest Collection Log progress. \nCombat Achievement and Achievement Diary progress are synced automatically.";
     private static final BufferedImage REVIEW_NEEDED_ICON = loadReviewNeededIconSafe();
 
     public RulesTabRenderer(
@@ -731,11 +731,7 @@ public final class RulesTabRenderer {
 
         lines.add(LINE_SYNC_SECTION_DIVIDER);
         lines.add("Collection Logs + Achievement Diaries sync");
-        lines.addAll(TextUtils.wrapText(
-                "Open your Collection Log in game so RuneLite can refresh CLOG items before syncing. Achievement Diaries sync from your in-game diary progress.",
-                fm,
-                maxWidth
-        ));
+        lines.addAll(TextUtils.wrapText(CLOG_SYNC_HELPER_TEXT, fm, maxWidth));
         lines.add(LINE_SYNC_CLOG_BUTTON_ROW);
         lines.add("");
         if (collectionLogSyncPending)

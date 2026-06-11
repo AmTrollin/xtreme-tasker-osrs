@@ -450,7 +450,7 @@ public final class CurrentTabRenderer
 
         if (recentCompletedTask != null && recentCompletionInfo != null)
         {
-            y = drawRecentCompletionSummary(g, fm, card.x + 6, y, innerW, recentCompletedTask, recentCompletionInfo, recentTaskTimeTicks);
+            y = drawRecentCompletionSummary(g, fm, x, y, innerW, recentCompletedTask, recentCompletionInfo, recentTaskTimeTicks);
             y += Math.max(22, card.height / 12);
         }
         else
