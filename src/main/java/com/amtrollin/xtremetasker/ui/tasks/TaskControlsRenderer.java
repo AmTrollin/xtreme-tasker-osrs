@@ -6,11 +6,13 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import net.runelite.client.ui.FontManager;
 
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 
@@ -98,8 +100,6 @@ public class TaskControlsRenderer
         int rowX = panelX + panelPadding;
         int rowW = panelW - 2 * panelPadding;
 
-        final String FILTERS_HEADER = "-- Filters --";
-        final String SORTS_HEADER = "-- Sorts --";
         final String SOURCE_LABEL = "Source:";
         final String STATUS_LABEL = "Status:";
         final String TIER_LABEL = "Tier:";
@@ -131,7 +131,7 @@ public class TaskControlsRenderer
         // ================================
         cursorY += 5; // small gap above search
         int searchRowTop = cursorY - fm.getAscent();
-        int searchRowH = rowHeight + 6;
+        int searchRowH = rowHeight + 10;
 
         layout.searchBox.setBounds(rowX, searchRowTop, rowW, searchRowH);
 
@@ -184,94 +184,47 @@ public class TaskControlsRenderer
         g.drawString(truncateToWidth(caretText, fm, layout.searchBox.width - 16), textX, baseY);
 
         // extra padding below search (you wanted this)
-        cursorY += searchRowH + 12;
+        cursorY += searchRowH + 18;
 
         // ================================
-        // Row 2: Filters header (clickable expand/collapse)
+        // Row 2: Filters header + applied state
         // ================================
-        int headerTop = cursorY - fm.getAscent();
-        int headerH = rowHeight + 6;
-        int filterBtnW = layout.filtersExpanded ? rowW : rowW / 3;
-        Rectangle headerBounds = new Rectangle(rowX, headerTop, filterBtnW, headerH);
-        layout.filtersHeaderBounds.setBounds(headerBounds);
+        cursorY += 6;
+        layout.filtersExpanded = true;
+        layout.filtersHeaderBounds.setBounds(0, 0, 0, 0);
+        FontMetrics bodyFm = fm;
+        java.awt.Font savedHeaderFont = g.getFont();
+        java.awt.Font sectionHeaderFont = net.runelite.client.ui.FontManager.getRunescapeBoldFont().deriveFont(java.awt.Font.BOLD, 16f);
+        g.setFont(sectionHeaderFont);
+        FontMetrics headerFm = g.getFontMetrics();
+        g.setColor(uiGold);
+        g.drawString("Filters", rowX + leftPad, cursorY);
+        drawHeaderClearLink(g, headerFm, bodyFm, layout.clearFilters, rowX, rowW, leftPad, cursorY, "Filters", mouseX, mouseY);
+        g.setFont(savedHeaderFont);
+        fm = bodyFm;
 
-        Color filterHdrFill = layout.filtersExpanded ? pillOnBg : new Color(
-                Math.min(255, tabInactiveBg.getRed() + 10),
-                Math.min(255, tabInactiveBg.getGreen() + 8),
-                Math.min(255, tabInactiveBg.getBlue() + 5),
-                tabInactiveBg.getAlpha());
-        drawBevelBox(g, headerBounds, filterHdrFill, uiEdgeLight, uiEdgeDark);
-        if (layout.filtersExpanded) {
-            g.setColor(uiGold);
-            g.drawRect(headerBounds.x, headerBounds.y, headerBounds.width, headerBounds.height);
-        }
-
-        String filterIndicator = layout.filtersExpanded ? "[-]" : "[+]";
-        String filtersWord = "Filters";
-        g.setColor(layout.filtersExpanded ? uiText : uiTextDim);
-        int hy = centeredTextBaseline(headerBounds, fm);
-        g.drawString(filterIndicator, headerBounds.x + leftPad, hy);
-        int fwW = fm.stringWidth(filtersWord);
-        int fwX = headerBounds.x + (headerBounds.width - fwW) / 2;
-        g.drawString(filtersWord, fwX, hy);
-
-        if (!layout.filtersExpanded) {
-            String stateText = filterStateText(query, activeTierLabel);
-            int stateX = rowX + filterBtnW + 8;
-            int stateW = rowX + rowW - stateX;
-            boolean hasActiveFilters = query.sourceFilter != TaskListQuery.SourceFilter.ALL
-                    || query.statusFilter != TaskListQuery.StatusFilter.ALL
-                    || query.tierScope != TaskListQuery.TierScope.ALL_TIERS;
-            // Reserve space for [clear] on the right if there are active filters
-            String clearLabel = "[clear]";
-            int clearW = fm.stringWidth(clearLabel) + 10;
-            int clearGap = 6;
-            int textMaxW = hasActiveFilters ? stateW - clearW - clearGap : stateW;
-            if (stateW > 10) {
-                g.setColor(uiText);
-                g.drawString(truncateToWidth(stateText, fm, textMaxW), stateX, hy);
-            }
-            if (hasActiveFilters && stateW > clearW + clearGap) {
-                int clearX = rowX + rowW - clearW;
-                int clearTop = headerBounds.y;
-                layout.clearFilters.setBounds(clearX, clearTop, clearW, headerBounds.height);
-                boolean clearHovered = layout.clearFilters.contains(mouseX, mouseY);
-                g.setColor(new Color(
-                        uiTextDim.getRed(),
-                        uiTextDim.getGreen(),
-                        uiTextDim.getBlue(),
-                        clearHovered ? 230 : 180
-                ));
-                g.drawString(clearLabel, clearX + 5, hy);
-            } else {
-                layout.clearFilters.setBounds(0, 0, 0, 0);
-            }
-        } else {
-            layout.clearFilters.setBounds(0, 0, 0, 0);
-        }
-
-        cursorY += headerH + 4;
+        cursorY += headerFm.getHeight() + 3;
 
         // ================================
         // Rows 3-5: Filter chips (only shown when expanded)
         // ================================
         int rowH = rowHeight + 6;
         int rowTop = 0;
-        if (layout.filtersExpanded)
-        {
         rowTop = cursorY - fm.getAscent();
 
         drawLabelCell(g, fm, rowX, rowTop, labelColW, rowH, SOURCE_LABEL, leftPad);
 
         final String SRC_ALL = "All";
-        final String SRC_CA = "Combat Achievements";
-        final String SRC_CL = "Collection Log";
+        final String SRC_CA = "CAs";
+        final String SRC_CL = "CLOGs";
+        final String SRC_DA = "ADs";
 
         int availableSource = (rowX + rowW - rightPad) - pillsStartX;
 
         int wAll = pillWidth(fm, SRC_ALL, pillPadX, 42, availableSource);
-        int wCA = pillWidth(fm, SRC_CA, pillPadX, 70, availableSource);
-        int wCL = pillWidth(fm, SRC_CL, pillPadX, 70, availableSource);
+        int wCA = pillWidth(fm, SRC_CA, pillPadX, 42, availableSource);
+        int wCL = pillWidth(fm, SRC_CL, pillPadX, 52, availableSource);
+        int wDA = pillWidth(fm, SRC_DA, pillPadX, 42, availableSource);
 
         int sx = pillsStartX;
         layout.filterSourceAll.setBounds(sx, rowTop, wAll, rowH);
@@ -281,10 +234,15 @@ public class TaskControlsRenderer
         sx += wCA + chipGap;
 
         layout.filterCL.setBounds(sx, rowTop, wCL, rowH);
+        sx += wCL + chipGap;
 
-        drawPill(g, fm, layout.filterSourceAll, SRC_ALL, query.sourceFilter == TaskListQuery.SourceFilter.ALL);
-        drawPill(g, fm, layout.filterCA, SRC_CA, query.sourceFilter == TaskListQuery.SourceFilter.CA);
-        drawPill(g, fm, layout.filterCL, SRC_CL, query.sourceFilter == TaskListQuery.SourceFilter.CLOGS);
+        layout.filterDA.setBounds(sx, rowTop, wDA, rowH);
+
+        boolean sourceAll = query.isSourceAllSelected();
+        drawPill(g, fm, layout.filterSourceAll, SRC_ALL, sourceAll);
+        drawPill(g, fm, layout.filterCA, SRC_CA, !sourceAll && query.sourceCASelected);
+        drawPill(g, fm, layout.filterCL, SRC_CL, !sourceAll && query.sourceClogsSelected);
+        drawPill(g, fm, layout.filterDA, SRC_DA, !sourceAll && query.sourceDasSelected);
 
         cursorY += rowH + 6;
 
@@ -342,85 +300,25 @@ public class TaskControlsRenderer
         drawTierScopePill(g, fm, layout.filterTierThis, T_THIS, query.tierScope == TaskListQuery.TierScope.THIS_TIER);
         drawPill(g, fm, layout.filterTierAll, T_ALL, query.tierScope == TaskListQuery.TierScope.ALL_TIERS);
 
-        cursorY += rowH + 10;
-        } // end filtersExpanded
-        else
-        {
-            layout.filterSourceAll.setBounds(0, 0, 0, 0);
-            layout.filterCA.setBounds(0, 0, 0, 0);
-            layout.filterCL.setBounds(0, 0, 0, 0);
-            layout.filterStatusAll.setBounds(0, 0, 0, 0);
-            layout.filterIncomplete.setBounds(0, 0, 0, 0);
-            layout.filterComplete.setBounds(0, 0, 0, 0);
-            layout.filterTierThis.setBounds(0, 0, 0, 0);
-            layout.filterTierAll.setBounds(0, 0, 0, 0);
-        }
+        cursorY += rowH + 20;
 
 // ================================
-// Row 6: Sort header (clickable expand/collapse)
+// Row 6: Sort header + applied state
 // ================================
-        int sortHeaderTop = cursorY - fm.getAscent();
-        int sortHeaderH = rowHeight + 6;
-        int sortBtnW = layout.sortExpanded ? rowW : rowW / 3;
-        Rectangle sortHdrRect = new Rectangle(rowX, sortHeaderTop, sortBtnW, sortHeaderH);
-        layout.sortHeaderBounds.setBounds(sortHdrRect);
+        cursorY += 8;
+        layout.sortExpanded = true;
+        layout.sortHeaderBounds.setBounds(0, 0, 0, 0);
+        savedHeaderFont = g.getFont();
+        g.setFont(sectionHeaderFont);
+        headerFm = g.getFontMetrics();
+        g.setColor(uiGold);
+        g.drawString("Sort", rowX + leftPad, cursorY);
+        drawHeaderClearLink(g, headerFm, bodyFm, layout.clearSort, rowX, rowW, leftPad, cursorY, "Sort", mouseX, mouseY);
+        g.setFont(savedHeaderFont);
+        fm = bodyFm;
 
-        Color sortHdrFill = layout.sortExpanded ? pillOnBg : new Color(
-                Math.min(255, tabInactiveBg.getRed() + 10),
-                Math.min(255, tabInactiveBg.getGreen() + 8),
-                Math.min(255, tabInactiveBg.getBlue() + 5),
-                tabInactiveBg.getAlpha());
-        drawBevelBox(g, sortHdrRect, sortHdrFill, uiEdgeLight, uiEdgeDark);
-        if (layout.sortExpanded) {
-            g.setColor(uiGold);
-            g.drawRect(sortHdrRect.x, sortHdrRect.y, sortHdrRect.width, sortHdrRect.height);
-        }
+        cursorY += headerFm.getHeight() + 3;
 
-        String sortIndicator = layout.sortExpanded ? "[-]" : "[+]";
-        String sortWord = "Sort";
-        g.setColor(layout.sortExpanded ? uiText : uiTextDim);
-        int sHy = centeredTextBaseline(sortHdrRect, fm);
-        g.drawString(sortIndicator, sortHdrRect.x + leftPad, sHy);
-        int swW = fm.stringWidth(sortWord);
-        int swX = sortHdrRect.x + (sortHdrRect.width - swW) / 2;
-        g.drawString(sortWord, swX, sHy);
-
-        if (!layout.sortExpanded) {
-            String sortStateStr = sortStateText(query);
-            int sortStateX = rowX + sortBtnW + 8;
-            int sortStateW = rowX + rowW - sortStateX;
-            boolean hasActiveSorts = query.sortByCompletion || query.sortByTier || query.sortByDate || query.sortByTimeTicks;
-            String clearLabel = "[clear]";
-            int clearW = fm.stringWidth(clearLabel) + 10;
-            int clearGap = 6;
-            int textMaxW = hasActiveSorts ? sortStateW - clearW - clearGap : sortStateW;
-            if (sortStateW > 10) {
-                g.setColor(uiText);
-                g.drawString(truncateToWidth(sortStateStr, fm, textMaxW), sortStateX, sHy);
-            }
-            if (hasActiveSorts && sortStateW > clearW + clearGap) {
-                int clearX = rowX + rowW - clearW;
-                int clearTop = sortHdrRect.y;
-                layout.clearSort.setBounds(clearX, clearTop, clearW, sortHdrRect.height);
-                boolean clearHovered = layout.clearSort.contains(mouseX, mouseY);
-                g.setColor(new Color(
-                        uiTextDim.getRed(),
-                        uiTextDim.getGreen(),
-                        uiTextDim.getBlue(),
-                        clearHovered ? 230 : 180
-                ));
-                g.drawString(clearLabel, clearX + 5, sHy);
-            } else {
-                layout.clearSort.setBounds(0, 0, 0, 0);
-            }
-        } else {
-            layout.clearSort.setBounds(0, 0, 0, 0);
-        }
-
-        cursorY += sortHeaderH + 4;
-
-        if (layout.sortExpanded)
-        {
 // ================================
 // Row 7: Sort chips (filters-style: label cell + chips only)
 // ================================
@@ -429,15 +327,15 @@ public class TaskControlsRenderer
 
         String completionText = query.sortByCompletion
                 ? (query.completedFirst ? "Completed first" : "Incomplete first")
-                : "Status [OFF]";
+                : "Status";
 
         String tierText = query.sortByTier
                 ? (query.easyTierFirst ? "Easy tier first" : "Master tier first")
-                : "Tier [OFF]";
+                : "Tier";
 
         String dateText = query.sortByDate
                 ? (query.newestFirst ? "Most recent first" : "Oldest first")
-                : "Time completed [OFF]";
+                : "Completion date";
 
 // enabled rules
         final boolean completionDisabled = query.statusFilter != TaskListQuery.StatusFilter.ALL;
@@ -474,80 +372,25 @@ public class TaskControlsRenderer
         final int minW = 80;
 
         String timeTicksText = !query.sortByTimeTicks
-                ? "Time spent [OFF]"
+                ? "Time spent"
                 : (query.longestFirst ? "Longest first" : "Shortest first");
 
-// Desired widths
-        String completionMax =
-                (fm.stringWidth("Incomplete first") >= fm.stringWidth("Status [OFF]"))
-                        ? "Incomplete first" : "Status [OFF]";
-        String tierMax =
-                (fm.stringWidth("Master tier first") >= fm.stringWidth("Easy tier first"))
-                        ? "Master tier first" : "Easy tier first";
-        String dateMax =
-                (fm.stringWidth("Most recent first") >= fm.stringWidth("Time completed [OFF]"))
-                        ? "Most recent first" : "Time completed [OFF]";
-        String timeMax =
-                (fm.stringWidth("Longest first") >= fm.stringWidth("Time spent [OFF]"))
-                        ? "Longest first" : "Time spent [OFF]";
-
-        int wCompletionDesired = pillWidth(fm, completionMax, pillPadX, minW, availableSort);
-        int wTierDesired = pillWidth(fm, tierMax, pillPadX, minW, availableSort);
-        int wDateDesired = pillWidth(fm, dateMax, pillPadX, minW, availableSort);
-        int wTimeDesired = pillWidth(fm, timeMax, pillPadX, minW, availableSort);
-
-        int wCompletion = wCompletionDesired;
-        int wTier = wTierDesired;
-        int wDate = wDateDesired;
-        int wTimeTicks = wTimeDesired;
-
-        int gaps = chipGap * 3;
-        int totalNeeded = wCompletion + wTier + wDate + wTimeTicks + gaps;
-
-        if (totalNeeded > availableSort)
-        {
-            int remaining = availableSort - gaps;
-            if (remaining < (minW * 4))
-            {
-                int maxEach = Math.max(minW, remaining / 4);
-                wCompletion = Math.min(wCompletion, maxEach);
-                wTier = Math.min(wTier, maxEach);
-                wDate = Math.min(wDate, maxEach);
-                wTimeTicks = Math.min(wTimeTicks, maxEach);
-            }
-            else
-            {
-                int sum = wCompletion + wTier + wDate + wTimeTicks;
-                double scale = (double) remaining / (double) sum;
-                wCompletion = Math.max(minW, (int) Math.floor(wCompletion * scale));
-                wTier = Math.max(minW, (int) Math.floor(wTier * scale));
-                wDate = Math.max(minW, (int) Math.floor(wDate * scale));
-                wTimeTicks = Math.max(minW, (int) Math.floor(wTimeTicks * scale));
-
-                int used = wCompletion + wTier + wDate + wTimeTicks;
-                int overflow = used - remaining;
-                while (overflow > 0)
-                {
-                    if (wTimeTicks > minW) { wTimeTicks--; overflow--; continue; }
-                    if (wDate > minW) { wDate--; overflow--; continue; }
-                    if (wTier > minW) { wTier--; overflow--; continue; }
-                    if (wCompletion > minW) { wCompletion--; overflow--; continue; }
-                    break;
-                }
-            }
-        }
+        int columnW = Math.max(minW, (availableSort - chipGap) / 2);
+        int wCompletion = columnW;
+        int wTier = columnW;
+        int wDate = columnW;
+        int wTimeTicks = columnW;
 
         int sx2 = pillsStartX;
         layout.sortCompletion.setBounds(sx2, rowTop, wCompletion, rowH);
-        sx2 += wCompletion + chipGap;
+        sx2 += columnW + chipGap;
 
         layout.sortTier.setBounds(sx2, rowTop, wTier, rowH);
-        sx2 += wTier + chipGap;
 
-        layout.sortDate.setBounds(sx2, rowTop, wDate, rowH);
-        sx2 += wDate + chipGap;
+        int secondSortRowTop = rowTop + rowH + 6;
+        layout.sortDate.setBounds(pillsStartX, secondSortRowTop, wDate, rowH);
 
-        layout.sortTimeTicks.setBounds(sx2, rowTop, wTimeTicks, rowH);
+        layout.sortTimeTicks.setBounds(pillsStartX + columnW + chipGap, secondSortRowTop, wTimeTicks, rowH);
         layout.sortReset.setBounds(0, 0, 0, 0);
 
         drawBracketMetaPill(g, fm, layout.sortCompletion, completionText, query.sortByCompletion, !completionDisabled);
@@ -555,16 +398,7 @@ public class TaskControlsRenderer
         drawPill(g, fm, layout.sortDate, dateText, query.sortByDate, dateEnabledScope);
         drawPill(g, fm, layout.sortTimeTicks, timeTicksText, query.sortByTimeTicks, dateEnabledScope);
 
-        cursorY += rowH + 6;
-        } // end sortExpanded
-        else
-        {
-            layout.sortCompletion.setBounds(0, 0, 0, 0);
-            layout.sortTier.setBounds(0, 0, 0, 0);
-            layout.sortDate.setBounds(0, 0, 0, 0);
-            layout.sortTimeTicks.setBounds(0, 0, 0, 0);
-            layout.hoverTooltipText = null;
-        }
+        cursorY += (rowH * 2) + 12;
 
         // ================================
         // Row 8: "See New Tasks" button (session-only, shown only when new tasks exist)
@@ -572,7 +406,7 @@ public class TaskControlsRenderer
         if (hasNewTasks) {
             int newRowTop = cursorY - fm.getAscent();
             int newRowH = rowHeight + 6;
-            int newBtnW = rowW / 3;
+            int newBtnW = Math.min(rowW, Math.max(150, rowW / 2));
             layout.filterNewTasks.setBounds(rowX, newRowTop, newBtnW, newRowH);
 
             boolean active = query.showNewTasksFilter;
@@ -633,9 +467,9 @@ public class TaskControlsRenderer
 
     private void drawLabelCell(Graphics2D g, FontMetrics fm, int rowX, int rowTop, int labelColW, int rowH, String label, int leftPad)
     {
-        // Plain label — no box, no bevel, just gold text
+        // Plain label — no box, no bevel, just subdued text
         int baseline = rowTop + ((rowH - fm.getHeight()) / 2) + fm.getAscent();
-        g.setColor(withAlpha(uiGold, 160));
+        g.setColor(withAlpha(uiTextDim, 170));
         g.drawString(label, rowX + leftPad, baseline);
     }
 
@@ -811,9 +645,9 @@ public class TaskControlsRenderer
         int w = tw + padX * 2;
         int h = th + padY * 2;
 
-        // Position: just below the pill, centered
+        // Position: straddle the pill edge so disabled-sort hints stay attached to the button.
         int x = anchor.x + (anchor.width - w) / 2;
-        int y = anchor.y + anchor.height - 1;
+        int y = anchor.y + anchor.height - Math.max(6, h / 2);
 
         // Clamp inside panel a bit (optional)
         x = Math.max(4, x);
@@ -843,6 +677,58 @@ public class TaskControlsRenderer
         g.drawString(text, r.x + padX, baseline);
     }
 
+    private void drawHeaderRule(Graphics2D g, int x1, int y, int x2)
+    {
+        if (x2 <= x1)
+        {
+            return;
+        }
+
+        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.drawLine(x1, y, x2, y);
+    }
+
+    private void drawHeaderClearLink(
+            Graphics2D g,
+            FontMetrics headerFm,
+            FontMetrics clearFm,
+            Rectangle clearBounds,
+            int rowX,
+            int rowW,
+            int leftPad,
+            int baselineY,
+            String title,
+            int mouseX,
+            int mouseY
+    )
+    {
+        final String clearLabel = "[clear]";
+        int clearW = clearFm.stringWidth(clearLabel) + 10;
+        int clearX = rowX + rowW - clearW;
+        int clearBaselineY = baselineY - headerFm.getAscent() + ((headerFm.getHeight() - clearFm.getHeight()) / 2) + clearFm.getAscent();
+        int clearTop = clearBaselineY - clearFm.getAscent() - 1;
+        clearBounds.setBounds(clearX, clearTop, clearW, clearFm.getHeight() + 2);
+
+        int ruleX1 = rowX + leftPad + headerFm.stringWidth(title) + 10;
+        int ruleX2 = clearX - 8;
+        drawHeaderRule(g, ruleX1, baselineY - headerFm.getAscent() + headerFm.getHeight() / 2, ruleX2);
+
+        boolean hovered = clearBounds.contains(mouseX, mouseY);
+        g.setColor(new Color(
+                uiTextDim.getRed(),
+                uiTextDim.getGreen(),
+                uiTextDim.getBlue(),
+                hovered ? 230 : 180
+        ));
+        if (rowW > clearW)
+        {
+            Font savedFont = g.getFont();
+            g.setFont(FontManager.getRunescapeFont());
+            g.drawString(clearLabel, clearX + 5, clearBaselineY);
+            g.setFont(savedFont);
+        }
+    }
+
     private void drawHelpIcon(Graphics2D g, FontMetrics fm, Rectangle bounds)
     {
         if (QUESTION_ICON != null)
@@ -869,50 +755,6 @@ public class TaskControlsRenderer
         {
             return null;
         }
-    }
-
-    private String filterStateText(TaskListQuery query, String activeTierLabel)
-    {
-        String src = "";
-        if (query.sourceFilter == TaskListQuery.SourceFilter.CA) src = "CA";
-        else if (query.sourceFilter == TaskListQuery.SourceFilter.CLOGS) src = "CL";
-
-        String tier = (query.tierScope == TaskListQuery.TierScope.THIS_TIER)
-                ? activeTierLabel + " tier" : "";
-
-        String status = "";
-        if (query.statusFilter == TaskListQuery.StatusFilter.INCOMPLETE) status = "Incomplete";
-        else if (query.statusFilter == TaskListQuery.StatusFilter.COMPLETE) status = "Complete";
-
-        int count = (src.isEmpty() ? 0 : 1) + (tier.isEmpty() ? 0 : 1) + (status.isEmpty() ? 0 : 1);
-        if (count == 0) return "Applied filters: none";
-
-        StringBuilder sb = new StringBuilder("Applied filters: ");
-        for (String p : new String[]{src, tier, status})
-        {
-            if (!p.isEmpty())
-            {
-                if (sb.length() > "Applied filters: ".length()) sb.append(" + ");
-                sb.append(p);
-            }
-        }
-        if (count == 1) sb.append(" only");
-        return sb.toString();
-    }
-
-    private String sortStateText(TaskListQuery query)
-    {
-        boolean hasTier = query.sortByTier;
-        boolean hasCompletion = query.sortByCompletion;
-        boolean hasDate = query.sortByDate;
-        boolean hasTimeTicks = query.sortByTimeTicks;
-        if (!hasTier && !hasCompletion && !hasDate && !hasTimeTicks) return "Sorted by: default (Alphabetical)";
-        java.util.List<String> parts = new java.util.ArrayList<>();
-        if (hasCompletion) parts.add("Status");
-        if (hasTier) parts.add("Tier");
-        if (hasDate) parts.add("Date");
-        if (hasTimeTicks) parts.add("Time spent");
-        return "Sorted by: " + String.join(" + ", parts);
     }
 
 }

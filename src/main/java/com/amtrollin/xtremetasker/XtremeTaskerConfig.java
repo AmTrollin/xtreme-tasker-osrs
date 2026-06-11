@@ -10,7 +10,7 @@ public interface XtremeTaskerConfig extends Config {
     enum RollSourceFilter {
         ALL("All tasks"),
         CA_ONLY("Roll only CA tasks"),
-        CLOG_ONLY("Roll only CLog tasks");
+        CLOG_ONLY("Roll CLOGS and ADs only");
 
         private final String label;
         RollSourceFilter(String label) { this.label = label; }
@@ -30,7 +30,7 @@ public interface XtremeTaskerConfig extends Config {
     @ConfigItem(
             keyName = "rollSourceFilter",
             name = "Roll source",
-            description = "Restrict random rolls to only Combat Achievement tasks, only Collection Log tasks, or all tasks"
+            description = "Restrict random rolls to only Combat Achievement tasks, Collection Log and Achievement Diary tasks, or all tasks"
     )
     default RollSourceFilter rollSourceFilter() {
         return RollSourceFilter.ALL;

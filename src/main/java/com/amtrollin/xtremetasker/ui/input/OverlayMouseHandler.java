@@ -342,12 +342,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 boolean changed = false;
 
                 // ----------------------------
-                // 0) Filters / Sort header collapse toggles
+                // 0) Filters / Sort clear links
                 // ----------------------------
                 if (a.controlsLayout().clearFilters.width > 0
                         && a.controlsLayout().clearFilters.contains(p)) {
                     TaskListQuery q = a.taskQuery();
-                    q.sourceFilter = TaskListQuery.SourceFilter.ALL;
+                    q.selectAllSources();
                     q.statusFilter = TaskListQuery.StatusFilter.ALL;
                     q.tierScope = TaskListQuery.TierScope.ALL_TIERS;
                     autoDisableCompletionSortIfNeeded();
@@ -368,28 +368,17 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     e.consume();
                     return e;
                 }
-                if (a.controlsLayout().filtersHeaderBounds.width > 0
-                        && a.controlsLayout().filtersHeaderBounds.contains(p)) {
-                    a.controlsLayout().filtersExpanded = !a.controlsLayout().filtersExpanded;
-                    e.consume();
-                    return e;
-                }
-                if (a.controlsLayout().sortHeaderBounds.width > 0
-                        && a.controlsLayout().sortHeaderBounds.contains(p)) {
-                    a.controlsLayout().sortExpanded = !a.controlsLayout().sortExpanded;
-                    e.consume();
-                    return e;
-                }
-
                 // ----------------------------
-                // 1) SOURCE filter (single-select)
+                // 1) SOURCE filter (multi-select; all selected collapses to All)
                 // ----------------------------
                 if (a.controlsLayout().filterSourceAll.contains(p)) {
                     changed = setSourceFilter(TaskListQuery.SourceFilter.ALL);
                 } else if (a.controlsLayout().filterCA.contains(p)) {
-                    changed = toggleSingleSelectSource(TaskListQuery.SourceFilter.CA);
+                    changed = toggleSourceFilter(TaskListQuery.SourceFilter.CA);
                 } else if (a.controlsLayout().filterCL.contains(p)) {
-                    changed = toggleSingleSelectSource(TaskListQuery.SourceFilter.CLOGS);
+                    changed = toggleSourceFilter(TaskListQuery.SourceFilter.CLOGS);
+                } else if (a.controlsLayout().filterDA.contains(p)) {
+                    changed = toggleSourceFilter(TaskListQuery.SourceFilter.DAS);
                 }
 
                 // ----------------------------
@@ -444,7 +433,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     if (a.taskQuery().showNewTasksFilter) {
                         // Auto-expand to show new tasks across all tiers/sources/statuses
                         a.taskQuery().tierScope = TaskListQuery.TierScope.ALL_TIERS;
-                        a.taskQuery().sourceFilter = TaskListQuery.SourceFilter.ALL;
+                        a.taskQuery().selectAllSources();
                         a.taskQuery().statusFilter = TaskListQuery.StatusFilter.ALL;
                     }
                     changed = true;
@@ -1175,9 +1164,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.activeTab() == OverlayInputAccess.MainTab.TASKS && (
                         // tier tabs
                         containsAny(a.tierTabBounds(), p)
-                        // expand/collapse headers
-                        || cl.filtersHeaderBounds.contains(p)
-                        || cl.sortHeaderBounds.contains(p)
                         || cl.searchBox.contains(p)
                         || (cl.clearFilters.width > 0 && cl.clearFilters.contains(p))
                         || (cl.clearSort.width > 0 && cl.clearSort.contains(p))
@@ -1185,6 +1171,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || cl.filterSourceAll.contains(p)
                         || cl.filterCA.contains(p)
                         || cl.filterCL.contains(p)
+                        || cl.filterDA.contains(p)
                         || cl.filterStatusAll.contains(p)
                         || cl.filterIncomplete.contains(p)
                         || cl.filterComplete.contains(p)
@@ -1455,29 +1442,23 @@ public final class OverlayMouseHandler extends MouseAdapter {
     }
 
     // =========================
-    // Single-select helpers
+    // Source filter helpers
     // =========================
     private boolean setSourceFilter(TaskListQuery.SourceFilter next) {
         TaskListQuery q = a.taskQuery();
-        if (q.sourceFilter == next) {
-            return false;
+        boolean beforeCA = q.sourceCASelected;
+        boolean beforeClogs = q.sourceClogsSelected;
+        boolean beforeDas = q.sourceDasSelected;
+        if (next == TaskListQuery.SourceFilter.ALL) {
+            q.selectAllSources();
+        } else {
+            q.setOnlySource(next);
         }
-        q.sourceFilter = next;
-        return true;
+        return beforeCA != q.sourceCASelected || beforeClogs != q.sourceClogsSelected || beforeDas != q.sourceDasSelected;
     }
 
-    private boolean toggleSingleSelectSource(TaskListQuery.SourceFilter clicked) {
-        TaskListQuery q = a.taskQuery();
-        TaskListQuery.SourceFilter next = (q.sourceFilter == clicked)
-                ? TaskListQuery.SourceFilter.ALL
-                : clicked;
-
-        if (q.sourceFilter == next) {
-            return false;
-        }
-
-        q.sourceFilter = next;
-        return true;
+    private boolean toggleSourceFilter(TaskListQuery.SourceFilter clicked) {
+        return a.taskQuery().toggleSource(clicked);
     }
 
     private boolean setStatusFilter(TaskListQuery.StatusFilter next) {

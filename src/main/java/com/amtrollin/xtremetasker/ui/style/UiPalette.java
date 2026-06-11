@@ -11,7 +11,7 @@ public final class UiPalette
     public static final UiPalette DEFAULT = new UiPalette();
 
     // Core
-    public final Color UI_BG = new Color(45, 36, 24, 235);
+    public final Color UI_BG = new Color(38, 30, 20, 245);
     public final Color UI_EDGE_DARK = new Color(18, 14, 9, 240);
     public final Color UI_EDGE_LIGHT = new Color(95, 78, 46, 235);
     public final Color UI_GOLD = new Color(200, 170, 90, 235);

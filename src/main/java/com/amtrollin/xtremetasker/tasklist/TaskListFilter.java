@@ -31,7 +31,10 @@ public final class TaskListFilter
             query = new TaskListQuery();
         }
 
-        final TaskListQuery.SourceFilter sourceFilter = query.sourceFilter;
+        final boolean includeCA = query.isFilterCA();
+        final boolean includeClogs = query.isFilterCL();
+        final boolean includeDas = query.isFilterDA();
+        final boolean sourceAll = query.isSourceAllSelected();
         final TaskListQuery.StatusFilter statusFilter = query.statusFilter;
         final boolean filterNew = query.showNewTasksFilter && isNew != null;
 
@@ -53,21 +56,11 @@ public final class TaskListFilter
             // -------------------------
             // 1) Source filter
             // -------------------------
-            if (sourceFilter != null && sourceFilter != TaskListQuery.SourceFilter.ALL)
+            if (!sourceAll)
             {
-                boolean ok;
-                switch (sourceFilter)
-                {
-                    case CA:
-                        ok = isCombatAchievementTask(t);
-                        break;
-                    case CLOGS:
-                        ok = isCollectionLogTask(t);
-                        break;
-                    default:
-                        ok = true;
-                        break;
-                }
+                boolean ok = (includeCA && isCombatAchievementTask(t))
+                        || (includeClogs && isCollectionLogTask(t))
+                        || (includeDas && isDiaryAchievementTask(t));
 
                 if (!ok)
                 {
@@ -127,6 +120,18 @@ public final class TaskListFilter
         if (!src.isEmpty())
         {
             return src.contains("collection");
+        }
+
+        return false;
+    }
+
+    private static boolean isDiaryAchievementTask(XtremeTask t)
+    {
+
+        String src = safeLower(String.valueOf(t.getSource()));
+        if (!src.isEmpty())
+        {
+            return src.contains("diary");
         }
 
         return false;

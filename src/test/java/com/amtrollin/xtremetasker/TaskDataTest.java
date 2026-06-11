@@ -56,7 +56,10 @@ public class TaskDataTest
             String tier = requiredString(task, "tier", i);
 
             assertTrue("duplicate task id: " + id, ids.add(id));
-            assertTrue("invalid source for task " + id, "COLLECTION_LOG".equals(source) || "COMBAT_ACHIEVEMENT".equals(source));
+            assertTrue("invalid source for task " + id,
+                    "COLLECTION_LOG".equals(source)
+                            || "COMBAT_ACHIEVEMENT".equals(source)
+                            || "DIARY_ACHIEVEMENT".equals(source));
             assertTrue("invalid tier for task " + id,
                     "EASY".equals(tier)
                             || "MEDIUM".equals(tier)
@@ -89,6 +92,31 @@ public class TaskDataTest
         query.searchText = "level 99";
         List<XtremeTask> orderedResults = TaskListPipeline.apply(tasks, query, task -> false);
         assertEquals(reversedResults.get(0).getId(), orderedResults.get(0).getId());
+    }
+
+    @Test
+    public void sourceFilterSupportsMultipleSelectedSources()
+    {
+        List<XtremeTask> tasks = Arrays.asList(
+                new XtremeTask("ca", "A Combat Achievement", TaskSource.COMBAT_ACHIEVEMENT, TaskTier.EASY),
+                new XtremeTask("cl", "A Collection Log task", TaskSource.COLLECTION_LOG, TaskTier.EASY),
+                new XtremeTask("ad", "An Achievement Diary task", TaskSource.DIARY_ACHIEVEMENT, TaskTier.EASY)
+        );
+
+        TaskListQuery query = new TaskListQuery();
+        query.toggleSource(TaskListQuery.SourceFilter.CA);
+        query.toggleSource(TaskListQuery.SourceFilter.CLOGS);
+
+        Set<String> ids = TaskListPipeline.apply(tasks, query, task -> false).stream()
+                .map(XtremeTask::getId)
+                .collect(Collectors.toSet());
+        assertEquals(Set.of("ca", "cl"), ids);
+
+        query.toggleSource(TaskListQuery.SourceFilter.DAS);
+
+        assertTrue("Selecting all three source filters should normalize to All", query.isSourceAllSelected());
+        List<XtremeTask> allResults = TaskListPipeline.apply(tasks, query, task -> false);
+        assertEquals(3, allResults.size());
     }
 
     @Test

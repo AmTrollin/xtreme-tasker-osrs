@@ -66,6 +66,7 @@ import java.util.stream.Collectors;
 
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CA;
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CLOGS;
+import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.DAS;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 import static com.amtrollin.xtremetasker.ui.style.UiStrings.*;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
@@ -167,8 +168,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean iconPositionLoaded = false;
     private boolean panelPositionLoaded = false;
 
-    private static final int PANEL_W_TASKS = 520;
-    private static final int PANEL_H_TASKS = 590;
+    private static final int PANEL_W_TASKS = 740;
+    private static final int PANEL_H_TASKS = 545;
 
 
     // ---- animations (extracted) ----
@@ -218,6 +219,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(XtremeTask task) {
         return buildCollectionLogRequirementPreview(task, true);
+    }
+
+    private static boolean isCollectionLogSyncSource(TaskSource source)
+    {
+        return source == TaskSource.COLLECTION_LOG || source == TaskSource.DIARY_ACHIEVEMENT;
     }
 
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(
@@ -1168,7 +1174,7 @@ public class XtremeTaskerOverlay extends Overlay {
         drawPopupCloseX(g, syncMismatchCloseBounds);
 
         boolean hasCollectionLogReview = mismatches.stream()
-                .anyMatch(task -> task.getSource() == TaskSource.COLLECTION_LOG);
+                .anyMatch(task -> isCollectionLogSyncSource(task.getSource()));
         boolean hasCombatAchievementReview = mismatches.stream()
                 .anyMatch(task -> task.getSource() == TaskSource.COMBAT_ACHIEVEMENT);
         g.setColor(P.UI_GOLD);
@@ -1179,7 +1185,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         else if (hasCollectionLogReview)
         {
-            reviewMessage = "CLOG tasks marked complete in Xtreme Tasker but not detected in-game after sync";
+            reviewMessage = "CLOG/AD tasks marked complete in Xtreme Tasker but not detected in-game after sync";
         }
         else
         {
@@ -1857,10 +1863,10 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesViewportBounds.setBounds(layout.viewportBounds);
 
         if (rulesLayout.syncClogsButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogsButtonBounds, "Sync CLOGs", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogsButtonBounds, "SYNC CLOGs + ADs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCAsButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "Sync CAs", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "SYNC CAs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
@@ -2064,19 +2070,24 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (code == KeyEvent.VK_1) {
-            taskQuery.sourceFilter = TaskListQuery.SourceFilter.ALL;
+            taskQuery.selectAllSources();
             resetTaskListViewAfterQueryChange();
             return true;
         }
 
         if (code == KeyEvent.VK_2) {
-            taskQuery.sourceFilter = (taskQuery.sourceFilter == CA) ? TaskListQuery.SourceFilter.ALL : CA;
+            taskQuery.toggleSource(CA);
             resetTaskListViewAfterQueryChange();
             return true;
         }
 
         if (code == KeyEvent.VK_3) {
-            taskQuery.sourceFilter = (taskQuery.sourceFilter == CLOGS) ? TaskListQuery.SourceFilter.ALL : CLOGS;
+            taskQuery.toggleSource(CLOGS);
+            resetTaskListViewAfterQueryChange();
+            return true;
+        }
+        if (code == KeyEvent.VK_4) {
+            taskQuery.toggleSource(DAS);
             resetTaskListViewAfterQueryChange();
             return true;
         }
@@ -2390,11 +2401,11 @@ public class XtremeTaskerOverlay extends Overlay {
                             tasksSourceFilterInitialized = true;
                             XtremeTaskerConfig.RollSourceFilter rsf = plugin.getRollSourceFilter();
                             if (rsf == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
-                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.CA;
+                                taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
                             } else if (rsf == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.CLOGS;
+                                taskQuery.selectAllSources();
                             } else {
-                                taskQuery.sourceFilter = TaskListQuery.SourceFilter.ALL;
+                                taskQuery.selectAllSources();
                             }
                         }
 
@@ -3143,7 +3154,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderPadY() {
-        return client.isResized() ? 4 : 3;
+        return client.isResized() ? 3 : 2;
     }
 
     private Dimension headerLogoSize(int panelW) {
@@ -3156,7 +3167,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderLogoMaxHeight() {
-        return client.isResized() ? 110 : 94;
+        return client.isResized() ? 92 : 80;
     }
 
     // ---- panel sizing helpers ----

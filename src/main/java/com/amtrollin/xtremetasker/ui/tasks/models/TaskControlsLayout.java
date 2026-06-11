@@ -6,16 +6,17 @@ public class TaskControlsLayout
 {
     public final Rectangle searchBox = new Rectangle();
 
-    // Expand/collapse headers (clickable)
+    // Static section labels; bounds stay empty so headers are not clickable.
     public final Rectangle filtersHeaderBounds = new Rectangle();
     public final Rectangle sortHeaderBounds = new Rectangle();
-    public boolean filtersExpanded = false;
-    public boolean sortExpanded = false;
+    public boolean filtersExpanded = true;
+    public boolean sortExpanded = true;
 
-    // Source (single select): ALL / CA / CLOGs
+    // Source (single select): ALL / CA / CLOGs / ADs
     public final Rectangle filterSourceAll = new Rectangle();
     public final Rectangle filterCA = new Rectangle();
     public final Rectangle filterCL = new Rectangle();
+    public final Rectangle filterDA = new Rectangle();
 
     // Status (single select): ALL / Incomplete / Complete
     public final Rectangle filterStatusAll = new Rectangle();

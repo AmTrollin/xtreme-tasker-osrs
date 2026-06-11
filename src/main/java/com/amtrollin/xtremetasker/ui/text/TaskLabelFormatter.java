@@ -72,6 +72,8 @@ public final class TaskLabelFormatter
                 return "CA";
             case COLLECTION_LOG:
                 return "CL";
+            case DIARY_ACHIEVEMENT:
+                return "AD";
             default:
                 String n = source.name();
                 return n.length() >= 2 ? n.substring(0, 2) : n;
@@ -91,6 +93,8 @@ public final class TaskLabelFormatter
                 return "Combat Achievement";
             case COLLECTION_LOG:
                 return "Collection Log";
+            case DIARY_ACHIEVEMENT:
+                return "Achievement Diary";
             default:
                 return source.name();
         }

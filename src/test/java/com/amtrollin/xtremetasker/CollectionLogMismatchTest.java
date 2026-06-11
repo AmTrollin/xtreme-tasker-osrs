@@ -534,7 +534,7 @@ public class CollectionLogMismatchTest
         return new XtremeTask(
                 id,
                 name,
-                TaskSource.COLLECTION_LOG,
+                TaskSource.DIARY_ACHIEVEMENT,
                 TaskTier.EASY,
                 null,
                 null,

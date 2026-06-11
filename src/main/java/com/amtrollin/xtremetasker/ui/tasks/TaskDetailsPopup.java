@@ -31,7 +31,7 @@ import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Obtained from Diary Achievement rewards.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
     private final UiPalette palette;
@@ -187,7 +187,7 @@ public final class TaskDetailsPopup
         // Popup bounds (smaller)
         if (bounds.width <= 0 || bounds.height <= 0)
         {
-            int w = (int) (panelBounds.width * 0.82);
+            int w = Math.max(280, (int) (panelBounds.width * 0.49));
             int h = (int) (panelBounds.height * 0.70);
             int x = panelBounds.x + (panelBounds.width - w) / 2;
             int y = panelBounds.y + (panelBounds.height - h) / 2;
@@ -343,7 +343,7 @@ public final class TaskDetailsPopup
         boolean hideDescription = hasRequirementPreview || task.getSource() == TaskSource.COLLECTION_LOG;
         boolean showDescriptionSection = !hideDescription || showAchievementDiaryNote;
         String desc = showAchievementDiaryNote
-                ? ACHIEVEMENT_DIARY_NOTE
+                ? diaryTaskDescription(task)
                 : (hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim());
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
         int totalPx = 0;
@@ -992,6 +992,62 @@ public final class TaskDetailsPopup
     {
         TaskVerification verification = task == null ? null : task.getVerification();
         return verification != null && verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY;
+    }
+
+    private static String achievementDiaryDescription(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null)
+        {
+            return ACHIEVEMENT_DIARY_NOTE;
+        }
+
+        String region = titleCase(verification.getRegion());
+        String difficulty = titleCase(verification.getDifficulty());
+        if (region == null && difficulty == null)
+        {
+            return ACHIEVEMENT_DIARY_NOTE;
+        }
+
+        String detail = region == null ? difficulty : difficulty == null ? region : region + " - " + difficulty;
+        return "Achievement Diary: " + detail + ". " + ACHIEVEMENT_DIARY_NOTE;
+    }
+
+    private static String diaryTaskDescription(XtremeTask task)
+    {
+        String description = task == null ? null : task.getDescription();
+        if (description != null && !description.trim().isEmpty())
+        {
+            return description.trim();
+        }
+
+        return achievementDiaryDescription(task);
+    }
+
+    private static String titleCase(String value)
+    {
+        if (value == null || value.trim().isEmpty())
+        {
+            return null;
+        }
+
+        String trimmed = value.trim().replace('-', ' ').replace('_', ' ');
+        StringBuilder out = new StringBuilder(trimmed.length());
+        boolean capitalize = true;
+        for (int i = 0; i < trimmed.length(); i++)
+        {
+            char ch = trimmed.charAt(i);
+            if (Character.isWhitespace(ch))
+            {
+                out.append(ch);
+                capitalize = true;
+                continue;
+            }
+
+            out.append(capitalize ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
+            capitalize = false;
+        }
+        return out.toString();
     }
 
     private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
