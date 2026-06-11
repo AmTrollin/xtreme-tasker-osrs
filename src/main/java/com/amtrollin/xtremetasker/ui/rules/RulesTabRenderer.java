@@ -395,6 +395,8 @@ public final class RulesTabRenderer {
         int helperRowsPx = Math.max(1, helperLines.size()) * rb;
         int columnsTopY = viewportY + helperRowsPx + 18;
         int columnsViewportH = Math.max(0, viewportH - (columnsTopY - viewportY));
+        Rectangle fullViewport = new Rectangle(layout.viewportBounds);
+        Rectangle columnsViewport = new Rectangle(bx, columnsTopY, viewportW, columnsViewportH);
 
         List<String> caLines = buildCombatAchievementSyncColumn(
                 fm,
@@ -424,7 +426,7 @@ public final class RulesTabRenderer {
         int end = visibleRows <= 0 ? 0 : start + visibleRows;
 
         Shape oldClip = g.getClip();
-        g.setClip(layout.viewportBounds);
+        g.setClip(fullViewport);
 
         int helperY = viewportY + fm.getAscent();
         g.setColor(uiTextDim);
@@ -442,6 +444,7 @@ public final class RulesTabRenderer {
         drawSyncColumn(g, fm, layout, clogLines, rightX, columnsTopY + fm.getAscent(), colW, start, end);
 
         g.setClip(oldClip);
+        layout.viewportBounds.setBounds(columnsViewport);
         return layout;
     }
 

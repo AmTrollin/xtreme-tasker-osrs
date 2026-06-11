@@ -25,10 +25,10 @@ Both the `Current` and `Tasks` tabs include a `[Keyboard hints]` control at the 
 The Tasks tab includes:
 
 - Search by task text.
-- Source filters for all tasks, Combat Achievements, Collection Log tasks, and Achievement Diary tasks.
+- Source filters for all tasks, or any combination of Combat Achievement, Collection Log, and Achievement Diary tasks.
 - Status filters for all, incomplete, and complete tasks.
 - Tier scope filtering for the current tier or all tiers.
-- Sorting by source, tier, completion date, and time spent where applicable.
+- Sorting by status, tier, completion date, and time spent where applicable.
 - Empty-state messages when your filters return no rows.
 
 Rows use compact status indicators:
@@ -37,6 +37,8 @@ Rows use compact status indicators:
 - Amber partial indicator: some repeated task instances are complete.
 - Green completed indicator: complete.
 - `NEW`: task was newly added by a task data update.
+
+Source filters are multi-select. Selecting all three source filters normalizes back to `All`.
 
 ## Repeated Tasks
 

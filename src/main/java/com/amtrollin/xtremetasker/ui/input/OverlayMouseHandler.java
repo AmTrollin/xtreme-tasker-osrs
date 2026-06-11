@@ -8,6 +8,8 @@ import com.amtrollin.xtremetasker.ui.rules.RulesTabLayout;
 import com.amtrollin.xtremetasker.ui.rules.RulesTabRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
 import lombok.RequiredArgsConstructor;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.util.LinkBrowser;
 
@@ -16,6 +18,8 @@ import java.awt.Cursor;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
+
+import static com.amtrollin.xtremetasker.ui.style.UiConstants.ICON_ANCHOR_PAD;
 
 @RequiredArgsConstructor
 public final class OverlayMouseHandler extends MouseAdapter {
@@ -1251,7 +1255,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             int canvasH = a.client().getCanvasHeight();
             int newX = e.getX() - a.iconDragOffsetX();
             int newY = e.getY() - a.iconDragOffsetY();
-            newX = Math.max(0, Math.min(newX, canvasW - a.iconBounds().width));
+            newX = Math.max(0, Math.min(newX, iconDragMaxX(canvasW, a.iconBounds().width)));
             newY = Math.max(0, Math.min(newY, canvasH - a.iconBounds().height));
             a.setIconOverride(newX, newY);
             e.consume();
@@ -1300,6 +1304,18 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         e.consume();
         return e;
+    }
+
+    private int iconDragMaxX(int canvasWidth, int iconWidth) {
+        int maxX = canvasWidth - iconWidth;
+        if (!a.client().isResized()) {
+            Widget xpOrb = a.client().getWidget(ComponentID.MINIMAP_XP_ORB);
+            if (xpOrb != null) {
+                Rectangle b = xpOrb.getBounds();
+                maxX = Math.min(maxX, b.x - ICON_ANCHOR_PAD - iconWidth);
+            }
+        }
+        return Math.max(0, maxX);
     }
 
     @Override

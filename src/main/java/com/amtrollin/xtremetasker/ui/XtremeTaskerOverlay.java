@@ -165,8 +165,15 @@ public class XtremeTaskerOverlay extends Overlay {
     private int resizableOffsetX = 0;  // canvasWidth - iconX - ICON_WIDTH
     private int resizableOffsetY = 0;  // iconY (absolute from top)
     private boolean resizableOffsetInitialized = false;
+    private int fixedOffsetX = 0;       // canvasWidth - iconX - ICON_WIDTH
+    private int fixedOffsetY = 0;       // iconY (absolute from top)
+    private boolean fixedOffsetInitialized = false;
     private boolean iconPositionLoaded = false;
+    private Boolean iconLayoutResized = null;
     private boolean panelPositionLoaded = false;
+
+    private static final int ICON_RESIZABLE_DEFAULT_RIGHT_MARGIN = 62;
+    private static final int ICON_RESIZABLE_DEFAULT_Y = 165;
 
     private static final int PANEL_W_TASKS = 740;
     private static final int PANEL_H_TASKS = 545;
@@ -805,12 +812,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     /** Resets the draggable icon to its default position (clears overrides + persisted config). */
     public void resetIconPosition() {
-        iconXOverride = null;
-        iconYOverride = null;
-        resizableOffsetX = 0;
-        resizableOffsetY = 0;
-        resizableOffsetInitialized = false;
-        plugin.clearIconPosition();
+        clearIconPositionState(true);
     }
 
     /**
@@ -823,7 +825,11 @@ public class XtremeTaskerOverlay extends Overlay {
         resizableOffsetX = 0;
         resizableOffsetY = 0;
         resizableOffsetInitialized = false;
+        fixedOffsetX = 0;
+        fixedOffsetY = 0;
+        fixedOffsetInitialized = false;
         iconPositionLoaded = false;
+        iconLayoutResized = null;
     }
 
     /** Returns a snapshot of the current icon bounds for use in menu entry checks. */
@@ -861,13 +867,25 @@ public class XtremeTaskerOverlay extends Overlay {
         // Lazy-load saved icon position (safe here — all injected fields are ready).
         if (!iconPositionLoaded) {
             iconPositionLoaded = true;
-            int[] savedPos = plugin.loadIconPosition();
-            if (savedPos != null) {
-                // Saved values are canvas-right-relative (resizable mode).
-                resizableOffsetX = savedPos[0];
-                resizableOffsetY = savedPos[1];
+            int[] savedResizablePos = plugin.loadIconPosition(true);
+            if (savedResizablePos != null) {
+                resizableOffsetX = savedResizablePos[0];
+                resizableOffsetY = savedResizablePos[1];
                 resizableOffsetInitialized = true;
             }
+            int[] savedFixedPos = plugin.loadIconPosition(false);
+            if (savedFixedPos != null) {
+                fixedOffsetX = savedFixedPos[0];
+                fixedOffsetY = savedFixedPos[1];
+                fixedOffsetInitialized = true;
+            }
+        }
+        boolean currentIconLayoutResized = client.isResized();
+        if (iconLayoutResized == null) {
+            iconLayoutResized = currentIconLayoutResized;
+        } else if (iconLayoutResized != currentIconLayoutResized) {
+            clearIconPositionState(true);
+            iconLayoutResized = currentIconLayoutResized;
         }
 
         // Lazy-load saved panel position.
@@ -3045,20 +3063,20 @@ public class XtremeTaskerOverlay extends Overlay {
                     resizableOffsetX = client.getCanvasWidth() - (iconXOverride - ICON_RESIZABLE_NUDGE_RIGHT) - ICON_WIDTH;
                     resizableOffsetY = iconYOverride - ICON_RESIZABLE_NUDGE_DOWN;
                     resizableOffsetInitialized = true;
-                    plugin.saveIconPosition(resizableOffsetX, resizableOffsetY);
+                    plugin.saveIconPosition(resizableOffsetX, resizableOffsetY, true);
+                } else {
+                    fixedOffsetX = client.getCanvasWidth() - iconXOverride - ICON_WIDTH;
+                    fixedOffsetY = iconYOverride;
+                    fixedOffsetInitialized = true;
+                    plugin.saveIconPosition(fixedOffsetX, fixedOffsetY, false);
                 }
-                // Fixed layout: always anchored to widget; nothing to save.
                 iconXOverride = null;
                 iconYOverride = null;
             }
 
             @Override
             public void clearIconPosition() {
-                iconXOverride = null;
-                iconYOverride = null;
-                resizableOffsetX = 0;
-                resizableOffsetY = 0;
-                plugin.clearIconPosition();
+                clearIconPositionState(true);
             }
 
             @Override
@@ -3072,6 +3090,20 @@ public class XtremeTaskerOverlay extends Overlay {
         };
     }
 
+    private void clearIconPositionState(boolean clearPersisted) {
+        iconXOverride = null;
+        iconYOverride = null;
+        resizableOffsetX = 0;
+        resizableOffsetY = 0;
+        resizableOffsetInitialized = false;
+        fixedOffsetX = 0;
+        fixedOffsetY = 0;
+        fixedOffsetInitialized = false;
+        if (clearPersisted) {
+            plugin.clearIconPosition();
+        }
+    }
+
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill) {
         buttonRenderer.drawBevelBox(g, r, fill);
     }
@@ -3081,54 +3113,67 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private Point computeIconPosition(int canvasWidth, int canvasHeight) {
-        // Fixed layout: always anchor to the XP drops orb — ignore any saved/drag override.
-        if (!client.isResized()) {
-            Widget xpOrb = client.getWidget(ComponentID.MINIMAP_XP_ORB);
-            if (xpOrb != null) {
-                Rectangle b = xpOrb.getBounds();
-                int x = b.x - ICON_ANCHOR_PAD - ICON_WIDTH;
-                int y = b.y + (b.height - ICON_HEIGHT) / 2 - ICON_FIXED_NUDGE_UP;
-                x = Math.max(0, Math.min(x, canvasWidth - ICON_WIDTH));
-                y = Math.max(0, Math.min(y, canvasHeight - ICON_HEIGHT));
-                return new Point(x, y);
-            }
-            return new Point(canvasWidth - ICON_WIDTH - ICON_FALLBACK_RIGHT_MARGIN, ICON_FALLBACK_Y);
-        }
-
-        // Resizable: position is canvas-right-relative so it tracks horizontal resizes
-        // without depending on widget bounds (which lag by one game tick).
-        // Initialize from widget bounds once — but ONLY when bounds are valid (non-zero).
-        // If the layout just switched from fixed the widget may not be ready yet; retry next frame.
-        if (!resizableOffsetInitialized) {
-            Widget mapArea = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_BOTTOM_LINE_MINIMAP_DRAW_AREA);
-            if (mapArea == null) mapArea = client.getWidget(ComponentID.RESIZABLE_VIEWPORT_MINIMAP_DRAW_AREA);
-            if (mapArea != null && mapArea.getBounds().width > 0 && mapArea.getBounds().height > 0) {
-                Rectangle b = mapArea.getBounds();
-                int defaultX = b.x + (b.width - ICON_WIDTH) / 2 + ICON_ANCHOR_RIGHT_OFFSET;
-                int defaultY = b.y + b.height + ICON_ANCHOR_PAD + ICON_ANCHOR_EXTRA_DOWN;
-                resizableOffsetX = canvasWidth - defaultX - ICON_WIDTH; // dist from right
-                resizableOffsetY = defaultY;                             // dist from top
-                resizableOffsetInitialized = true;
-            }
-            // Widget not ready yet — fall through to fallback position and retry next frame.
-        }
-
         // Active drag: raw absolute position.
         if (iconXOverride != null && iconYOverride != null) {
             return new Point(iconXOverride, iconYOverride);
         }
 
-        // Stable position: pure canvas-width arithmetic, no widget reads.
-        // If still not initialized (widget not ready), show at fallback until next frame.
-        int x = resizableOffsetInitialized
-                ? canvasWidth - ICON_WIDTH - resizableOffsetX
-                : canvasWidth - ICON_WIDTH - ICON_FALLBACK_RIGHT_MARGIN;
-        int y = resizableOffsetInitialized ? resizableOffsetY : ICON_FALLBACK_Y;
+        // Fixed layout: follow the XP drops orb by default. Only use an offset
+        // after the user drags the icon in the current fixed-layout session.
+        if (!client.isResized()) {
+            if (fixedOffsetInitialized) {
+                int x = canvasWidth - ICON_WIDTH - fixedOffsetX;
+                int y = fixedOffsetY;
+                x = Math.max(0, Math.min(x, canvasWidth - ICON_WIDTH));
+                y = Math.max(0, Math.min(y, canvasHeight - ICON_HEIGHT));
+                return new Point(x, y);
+            }
+            return defaultFixedIconPosition(canvasWidth, canvasHeight);
+        }
+
+        // Resizable: position is canvas-right-relative so it tracks horizontal resizes
+        // after a user drag. Default placement is computed live so a stale widget
+        // read during layout switches cannot become a stuck position.
+        if (!resizableOffsetInitialized) {
+            return defaultResizableIconPosition(canvasWidth, canvasHeight);
+        }
+
+        int x = canvasWidth - ICON_WIDTH - resizableOffsetX;
+        int y = resizableOffsetY;
         x += ICON_RESIZABLE_NUDGE_RIGHT;
         y += ICON_RESIZABLE_NUDGE_DOWN;
         x = Math.max(0, Math.min(x, canvasWidth - ICON_WIDTH));
         y = Math.max(0, Math.min(y, canvasHeight - ICON_HEIGHT));
         return new Point(x, y);
+    }
+
+    private Point defaultFixedIconPosition(int canvasWidth, int canvasHeight) {
+        int x;
+        int y;
+        Widget xpOrb = client.getWidget(ComponentID.MINIMAP_XP_ORB);
+        if (xpOrb != null && hasUsableBounds(xpOrb)) {
+            Rectangle b = xpOrb.getBounds();
+            x = b.x - ICON_ANCHOR_PAD - ICON_WIDTH;
+            y = b.y + (b.height - ICON_HEIGHT) / 2 - ICON_FIXED_NUDGE_UP;
+        } else {
+            x = canvasWidth - ICON_WIDTH - ICON_FALLBACK_RIGHT_MARGIN;
+            y = ICON_FALLBACK_Y;
+        }
+        x = Math.max(0, Math.min(x, canvasWidth - ICON_WIDTH));
+        y = Math.max(0, Math.min(y, canvasHeight - ICON_HEIGHT));
+        return new Point(x, y);
+    }
+
+    private Point defaultResizableIconPosition(int canvasWidth, int canvasHeight) {
+        int x = canvasWidth - ICON_WIDTH - ICON_RESIZABLE_DEFAULT_RIGHT_MARGIN;
+        int y = ICON_RESIZABLE_DEFAULT_Y;
+        x = Math.max(0, Math.min(x, canvasWidth - ICON_WIDTH));
+        y = Math.max(0, Math.min(y, canvasHeight - ICON_HEIGHT));
+        return new Point(x, y);
+    }
+
+    private boolean hasUsableBounds(Widget widget) {
+        return widget != null && widget.getBounds().width > 0 && widget.getBounds().height > 0;
     }
 
     private int getHeaderTitleHeight(FontMetrics fallbackMetrics, int panelW) {

@@ -818,15 +818,33 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     // ---- Icon position persistence (global, not per-account) ----
     private static final String ICON_X_KEY = "iconX";
     private static final String ICON_Y_KEY = "iconY";
+    private static final String ICON_FIXED_X_KEY = "iconFixedX";
+    private static final String ICON_FIXED_Y_KEY = "iconFixedY";
+    private static final String ICON_RESIZABLE_X_KEY = "iconResizableX";
+    private static final String ICON_RESIZABLE_Y_KEY = "iconResizableY";
 
     public void saveIconPosition(int x, int y) {
         configManager.setConfiguration(CONFIG_GROUP, ICON_X_KEY, String.valueOf(x));
         configManager.setConfiguration(CONFIG_GROUP, ICON_Y_KEY, String.valueOf(y));
     }
 
+    public void saveIconPosition(int x, int y, boolean resized) {
+        String xKey = resized ? ICON_RESIZABLE_X_KEY : ICON_FIXED_X_KEY;
+        String yKey = resized ? ICON_RESIZABLE_Y_KEY : ICON_FIXED_Y_KEY;
+        configManager.setConfiguration(CONFIG_GROUP, xKey, String.valueOf(x));
+        configManager.setConfiguration(CONFIG_GROUP, yKey, String.valueOf(y));
+        if (resized) {
+            saveIconPosition(x, y);
+        }
+    }
+
     public void clearIconPosition() {
         configManager.unsetConfiguration(CONFIG_GROUP, ICON_X_KEY);
         configManager.unsetConfiguration(CONFIG_GROUP, ICON_Y_KEY);
+        configManager.unsetConfiguration(CONFIG_GROUP, ICON_FIXED_X_KEY);
+        configManager.unsetConfiguration(CONFIG_GROUP, ICON_FIXED_Y_KEY);
+        configManager.unsetConfiguration(CONFIG_GROUP, ICON_RESIZABLE_X_KEY);
+        configManager.unsetConfiguration(CONFIG_GROUP, ICON_RESIZABLE_Y_KEY);
     }
 
     /** Returns {x, y} if a saved position exists, otherwise null. */
@@ -834,6 +852,22 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         String sx = configManager.getConfiguration(CONFIG_GROUP, ICON_X_KEY);
         String sy = configManager.getConfiguration(CONFIG_GROUP, ICON_Y_KEY);
         if (sx == null || sy == null) return null;
+        try {
+            return new int[]{Integer.parseInt(sx.trim()), Integer.parseInt(sy.trim())};
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /** Returns {x, y} if a saved position exists for the current viewport mode, otherwise null. */
+    public int[] loadIconPosition(boolean resized) {
+        String xKey = resized ? ICON_RESIZABLE_X_KEY : ICON_FIXED_X_KEY;
+        String yKey = resized ? ICON_RESIZABLE_Y_KEY : ICON_FIXED_Y_KEY;
+        String sx = configManager.getConfiguration(CONFIG_GROUP, xKey);
+        String sy = configManager.getConfiguration(CONFIG_GROUP, yKey);
+        if (sx == null || sy == null) {
+            return resized ? loadIconPosition() : null;
+        }
         try {
             return new int[]{Integer.parseInt(sx.trim()), Integer.parseInt(sy.trim())};
         } catch (NumberFormatException e) {
