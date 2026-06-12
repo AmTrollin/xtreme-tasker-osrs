@@ -39,6 +39,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private int taskDetailsScrollbarGrabOffsetY = 0;
     private boolean draggingSyncMismatchScrollbar = false;
     private int syncMismatchScrollbarGrabOffsetY = 0;
+    private boolean draggingCompactCurrentScrollbar = false;
+    private int compactCurrentScrollbarGrabOffsetY = 0;
+    private final Rectangle compactCurrentDragRailBounds = new Rectangle();
+    private final Rectangle compactCurrentDragThumbBounds = new Rectangle();
     private long lastTaskRowClickHandledAt = 0L;
     private int lastTaskRowClickX = Integer.MIN_VALUE;
     private int lastTaskRowClickY = Integer.MIN_VALUE;
@@ -245,6 +249,26 @@ public final class OverlayMouseHandler extends MouseAdapter {
             a.setPanelOpen(false);
             e.consume();
             return e;
+        }
+
+        if (button == MouseEvent.BUTTON1 && a.panelModeToggleBounds().contains(p)) {
+            a.setCompactPanelMode(!a.isCompactPanelMode());
+            a.setActiveTab(OverlayInputAccess.MainTab.CURRENT);
+            e.consume();
+            return e;
+        }
+
+        if (button == MouseEvent.BUTTON1 && a.isCompactPanelMode() && a.currentLayout().scrollbarRailBounds.width > 0) {
+            Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
+
+            if (thumb.contains(p)) {
+                draggingCompactCurrentScrollbar = true;
+                compactCurrentDragRailBounds.setBounds(a.currentLayout().scrollbarRailBounds);
+                compactCurrentDragThumbBounds.setBounds(thumb);
+                compactCurrentScrollbarGrabOffsetY = p.y - thumb.y;
+                e.consume();
+                return e;
+            }
         }
 
         if ((a.activeTab() == OverlayInputAccess.MainTab.TASKS || a.activeTab() == OverlayInputAccess.MainTab.CURRENT)
@@ -1128,6 +1152,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || a.currentTabBounds().contains(p)
                 || a.tasksTabBounds().contains(p)
                 || a.rulesTabBounds().contains(p)
+                || a.panelModeToggleBounds().contains(p)
                 || a.iconBounds().contains(p)
                 // task details popup
                 || (a.isTaskDetailsOpen() && (
@@ -1286,6 +1311,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
+        if (draggingCompactCurrentScrollbar) {
+            updateCompactCurrentScrollbarDrag(e.getY());
+            e.consume();
+            return e;
+        }
+
         // Panel drag
         if (!a.isPanelOpen() || !a.isDraggingPanel()) {
             return e;
@@ -1339,6 +1370,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
         if (draggingSyncMismatchScrollbar) {
             draggingSyncMismatchScrollbar = false;
+            e.consume();
+        }
+        if (draggingCompactCurrentScrollbar) {
+            draggingCompactCurrentScrollbar = false;
+            compactCurrentDragRailBounds.setBounds(0, 0, 0, 0);
+            compactCurrentDragThumbBounds.setBounds(0, 0, 0, 0);
             e.consume();
         }
         if (pressedOnIcon) {
@@ -1455,6 +1492,24 @@ public final class OverlayMouseHandler extends MouseAdapter {
         double frac = (double) (thumbY - rail.y) / (double) trackH;
         int nextOffset = (int) Math.round(frac * maxOffset);
         a.syncMismatchScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
+    }
+
+    private void updateCompactCurrentScrollbarDrag(int mouseY) {
+        Rectangle rail = compactCurrentDragRailBounds.width > 0 ? compactCurrentDragRailBounds : a.currentLayout().scrollbarRailBounds;
+        Rectangle thumb = compactCurrentDragThumbBounds.height > 0 ? compactCurrentDragThumbBounds : a.currentLayout().scrollbarThumbBounds;
+        if (rail.height <= 0 || thumb.height <= 0) {
+            return;
+        }
+
+        int trackH = Math.max(0, rail.height - thumb.height);
+        if (trackH <= 0) {
+            a.setCompactCurrentScrollFraction(0.0);
+            return;
+        }
+
+        int thumbY = Math.max(rail.y, Math.min(mouseY - compactCurrentScrollbarGrabOffsetY, rail.y + trackH));
+        double frac = (double) (thumbY - rail.y) / (double) trackH;
+        a.setCompactCurrentScrollFraction(frac);
     }
 
     // =========================

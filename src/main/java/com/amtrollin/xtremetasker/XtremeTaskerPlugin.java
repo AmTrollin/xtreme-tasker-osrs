@@ -156,6 +156,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Map<String, Long> syncedCompletionTimestamps = new HashMap<>();
     private final Map<String, Long> taskTimeTicksById = new HashMap<>();
     private final List<String> syncMismatchTaskIds = new ArrayList<>();
+    private List<XtremeTask> syncMismatchTasksCache = Collections.emptyList();
+    private boolean syncMismatchTasksCacheValid = false;
+    private int syncMismatchTasksCacheIdsHash = 0;
+    private int syncMismatchTasksCacheManualHash = 0;
+    private int syncMismatchTasksCacheSyncedHash = 0;
+    private int syncMismatchTasksCacheTaskCount = 0;
+    private int syncMismatchTasksCacheCapturedItemCount = -1;
     private final EnumMap<TaskSource, List<String>> lastSyncedTaskNames = new EnumMap<>(TaskSource.class);
     private String syncMismatchTitle = "";
 
@@ -2856,10 +2863,26 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public List<XtremeTask> getSyncMismatchTasks()
     {
+        int capturedItemCount = collectionLogService == null ? -1 : collectionLogService.getCapturedItemCount();
+        int idsHash = syncMismatchTaskIds.hashCode();
+        int manualHash = manualCompletedTaskIds.hashCode();
+        int syncedHash = syncedCompletedTaskIds.hashCode();
+        int taskCount = tasks.size();
+        if (syncMismatchTasksCacheValid
+                && idsHash == syncMismatchTasksCacheIdsHash
+                && manualHash == syncMismatchTasksCacheManualHash
+                && syncedHash == syncMismatchTasksCacheSyncedHash
+                && taskCount == syncMismatchTasksCacheTaskCount
+                && capturedItemCount == syncMismatchTasksCacheCapturedItemCount)
+        {
+            return syncMismatchTasksCache;
+        }
+
         pruneResolvedCollectionLogSyncMismatches();
         if (syncMismatchTaskIds.isEmpty())
         {
-            return Collections.emptyList();
+            updateSyncMismatchTasksCache(Collections.emptyList(), capturedItemCount);
+            return syncMismatchTasksCache;
         }
 
         Map<String, XtremeTask> byId = tasks.stream()
@@ -2875,7 +2898,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 out.add(task);
             }
         }
-        return out;
+        updateSyncMismatchTasksCache(out, capturedItemCount);
+        return syncMismatchTasksCache;
+    }
+
+    private void updateSyncMismatchTasksCache(List<XtremeTask> tasks, int capturedItemCount)
+    {
+        syncMismatchTasksCache = Collections.unmodifiableList(new ArrayList<>(tasks));
+        syncMismatchTasksCacheValid = true;
+        syncMismatchTasksCacheIdsHash = syncMismatchTaskIds.hashCode();
+        syncMismatchTasksCacheManualHash = manualCompletedTaskIds.hashCode();
+        syncMismatchTasksCacheSyncedHash = syncedCompletedTaskIds.hashCode();
+        syncMismatchTasksCacheTaskCount = this.tasks.size();
+        syncMismatchTasksCacheCapturedItemCount = capturedItemCount;
     }
 
     private void pruneResolvedCollectionLogSyncMismatches()
@@ -3069,7 +3104,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         int desiredCompleted = desiredCompletedForCountedGroup(group, observedCount);
-        return "Sync found " + desiredCompleted + "/" + group.size() + " completed";
+        return "Sync: " + desiredCompleted + "/" + group.size() + " completed";
     }
 
     @Override

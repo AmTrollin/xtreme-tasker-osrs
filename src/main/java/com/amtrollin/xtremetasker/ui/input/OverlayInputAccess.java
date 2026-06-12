@@ -29,6 +29,9 @@ public interface OverlayInputAccess
     // panel / drag / tab state
     boolean isPanelOpen();
     void setPanelOpen(boolean open);
+    boolean isCompactPanelMode();
+    void setCompactPanelMode(boolean compact);
+    Rectangle panelModeToggleBounds();
 
     boolean isDraggingPanel();
     void setDraggingPanel(boolean dragging);
@@ -89,7 +92,10 @@ public interface OverlayInputAccess
     TaskListScrollController tasksScroll();
     TaskListScrollController rulesScroll();
     TaskListScrollController currentScroll();
+    void scrollCompactCurrent(double preciseWheelRotation);
+    void setCompactCurrentScrollFraction(double fraction);
     Rectangle currentViewportBounds();
+    int currentRowBlock();
     TaskListViewController taskListView();
 
     // core behaviors handlers call

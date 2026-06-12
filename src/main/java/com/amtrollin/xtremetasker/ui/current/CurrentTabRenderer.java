@@ -1219,7 +1219,7 @@ public final class CurrentTabRenderer
             Rectangle srcBounds = new Rectangle(x, yTop, w, rowHeight + 4);
             if (mousePoint != null && srcBounds.contains(mousePoint))
             {
-                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds);
+                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds, panelX + panelWidth - panelPadding);
             }
             x += w + badgeGap;
         }
@@ -1247,7 +1247,7 @@ public final class CurrentTabRenderer
             Rectangle srcBounds = new Rectangle(x, yTop, actualW, rowHeight + 4);
             if (mousePoint != null && srcBounds.contains(mousePoint))
             {
-                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds);
+                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds, rightX);
             }
             x += actualW + badgeGap;
         }
@@ -1257,10 +1257,11 @@ public final class CurrentTabRenderer
         }
     }
 
-    private void drawBadgeHoverText(Graphics2D g, FontMetrics fm, String text, Rectangle badgeBounds)
+    private void drawBadgeHoverText(Graphics2D g, FontMetrics fm, String text, Rectangle badgeBounds, int maxRight)
     {
+        int x = Math.min(badgeBounds.x, maxRight - fm.stringWidth(text));
         g.setColor(uiTextDim);
-        g.drawString(text, badgeBounds.x, badgeBounds.y - 4);
+        g.drawString(text, x, badgeBounds.y - 4);
     }
 
     private void drawBadgesNearText(

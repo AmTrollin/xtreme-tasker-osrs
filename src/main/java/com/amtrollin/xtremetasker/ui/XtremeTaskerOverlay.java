@@ -8,6 +8,7 @@ import com.amtrollin.xtremetasker.XtremeTaskerPlugin;
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.CompletionInfo;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
@@ -58,6 +59,7 @@ import javax.inject.Inject;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.util.*;
@@ -96,6 +98,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle panelBounds = new Rectangle();
     private final Rectangle panelDragBarBounds = new Rectangle();
     private final Rectangle panelCloseBounds = new Rectangle();
+    private final Rectangle panelModeToggleBounds = new Rectangle();
     private final Rectangle iconBounds = new Rectangle();
 
     private final Rectangle currentTabBounds = new Rectangle();
@@ -140,6 +143,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private RulesTabLayout.SubTab rulesSubTab = RulesTabLayout.SubTab.RULES;
 
     private boolean panelOpen = false;
+    private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
     private boolean keyboardHintsOpen = false;
     private boolean markIncompleteDontShowChecked = false;
@@ -154,6 +158,9 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private Integer panelXOverride = null;
     private Integer panelYOverride = null;
+    private double panelScale = 1.0;
+    private net.runelite.api.Point panelRenderMouse = null;
+    private boolean panelBoundsScaledForInput = false;
 
     private boolean draggingIcon = false;
     private int iconDragOffsetX = 0;
@@ -175,8 +182,15 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int ICON_RESIZABLE_DEFAULT_RIGHT_MARGIN = 62;
     private static final int ICON_RESIZABLE_DEFAULT_Y = 165;
 
-    private static final int PANEL_W_TASKS = 740;
-    private static final int PANEL_H_TASKS = 545;
+    private static final int PANEL_W_TASKS = 690;
+    private static final int PANEL_H_TASKS = 460;
+    private static final int PANEL_W_COMPACT = 370;
+    private static final int PANEL_H_COMPACT = 370;
+    private static final double PANEL_SCALE_MIN = 0.82;
+    private static final double PANEL_SCALE_AUTO_START_W = 1400.0;
+    private static final double PANEL_SCALE_AUTO_START_H = 900.0;
+    private static final double PANEL_SCALE_AUTO_RANGE_W = 1000.0;
+    private static final double PANEL_SCALE_AUTO_RANGE_H = 700.0;
 
 
     // ---- animations (extracted) ----
@@ -841,12 +855,55 @@ public class XtremeTaskerOverlay extends Overlay {
     // rowBlock accessors (for wheel)
     // -----------------------------
     int tasksRowBlock() {
-        return taskRowsRendererTasks.rowBlock();
+        return scaleInputValue(taskRowsRendererTasks.rowBlock());
     }
 
 
     int rulesRowBlock() {
-        return rulesTabRenderer.rowBlock();
+        return scaleInputValue(rulesTabRenderer.rowBlock());
+    }
+
+    private int currentRowBlock() {
+        return scaleInputValue(ROW_HEIGHT);
+    }
+
+    private int scaleInputValue(int value) {
+        return Math.max(1, (int) Math.round(value * panelScale));
+    }
+
+    private int unscaleInputValue(int value) {
+        return Math.max(0, (int) Math.round(value / Math.max(0.01, panelScale)));
+    }
+
+    private double computePanelScale(int canvasW, int canvasH, int panelW, int panelH) {
+        double widthPressure = (canvasW - PANEL_SCALE_AUTO_START_W) / PANEL_SCALE_AUTO_RANGE_W;
+        double heightPressure = (canvasH - PANEL_SCALE_AUTO_START_H) / PANEL_SCALE_AUTO_RANGE_H;
+        double pressure = Math.max(widthPressure, heightPressure);
+        double autoScale = 1.0 - (Math.max(0.0, Math.min(1.0, pressure)) * (1.0 - PANEL_SCALE_MIN));
+
+        double fitW = canvasW <= 8 ? 1.0 : (canvasW - 8.0) / panelW;
+        double fitH = canvasH <= 4 ? 1.0 : (canvasH - 4.0) / panelH;
+        double fitScale = Math.min(1.0, Math.min(fitW, fitH));
+
+        double scale = Math.min(autoScale, fitScale);
+        if (fitScale < PANEL_SCALE_MIN) {
+            return Math.max(0.55, Math.min(1.0, scale));
+        }
+        return Math.max(PANEL_SCALE_MIN, Math.min(1.0, scale));
+    }
+
+    private net.runelite.api.Point toPanelRenderMouse(net.runelite.api.Point mouse, int anchorX, int anchorY, double scale) {
+        if (mouse == null || scale == 1.0) {
+            return mouse;
+        }
+
+        int x = anchorX + (int) Math.round((mouse.getX() - anchorX) / scale);
+        int y = anchorY + (int) Math.round((mouse.getY() - anchorY) / scale);
+        return new net.runelite.api.Point(x, y);
+    }
+
+    private net.runelite.api.Point mouseCanvasPositionForPanelRender() {
+        return panelRenderMouse != null ? panelRenderMouse : client.getMouseCanvasPosition();
     }
 
     @Override
@@ -965,18 +1022,28 @@ public class XtremeTaskerOverlay extends Overlay {
         synchronized (tierTabBounds) {
             tierTabBounds.clear();
         }
-        int panelW = PANEL_W_TASKS;
-        int panelHeight = PANEL_H_TASKS;
-        // Clamp in every layout so inner scroll views use only visible panel space.
-        panelHeight = Math.min(panelHeight, Math.max(0, canvasH - 4));
+        int panelW = compactPanelMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
+        int panelHeight = compactPanelMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
+        panelScale = computePanelScale(canvasW, canvasH, panelW, panelHeight);
 
-        int panelX = (panelXOverride != null) ? panelXOverride : (canvasW - panelW) / 2;
-        int panelY = (panelYOverride != null) ? panelYOverride : (canvasH - panelHeight) / 2;
+        int physicalPanelW = Math.max(1, (int) Math.round(panelW * panelScale));
+        int physicalPanelH = Math.max(1, (int) Math.round(panelHeight * panelScale));
 
-        panelX = Math.max(0, Math.min(panelX, canvasW - panelW));
-        panelY = Math.max(0, Math.min(panelY, canvasH - panelHeight));
+        int panelX = (panelXOverride != null) ? panelXOverride : (canvasW - physicalPanelW) / 2;
+        int panelY = (panelYOverride != null) ? panelYOverride : (canvasH - physicalPanelH) / 2;
+
+        panelX = Math.max(0, Math.min(panelX, canvasW - physicalPanelW));
+        panelY = Math.max(0, Math.min(panelY, canvasH - physicalPanelH));
 
         panelBounds.setBounds(panelX, panelY, panelW, panelHeight);
+        panelBoundsScaledForInput = false;
+        panelRenderMouse = toPanelRenderMouse(client.getMouseCanvasPosition(), panelX, panelY, panelScale);
+        AffineTransform oldTransform = g.getTransform();
+        if (panelScale != 1.0) {
+            g.translate(panelX, panelY);
+            g.scale(panelScale, panelScale);
+            g.translate(-panelX, -panelY);
+        }
 
         // header — fit the largest font that leaves room for close button + padding
         Font oldFont = g.getFont();
@@ -1039,7 +1106,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int closeX = panelX + panelW - closeInset - closeSize;
         int closeY = panelY + closeInset;
         panelCloseBounds.setBounds(closeX, closeY, closeSize, closeSize);
-        net.runelite.api.Point rlMouse = client.getMouseCanvasPosition();
+        net.runelite.api.Point rlMouse = mouseCanvasPositionForPanelRender();
         boolean hoveringClose = rlMouse != null && panelCloseBounds.contains(rlMouse.getX(), rlMouse.getY());
 
         g.setColor(hoveringClose ? new Color(22, 17, 11, 235) : new Color(18, 14, 9, 185));
@@ -1059,7 +1126,17 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setStroke(new BasicStroke(1f));
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
 
+        g.setFont(oldFont);
+        fm = g.getFontMetrics();
+
         int cursorY = panelY + headerH;
+
+        int modeW = closeSize;
+        int modeH = closeSize;
+        int modeX = panelX + closeInset;
+        int modeY = closeY;
+        panelModeToggleBounds.setBounds(modeX, modeY, modeW, modeH);
+        drawPanelModeToggle(g, fm, rlMouse);
 
         // gold divider under header
         g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 180));
@@ -1068,9 +1145,29 @@ public class XtremeTaskerOverlay extends Overlay {
 
         panelDragBarBounds.setBounds(panelX, panelY, panelW, cursorY - panelY);
 
-        g.setFont(oldFont);
-        fm = g.getFontMetrics();
         cursorY += 4;
+
+        if (compactPanelMode) {
+            clearFullPanelTabBounds();
+            activeTab = MainTab.CURRENT;
+            renderCompactPanel(g, fm, panelX, cursorY);
+
+            if (pendingMarkAllIncompleteTask != null) {
+                renderMarkAllIncompleteConfirm(g, fm);
+            } else {
+                markAllIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
+                markAllIncompleteYesBounds.setBounds(0, 0, 0, 0);
+                markAllIncompleteNoBounds.setBounds(0, 0, 0, 0);
+                markIncompleteDontShowBounds.setBounds(0, 0, 0, 0);
+            }
+
+            animations.prune();
+            g.setTransform(oldTransform);
+            scalePanelInputBounds(panelX, panelY, panelScale);
+            panelBoundsScaledForInput = true;
+            panelRenderMouse = null;
+            return new Dimension(physicalPanelW, physicalPanelH);
+        }
 
         // tabs
         int tabH = ROW_HEIGHT + 6;
@@ -1101,24 +1198,6 @@ public class XtremeTaskerOverlay extends Overlay {
             renderRulesTab(g, fm, panelX, textCursorY);
         }
 
-        if (taskDetailsPopup.isOpen()) {
-            taskDetailsPopup.render(
-                    g,
-                    fm,
-                    panelBounds,
-                    plugin::isTaskCompleted,
-                    plugin::getCompletionInfo,
-                    plugin::getTaskTimeTicks,
-                    useCondensedTaskRows() ? plugin::getTaskGroupProgress : null,
-                    useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
-                    plugin::getPrerequisiteStatuses,
-                    task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
-                    client.getMouseCanvasPosition(),
-                    resolveTaskIcon(taskDetailsPopup.task()),
-                    plugin.showTips()
-            );
-        }
-
         if (pendingMarkAllIncompleteTask != null) {
             renderMarkAllIncompleteConfirm(g, fm);
         } else {
@@ -1135,7 +1214,37 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         animations.prune();
-        return new Dimension(panelW, panelHeight);
+        g.setTransform(oldTransform);
+        scalePanelInputBounds(panelX, panelY, panelScale);
+        panelBoundsScaledForInput = true;
+        panelRenderMouse = null;
+        renderTaskDetailsPopupUnscaled(g, fm);
+        if (taskDetailsPopup.isOpen() && pendingMarkAllIncompleteTask != null) {
+            renderMarkAllIncompleteConfirm(g, fm);
+        }
+        return new Dimension(physicalPanelW, physicalPanelH);
+    }
+
+    private void renderTaskDetailsPopupUnscaled(Graphics2D g, FontMetrics fm) {
+        if (!taskDetailsPopup.isOpen()) {
+            return;
+        }
+
+        taskDetailsPopup.render(
+                g,
+                fm,
+                panelBounds,
+                plugin::isTaskCompleted,
+                plugin::getCompletionInfo,
+                plugin::getTaskTimeTicks,
+                useCondensedTaskRows() ? plugin::getTaskGroupProgress : null,
+                useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
+                plugin::getPrerequisiteStatuses,
+                task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
+                client.getMouseCanvasPosition(),
+                resolveTaskIcon(taskDetailsPopup.task()),
+                plugin.showTips()
+        );
     }
 
     private void clearSyncMismatchReviewBounds()
@@ -1253,7 +1362,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 headerCheckboxSize);
         drawSyncMismatchCheckbox(g, syncMismatchMarkAllBounds, allMismatchTasksSelected);
 
-        net.runelite.api.Point mouse = client.getMouseCanvasPosition();
+        net.runelite.api.Point mouse = mouseCanvasPositionForPanelRender();
         int mouseX = mouse == null ? -1 : mouse.getX();
         int mouseY = mouse == null ? -1 : mouse.getY();
         if (syncMismatchMarkAllBounds.contains(mouseX, mouseY))
@@ -1759,7 +1868,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
         TaskSource src = (current != null) ? current.getSource() : null;
 
-        net.runelite.api.Point rlMouse = client.getMouseCanvasPosition();
+        net.runelite.api.Point rlMouse = mouseCanvasPositionForPanelRender();
         java.awt.Point mousePoint = rlMouse == null ? null : new java.awt.Point(rlMouse.getX(), rlMouse.getY());
 
         currentTabViewRenderer.render(
@@ -1800,6 +1909,528 @@ public class XtremeTaskerOverlay extends Overlay {
         );
     }
 
+    private void renderCompactPanel(Graphics2D g, FontMetrics fm, int panelX, int contentTop) {
+        resetCurrentLayoutBounds();
+        keyboardHintsButtonBounds.setBounds(0, 0, 0, 0);
+        keyboardHintsPopupBounds.setBounds(0, 0, 0, 0);
+        taskViewModeBounds.setBounds(0, 0, 0, 0);
+
+        int innerX = panelX + PANEL_PADDING;
+        int innerW = panelBounds.width - PANEL_PADDING * 2;
+        int y = contentTop;
+
+        if (!plugin.hasTaskPackLoaded()) {
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString("No tasks loaded.", innerX, y + fm.getAscent());
+            return;
+        }
+
+        XtremeTask current = plugin.getCurrentTask();
+        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        boolean rolling = animations.isRolling();
+        TaskTier tierForProgress = current != null ? current.getTier() : plugin.getCurrentTier();
+        if (tierForProgress == null) {
+            tierForProgress = TaskTier.EASY;
+        }
+
+        String progress = tierLabel(tierForProgress) + ": " + plugin.getTierProgressLabel(tierForProgress);
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(progress, fm, innerW), innerX, y + fm.getAscent());
+        y += fm.getHeight() + 3;
+
+        int actionH = ROW_HEIGHT + 6;
+        int cardH = 110;
+        Rectangle card = new Rectangle(innerX, y, innerW, cardH);
+        drawBevelBox(g, card, new Color(26, 17, 10, 225));
+
+        net.runelite.api.Point rlMouse = mouseCanvasPositionForPanelRender();
+        java.awt.Point mousePoint = rlMouse == null ? null : new java.awt.Point(rlMouse.getX(), rlMouse.getY());
+
+        if (rolling) {
+            drawCompactRolling(g, fm, card);
+        } else if (current != null) {
+            drawCompactCurrentIdentity(g, fm, card, current, currentCompleted, mousePoint);
+        } else {
+            drawCompactEmptyIdentity(g, fm, card);
+        }
+
+        y += cardH + 4;
+
+        boolean rollEnabled = current == null || currentCompleted;
+        boolean completeEnabled = current != null && !currentCompleted;
+        int buttonGap = 6;
+        int wikiW = current != null && current.getWikiUrl() != null && !current.getWikiUrl().trim().isEmpty()
+                ? Math.max(48, fm.stringWidth("Wiki") + 18)
+                : 0;
+        int actionW = wikiW > 0 ? innerW - wikiW - buttonGap : innerW;
+        Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
+        if (completeEnabled) {
+            currentLayout.completeButtonBounds.setBounds(actionBounds);
+            buttonRenderer.drawPrimaryButton(g, currentLayout.completeButtonBounds, "Mark complete");
+        } else if (rollEnabled) {
+            currentLayout.rollButtonBounds.setBounds(actionBounds);
+            buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+        }
+
+        if (wikiW > 0) {
+            currentLayout.wikiButtonBounds.setBounds(innerX + actionW + buttonGap, y, wikiW, actionH);
+            buttonRenderer.drawPlainButton(g, currentLayout.wikiButtonBounds, "Wiki", new Color(30, 25, 18, 220));
+        }
+
+        y += actionH + 5;
+
+        int detailBottom = panelBounds.y + panelBounds.height - PANEL_PADDING - 2;
+        int detailH = Math.max(0, detailBottom - y);
+        Rectangle viewport = new Rectangle(innerX, y, innerW, detailH);
+        currentLayout.viewportBounds.setBounds(viewport);
+
+        List<CompactLine> lines = compactLines(current, rolling);
+        int totalRows = lines.size();
+        int visibleRows = currentScroll.visibleRows(viewport.height, ROW_HEIGHT);
+        int maxOffset = Math.max(0, totalRows - visibleRows);
+        if (currentScroll.offsetRows > maxOffset) {
+            currentScroll.offsetRows = maxOffset;
+        }
+        currentLayout.totalContentPx = totalRows * ROW_HEIGHT;
+        int scrollRows = currentScroll.offsetRows;
+
+        drawBevelBox(g, viewport, new Color(32, 24, 15, 160));
+        Shape oldClip = g.getClip();
+        Rectangle textClip = new Rectangle(viewport.x + 4, viewport.y + 4, Math.max(0, viewport.width - 8), Math.max(0, viewport.height - 8));
+        g.setClip(textClip);
+        int textY = textClip.y + fm.getAscent() + 2 - (scrollRows * ROW_HEIGHT);
+        int textX = textClip.x + 4;
+        int textW = textClip.width - 14;
+        for (CompactLine line : lines) {
+            g.setColor(line.heading ? P.UI_GOLD : (line.dim ? P.UI_TEXT_DIM : P.UI_TEXT));
+            g.drawString(TextUtils.truncateToWidth(line.text, fm, textW), textX, textY);
+            textY += ROW_HEIGHT;
+        }
+        g.setClip(oldClip);
+
+        drawCompactScrollbar(g, viewport, totalRows, visibleRows, scrollRows);
+    }
+
+    private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card) {
+        g.setColor(Color.WHITE);
+        g.drawString("Rolling...", card.x + 14, card.y + 10 + fm.getAscent());
+
+        XtremeTask current = plugin.getCurrentTask();
+        Font oldFont = g.getFont();
+        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
+        g.setFont(nameFont);
+        FontMetrics nameFm = g.getFontMetrics();
+        String name = computeCurrentLineForRender(current, false, nameFm);
+        String drawName = TextUtils.truncateToWidth(name, nameFm, card.width - 28);
+        int nameX = card.x + (card.width - nameFm.stringWidth(drawName)) / 2;
+        int nameY = card.y + (card.height - nameFm.getHeight()) / 2 + nameFm.getAscent();
+        g.setColor(P.UI_GOLD);
+        g.drawString(drawName, nameX, nameY);
+        g.setFont(oldFont);
+    }
+
+    private void drawCompactEmptyIdentity(Graphics2D g, FontMetrics fm, Rectangle card) {
+        g.setColor(Color.WHITE);
+        g.drawString("No current task", card.x + 14, card.y + 10 + fm.getAscent());
+
+        XtremeTask recent = plugin.getMostRecentCompletedTask();
+        CompletionInfo info = plugin.getCompletionInfo(recent);
+        if (recent != null && info != null) {
+            drawCompactRecentCompletionSummary(g, fm, card, recent, info, plugin.getTaskTimeTicks(recent));
+        }
+    }
+
+    private void drawCompactRecentCompletionSummary(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task, CompletionInfo info, Long ticks) {
+        int x = card.x + 14;
+        int y = card.y + 33 + fm.getAscent();
+        int maxW = card.width - 28;
+        int lineH = fm.getHeight() + 1;
+
+        g.setColor(P.UI_GOLD);
+        g.drawString(TextUtils.truncateToWidth("Most recent completed:", fm, maxW), x, y);
+        y += lineH;
+
+        g.setColor(P.UI_TEXT);
+        g.drawString(TextUtils.truncateToWidth(task.getName() + compactCompletionSourceSuffix(info), fm, maxW), x, y);
+        y += lineH;
+
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(compactCompletionSummary(info), fm, maxW), x, y);
+        y += lineH;
+
+        if (ticks != null && ticks > 0) {
+            String time = "Time spent: " + compactFormatTicks(Math.round(ticks * 0.6));
+            g.drawString(TextUtils.truncateToWidth(time, fm, maxW), x, y);
+        }
+    }
+
+    private void drawCompactCurrentIdentity(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current, boolean completed, java.awt.Point mousePoint) {
+        int pad = 12;
+        drawCompactBadges(g, fm, card, current, mousePoint);
+
+        int iconSize = 36;
+        int iconX = card.x + (card.width - iconSize) / 2;
+        int iconY = card.y + 9;
+        BufferedImage taskIcon = resolveTaskIcon(current);
+        if (taskIcon != null) {
+            g.drawImage(taskIcon, iconX, iconY, iconSize, iconSize, null);
+        }
+
+        int textW = card.width - pad * 2;
+        Font oldFont = g.getFont();
+        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
+        g.setFont(nameFont);
+        FontMetrics nameFm = g.getFontMetrics();
+        List<String> nameLines = TextUtils.wrapText(current.getName(), nameFm, textW);
+        int textY = iconY + iconSize + 5 + nameFm.getAscent();
+        g.setColor(P.UI_GOLD);
+        for (int i = 0; i < Math.min(2, nameLines.size()); i++) {
+            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, textW);
+            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
+            g.drawString(line, lineX, textY);
+            textY += nameFm.getHeight();
+        }
+
+        g.setFont(oldFont);
+        Long ticks = plugin.getTaskTimeTicks(current);
+        if (ticks != null && ticks > 0) {
+            String time = compactFormatTicks(Math.round(ticks * 0.6));
+            int timeX = card.x + (card.width - fm.stringWidth(time)) / 2;
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString(time, timeX, textY + 2);
+        }
+
+        if (completed) {
+            String done = "Complete";
+            int doneW = fm.stringWidth(done) + 14;
+            Rectangle doneBadge = new Rectangle(card.x + card.width - doneW - pad, card.y + 7, doneW, ROW_HEIGHT + 2);
+            drawBevelBox(g, doneBadge, new Color(38, 56, 32, 220));
+            g.setColor(new Color(120, 210, 130, 230));
+            g.drawString(done, doneBadge.x + 7, doneBadge.y + ((doneBadge.height - fm.getHeight()) / 2) + fm.getAscent());
+        }
+    }
+
+    private void drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task, java.awt.Point mousePoint) {
+        int totalW = compactBadgeWidth(fm, compactSourceLabel(task.getSource()))
+                + 5
+                + compactBadgeWidth(fm, tierLabel(task.getTier()));
+        int x = card.x + card.width - 12 - totalW;
+        int y = card.y + 7;
+        Rectangle sourceBadge = new Rectangle(x, y, compactBadgeWidth(fm, compactSourceLabel(task.getSource())), ROW_HEIGHT + 2);
+        x = drawCompactBadge(g, fm, compactSourceLabel(task.getSource()), x, y);
+        if (mousePoint != null && sourceBadge.contains(mousePoint)) {
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString(compactSourceHoverLabel(task.getSource()), sourceBadge.x, sourceBadge.y - 4);
+        }
+        drawCompactBadge(g, fm, tierLabel(task.getTier()), x + 5, y);
+    }
+
+    private int compactBadgeWidth(FontMetrics fm, String text) {
+        return Math.max(32, fm.stringWidth(text) + 14);
+    }
+
+    private int drawCompactBadge(Graphics2D g, FontMetrics fm, String text, int x, int y) {
+        int w = compactBadgeWidth(fm, text);
+        Rectangle r = new Rectangle(x, y, w, ROW_HEIGHT + 2);
+        drawBevelBox(g, r, new Color(42, 34, 22, 220));
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(text, r.x + (r.width - fm.stringWidth(text)) / 2, r.y + ((r.height - fm.getHeight()) / 2) + fm.getAscent());
+        return x + w;
+    }
+
+    private List<CompactLine> compactLines(XtremeTask current, boolean rolling) {
+        List<CompactLine> lines = new ArrayList<>();
+        if (rolling) {
+            lines.add(new CompactLine("Rolling a new task...", false, true));
+            return lines;
+        }
+        if (current == null) {
+            String notice = Optional.ofNullable(plugin.getPendingRollSkipNotice()).orElse(plugin.getRollSkipNotice());
+            if (notice != null && !notice.trim().isEmpty()) {
+                lines.add(new CompactLine("Notice", true, false));
+                for (String line : TextUtils.wrapText(notice.trim(), fontMetrics(), PANEL_W_COMPACT - PANEL_PADDING * 2 - 18)) {
+                    lines.add(new CompactLine(line, false, false));
+                }
+            } else {
+                lines.add(new CompactLine("No active task.", false, true));
+            }
+            return lines;
+        }
+
+        String desc = current.getDescription();
+        if (desc != null && !desc.trim().isEmpty()) {
+            lines.add(new CompactLine("Description", true, false));
+            lines.addAll(wrappedCompactLines(desc.trim(), false));
+            lines.add(CompactLine.spacer());
+        }
+
+        lines.add(new CompactLine("Prereqs", true, false));
+        List<PrerequisiteStatus> statuses = plugin.getPrerequisiteStatuses(current);
+        if (statuses != null && !statuses.isEmpty()) {
+            for (PrerequisiteStatus status : statuses) {
+                lines.addAll(wrappedCompactLines("- " + status.getText(), true));
+            }
+        } else if (current.getPrereqs() != null && !current.getPrereqs().trim().isEmpty()) {
+            String formatted = current.getPrereqs().replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
+            for (String prereq : formatted.split("\n")) {
+                lines.addAll(wrappedCompactLines("- " + prereq, true));
+            }
+        } else {
+            lines.add(new CompactLine("None", false, true));
+        }
+
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(current);
+        if (preview != null && preview.hasItems()) {
+            lines.add(CompactLine.spacer());
+            lines.add(new CompactLine("Eligible CLOGs", true, false));
+            if (preview.showSummaryText()) {
+                lines.addAll(wrappedCompactLines(preview.summaryText(), true));
+            }
+            if (preview.showItemList()) {
+                for (CollectionLogRequirementItem item : preview.getItems()) {
+                    String suffix = item.isAvailable() ? " (not yet applied)" : "";
+                    lines.addAll(wrappedCompactLines("- " + item.getName() + suffix, true));
+                }
+            }
+        }
+
+        return lines;
+    }
+
+    private List<CompactLine> wrappedCompactLines(String text, boolean dim) {
+        List<CompactLine> out = new ArrayList<>();
+        for (String line : TextUtils.wrapText(text, fontMetrics(), PANEL_W_COMPACT - PANEL_PADDING * 2 - 26)) {
+            out.add(new CompactLine(line, false, dim));
+        }
+        return out;
+    }
+
+    private FontMetrics fontMetrics() {
+        return client.getCanvas().getFontMetrics(FontManager.getRunescapeSmallFont());
+    }
+
+    private void drawCompactScrollbar(Graphics2D g, Rectangle viewport, int totalRows, int visibleRows, int offsetRows) {
+        currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
+        currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
+        if (viewport.height <= 0 || totalRows <= visibleRows) {
+            return;
+        }
+
+        Rectangle rail = taskRowsRendererTasks.scrollbarRailBounds(viewport);
+        Rectangle thumb = taskRowsRendererTasks.scrollbarThumbBounds(totalRows, visibleRows, offsetRows, viewport);
+        currentLayout.scrollbarRailBounds.setBounds(rail);
+        currentLayout.scrollbarThumbBounds.setBounds(thumb);
+
+        taskRowsRendererTasks.drawScrollbar(g, totalRows, visibleRows, offsetRows, viewport);
+    }
+
+    private void scrollCompactCurrent(double preciseWheelRotation) {
+        if (preciseWheelRotation == 0.0 || currentLayout.viewportBounds.height <= 0) {
+            return;
+        }
+
+        int totalRows = Math.max(1, (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT);
+        currentScroll.onWheel(preciseWheelRotation, currentLayout.viewportBounds.height, currentRowBlock(), totalRows, null);
+    }
+
+    private void setCompactCurrentScrollFraction(double fraction) {
+        int totalRows = Math.max(1, (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT);
+        int viewportH = currentLayout.viewportBounds.height;
+        int rowBlock = currentRowBlock();
+        int visibleRows = currentScroll.visibleRows(viewportH, rowBlock);
+        int maxOffset = Math.max(0, totalRows - visibleRows);
+        double clamped = Math.max(0.0, Math.min(1.0, fraction));
+        currentScroll.setOffsetRows((int) Math.round(clamped * maxOffset), viewportH, rowBlock, totalRows);
+    }
+
+    private void resetCompactScroll() {
+        currentScroll.reset();
+    }
+
+    private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {
+        boolean hovered = rlMouse != null && panelModeToggleBounds.contains(rlMouse.getX(), rlMouse.getY());
+        g.setColor(hovered ? new Color(22, 17, 11, 235) : new Color(18, 14, 9, 185));
+        g.fillRoundRect(
+                panelModeToggleBounds.x - 2,
+                panelModeToggleBounds.y - 2,
+                panelModeToggleBounds.width + 4,
+                panelModeToggleBounds.height + 4,
+                4,
+                4
+        );
+        g.setColor(new Color(P.UI_EDGE_LIGHT.getRed(), P.UI_EDGE_LIGHT.getGreen(), P.UI_EDGE_LIGHT.getBlue(), hovered ? 95 : 55));
+        g.drawRoundRect(
+                panelModeToggleBounds.x - 2,
+                panelModeToggleBounds.y - 2,
+                panelModeToggleBounds.width + 4,
+                panelModeToggleBounds.height + 4,
+                4,
+                4
+        );
+
+        g.setColor(hovered ? Color.WHITE : new Color(200, 200, 200, 180));
+        int cx = panelModeToggleBounds.x + panelModeToggleBounds.width / 2;
+        int cy = panelModeToggleBounds.y + panelModeToggleBounds.height / 2;
+        int arm = panelModeToggleBounds.width / 2 - 2;
+        int x = cx - arm;
+        int y = cy - arm;
+        int w = arm * 2;
+        int h = arm * 2;
+        Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        Stroke oldStroke = g.getStroke();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+        if (compactPanelMode) {
+            // Expand/full-view corners.
+            int leg = Math.max(4, arm - 1);
+            g.drawLine(x, y + leg, x, y);
+            g.drawLine(x, y, x + leg, y);
+            g.drawLine(x + w - leg, y, x + w, y);
+            g.drawLine(x + w, y, x + w, y + leg);
+            g.drawLine(x, y + h - leg, x, y + h);
+            g.drawLine(x, y + h, x + leg, y + h);
+            g.drawLine(x + w - leg, y + h, x + w, y + h);
+            g.drawLine(x + w, y + h, x + w, y + h - leg);
+        } else {
+            // Collapse/compact-view inward corners.
+            int inset = 4;
+            g.drawLine(x, y, x + inset, y);
+            g.drawLine(x, y, x, y + inset);
+            g.drawLine(x + w - inset, y, x + w, y);
+            g.drawLine(x + w, y, x + w, y + inset);
+            g.drawLine(x, y + h - inset, x, y + h);
+            g.drawLine(x, y + h, x + inset, y + h);
+            g.drawLine(x + w - inset, y + h, x + w, y + h);
+            g.drawLine(x + w, y + h - inset, x + w, y + h);
+            g.drawLine(x + inset + 1, y + inset + 1, x + w - inset - 1, y + h - inset - 1);
+            g.drawLine(x + w - inset - 1, y + inset + 1, x + inset + 1, y + h - inset - 1);
+        }
+        g.setStroke(oldStroke);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
+
+        if (hovered) {
+            drawSmallTooltip(g, fm, compactPanelMode ? "Full\nview" : "Compact view", panelModeToggleBounds);
+        }
+    }
+
+    private void drawSmallTooltip(Graphics2D g, FontMetrics fm, String text, Rectangle anchor) {
+        int padX = 0;
+        int padY = 4;
+        String[] lines = text.split("\\n", -1);
+        int textW = 0;
+        for (String line : lines) {
+            textW = Math.max(textW, fm.stringWidth(line));
+        }
+        int w = textW + padX * 2;
+        int h = fm.getHeight() * lines.length + padY * 2;
+        int x = anchor.x;
+        int y = anchor.y + anchor.height + 5;
+        if (x + w > panelBounds.x + panelBounds.width - PANEL_PADDING) {
+            x = panelBounds.x + panelBounds.width - PANEL_PADDING - w;
+        }
+        if (y + h > panelBounds.y + panelBounds.height - PANEL_PADDING) {
+            y = anchor.y - h - 5;
+        }
+
+        g.setColor(new Color(P.UI_TEXT_DIM.getRed(), P.UI_TEXT_DIM.getGreen(), P.UI_TEXT_DIM.getBlue(), 190));
+        int textY = y + padY + fm.getAscent();
+        for (String line : lines) {
+            g.drawString(line, x + padX, textY);
+            textY += fm.getHeight();
+        }
+    }
+
+    private void resetCurrentLayoutBounds() {
+        currentLayout.wikiButtonBounds.setBounds(0, 0, 0, 0);
+        currentLayout.rollButtonBounds.setBounds(0, 0, 0, 0);
+        currentLayout.completeButtonBounds.setBounds(0, 0, 0, 0);
+        currentLayout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
+        currentLayout.viewportBounds.setBounds(0, 0, 0, 0);
+        currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
+        currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
+        currentLayout.totalContentPx = 0;
+    }
+
+    private void clearFullPanelTabBounds() {
+        currentTabBounds.setBounds(0, 0, 0, 0);
+        tasksTabBounds.setBounds(0, 0, 0, 0);
+        rulesTabBounds.setBounds(0, 0, 0, 0);
+        taskListViewportBounds.setBounds(0, 0, 0, 0);
+        taskScrollbarRailBounds.setBounds(0, 0, 0, 0);
+        taskScrollbarThumbBounds.setBounds(0, 0, 0, 0);
+        rulesViewportBounds.setBounds(0, 0, 0, 0);
+    }
+
+    private String compactSourceLabel(TaskSource source) {
+        if (source == TaskSource.COMBAT_ACHIEVEMENT) {
+            return "CA";
+        }
+        if (source == TaskSource.COLLECTION_LOG) {
+            return "CL";
+        }
+        if (source == TaskSource.DIARY_ACHIEVEMENT) {
+            return "AD";
+        }
+        return "Task";
+    }
+
+    private String compactSourceHoverLabel(TaskSource source) {
+        if (source == TaskSource.COMBAT_ACHIEVEMENT) {
+            return "Combat Achievement";
+        }
+        if (source == TaskSource.COLLECTION_LOG) {
+            return "Collection Log";
+        }
+        if (source == TaskSource.DIARY_ACHIEVEMENT) {
+            return "Achievement Diary";
+        }
+        return "Task";
+    }
+
+    private static String compactFormatTicks(long seconds) {
+        if (seconds < 60) return seconds + "s";
+        long minutes = seconds / 60;
+        long remSeconds = seconds % 60;
+        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
+        long hours = minutes / 60;
+        long remMinutes = minutes % 60;
+        if (hours < 24) return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
+        long days = hours / 24;
+        long remHours = hours % 24;
+        return remHours > 0 ? days + "d " + remHours + "h" : days + "d";
+    }
+
+    private static String compactCompletionSummary(CompletionInfo info) {
+        if (info == null || info.timestamp <= 0) {
+            return "Completed: date unknown";
+        }
+        return "Completed: " + new java.text.SimpleDateFormat("MMM d, h:mm a").format(new Date(info.timestamp));
+    }
+
+    private static String compactCompletionSourceSuffix(CompletionInfo info) {
+        if (info == null || info.timestamp <= 0 || info.source == null) {
+            return "";
+        }
+        return info.source == CompletionInfo.Source.SYNCED ? " (synced)" : "";
+    }
+
+    private static final class CompactLine {
+        private final String text;
+        private final boolean heading;
+        private final boolean dim;
+
+        private CompactLine(String text, boolean heading, boolean dim) {
+            this.text = text == null ? "" : text;
+            this.heading = heading;
+            this.dim = dim;
+        }
+
+        private static CompactLine spacer() {
+            return new CompactLine("", false, true);
+        }
+    }
+
     /** Height in px available for the scrollable body on the Current tab. */
     private int computeCurrentViewportH(Graphics2D g, FontMetrics fm, Rectangle pb, int cursorYBaseline) {
         // Only reserve hint line at the bottom; button lives inside scroll body
@@ -1810,7 +2441,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private void renderTasksTab(Graphics2D g, FontMetrics fm, int panelX, int cursorYBaseline) {
-        net.runelite.api.Point rlMouse = client.getMouseCanvasPosition();
+        net.runelite.api.Point rlMouse = mouseCanvasPositionForPanelRender();
         int hoverX = rlMouse == null ? -1 : rlMouse.getX();
         int hoverY = rlMouse == null ? -1 : rlMouse.getY();
 
@@ -2344,6 +2975,31 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public boolean isCompactPanelMode() {
+                return compactPanelMode;
+            }
+
+            @Override
+            public void setCompactPanelMode(boolean compact) {
+                recenterPanelForMode(compact);
+                compactPanelMode = compact;
+                keyboardHintsOpen = false;
+                taskDetailsPopup.close();
+                syncMismatchReviewOpen = false;
+                syncMismatchDescriptionTask = null;
+                currentScroll.reset();
+                resetCompactScroll();
+                if (compact) {
+                    activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
+                }
+            }
+
+            @Override
+            public Rectangle panelModeToggleBounds() {
+                return panelModeToggleBounds;
+            }
+
+            @Override
             public boolean isDraggingPanel() {
                 return draggingPanel;
             }
@@ -2612,8 +3268,23 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public void scrollCompactCurrent(double preciseWheelRotation) {
+                XtremeTaskerOverlay.this.scrollCompactCurrent(preciseWheelRotation);
+            }
+
+            @Override
+            public void setCompactCurrentScrollFraction(double fraction) {
+                XtremeTaskerOverlay.this.setCompactCurrentScrollFraction(fraction);
+            }
+
+            @Override
             public Rectangle currentViewportBounds() {
                 return currentLayout.viewportBounds;
+            }
+
+            @Override
+            public int currentRowBlock() {
+                return XtremeTaskerOverlay.this.currentRowBlock();
             }
 
             @Override
@@ -2628,7 +3299,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public int taskRowBlock() {
-                return taskRowsRendererTasks.rowBlock();
+                return XtremeTaskerOverlay.this.tasksRowBlock();
             }
 
             @Override
@@ -2713,7 +3384,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public int taskDetailsRowBlock() {
-                return ROW_HEIGHT; // popup content uses ROW_HEIGHT rows
+                return ROW_HEIGHT; // popup is rendered unscaled in screen coordinates
             }
 
             @Override
@@ -2911,7 +3582,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public int syncMismatchRowBlock() {
-                return ROW_HEIGHT + LIST_ROW_SPACING;
+                return scaleInputValue(ROW_HEIGHT + LIST_ROW_SPACING);
             }
 
             @Override
@@ -3104,6 +3775,172 @@ public class XtremeTaskerOverlay extends Overlay {
         }
     }
 
+    private void recenterPanelForMode(boolean targetCompactMode) {
+        if (!panelOpen || panelBounds.width <= 0 || panelBounds.height <= 0) {
+            return;
+        }
+
+        int canvasW = client.getCanvasWidth();
+        int canvasH = client.getCanvasHeight();
+        int targetW = targetCompactMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
+        int targetH = targetCompactMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
+        double targetScale = computePanelScale(canvasW, canvasH, targetW, targetH);
+        int physicalTargetW = Math.max(1, (int) Math.round(targetW * targetScale));
+        int physicalTargetH = Math.max(1, (int) Math.round(targetH * targetScale));
+
+        int centerX = panelBounds.x + panelBounds.width / 2;
+        panelXOverride = Math.max(0, Math.min(centerX - physicalTargetW / 2, Math.max(0, canvasW - physicalTargetW)));
+        panelYOverride = Math.max(0, Math.min(panelBounds.y, Math.max(0, canvasH - physicalTargetH)));
+    }
+
+    private void scalePanelInputBounds(int anchorX, int anchorY, double scale) {
+        if (scale == 1.0) {
+            return;
+        }
+
+        scaleRect(panelBounds, anchorX, anchorY, scale);
+        scaleRect(panelDragBarBounds, anchorX, anchorY, scale);
+        scaleRect(panelCloseBounds, anchorX, anchorY, scale);
+        scaleRect(panelModeToggleBounds, anchorX, anchorY, scale);
+
+        scaleRect(currentTabBounds, anchorX, anchorY, scale);
+        scaleRect(tasksTabBounds, anchorX, anchorY, scale);
+        scaleRect(rulesTabBounds, anchorX, anchorY, scale);
+
+        scaleRect(taskListViewportBounds, anchorX, anchorY, scale);
+        scaleRect(taskScrollbarRailBounds, anchorX, anchorY, scale);
+        scaleRect(taskScrollbarThumbBounds, anchorX, anchorY, scale);
+        scaleRect(rulesViewportBounds, anchorX, anchorY, scale);
+        scaleRect(markAllIncompleteConfirmBounds, anchorX, anchorY, scale);
+        scaleRect(markAllIncompleteYesBounds, anchorX, anchorY, scale);
+        scaleRect(markAllIncompleteNoBounds, anchorX, anchorY, scale);
+        scaleRect(markIncompleteDontShowBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchReviewBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchViewportBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchCloseBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchMarkAllBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchApplyBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchCancelBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchConfirmBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchConfirmYesBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchConfirmNoBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchScrollbarRailBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchScrollbarThumbBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchDescriptionBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchDescriptionCloseBounds, anchorX, anchorY, scale);
+        scaleRect(keyboardHintsButtonBounds, anchorX, anchorY, scale);
+        scaleRect(keyboardHintsPopupBounds, anchorX, anchorY, scale);
+        scaleRect(taskViewModeBounds, anchorX, anchorY, scale);
+
+        scaleCurrentLayoutBounds(anchorX, anchorY, scale);
+        scaleRulesLayoutBounds(anchorX, anchorY, scale);
+        scaleControlsLayoutBounds(controls, anchorX, anchorY, scale);
+        scaleRectMap(taskRowBounds, anchorX, anchorY, scale);
+        scaleRectMap(taskCheckboxBounds, anchorX, anchorY, scale);
+        scaleRectMap(syncMismatchTaskBounds, anchorX, anchorY, scale);
+        scaleRectMap(syncMismatchTaskNameBounds, anchorX, anchorY, scale);
+    }
+
+    private void scaleCurrentLayoutBounds(int anchorX, int anchorY, double scale) {
+        scaleRect(currentLayout.wikiButtonBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.rollButtonBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.completeButtonBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.rollSourceIconBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.viewportBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.scrollbarRailBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.scrollbarThumbBounds, anchorX, anchorY, scale);
+    }
+
+    private void scaleRulesLayoutBounds(int anchorX, int anchorY, double scale) {
+        scaleRect(rulesLayout.viewportBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.reloadButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.taskerFaqLinkBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.taskerFaqButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.githubReadmeLinkBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogsButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCAsButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaReviewButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaReviewIgnoreButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogReviewButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogReviewIgnoreButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaMarkedTasksToggleBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogMarkedTasksToggleBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.scrollbarRailBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.scrollbarThumbBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.subTabRulesBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.subTabDataSyncsBounds, anchorX, anchorY, scale);
+    }
+
+    private void scaleControlsLayoutBounds(TaskControlsLayout layout, int anchorX, int anchorY, double scale) {
+        scaleRect(layout.searchBox, anchorX, anchorY, scale);
+        scaleRect(layout.filtersHeaderBounds, anchorX, anchorY, scale);
+        scaleRect(layout.sortHeaderBounds, anchorX, anchorY, scale);
+        scaleRect(layout.filterSourceAll, anchorX, anchorY, scale);
+        scaleRect(layout.filterCA, anchorX, anchorY, scale);
+        scaleRect(layout.filterCL, anchorX, anchorY, scale);
+        scaleRect(layout.filterDA, anchorX, anchorY, scale);
+        scaleRect(layout.filterStatusAll, anchorX, anchorY, scale);
+        scaleRect(layout.filterIncomplete, anchorX, anchorY, scale);
+        scaleRect(layout.filterComplete, anchorX, anchorY, scale);
+        scaleRect(layout.filterTierThis, anchorX, anchorY, scale);
+        scaleRect(layout.filterTierAll, anchorX, anchorY, scale);
+        scaleRect(layout.sortCompletion, anchorX, anchorY, scale);
+        scaleRect(layout.sortTier, anchorX, anchorY, scale);
+        scaleRect(layout.sortDate, anchorX, anchorY, scale);
+        scaleRect(layout.sortTimeTicks, anchorX, anchorY, scale);
+        scaleRect(layout.sortReset, anchorX, anchorY, scale);
+        scaleRect(layout.clearFilters, anchorX, anchorY, scale);
+        scaleRect(layout.clearSort, anchorX, anchorY, scale);
+        scaleRect(layout.hoverTooltipAnchor, anchorX, anchorY, scale);
+        scaleRect(layout.filterNewTasks, anchorX, anchorY, scale);
+        scaleRect(layout.filterNewTasksHelp, anchorX, anchorY, scale);
+        layout.searchTextX = scaleX(layout.searchTextX, anchorX, scale);
+        for (int i = 0; i < layout.searchCharXPositions.length; i++) {
+            layout.searchCharXPositions[i] = scaleX(layout.searchCharXPositions[i], anchorX, scale);
+        }
+    }
+
+    private void scaleTaskDetailsPopupBounds(int anchorX, int anchorY, double scale) {
+        scaleRect(taskDetailsPopup.bounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.viewportBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.closeBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.wikiBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.toggleBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.scrollbarRailBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.scrollbarThumbBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.decrementGroupBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.incrementGroupBounds(), anchorX, anchorY, scale);
+        scaleRectMap(taskDetailsPopup.instanceRemoveBounds(), anchorX, anchorY, scale);
+    }
+
+    private void scaleRectMap(Map<?, Rectangle> map, int anchorX, int anchorY, double scale) {
+        synchronized (map) {
+            for (Rectangle r : map.values()) {
+                scaleRect(r, anchorX, anchorY, scale);
+            }
+        }
+    }
+
+    private void scaleRect(Rectangle r, int anchorX, int anchorY, double scale) {
+        if (r == null || r.width <= 0 || r.height <= 0) {
+            return;
+        }
+
+        int x1 = scaleX(r.x, anchorX, scale);
+        int y1 = scaleY(r.y, anchorY, scale);
+        int x2 = scaleX(r.x + r.width, anchorX, scale);
+        int y2 = scaleY(r.y + r.height, anchorY, scale);
+        r.setBounds(x1, y1, Math.max(1, x2 - x1), Math.max(1, y2 - y1));
+    }
+
+    private int scaleX(int x, int anchorX, double scale) {
+        return anchorX + (int) Math.round((x - anchorX) * scale);
+    }
+
+    private int scaleY(int y, int anchorY, double scale) {
+        return anchorY + (int) Math.round((y - anchorY) * scale);
+    }
+
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill) {
         buttonRenderer.drawBevelBox(g, r, fill);
     }
@@ -3212,7 +4049,10 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderLogoMaxHeight() {
-        return client.isResized() ? 92 : 80;
+        if (compactPanelMode) {
+            return 54;
+        }
+        return client.isResized() ? 82 : 70;
     }
 
     // ---- panel sizing helpers ----

@@ -8,8 +8,6 @@ import java.awt.*;
 import java.awt.event.MouseWheelEvent;
 import java.util.List;
 
-import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
-
 @RequiredArgsConstructor
 public final class OverlayWheelHandler implements MouseWheelListener
 {
@@ -29,6 +27,12 @@ public final class OverlayWheelHandler implements MouseWheelListener
         double precise = e.getPreciseWheelRotation();
         if (precise == 0.0)
         {
+            return e;
+        }
+
+        if (a.isCompactPanelMode())
+        {
+            a.scrollCompactCurrent(precise);
             return e;
         }
 
@@ -64,7 +68,6 @@ public final class OverlayWheelHandler implements MouseWheelListener
                     total <= 0 ? 1 : total,
                     null
             );
-
             return e;
         }
 
@@ -96,8 +99,9 @@ public final class OverlayWheelHandler implements MouseWheelListener
         {
             Rectangle cvp = a.currentViewportBounds();
             if (cvp.height <= 0) return e;
-            int totalRows = (a.currentLayout().totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT;
-            a.currentScroll().onWheel(precise, cvp.height, ROW_HEIGHT, totalRows <= 0 ? 1 : totalRows, null);
+            int logicalRowBlock = com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
+            int totalRows = (a.currentLayout().totalContentPx + logicalRowBlock - 1) / logicalRowBlock;
+            a.currentScroll().onWheel(precise, cvp.height, a.currentRowBlock(), totalRows <= 0 ? 1 : totalRows, null);
             return e;
         }
 
