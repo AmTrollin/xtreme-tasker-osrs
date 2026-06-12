@@ -184,15 +184,13 @@ public final class TaskDetailsPopup
         g.setColor(new Color(0, 0, 0, 120));
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
-        // Popup bounds (smaller)
-        if (bounds.width <= 0 || bounds.height <= 0)
-        {
-            int w = Math.max(280, (int) (panelBounds.width * 0.49));
-            int h = (int) (panelBounds.height * 0.70);
-            int x = panelBounds.x + (panelBounds.width - w) / 2;
-            int y = panelBounds.y + (panelBounds.height - h) / 2;
-            bounds.setBounds(x, y, w, h);
-        }
+        // Recompute logical bounds every frame. The overlay may scale input bounds
+        // after rendering, so carrying them back into layout would compound scale.
+        int w = Math.max(280, (int) (panelBounds.width * 0.49));
+        int h = (int) (panelBounds.height * 0.70);
+        int popupX = panelBounds.x + (panelBounds.width - w) / 2;
+        int popupY = panelBounds.y + (panelBounds.height - h) / 2;
+        bounds.setBounds(popupX, popupY, w, h);
 
         // Background
         drawBevelBox(g, bounds, new Color(45, 36, 24, 245));
@@ -440,10 +438,12 @@ public final class TaskDetailsPopup
         }
         totalContentRows = (totalPx + ROW_HEIGHT - 1) / ROW_HEIGHT;
 
-        // Clamp scroll offset
         int visibleRows = viewportH > 0 ? viewportH / ROW_HEIGHT : 1;
         int maxScrollOffset = Math.max(0, totalContentRows - visibleRows);
-        if (scroll.offsetRows > maxScrollOffset) scroll.offsetRows = maxScrollOffset;
+        if (scroll.offsetRows > maxScrollOffset)
+        {
+            scroll.offsetRows = maxScrollOffset;
+        }
         int scrollPx = scroll.offsetRows * ROW_HEIGHT;
         boolean needsScroll = totalContentRows > visibleRows;
 

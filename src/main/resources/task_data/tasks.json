@@ -3969,7 +3969,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-ardougne-easy-diary_001_75c6f21c2b",
-      "name": "Complete the Ardougne Easy Diary",
+      "name": "Ardougne Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "5 Thieving; Biohazard quest; Rune Mysteries quest",
@@ -3988,7 +3988,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-desert-easy-diary_001_4dda64c56a",
-      "name": "Complete the Desert Easy Diary",
+      "name": "Desert Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "21 Thieving; 5 Hunter; Start Icthlarin's Little Helper quest",
@@ -4007,7 +4007,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-falador-easy-diary_001_961002b1c5",
-      "name": "Complete the Falador Easy Diary",
+      "name": "Falador Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "16 Construction; 5 Agility; 10 Mining; 13 Smithing; Doric's Quest; The Knight's Sword quest",
@@ -4026,7 +4026,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-fremennik-easy-diary_001_3d56d8facb",
-      "name": "Complete the Fremennik Easy Diary",
+      "name": "Fremennik Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "5 Thieving; 23 Crafting; 11 Hunter; 20 Mining; 20 Smithing; 15 Firemaking; 15 Woodcutting; The Fremennik Trials quest; Start The Giant Dwarf quest; Start Troll Stronghold quest",
@@ -4045,7 +4045,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-kandarin-easy-diary_001_c172555793",
-      "name": "Complete the Kandarin Easy Diary",
+      "name": "Kandarin Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "20 Agility; 16 Fishing; 13 Farming; Start Elemental Workshop 1 quest",
@@ -4064,7 +4064,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-karamja-easy-diary_001_dc68f56bcb",
-      "name": "Complete the Karamja Easy Diary",
+      "name": "Karamja Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "15 Agility; 40 Mining",
@@ -4083,7 +4083,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-kourend-kebos-easy-diary_001_6b82c1132a",
-      "name": "Complete the Kourend & Kebos Easy Diary",
+      "name": "Kourend & Kebos Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "25 Construction; 12 Herblore; 25 Thieving; 15 Mining; 20 Fishing; Druidic Ritual quest",
@@ -4102,7 +4102,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-lumbridge-draynor-easy-diar_001_8eed5cd337",
-      "name": "Complete the Lumbridge & Draynor Easy Diary",
+      "name": "Lumbridge & Draynor Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "5 Runecrafting; 7 Slayer; 15 Mining; 15 Fishing; 15 Firemaking; 15 Woodcutting; Cook's Assistant quest; Rune Mysteries quest",
@@ -4121,7 +4121,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-morytania-easy-diary_001_8fcd937de5",
-      "name": "Complete the Morytania Easy Diary",
+      "name": "Morytania Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "15 Crafting; 15 Slayer; 12 Cooking; 23 Farming; Nature Spirit quest",
@@ -4140,7 +4140,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-varrock-easy-diary_001_3a66a1fffe",
-      "name": "Complete the Varrock Easy Diary",
+      "name": "Varrock Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "9 Runecrafting; 13 Agility; 5 Thieving; 8 Crafting; 15 Mining; 20 Fishing; Rune Mysteries quest; Reach 50 kudos with the Varrock Museum",
@@ -4159,7 +4159,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-western-provinces-easy-diar_001_53fd05f908",
-      "name": "Complete the Western Provinces Easy Diary",
+      "name": "Western Provinces Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "30 Ranged; 40 Combat; 20 Fletching; 9 Hunter; 15 Mining; 30 Cooking; Big Chompy Bird Hunting quest; Rune Mysteries quest; Reach 30 chompy or jubbly bird kills",
@@ -4178,7 +4178,7 @@
     },
     {
       "id": "collection_log_easy_complete-the-wilderness-easy-diary_001_3c05bb37cb",
-      "name": "Complete the Wilderness Easy Diary",
+      "name": "Wilderness Easy Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "21 Magic; 15 Agility; 15 Mining; Enter the Abyss miniquest",
@@ -10362,7 +10362,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-ardougne-medium-diary_001_9512a43fae",
-      "name": "Complete the Ardougne Medium Diary",
+      "name": "Ardougne Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "38 Strength; 25 Ranged; 51 Magic; 10 Construction; 39 Agility; 38 Thieving; 49 Crafting; 50 Firemaking; 36 Woodcutting; 31 Farming; Enlightened Journey quest; Hand in the Sand quest; Rune Mysteries quest; Tower of Life quest; Underground Pass quest; Start Fairytale 2 - Cure a Queen quest; Start Sea Slug quest; Start Watchtower quest",
@@ -10381,7 +10381,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-desert-medium-diary_001_6d9cdd2db4",
-      "name": "Complete the Desert Medium Diary",
+      "name": "Desert Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "37 Ranged; 43 Prayer; 39 Magic; 20 Construction; 30 Agility; 36 Herblore; 37 Thieving; 50 Crafting; 22 Slayer; 47 Hunter; 37 Mining; 45 Firemaking; 35 Woodcutting; Eagles' Peak quest; Enakhra's Lament quest; The Golem quest; Spirits of the Elid quest; Start Icthlarin's Little Helper quest",
@@ -10400,7 +10400,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-falador-medium-diary_001_a7f955a283",
-      "name": "Complete the Falador Medium Diary",
+      "name": "Falador Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "37 Strength; 20 Defence; 19 Ranged; 10 Prayer; 37 Magic; 16 Construction; 42 Agility; 40 Thieving; 40 Crafting; 32 Slayer; 40 Mining; 13 Smithing; 20 Cooking; 49 Firemaking; 30 Woodcutting; 23 Farming; Doric's Quest; The Knight's Sword quest; Recruitment Drive quest; Skippy and the Mogres quest; Start Ratcatchers quest",
@@ -10419,7 +10419,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-fremennik-medium-diary_001_b538411174",
-      "name": "Complete the Fremennik Medium Diary",
+      "name": "Fremennik Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "30 Defence; 37 Construction; 35 Agility; 42 Thieving; 31 Crafting; 47 Slayer; 35 Hunter; 40 Mining; 50 Smithing; 40 Firemaking; 50 Woodcutting; Between a Rock quest; Eagles' Peak quest; Horror from the Deep quest; Start Fairytale 2 - Cure a Queen quest; Start The Giant Dwarf quest; Start Troll Stronghold quest; Start Olaf's Quest",
@@ -10438,7 +10438,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-kandarin-medium-diary_001_8ac83cfb50",
-      "name": "Complete the Kandarin Medium Diary",
+      "name": "Kandarin Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "22 Strength; 40 Ranged; 45 Magic; 36 Agility; 48 Herblore; 47 Thieving; 31 Crafting; 50 Fletching; 30 Mining; 30 Smithing; 46 Fishing; 43 Cooking; 36 Woodcutting; 26 Farming; Alfred Grimhand's Barcrawl miniquest; Waterfall Quest; Start Fairytale 2 - Cure a Queen quest; Start Elemental Workshop 2 quest",
@@ -10457,7 +10457,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-karamja-medium-diary_001_794f9669b0",
-      "name": "Complete the Karamja Medium Diary",
+      "name": "Karamja Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "32 Agility; 3 Herblore; 20 Crafting; 41 Hunter; 40 Mining; 65 Fishing; 16 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Shilo Village quest; Start Dragon Slayer 1 quest; Start Tai Bwo Wannai Trio quest; Reach 100% Tai Bwo Wannai Cleanup favour",
@@ -10476,7 +10476,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-kourend-kebos-medium-diary_001_2588b0af9b",
-      "name": "Complete the Kourend & Kebos Medium Diary",
+      "name": "Kourend & Kebos Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "16 Strength; 30 Construction; 49 Agility; 12 Herblore; 25 Thieving; 31 Crafting; 53 Hunter; 42 Mining; 43 Fishing; 50 Firemaking; 50 Woodcutting; 45 Farming; The Ascent of Arceuus quest; The Depths of Despair quest; The Forsaken Tower quest; The Queen of Thieves quest; Tale of the Righteous quest; Start Fairytale 2 - Cure a Queen quest; Start Eagles' Peak quest",
@@ -10495,7 +10495,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-lumbridge-draynor-medium-di_001_e7dc988d18",
-      "name": "Complete the Lumbridge & Draynor Medium Diary",
+      "name": "Lumbridge & Draynor Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "19 Strength; 50 Ranged; 31 Magic; 23 Runecrafting; 20 Agility; 38 Thieving; 38 Crafting; 18 Slayer; 42 Hunter; 15 Mining; 30 Fishing; 15 Firemaking; 36 Woodcutting; Animal Magnetism quest; Cook's Assistant quest; Rune Mysteries quest; Start Fairytale 2 - Cure a Queen quest",
@@ -10514,7 +10514,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-morytania-medium-diary_001_42292455d4",
-      "name": "Complete the Morytania Medium Diary",
+      "name": "Morytania Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "40 Ranged; 47 Prayer; 7 Magic; 42 Agility; 22 Herblore; 45 Crafting; 5 Fletching; 42 Slayer; 29 Hunter; 15 Mining; 50 Smithing; 50 Fishing; 40 Cooking; 45 Woodcutting; 40 Farming; Cabin Fever quest; Dwarf Cannon quest; Ghosts Ahoy quest; Lair of Tarn Razorlor miniquest; Start In Aid of the Myreque quest",
@@ -10533,7 +10533,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-varrock-medium-diary_001_4e4a5d6f9a",
-      "name": "Complete the Varrock Medium Diary",
+      "name": "Varrock Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "25 Magic; 9 Runecrafting; 30 Agility; 10 Herblore; 25 Thieving; 36 Crafting; 15 Mining; 20 Fishing; 40 Firemaking; 30 Farming; The Dig Site quest; Enlightened Journey quest; Garden of Tranquillity quest; Gertrude's Cat quest; Rune Mysteries quest; A Soul's Bane quest; Tree Gnome Village quest; Own a Jagex Account or set up the older RuneScape Authenticator; Reach 50 kudos with the Varrock Museum",
@@ -10552,7 +10552,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-western-provinces-medium-di_001_a0132304de",
-      "name": "Complete the Western Provinces Medium Diary",
+      "name": "Western Provinces Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "30 Ranged; 70 Combat; 46 Magic; 5 Construction; 37 Agility; 18 Herblore; 25 Crafting; 20 Fletching; 31 Hunter; 40 Mining; 30 Smithing; 46 Fishing; 42 Cooking; 35 Firemaking; 35 Woodcutting; Big Chompy Bird Hunting quest; Eagles' Peak quest; The Eyes of Glouphrie quest; Start Monkey Madness 1 quest; Start One Small Favour quest; Reach 125 chompy or jubbly bird kills",
@@ -10571,7 +10571,7 @@
     },
     {
       "id": "collection_log_medium_complete-the-wilderness-medium-diary_001_6b959c66bf",
-      "name": "Complete the Wilderness Medium Diary",
+      "name": "Wilderness Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "60 Magic; 52 Agility; 50 Slayer; 55 Mining; 50 Smithing; 61 Woodcutting; Enter the Abyss miniquest; Access to the Wilderness God Wars Dungeon; Start Between a Rock quest",
@@ -18949,7 +18949,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-ardougne-hard-diary_001_89fcc0a0d1",
-      "name": "Complete the Ardougne Hard Diary",
+      "name": "Ardougne Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "50 Strength; 60 Ranged; 42 Prayer; 66 Magic; 65 Runecrafting; 50 Construction; 56 Agility; 45 Herblore; 72 Thieving; 50 Crafting; 5 Fletching; 59 Hunter; 52 Mining; 68 Smithing; 53 Fishing; 53 Cooking; 50 Firemaking; 50 Woodcutting; 70 Farming; Enlightened Journey quest; Hand in the Sand quest; Legends' Quest; Monkey Madness 1 quest; Mourning's End Part 2 quest; Rune Mysteries quest; Tower of Life quest; Watchtower quest; Start Fairytale 2 - Cure a Queen quest; Start Sea Slug quest",
@@ -18968,7 +18968,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-desert-hard-diary_001_8eed99fcbd",
-      "name": "Complete the Desert Hard Diary",
+      "name": "Desert Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "50 Attack; 40 Defence; 40 Ranged; 43 Prayer; 68 Magic; 20 Construction; 70 Agility; 36 Herblore; 65 Thieving; 61 Crafting; 10 Fletching; 65 Slayer; 47 Hunter; 60 Mining; 68 Smithing; 60 Firemaking; 55 Woodcutting; Contact! quest; Desert Treasure 1 quest; Dream Mentor quest; Eagles' Peak quest; Enakhra's Lament quest; The Feud quest; The Golem quest; Spirits of the Elid quest; Defeat the Kalphite Queen",
@@ -18987,7 +18987,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-falador-hard-diary_001_9d1acf6c8e",
-      "name": "Complete the Falador Hard Diary",
+      "name": "Falador Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "37 Strength; 50 Defence; 19 Ranged; 70 Prayer; 37 Magic; 56 Runecrafting; 16 Construction; 59 Agility; 52 Herblore; 58 Thieving; 40 Crafting; 72 Slayer; 60 Mining; 13 Smithing; 53 Fishing; 53 Cooking; 49 Firemaking; 71 Woodcutting; 45 Farming; Doric's Quest; Grim Tales quest; Heroes' Quest; The Knight's Sword quest; Skippy and the Mogres quest; The Slug Menace quest; Access to the Warriors' Guild; Start Ratcatchers quest; Defeat the Giant Mole; Acquire a prospector helmet from the Motherlode Mine",
@@ -19006,7 +19006,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-fremennik-hard-diary_001_58dd76b2e4",
-      "name": "Complete the Fremennik Hard Diary",
+      "name": "Fremennik Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "40 Defence; 72 Magic; 37 Construction; 35 Agility; 66 Herblore; 75 Thieving; 61 Crafting; 47 Slayer; 55 Hunter; 70 Mining; 60 Smithing; 53 Fishing; 53 Cooking; 49 Firemaking; 56 Woodcutting; Between a Rock quest; Eadgar's Ruse quest; Eagles' Peak quest; Horror from the Deep quest; Lunar Diplomacy quest; Throne of Miscellania quest; Start Fairytale 2 - Cure a Queen quest; Start The Giant Dwarf quest; Start Olaf's Quest",
@@ -19025,7 +19025,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-kandarin-hard-diary_001_2b065858b6",
-      "name": "Complete the Kandarin Hard Diary",
+      "name": "Kandarin Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "20 Attack; 50 Strength; 70 Defence; 40 Ranged; 70 Prayer; 56 Magic; 50 Construction; 60 Agility; 48 Herblore; 53 Thieving; 31 Crafting; 70 Fletching; 30 Mining; 75 Smithing; 70 Fishing; 43 Cooking; 65 Firemaking; 60 Woodcutting; 26 Farming; Alfred Grimhand's Barcrawl miniquest; Access to Barbarian Fishing, Firemaking, and Smithing; Start Desert Treasure 1 quest; Start Fairytale 2 - Cure a Queen quest; Start Elemental Workshop 2 quest; Knight Waves Training Grounds; Defeat the Penance Queen and complete Barbarian Assault",
@@ -19044,7 +19044,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-karamja-hard-diary_001_65a5e433fd",
-      "name": "Complete the Karamja Hard Diary",
+      "name": "Karamja Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "50 Strength; 42 Ranged; 59 Magic; 44 Runecrafting; 53 Agility; 25 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave; Reach 100% Tai Bwo Wannai Cleanup favour",
@@ -19063,7 +19063,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-kourend-kebos-hard-diary_001_d45608255d",
-      "name": "Complete the Kourend & Kebos Hard Diary",
+      "name": "Kourend & Kebos Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "16 Strength; 40 Defence; 66 Magic; 30 Construction; 49 Agility; 31 Herblore; 49 Thieving; 61 Crafting; 25 Fletching; 62 Slayer; 53 Hunter; 65 Mining; 70 Smithing; 43 Fishing; 50 Firemaking; 60 Woodcutting; 74 Farming; The Ascent of Arceuus quest; The Depths of Despair quest; Dream Mentor quest; The Forsaken Tower quest; The Queen of Thieves quest; Tale of the Righteous quest; Start Fairytale 2 - Cure a Queen quest; Start Eagles' Peak quest; Defeat a Lizardman Shaman in the Lizardman Temple",
@@ -19082,7 +19082,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-lumbridge-draynor-hard-diar_001_07324272e4",
-      "name": "Complete the Lumbridge & Draynor Hard Diary",
+      "name": "Lumbridge & Draynor Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "19 Strength; 50 Ranged; 52 Prayer; 60 Magic; 59 Runecrafting; 46 Agility; 25 Herblore; 53 Thieving; 70 Crafting; 10 Fletching; 18 Slayer; 42 Hunter; 50 Mining; 40 Smithing; 53 Fishing; 70 Cooking; 65 Firemaking; 57 Woodcutting; 63 Farming; Animal Magnetism quest; Another Slice of H.A.M. quest; Recipe for Disaster quest; Rune Mysteries quest; Tears of Guthix quest; Access to the Bones to Peaches spell from the Mage Training Arena; Start Fairytale 2 - Cure a Queen quest",
@@ -19101,7 +19101,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-morytania-hard-diary_001_91442fe24e",
-      "name": "Complete the Morytania Hard Diary",
+      "name": "Morytania Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "20 Attack; 70 Defence; 40 Ranged; 70 Prayer; 66 Magic; 50 Construction; 71 Agility; 22 Herblore; 53 Thieving; 45 Crafting; 10 Fletching; 58 Slayer; 29 Hunter; 55 Mining; 50 Smithing; 50 Fishing; 40 Cooking; 50 Firemaking; 50 Woodcutting; 53 Farming; Desert Treasure 1 quest; Dwarf Cannon quest; Ghosts Ahoy quest; In Aid of the Myreque quest; Lair of Tarn Razorlor miniquest; Start The Great Brain Robbery quest; Knight Waves Training Grounds",
@@ -19120,7 +19120,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-varrock-hard-diary_001_581ffc1f31",
-      "name": "Complete the Varrock Hard Diary",
+      "name": "Varrock Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "40 Ranged; 52 Prayer; 54 Magic; 9 Runecrafting; 50 Construction; 51 Agility; 10 Herblore; 53 Thieving; 36 Crafting; 10 Fletching; 66 Hunter; 15 Mining; 20 Smithing; 20 Fishing; 60 Firemaking; 60 Woodcutting; 68 Farming; Desert Treasure 1 quest; Enlightened Journey quest; Garden of Tranquillity quest; Gertrude's Cat quest; Rune Mysteries quest; A Soul's Bane quest; Tree Gnome Village quest; Own a Jagex Account or set up the older RuneScape Authenticator; Reach 153 kudos with the Varrock Museum",
@@ -19139,7 +19139,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-western-provinces-hard-diar_001_2cb810be73",
-      "name": "Complete the Western Provinces Hard Diary",
+      "name": "Western Provinces Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "70 Ranged; 100 Combat; 66 Magic; 65 Construction; 56 Agility; 18 Herblore; 75 Thieving; 40 Crafting; 20 Fletching; 69 Hunter; 70 Mining; 45 Smithing; 62 Fishing; 70 Cooking; 50 Firemaking; 50 Woodcutting; 68 Farming; Eagles' Peak quest; The Eyes of Glouphrie quest; King Awowogei Recipe for Disaster subquest; Swan Song quest; Start Mourning's End Part 1 quest; Defeat Zulrah; Reach 300 chompy or jubbly bird kills",
@@ -19158,7 +19158,7 @@
     },
     {
       "id": "collection_log_hard_complete-the-wilderness-hard-diary_001_1c7addfc2b",
-      "name": "Complete the Wilderness Hard Diary",
+      "name": "Wilderness Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
       "prereqs": "66 Magic; 64 Agility; 68 Slayer; 67 Hunter; 55 Mining; 75 Smithing; 53 Fishing; 61 Woodcutting; Death Plateau quest; Enter the Abyss miniquest; Mage Arena 1 miniquest; Access to at least one of the three god spells; Access to the Wilderness God Wars Dungeon; Start Between a Rock quest; Defeat the Chaos elemental; Defeat the Crazy Archaeologist, Chaos Fanatic, and Scorpia",
@@ -29690,7 +29690,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-ardougne-elite-diary_001_50c6d70148",
-      "name": "Complete the Ardougne Elite Diary",
+      "name": "Ardougne Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "50 Strength; 60 Ranged; 42 Prayer; 94 Magic; 65 Runecrafting; 50 Construction; 90 Agility; 45 Herblore; 82 Thieving; 50 Crafting; 69 Fletching; 59 Hunter; 52 Mining; 91 Smithing; 81 Fishing; 91 Cooking; 50 Firemaking; 50 Woodcutting; 85 Farming; Desert Treasure 1 quest; Enlightened Journey quest; Hand in the Sand quest; Haunted Mine quest; Legends' Quest; Monkey Madness 1 quest; Mourning's End Part 2 quest; Rune Mysteries quest; Tower of Life quest; Watchtower quest; Start Fairytale 2 - Cure a Queen quest; Start Sea Slug quest; 400k NMZ Points",
@@ -29709,7 +29709,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-desert-elite-diary_001_99676b1440",
-      "name": "Complete the Desert Elite Diary",
+      "name": "Desert Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "50 Attack; 40 Defence; 40 Ranged; 85 Prayer; 94 Magic; 78 Construction; 70 Agility; 36 Herblore; 91 Thieving; 61 Crafting; 95 Fletching; 65 Slayer; 47 Hunter; 60 Mining; 68 Smithing; 85 Cooking; 60 Firemaking; 55 Woodcutting; Contact! quest; Desert Treasure 1 quest; Dream Mentor quest; Eagles' Peak quest; Enakhra's Lament quest; The Feud quest; The Golem quest; Spirits of the Elid quest; Defeat the Kalphite Queen and obtain her tattered head; Open the Grand Gold Chest in the final room of Pyramid Plunder",
@@ -29728,7 +29728,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-falador-elite-diary_001_d26cc11977",
-      "name": "Complete the Falador Elite Diary",
+      "name": "Falador Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "37 Strength; 50 Defence; 19 Ranged; 70 Prayer; 37 Magic; 88 Runecrafting; 16 Construction; 80 Agility; 81 Herblore; 58 Thieving; 40 Crafting; 72 Slayer; 60 Mining; 13 Smithing; 53 Fishing; 53 Cooking; 49 Firemaking; 75 Woodcutting; 91 Farming; Doric's Quest; Grim Tales quest; Heroes' Quest; The Knight's Sword quest; Skippy and the Mogres quest; The Slug Menace quest; Access to the Warriors' Guild; Start Ratcatchers quest; Defeat the Giant Mole; Reach the rank of White Knight Master; Acquire a prospector helmet from the Motherlode Mine; Quest Cape",
@@ -29747,7 +29747,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-fremennik-elite-diary_001_b319f729bb",
-      "name": "Complete the Fremennik Elite Diary",
+      "name": "Fremennik Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "70 Strength; 40 Defence; 70 Ranged; 72 Magic; 82 Runecrafting; 37 Construction; 70 Hitpoints; 80 Agility; 66 Herblore; 75 Thieving; 80 Crafting; 83 Slayer; 55 Hunter; 70 Mining; 60 Smithing; 53 Fishing; 53 Cooking; 49 Firemaking; 56 Woodcutting; Between a Rock quest; Eadgar's Ruse quest; Eagles' Peak quest; Horror from the Deep quest; Lunar Diplomacy quest; Throne of Miscellania quest; Start Fairytale 2 - Cure a Queen quest; Start The Giant Dwarf quest; Start Olaf's Quest; Defeat each of the Dagannoth Kings; Defeat all God Wars Dungeon generals except Nex",
@@ -29766,7 +29766,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-kandarin-elite-diary_001_c7f5e6a6bd",
-      "name": "Complete the Kandarin Elite Diary",
+      "name": "Kandarin Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "20 Attack; 50 Strength; 70 Defence; 40 Ranged; 70 Prayer; 87 Magic; 50 Construction; 60 Agility; 86 Herblore; 53 Thieving; 85 Crafting; 70 Fletching; 60 Mining; 90 Smithing; 76 Fishing; 80 Cooking; 85 Firemaking; 60 Woodcutting; 79 Farming; Alfred Grimhand's Barcrawl miniquest; Family Crest quest; Lunar Diplomacy quest; Access to Barbarian Fishing, Firemaking, Smithing, and Herblore; Start Desert Treasure 1 quest; Start Fairytale 2 - Cure a Queen quest; Start Elemental Workshop 2 quest; Knight Waves Training Grounds; Defeat the Penance Queen and acquire level 5 in all Barbarian Assault roles",
@@ -29785,7 +29785,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-karamja-elite-diary_001_7b0e1adf02",
-      "name": "Complete the Karamja Elite Diary",
+      "name": "Karamja Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "50 Strength; 42 Ranged; 59 Magic; 91 Runecrafting; 53 Agility; 87 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 72 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; TzHaar Fight Cave; Reach 100% Tai Bwo Wannai Cleanup favour",
@@ -29804,7 +29804,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-kourend-kebos-elite-diary_001_a38a3ed29c",
-      "name": "Complete the Kourend & Kebos Elite Diary",
+      "name": "Kourend & Kebos Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "16 Strength; 40 Defence; 90 Magic; 77 Runecrafting; 30 Construction; 49 Agility; 31 Herblore; 49 Thieving; 61 Crafting; 40 Fletching; 95 Slayer; 53 Hunter; 65 Mining; 70 Smithing; 82 Fishing; 84 Cooking; 50 Firemaking; 90 Woodcutting; 85 Farming; The Ascent of Arceuus quest; The Depths of Despair quest; Dream Mentor quest; The Forsaken Tower quest; The Queen of Thieves quest; Tale of the Righteous quest; Start Fairytale 2 - Cure a Queen quest; Start Eagles' Peak quest; Chambers of Xeric; Defeat a Hydra in the Karuulm Slayer Dungeon; Defeat a Lizardman Shaman in the Lizardman Temple; Defeat Skotizo",
@@ -29823,7 +29823,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-lumbridge-draynor-elite-dia_001_ea39886651",
-      "name": "Complete the Lumbridge & Draynor Elite Diary",
+      "name": "Lumbridge & Draynor Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "50 Attack; 70 Strength; 65 Defence; 70 Ranged; 52 Prayer; 75 Magic; 76 Runecrafting; 70 Construction; 50 Hitpoints; 70 Agility; 70 Herblore; 78 Thieving; 70 Crafting; 60 Fletching; 69 Slayer; 70 Hunter; 72 Mining; 88 Smithing; 62 Fishing; 70 Cooking; 75 Firemaking; 75 Woodcutting; 70 Farming; 52 Sailing; Quest Cape; Access to the Bones to Peaches spell from the Mage Training Arena",
@@ -29842,7 +29842,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-morytania-elite-diary_001_e44398af82",
-      "name": "Complete the Morytania Elite Diary",
+      "name": "Morytania Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "20 Attack; 76 Strength; 70 Defence; 40 Ranged; 70 Prayer; 83 Magic; 50 Construction; 71 Agility; 22 Herblore; 53 Thieving; 84 Crafting; 10 Fletching; 85 Slayer; 29 Hunter; 60 Mining; 50 Smithing; 96 Fishing; 40 Cooking; 80 Firemaking; 55 Woodcutting; 53 Farming; Desert Treasure 1 quest; Dwarf Cannon quest; Ghosts Ahoy quest; In Aid of the Myreque quest; Lair of Tarn Razorlor miniquest; Lunar Diplomacy quest; Shades of Mort'ton quest; Access to Barbarian Fishing; Start The Great Brain Robbery quest; Knight Waves Training Grounds; Open the Barrows chest while wearing a full Barrows set",
@@ -29861,7 +29861,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-varrock-elite-diary_001_46c24becbb",
-      "name": "Complete the Varrock Elite Diary",
+      "name": "Varrock Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "40 Defence; 40 Ranged; 52 Prayer; 86 Magic; 78 Runecrafting; 50 Construction; 51 Agility; 90 Herblore; 53 Thieving; 61 Crafting; 81 Fletching; 66 Hunter; 60 Mining; 89 Smithing; 20 Fishing; 95 Cooking; 60 Firemaking; 60 Woodcutting; 68 Farming; Desert Treasure 1 quest; Dream Mentor quest; Enlightened Journey quest; Garden of Tranquillity quest; Gertrude's Cat quest; A Soul's Bane quest; Tree Gnome Village quest; Own a Jagex Account or set up the older RuneScape Authenticator; Reach 153 kudos with the Varrock Museum",
@@ -29880,7 +29880,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-western-provinces-elite-dia_001_c7575b977c",
-      "name": "Complete the Western Provinces Elite Diary",
+      "name": "Western Provinces Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "42 Attack; 42 Strength; 42 Defence; 70 Ranged; 100 Combat; 22 Prayer; 66 Magic; 65 Construction; 42 Hitpoints; 85 Agility; 18 Herblore; 85 Thieving; 40 Crafting; 85 Fletching; 93 Slayer; 69 Hunter; 70 Mining; 45 Smithing; 62 Fishing; 70 Cooking; 50 Firemaking; 50 Woodcutting; 75 Farming; Eagles' Peak quest; The Eyes of Glouphrie quest; King Awowogei Recipe for Disaster subquest; Swan Song quest; Start Mourning's End Part 1 quest; Defeat the Thermonuclear smoke devil; Defeat Zulrah; Reach 1,000 chompy or jubbly bird kills; Acquire and wear any complete void set",
@@ -29899,7 +29899,7 @@
     },
     {
       "id": "collection_log_elite_complete-the-wilderness-elite-diary_001_eb67ed2db9",
-      "name": "Complete the Wilderness Elite Diary",
+      "name": "Wilderness Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
       "prereqs": "40 Ranged; 96 Magic; 64 Agility; 10 Herblore; 84 Thieving; 10 Fletching; 83 Slayer; 67 Hunter; 85 Mining; 90 Smithing; 85 Fishing; 90 Cooking; 75 Firemaking; 75 Woodcutting; Death Plateau quest; Desert Treasure 1 quest; Enter the Abyss miniquest; Mage Arena 1 miniquest; Access to at least one of the three god spells; Access to the Wilderness God Wars Dungeon; Start Between a Rock quest; Defeat Callisto/Artio, Venenatis/Spindel, and Vet'ion/Calvar'ion; Defeat the Chaos elemental; Defeat the Crazy Archaeologist, Chaos Fanatic, and Scorpia",
@@ -44143,7 +44143,7 @@
     },
     {
       "id": "combat_achievement_master_theatre-hm-4-scale-speed-runner_001_e501c58b1d",
-      "name": "Theatre: HM (4-Scale) Speed-Runner",
+      "name": "Theatre of Blood: HM (4-Scale) Speed-Runner",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
       "prereqs": "Priest in Peril quest",
@@ -44176,7 +44176,7 @@
     },
     {
       "id": "combat_achievement_master_theatre-hm-5-scale-speed-runner_001_4d0ac07995",
-      "name": "Theatre: HM (5-Scale) Speed-Runner",
+      "name": "Theatre of Blood: HM (5-Scale) Speed-Runner",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
       "prereqs": "Priest in Peril quest",
@@ -44187,7 +44187,7 @@
     },
     {
       "id": "combat_achievement_master_theatre-hm-trio-speed-runner_001_22eeba0efd",
-      "name": "Theatre: HM (Trio) Speed-Runner",
+      "name": "Theatre of Blood: HM (Trio) Speed-Runner",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
       "prereqs": "Priest in Peril quest",
