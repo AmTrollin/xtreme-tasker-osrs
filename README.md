@@ -2,9 +2,13 @@
 
 Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progressive random task list built from Combat Achievements, Collection Log goals, and Achievement Diaries.
 
+**New RuneLite plugin, released June 2026.**
+
 Xtreme Tasker turns OSRS into a long-term progression challenge by mixing Combat Achievements, Collection Log goals, and Achievement Diaries into one random task journey. The idea was inspired by Tedious' Collection Log Master game mode.
 
 This README covers the basics. For save details, recovery notes, account switching behavior, and deeper explanations, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
+
+Want to see the plugin in action? Check out [@amtrollin](https://www.youtube.com/@AmTrollin/playlists)'s YouTube series, [Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H).
 
 ## What It Does
 
@@ -12,6 +16,7 @@ This README covers the basics. For save details, recovery notes, account switchi
 - Track Easy through Master tier progress in an overlay.
 - Browse, search, filter, and sort the full task list.
 - Mark tasks complete or incomplete manually.
+- Switch between full overlay view and compact view.
 - Condense repeated task rolls into one row, while still counting each roll as its own task.
 - Automatically update bundled task data and highlight newly added tasks.
 - Manually sync Combat Achievement, Collection Log, and Achievement Diary progress when you choose.
@@ -27,9 +32,7 @@ This README covers the basics. For save details, recovery notes, account switchi
 
 Your current task and completion progress are saved locally through RuneLite.
 
-![Current task tab with an active task](docs/images/CurrentTaskWithTask.png)
-
-![Open overlay, complete task, and roll a new task](docs/gifs/OpenCompleteRollTask_Current.gif)
+<img src="docs/gifs/OpenCompleteRollTask_Current.gif" alt="Open overlay, complete task, and roll a new task" width="560">
 
 ## Overlay Tabs
 
@@ -38,6 +41,14 @@ Your current task and completion progress are saved locally through RuneLite.
 - `Help`: rules, FAQ links, this README, and manual sync actions.
 
 Both `Current` and `Tasks` include a `[Keyboard hints]` button at the bottom of the panel.
+
+## Compact View
+
+Use the view toggle in the overlay corner to switch between full view and compact view. Compact view keeps the current task, timer, roll/complete action, wiki link, and scrollable details visible in a smaller panel for tighter screens or less intrusive play.
+
+The overlay remembers the last view you used.
+
+<img src="docs/images/CondensedTaskView.png" alt="Compact task view" width="360">
 
 ## Tasks Tab
 
@@ -59,7 +70,7 @@ Rows use these status indicators:
 
 Source filters can combine CAs, CLOGs, and ADs. Selecting all three sources returns the filter to `All`.
 
-![Tasks tab](docs/images/TasksTab.png)
+<img src="docs/images/TasksTab.png" alt="Tasks tab" width="560">
 
 ## Repeated Tasks
 
@@ -69,9 +80,9 @@ By default, repeated tasks are condensed into one row with a `#/#` progress indi
 
 Repeated task details let you mark all instances complete, mark all incomplete after confirmation, or remove completion from a specific completed instance.
 
-![Repeated task prereq and progress detail](docs/images/MultitaskPrereqStrike.png)
+<img src="docs/images/MultitaskPrereqStrike.png" alt="Repeated task prereq and progress detail" width="460">
 
-![Mark repeated task instances complete and incomplete](docs/gifs/MarkMultiTaskInstancesCompleteIncomplete_Taskdesc.gif)
+<img src="docs/gifs/MarkMultiTaskInstancesCompleteIncomplete_Taskdesc.gif" alt="Mark repeated task instances complete and incomplete" width="560">
 
 ## Collection Log Details
 
@@ -109,19 +120,24 @@ Completions marked by you are shown as marked in task details; completions added
 
 If sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the `Help` > `Sync` section shows a review note. Use `Review` to choose which tasks to mark incomplete, or `Ignore` to clear the note until a future sync finds mismatches again. Repeated tasks in review show the specific marked instance, such as `(1/6)`, and hover text can show what sync found in game.
 
-![Help Sync review note](docs/images/CAlistreview_help_datasync.png)
+<img src="docs/images/CAlistreview_help_datasync.png" alt="Help Sync review note" width="560">
 
-![Sync Combat Achievements and review mismatches](docs/gifs/SyncCAs_Help_Datasyncs.gif)
+<img src="docs/gifs/SyncCAs_Help_Datasyncs.gif" alt="Sync Combat Achievements and review mismatches" width="560">
 
-## Saves and Backups
+## Rules
 
-Progress saves locally through RuneLite and is stored per character.
+Xtreme Tasker follows the official Tasker ruleset and adds Xtreme Tasker-specific guidance for the expanded task list.
 
-Xtreme Tasker saves important progress changes immediately, keeps three rolling backups, and tries to recover from missing or corrupt saves automatically.
+The in-game Help tab links to:
 
-Saves include recovery info such as scoped account key, account hash, last known display name, readable save time, current task, completed task IDs, and retired task IDs.
+- TaskerFAQ for official Tasker rules.
+- This README for Xtreme Tasker notes.
 
-More details are in the [Detailed Guide](docs/DETAILED_GUIDE.md#progress-saves-and-backups).
+### Boss Combat Training Allowance
+
+For any task requiring that you kill a boss with a suggested skills section on the boss strategy page of the OSRS Wiki, you are allowed to train your combat skills to those suggested levels.
+
+Training must be done through Slayer, with any Slayer master or masters of your choosing.
 
 ## FAQ
 
@@ -141,25 +157,10 @@ RuneLite can only sync Collection Log items it has seen. Cached items carry acro
 
 Use the [Detailed Guide](docs/DETAILED_GUIDE.md) for deeper notes about task sources, repeated tasks, saves, backups, account switching, and manual recovery.
 
-## Rules
-
-Xtreme Tasker follows the official Tasker ruleset and adds Xtreme Tasker-specific guidance for the expanded task list.
-
-The in-game Help tab links to:
-
-- TaskerFAQ for official Tasker rules.
-- This README for Xtreme Tasker notes.
-
-### Boss Combat Training Allowance
-
-For any task requiring that you kill a boss with a suggested skills section on the boss strategy page of the OSRS Wiki, you are allowed to train your combat skills to those suggested levels.
-
-Training must be done through Slayer, with any Slayer master or masters of your choosing.
-
 ## Privacy
 
 Xtreme Tasker stores progress locally in RuneLite config. It does not send account progress, task progress, or gameplay data to an external service.
 
 Sync features use account state already visible to RuneLite, such as Combat Achievement data, cached Collection Log entries, and Achievement Diary state. They do not upload that data anywhere.
 
-The plugin only opens external links when you click wiki, FAQ, or README buttons.
+The plugin itself only opens external links when you click wiki, FAQ, or README buttons. This documentation also links to the @amtrollin YouTube channel and Xtreme Tasker playlist.

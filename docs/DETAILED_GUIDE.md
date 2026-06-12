@@ -10,6 +10,8 @@ Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progr
 
 The plugin adds an in-game overlay for rolling tasks, tracking completion, viewing tier progress, filtering the full task list, and syncing progress RuneLite can already see.
 
+Want to see the plugin in action? Check out [@amtrollin](https://www.youtube.com/@AmTrollin/playlists)'s YouTube series, [Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H).
+
 ## Overlay Tabs
 
 The overlay has three main tabs:
@@ -19,6 +21,8 @@ The overlay has three main tabs:
 - `Help` contains rules, FAQ links, README access, and manual sync actions.
 
 Both the `Current` and `Tasks` tabs include a `[Keyboard hints]` control at the bottom of the panel. Click it to show the available keyboard shortcuts for that tab.
+
+The overlay can switch between full view and compact view from the corner toggle. Compact view keeps the current task, timer, roll/complete action, wiki link, and scrollable task details in a smaller panel. The last selected view is remembered when you reopen the overlay.
 
 ## Task List
 
@@ -170,6 +174,8 @@ Plugin config includes:
 - `Roll source`: roll all tasks, only Combat Achievement tasks, or only Collection Log and Achievement Diary tasks.
 - `Condense repeated tasks`: show repeated task rolls as one grouped row with per-instance completion controls.
 
+Compact/full overlay view is controlled from the overlay itself rather than plugin config.
+
 ## Rules
 
 Xtreme Tasker follows the official Tasker ruleset and adds Xtreme Tasker-specific guidance for the expanded task list.
@@ -189,6 +195,6 @@ Training must be done through Slayer, with any Slayer master or masters of your 
 
 Xtreme Tasker stores progress locally in RuneLite config. It does not send account progress, task progress, or gameplay data to an external service.
 
-Sync features use account state already visible to RuneLite, such as Combat Achievement data and cached Collection Log entries. They do not upload that data anywhere.
+Sync features use account state already visible to RuneLite, such as Combat Achievement data, cached Collection Log entries, and Achievement Diary state. They do not upload that data anywhere.
 
-The plugin can open external links when you click wiki, FAQ, or README buttons.
+The plugin itself can open external links when you click wiki, FAQ, or README buttons. This documentation also links to the @amtrollin YouTube channel and Xtreme Tasker playlist.
