@@ -139,6 +139,7 @@ public final class TaskRowsRenderer {
     ) {
         TaskRowsLayout layout = new TaskRowsLayout();
         layout.rowBounds.clear();
+        layout.truncatedNameBounds.clear();
 
         int viewportX = panelBounds.x + panelPadding;
         int viewportY = cursorYBaseline - fm.getAscent();
@@ -263,7 +264,17 @@ public final class TaskRowsRenderer {
                     + srcW + pillGap + tierW + (isNew ? pillGap + newW : 0) + 6; // 6px margin from row right edge
 
             int nameMaxW = Math.max(0, textMaxW - rightColW);
-            String taskName = TextUtils.truncateToWidth(safe(task.getName()), fm, nameMaxW);
+            String fullTaskName = safe(task.getName());
+            String taskName = TextUtils.truncateToWidth(fullTaskName, fm, nameMaxW);
+            if (!taskName.equals(fullTaskName))
+            {
+                layout.truncatedNameBounds.put(task, new Rectangle(
+                        textX,
+                        rowBounds.y,
+                        Math.max(0, fm.stringWidth(taskName)),
+                        rowBounds.height
+                ));
+            }
 
             g.setColor(completed
                     ? new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 220)
