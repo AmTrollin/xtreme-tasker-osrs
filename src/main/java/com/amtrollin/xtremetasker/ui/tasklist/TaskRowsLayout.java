@@ -15,6 +15,9 @@ public final class TaskRowsLayout
     /** Full clickable row bounds (used for selection + row click). */
     public final Map<XtremeTask, Rectangle> rowBounds = new HashMap<>();
 
+    /** Bounds for visible truncated task names (used to show full-name hover text). */
+    public final Map<XtremeTask, Rectangle> truncatedNameBounds = new HashMap<>();
+
     /** Click target for the checkbox/pip area (used to toggle). */
     public final Map<XtremeTask, Rectangle> checkboxBounds = new HashMap<>();
 }
