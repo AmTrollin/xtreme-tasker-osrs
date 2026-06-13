@@ -9,7 +9,7 @@ import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
-import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
+import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -91,6 +91,7 @@ public final class CurrentTabRenderer
             Function<XtremeTask, String> currentLineProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
             Function<TaskTier, List<XtremeTask>> tasksForTierProvider,
             TaskTier tierForProgress,
             TaskSource currentSource,
@@ -168,6 +169,7 @@ public final class CurrentTabRenderer
                     currentLineProvider,
                     prerequisiteStatusProvider,
                     collectionLogRequirementPreviewProvider,
+                    collectionLogItemImageProvider,
                     currentSource,
                     mousePoint,
                     scrollOffsetPx,
@@ -296,6 +298,7 @@ public final class CurrentTabRenderer
             Function<XtremeTask, String> currentLineProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
             TaskSource currentSource,
             java.awt.Point mousePoint,
             int scrollOffsetPx,
@@ -379,6 +382,8 @@ public final class CurrentTabRenderer
                 current,
                 prerequisiteStatusProvider,
                 collectionLogRequirementPreviewProvider,
+                collectionLogItemImageProvider,
+                mousePoint,
                 showTips
         );
 
@@ -728,10 +733,7 @@ public final class CurrentTabRenderer
             }
             if (requirementPreview.showItemList())
             {
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    totalPx += rowHeight * wrapText("- " + collectionLogRequirementItemText(item), fm, maxW).size();
-                }
+                totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), maxW);
             }
             totalPx += 8;
         }
@@ -758,6 +760,8 @@ public final class CurrentTabRenderer
             XtremeTask current,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
+            java.awt.Point mousePoint,
             boolean showTips
     )
     {
@@ -823,7 +827,7 @@ public final class CurrentTabRenderer
 
         if (hasRequirementPreview)
         {
-            y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview);
+            y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview, collectionLogItemImageProvider, mousePoint);
             y += 8;
         }
 
@@ -1075,7 +1079,9 @@ public final class CurrentTabRenderer
             int x,
             int yBaseline,
             int maxWidth,
-            CollectionLogRequirementPreview requirementPreview
+            CollectionLogRequirementPreview requirementPreview,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
+            java.awt.Point mousePoint
     )
     {
         int y = yBaseline;
@@ -1092,23 +1098,20 @@ public final class CurrentTabRenderer
 
         if (requirementPreview.showItemList())
         {
-            for (CollectionLogRequirementItem item : requirementPreview.getItems())
-            {
-                String lineText = "- " + collectionLogRequirementItemText(item);
-                for (String line : wrapText(lineText, fm, maxWidth))
-                {
-                    String drawLine = truncateToWidth(line, fm, maxWidth);
-                    g.setColor(item.isApplied() ? uiTextDim : item.isAvailable() ? uiGold : uiText);
-                    g.drawString(drawLine, x, y);
-
-                    if (item.isApplied())
-                    {
-                        drawStrikeThrough(g, fm, drawLine, x, y);
-                    }
-
-                    y += rowHeight;
-                }
-            }
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    requirementPreview.getItems(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    g.getClipBounds(),
+                    uiText,
+                    uiTextDim,
+                    edgeLight,
+                    edgeDark);
         }
 
         return y;
@@ -1140,15 +1143,6 @@ public final class CurrentTabRenderer
         g.drawString(prefix, x, y);
         g.setColor(uiGold);
         g.drawString(truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
-    }
-
-    private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)
-    {
-        if (item == null)
-        {
-            return "";
-        }
-        return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
     }
 
     private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport)

@@ -11,7 +11,6 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
-import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import net.runelite.client.ui.FontManager;
 
@@ -169,6 +168,7 @@ public final class TaskDetailsPopup
             Function<XtremeTask, List<XtremeTask>> taskGroupProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
             net.runelite.api.Point mouse,
             java.awt.image.BufferedImage taskIcon,
             boolean showTips
@@ -298,6 +298,7 @@ public final class TaskDetailsPopup
         incrementGroupBounds.setBounds(0, 0, 0, 0);
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
+        java.awt.Point mousePoint = mouse == null ? null : new java.awt.Point(mouse.getX(), mouse.getY());
 
         // Footer geometry (computed early to size the viewport)
         boolean done = isCompleted.apply(task);
@@ -392,10 +393,7 @@ public final class TaskDetailsPopup
             }
             if (requirementPreview.showItemList())
             {
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + collectionLogRequirementItemText(item), fm, contentW).size();
-                }
+                totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), contentW);
             }
         }
         if (!taskTip.isEmpty())
@@ -549,23 +547,20 @@ public final class TaskDetailsPopup
 
             if (requirementPreview.showItemList())
             {
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    String lineText = "- " + collectionLogRequirementItemText(item);
-                    for (String line : TextUtils.wrapText(lineText, fm, contentW))
-                    {
-                        String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                        g.setColor(item.isApplied() ? palette.UI_TEXT_DIM : item.isAvailable() ? palette.UI_GOLD : palette.UI_TEXT);
-                        g.drawString(drawLine, contentLeft, y);
-
-                        if (item.isApplied())
-                        {
-                            drawStrikeThrough(g, fm, drawLine, contentLeft, y);
-                        }
-
-                        y += ROW_HEIGHT;
-                    }
-                }
+                y = CollectionLogIconGridRenderer.render(
+                        g,
+                        fm,
+                        contentLeft,
+                        y,
+                        contentW,
+                        requirementPreview.getItems(),
+                        collectionLogItemImageProvider,
+                        mousePoint,
+                        viewportBounds,
+                        palette.UI_TEXT,
+                        palette.UI_TEXT_DIM,
+                        palette.UI_EDGE_LIGHT,
+                        palette.UI_EDGE_DARK);
             }
         }
 
@@ -652,16 +647,19 @@ public final class TaskDetailsPopup
         {
             int sbX = bounds.x + bounds.width - pad / 2 - scrollBarW;
             scrollbarRailBounds.setBounds(sbX, viewportTop, scrollBarW, viewportH);
-            g.setColor(new Color(18, 14, 9, 200));
+            g.setColor(new Color(0, 0, 0, 60));
             g.fillRect(sbX, viewportTop, scrollBarW, viewportH);
             float thumbRatio = (float) visibleRows / totalContentRows;
-            int thumbH = Math.max(14, (int) (viewportH * thumbRatio));
+            int thumbH = Math.max(12, (int) (viewportH * thumbRatio));
             float scrollRatio = maxScrollOffset > 0 ? (float) scroll.offsetRows / maxScrollOffset : 0f;
             int thumbY = viewportTop + (int) ((viewportH - thumbH) * scrollRatio);
-            scrollbarThumbBounds.setBounds(sbX, thumbY, scrollBarW, thumbH);
+            Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+            scrollbarThumbBounds.setBounds(thumb);
+            drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+
             g.setColor(new Color(
-                    palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 160));
-            g.fillRoundRect(sbX, thumbY, scrollBarW, thumbH, 3, 3);
+                    palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 140));
+            g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
         }
         int footerX = bounds.x + footerPad;
         int footerW = bounds.width - (footerPad * 2);
@@ -949,15 +947,6 @@ public final class TaskDetailsPopup
     private static String safe(String s)
     {
         return s == null ? "" : s;
-    }
-
-    private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)
-    {
-        if (item == null)
-        {
-            return "";
-        }
-        return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
     }
 
     private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)

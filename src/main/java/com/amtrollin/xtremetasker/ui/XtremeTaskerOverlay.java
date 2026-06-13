@@ -18,6 +18,7 @@ import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.anim.OverlayAnimations;
 import com.amtrollin.xtremetasker.ui.tasks.TaskControlsRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.TaskDetailsPopup;
+import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.tasks.TasksTabRenderer;
@@ -284,18 +285,23 @@ public class XtremeTaskerOverlay extends Overlay {
                 repeatedDistinctPool,
                 repeatedRequirementState);
         Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
+        Map<String, Integer> itemIdByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
             String itemName = plugin.getItemName(itemId);
             CollectionLogRequirementItem.Status status = statusByItemId.getOrDefault(
                     itemId,
                     CollectionLogRequirementItem.Status.MISSING);
 
-            statusByItemName.merge(itemName, status, XtremeTaskerOverlay::higherPriorityRequirementStatus);
+            CollectionLogRequirementItem.Status existingStatus = statusByItemName.get(itemName);
+            if (existingStatus == null || requirementStatusPriority(status) > requirementStatusPriority(existingStatus)) {
+                statusByItemName.put(itemName, status);
+                itemIdByItemName.put(itemName, itemId);
+            }
         }
 
         List<CollectionLogRequirementItem> items = new ArrayList<>(statusByItemName.size());
         for (Map.Entry<String, CollectionLogRequirementItem.Status> entry : statusByItemName.entrySet()) {
-            items.add(new CollectionLogRequirementItem(entry.getKey(), entry.getValue()));
+            items.add(new CollectionLogRequirementItem(itemIdByItemName.getOrDefault(entry.getKey(), -1), entry.getKey(), entry.getValue()));
         }
 
         boolean sameNameFamily = statusByItemName.size() == 1;
@@ -304,7 +310,7 @@ public class XtremeTaskerOverlay extends Overlay {
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
+        return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, true, items);
     }
 
     private Map<Integer, CollectionLogRequirementItem.Status> collectionLogRequirementStatuses(
@@ -371,13 +377,6 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         return statusByItemId;
-    }
-
-    private static CollectionLogRequirementItem.Status higherPriorityRequirementStatus(
-            CollectionLogRequirementItem.Status first,
-            CollectionLogRequirementItem.Status second)
-    {
-        return requirementStatusPriority(second) > requirementStatusPriority(first) ? second : first;
     }
 
     private static int requirementStatusPriority(CollectionLogRequirementItem.Status status)
@@ -757,6 +756,14 @@ public class XtremeTaskerOverlay extends Overlay {
     private final TaskListScrollController rulesScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController currentScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController syncMismatchScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
+    private static final long COMPACT_EDGE_BOUNCE_SUPPRESS_MS = 180L;
+    private static final double COMPACT_EDGE_BOUNCE_RELEASE_PX = 28.0;
+    private int compactCurrentScrollPx = 0;
+    private int compactCurrentVisibleContentPx = 0;
+    private double compactCurrentWheelRemainderPx = 0.0;
+    private long compactCurrentEdgeBounceUntilMs = 0L;
+    private int compactCurrentEdgeBounceDirection = 0;
+    private double compactCurrentEdgeBounceOppositePx = 0.0;
 
     private final TaskRowsRenderer taskRowsRenderer = new TaskRowsRenderer(PANEL_W_TASKS, PANEL_PADDING, ROW_HEIGHT, LIST_ROW_SPACING, STATUS_PIP_SIZE, STATUS_PIP_PAD_LEFT, TASK_TEXT_PAD_LEFT, P.ROW_HOVER_BG, P.ROW_SELECTED_BG, P.ROW_SELECTED_OUTLINE, P.ROW_DONE_BG, P.ROW_LINE, P.STRIKE_COLOR, P.UI_TEXT, P.UI_TEXT_DIM, P.PIP_RING, P.PIP_DONE_FILL, P.PIP_DONE_RING, P.UI_GOLD, P.UI_EDGE_LIGHT, P.UI_EDGE_DARK);
 
@@ -1241,6 +1248,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
                 plugin::getPrerequisiteStatuses,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
+                plugin::getItemImage,
                 client.getMouseCanvasPosition(),
                 resolveTaskIcon(taskDetailsPopup.task()),
                 plugin.showTips()
@@ -1886,6 +1894,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 (ignored) -> computeCurrentLineForRender(current, currentCompleted, fm),
                 plugin::getPrerequisiteStatuses,
                 this::buildCollectionLogRequirementPreview,
+                plugin::getItemImage,
                 this::getTasksForTier,
                 tierForProgress,
                 src,
@@ -1985,30 +1994,52 @@ public class XtremeTaskerOverlay extends Overlay {
         currentLayout.viewportBounds.setBounds(viewport);
 
         List<CompactLine> lines = compactLines(current, rolling);
-        int totalRows = lines.size();
-        int visibleRows = currentScroll.visibleRows(viewport.height, ROW_HEIGHT);
-        int maxOffset = Math.max(0, totalRows - visibleRows);
-        if (currentScroll.offsetRows > maxOffset) {
-            currentScroll.offsetRows = maxOffset;
+        int textW = Math.max(0, viewport.width - 8 - 14);
+        int totalPx = 0;
+        for (CompactLine line : lines) {
+            totalPx += compactLineHeight(line, textW);
         }
-        currentLayout.totalContentPx = totalRows * ROW_HEIGHT;
-        int scrollRows = currentScroll.offsetRows;
+        currentLayout.totalContentPx = totalPx;
 
         drawBevelBox(g, viewport, new Color(32, 24, 15, 160));
         Shape oldClip = g.getClip();
         Rectangle textClip = new Rectangle(viewport.x + 4, viewport.y + 4, Math.max(0, viewport.width - 8), Math.max(0, viewport.height - 8));
+        int visiblePx = Math.max(0, textClip.height);
+        compactCurrentVisibleContentPx = visiblePx;
+        int maxOffsetPx = Math.max(0, totalPx - visiblePx);
+        if (compactCurrentScrollPx > maxOffsetPx) {
+            compactCurrentScrollPx = maxOffsetPx;
+        }
+        int scrollPx = compactCurrentScrollPx;
+
         g.setClip(textClip);
-        int textY = textClip.y + fm.getAscent() + 2 - (scrollRows * ROW_HEIGHT);
+        int textY = textClip.y + fm.getAscent() + 2 - scrollPx;
         int textX = textClip.x + 4;
-        int textW = textClip.width - 14;
         for (CompactLine line : lines) {
-            g.setColor(line.heading ? P.UI_GOLD : (line.dim ? P.UI_TEXT_DIM : P.UI_TEXT));
-            g.drawString(TextUtils.truncateToWidth(line.text, fm, textW), textX, textY);
-            textY += ROW_HEIGHT;
+            if (line.collectionLogPreview != null) {
+                textY = CollectionLogIconGridRenderer.render(
+                        g,
+                        fm,
+                        textX,
+                        textY,
+                        textW,
+                        line.collectionLogPreview.getItems(),
+                        plugin::getItemImage,
+                        mousePoint,
+                        textClip,
+                        P.UI_TEXT,
+                        P.UI_TEXT_DIM,
+                        P.UI_EDGE_LIGHT,
+                        P.UI_EDGE_DARK);
+            } else {
+                g.setColor(line.heading ? P.UI_GOLD : (line.dim ? P.UI_TEXT_DIM : P.UI_TEXT));
+                g.drawString(TextUtils.truncateToWidth(line.text, fm, textW), textX, textY);
+                textY += ROW_HEIGHT;
+            }
         }
         g.setClip(oldClip);
 
-        drawCompactScrollbar(g, viewport, totalRows, visibleRows, scrollRows);
+        drawCompactScrollbar(g, viewport, totalPx, visiblePx, scrollPx);
     }
 
     private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card) {
@@ -2187,10 +2218,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 lines.addAll(wrappedCompactLines(preview.summaryText(), true));
             }
             if (preview.showItemList()) {
-                for (CollectionLogRequirementItem item : preview.getItems()) {
-                    String suffix = item.isAvailable() ? " (not yet applied)" : "";
-                    lines.addAll(wrappedCompactLines("- " + item.getName() + suffix, true));
-                }
+                lines.add(CompactLine.collectionLogIcons(preview));
             }
         }
 
@@ -2205,23 +2233,42 @@ public class XtremeTaskerOverlay extends Overlay {
         return out;
     }
 
+    private int compactLineHeight(CompactLine line, int maxWidth) {
+        if (line != null && line.collectionLogPreview != null) {
+            return CollectionLogIconGridRenderer.measureHeight(line.collectionLogPreview.getItems().size(), maxWidth);
+        }
+        return ROW_HEIGHT;
+    }
+
     private FontMetrics fontMetrics() {
         return client.getCanvas().getFontMetrics(FontManager.getRunescapeSmallFont());
     }
 
-    private void drawCompactScrollbar(Graphics2D g, Rectangle viewport, int totalRows, int visibleRows, int offsetRows) {
+    private void drawCompactScrollbar(Graphics2D g, Rectangle viewport, int totalPx, int visiblePx, int scrollPx) {
         currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        if (viewport.height <= 0 || totalRows <= visibleRows) {
+        if (viewport.height <= 0 || visiblePx <= 0 || totalPx <= visiblePx) {
             return;
         }
 
         Rectangle rail = taskRowsRendererTasks.scrollbarRailBounds(viewport);
-        Rectangle thumb = taskRowsRendererTasks.scrollbarThumbBounds(totalRows, visibleRows, offsetRows, viewport);
+        g.setColor(new Color(0, 0, 0, 60));
+        g.fillRect(rail.x, rail.y, rail.width, rail.height);
+
+        float thumbRatio = (float) visiblePx / (float) totalPx;
+        int thumbH = Math.min(rail.height, Math.max(12, Math.round(rail.height * thumbRatio)));
+        int maxScrollPx = Math.max(1, totalPx - visiblePx);
+        float scrollRatio = Math.max(0f, Math.min(1f, (float) scrollPx / (float) maxScrollPx));
+        int thumbY = rail.y + (int) ((rail.height - thumbH) * scrollRatio);
+        Rectangle thumb = new Rectangle(rail.x, thumbY, Math.max(0, rail.width - 1), Math.max(0, thumbH - 1));
+
         currentLayout.scrollbarRailBounds.setBounds(rail);
         currentLayout.scrollbarThumbBounds.setBounds(thumb);
 
-        taskRowsRendererTasks.drawScrollbar(g, totalRows, visibleRows, offsetRows, viewport);
+        drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+
+        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
+        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
     private void scrollCompactCurrent(double preciseWheelRotation) {
@@ -2229,22 +2276,97 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        int totalRows = Math.max(1, (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT);
-        currentScroll.onWheel(preciseWheelRotation, currentLayout.viewportBounds.height, currentRowBlock(), totalRows, null);
+        int visiblePx = compactCurrentVisibleContentPx;
+        int maxOffsetPx = Math.max(0, currentLayout.totalContentPx - visiblePx);
+        if (maxOffsetPx <= 0) {
+            compactCurrentScrollPx = 0;
+            compactCurrentWheelRemainderPx = 0.0;
+            clearCompactEdgeBounceGuard();
+            return;
+        }
+
+        int beforePx = compactCurrentScrollPx;
+        double pixels = (preciseWheelRotation * SCROLL_ROWS_PER_NOTCH * ROW_HEIGHT) + compactCurrentWheelRemainderPx;
+        int deltaPx = pixels > 0 ? (int) Math.floor(pixels) : (int) Math.ceil(pixels);
+        compactCurrentWheelRemainderPx = pixels - deltaPx;
+        if (deltaPx == 0) {
+            return;
+        }
+
+        int direction = Integer.compare(deltaPx, 0);
+        if (shouldSuppressCompactEdgeBounce(direction, Math.abs(pixels), maxOffsetPx, System.currentTimeMillis())) {
+            compactCurrentWheelRemainderPx = 0.0;
+            return;
+        }
+
+        compactCurrentScrollPx = Math.max(0, Math.min(maxOffsetPx, compactCurrentScrollPx + deltaPx));
+        updateCompactEdgeBounceGuard(direction, beforePx, deltaPx, maxOffsetPx);
     }
 
     private void setCompactCurrentScrollFraction(double fraction) {
-        int totalRows = Math.max(1, (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT);
-        int viewportH = currentLayout.viewportBounds.height;
-        int rowBlock = currentRowBlock();
-        int visibleRows = currentScroll.visibleRows(viewportH, rowBlock);
-        int maxOffset = Math.max(0, totalRows - visibleRows);
+        int maxOffset = Math.max(0, currentLayout.totalContentPx - compactCurrentVisibleContentPx);
         double clamped = Math.max(0.0, Math.min(1.0, fraction));
-        currentScroll.setOffsetRows((int) Math.round(clamped * maxOffset), viewportH, rowBlock, totalRows);
+        compactCurrentScrollPx = (int) Math.round(clamped * maxOffset);
+        compactCurrentWheelRemainderPx = 0.0;
+        clearCompactEdgeBounceGuard();
     }
 
     private void resetCompactScroll() {
+        compactCurrentScrollPx = 0;
+        compactCurrentVisibleContentPx = 0;
+        compactCurrentWheelRemainderPx = 0.0;
+        clearCompactEdgeBounceGuard();
         currentScroll.reset();
+    }
+
+    private boolean shouldSuppressCompactEdgeBounce(int direction, double absPixels, int maxOffsetPx, long now) {
+        if (direction == 0 || compactCurrentEdgeBounceDirection == 0 || now > compactCurrentEdgeBounceUntilMs) {
+            clearCompactEdgeBounceGuard();
+            return false;
+        }
+
+        boolean atLockedEdge = compactCurrentEdgeBounceDirection > 0
+                ? compactCurrentScrollPx >= maxOffsetPx
+                : compactCurrentScrollPx <= 0;
+        if (!atLockedEdge) {
+            clearCompactEdgeBounceGuard();
+            return false;
+        }
+
+        if (direction == compactCurrentEdgeBounceDirection) {
+            compactCurrentEdgeBounceUntilMs = now + COMPACT_EDGE_BOUNCE_SUPPRESS_MS;
+            compactCurrentEdgeBounceOppositePx = 0.0;
+            return false;
+        }
+
+        compactCurrentEdgeBounceOppositePx += absPixels;
+        if (compactCurrentEdgeBounceOppositePx < COMPACT_EDGE_BOUNCE_RELEASE_PX) {
+            return true;
+        }
+
+        clearCompactEdgeBounceGuard();
+        return false;
+    }
+
+    private void updateCompactEdgeBounceGuard(int direction, int beforePx, int deltaPx, int maxOffsetPx) {
+        long now = System.currentTimeMillis();
+        if (direction > 0 && compactCurrentScrollPx >= maxOffsetPx && beforePx + deltaPx >= maxOffsetPx) {
+            compactCurrentEdgeBounceDirection = 1;
+            compactCurrentEdgeBounceUntilMs = now + COMPACT_EDGE_BOUNCE_SUPPRESS_MS;
+            compactCurrentEdgeBounceOppositePx = 0.0;
+        } else if (direction < 0 && compactCurrentScrollPx <= 0 && beforePx + deltaPx <= 0) {
+            compactCurrentEdgeBounceDirection = -1;
+            compactCurrentEdgeBounceUntilMs = now + COMPACT_EDGE_BOUNCE_SUPPRESS_MS;
+            compactCurrentEdgeBounceOppositePx = 0.0;
+        } else if (compactCurrentScrollPx > 0 && compactCurrentScrollPx < maxOffsetPx) {
+            clearCompactEdgeBounceGuard();
+        }
+    }
+
+    private void clearCompactEdgeBounceGuard() {
+        compactCurrentEdgeBounceDirection = 0;
+        compactCurrentEdgeBounceUntilMs = 0L;
+        compactCurrentEdgeBounceOppositePx = 0.0;
     }
 
     private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {
@@ -2419,15 +2541,28 @@ public class XtremeTaskerOverlay extends Overlay {
         private final String text;
         private final boolean heading;
         private final boolean dim;
+        private final CollectionLogRequirementPreview collectionLogPreview;
 
         private CompactLine(String text, boolean heading, boolean dim) {
             this.text = text == null ? "" : text;
             this.heading = heading;
             this.dim = dim;
+            this.collectionLogPreview = null;
+        }
+
+        private CompactLine(CollectionLogRequirementPreview collectionLogPreview) {
+            this.text = "";
+            this.heading = false;
+            this.dim = false;
+            this.collectionLogPreview = collectionLogPreview;
         }
 
         private static CompactLine spacer() {
             return new CompactLine("", false, true);
+        }
+
+        private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview) {
+            return new CompactLine(collectionLogPreview);
         }
     }
 
