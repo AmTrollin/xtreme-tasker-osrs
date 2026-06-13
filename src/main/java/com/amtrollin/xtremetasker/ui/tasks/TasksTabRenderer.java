@@ -16,14 +16,18 @@ import net.runelite.client.ui.FontManager;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 
 public final class TasksTabRenderer {
     private static final int TASKS_CONTROLS_COLUMN_W = 298;
+    private static final long TASK_NAME_TOOLTIP_DELAY_MS = 1000L;
 
     private final UiPalette palette;
+    private String hoveredTruncatedTaskKey = null;
+    private long hoveredTruncatedTaskSinceMs = 0L;
 
     public TasksTabRenderer(UiPalette palette) {
         this.palette = palette;
@@ -308,6 +312,8 @@ public final class TasksTabRenderer {
             state.taskCheckboxBounds().putAll(layout.checkboxBounds);
         }
 
+        drawTaskNameHoverTooltip(g, fm, panelBounds, layout, hoverX, hoverY);
+
         displayKeyboardHintsButton(g, fm, panelX, hintBaselineY, innerW, state.keyboardHintsButtonBounds(), hoverX, hoverY);
         if (keyboardHintsOpen) {
             displayKeyboardHintsPopup(g, fm, panelBounds, state.keyboardHintsButtonBounds(), state.keyboardHintsPopupBounds());
@@ -398,6 +404,113 @@ public final class TasksTabRenderer {
         g.drawString(text, textX + 1, textY + 1);
         g.setColor(complete ? new Color(255, 215, 100, 255) : palette.UI_TEXT);
         g.drawString(text, textX, textY);
+    }
+
+    private void drawTaskNameHoverTooltip(
+            Graphics2D g,
+            FontMetrics fm,
+            Rectangle panelBounds,
+            TaskRowsLayout layout,
+            int hoverX,
+            int hoverY
+    ) {
+        if (hoverX < 0 || hoverY < 0 || layout.truncatedNameBounds.isEmpty()) {
+            resetTaskNameTooltipHover();
+            return;
+        }
+
+        XtremeTask hoveredTask = null;
+        Rectangle nameBounds = null;
+        for (Map.Entry<XtremeTask, Rectangle> entry : layout.truncatedNameBounds.entrySet()) {
+            Rectangle bounds = entry.getValue();
+            if (bounds != null && bounds.contains(hoverX, hoverY)) {
+                hoveredTask = entry.getKey();
+                nameBounds = bounds;
+                break;
+            }
+        }
+
+        if (hoveredTask == null || nameBounds == null) {
+            resetTaskNameTooltipHover();
+            return;
+        }
+
+        String name = hoveredTask.getName();
+        if (name == null || name.trim().isEmpty()) {
+            resetTaskNameTooltipHover();
+            return;
+        }
+
+        String taskKey = taskHoverKey(hoveredTask);
+        long now = System.currentTimeMillis();
+        if (!taskKey.equals(hoveredTruncatedTaskKey)) {
+            hoveredTruncatedTaskKey = taskKey;
+            hoveredTruncatedTaskSinceMs = now;
+            return;
+        }
+
+        if (now - hoveredTruncatedTaskSinceMs < TASK_NAME_TOOLTIP_DELAY_MS) {
+            return;
+        }
+
+        final int pad = 7;
+        final int maxW = Math.max(120, panelBounds.width - PANEL_PADDING * 2 - 12);
+        List<String> lines = TextUtils.wrapText(name, fm, maxW - pad * 2);
+        if (lines.isEmpty()) {
+            return;
+        }
+
+        int contentW = 0;
+        for (String line : lines) {
+            contentW = Math.max(contentW, fm.stringWidth(line));
+        }
+
+        int tooltipW = Math.min(maxW, contentW + pad * 2);
+        int tooltipH = pad * 2 + lines.size() * fm.getHeight();
+        int tooltipX = hoverX + 10;
+        int rightLimit = panelBounds.x + panelBounds.width - PANEL_PADDING;
+        if (tooltipX + tooltipW > rightLimit) {
+            tooltipX = rightLimit - tooltipW;
+        }
+        tooltipX = Math.max(panelBounds.x + PANEL_PADDING, tooltipX);
+
+        int tooltipY = nameBounds.y - tooltipH - 6;
+        if (tooltipY < panelBounds.y + PANEL_PADDING) {
+            tooltipY = nameBounds.y + nameBounds.height + 6;
+        }
+        int bottomLimit = panelBounds.y + panelBounds.height - PANEL_PADDING;
+        if (tooltipY + tooltipH > bottomLimit) {
+            tooltipY = bottomLimit - tooltipH;
+        }
+        tooltipY = Math.max(panelBounds.y + PANEL_PADDING, tooltipY);
+
+        Rectangle tooltipBounds = new Rectangle(tooltipX, tooltipY, tooltipW, tooltipH);
+        drawBevelBox(g, tooltipBounds, new Color(45, 36, 24, 248));
+
+        int textY = tooltipY + pad + fm.getAscent();
+        g.setColor(palette.UI_TEXT);
+        for (String line : lines) {
+            g.drawString(line, tooltipX + pad, textY);
+            textY += fm.getHeight();
+        }
+    }
+
+    private void resetTaskNameTooltipHover()
+    {
+        hoveredTruncatedTaskKey = null;
+        hoveredTruncatedTaskSinceMs = 0L;
+    }
+
+    private static String taskHoverKey(XtremeTask task)
+    {
+        String id = task.getId();
+        if (id != null && !id.isEmpty())
+        {
+            return id;
+        }
+
+        String name = task.getName();
+        return name == null ? "" : name;
     }
 
     private void displayKeyboardHintsButton(

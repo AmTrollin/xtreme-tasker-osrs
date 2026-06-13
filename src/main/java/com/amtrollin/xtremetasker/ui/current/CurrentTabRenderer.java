@@ -646,7 +646,7 @@ public final class CurrentTabRenderer
         int buttonH = rowHeight + 10;
         int buttonW = Math.max(110, Math.min(innerW, card.width - 36));
         int buttonX = card.x + (card.width - buttonW) / 2;
-        int buttonY = Math.min(card.y + card.height - buttonH - 34, y + Math.max(30, card.height / 10));
+        int buttonY = Math.min(card.y + card.height - buttonH - 18, y + Math.max(36, card.height / 10));
         if (!currentCompleted)
         {
             layout.completeButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);

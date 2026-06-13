@@ -184,9 +184,23 @@ public final class TaskDetailsPopup
         g.setColor(new Color(0, 0, 0, 120));
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
+        String title = safe(task.getName());
+        final int pad = 12;
+        final int closeW = 28;
+        final String wikiText = "Open wiki";
+        final int gap = 8;
+        final int iconSize = 24;
+        final int iconGap = 4;
+        boolean hasIcon = taskIcon != null;
+        int iconReserve = hasIcon ? iconSize + iconGap : 0;
+        final int rightReserve = closeW + gap;
+        FontMetrics titleFm = g.getFontMetrics(FontManager.getRunescapeFont());
+        int titleDesiredW = titleFm.stringWidth(title) + (pad * 2) + rightReserve + iconReserve + 8;
+
         // Recompute logical bounds every frame. The overlay may scale input bounds
         // after rendering, so carrying them back into layout would compound scale.
-        int w = Math.max(280, (int) (panelBounds.width * 0.49));
+        int maxPopupW = Math.max(280, panelBounds.width - pad * 4);
+        int w = Math.min(maxPopupW, Math.max(Math.max(300, (int) (panelBounds.width * 0.50)), titleDesiredW));
         int h = (int) (panelBounds.height * 0.70);
         int popupX = panelBounds.x + (panelBounds.width - w) / 2;
         int popupY = panelBounds.y + (panelBounds.height - h) / 2;
@@ -195,30 +209,17 @@ public final class TaskDetailsPopup
         // Background
         drawBevelBox(g, bounds, new Color(45, 36, 24, 245));
 
-        final int pad = 12;
         final int x = bounds.x + pad;
         final int yTop = bounds.y + pad;
 
         // Header font (used for buttons/layout), larger title font for task name
         g.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics headerFm = g.getFontMetrics();
-        FontMetrics titleFm = g.getFontMetrics(FontManager.getRunescapeFont());
         g.setColor(palette.UI_GOLD);
 
-        String title = safe(task.getName());
-
-        final int closeW = 28;
-        final String wikiText = "Open wiki";
         final int wikiW = headerFm.stringWidth(wikiText) + 20;
-        final int gap = 8;
 
         // Icon in header
-        final int iconSize = 24;
-        final int iconGap = 4;
-        boolean hasIcon = taskIcon != null;
-        int iconReserve = hasIcon ? iconSize + iconGap : 0;
-
-        final int rightReserve = closeW + gap;
         int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - iconReserve);
 
         int btnH = ROW_HEIGHT + 8;

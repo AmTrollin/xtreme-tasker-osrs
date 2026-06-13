@@ -2667,7 +2667,7 @@
     },
     {
       "id": "collection_log_easy_get-the-marksman-headpiece_001_3a2be7b057",
-      "name": "Get the Marksman headpiece",
+      "name": "Get the Marksman hat",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
       "prereqs": "Big Chompy Bird Hunting quest; 5 Fletching; 30 Cooking; 30 Ranged",
@@ -9509,7 +9509,7 @@
     },
     {
       "id": "collection_log_medium_get-the-ogre-forester-headpiece_001_57a122eaa5",
-      "name": "Get the Ogre forester headpiece",
+      "name": "Get the Ogre forester hat",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "Big Chompy Bird Hunting quest; 5 Fletching; 30 Cooking; 30 Ranged",
@@ -18452,7 +18452,7 @@
     },
     {
       "id": "collection_log_hard_get-the-ogre-expert-headpiece_001_cbd05df449",
-      "name": "Get the Ogre expert headpiece",
+      "name": "Get the Ogre expert hat",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "Big Chompy Bird Hunting quest; 5 Fletching; 30 Cooking; 30 Ranged",
@@ -29374,7 +29374,7 @@
     },
     {
       "id": "collection_log_elite_upgrade-to-the-dragon-archer-headpiece-e_001_566fe82f31",
-      "name": "Upgrade to the dragon archer headpiece (expert if already dragon)",
+      "name": "Upgrade to the dragon archer hat",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
       "prereqs": "Big Chompy Bird Hunting quest; 5 Fletching; 30 Cooking; 30 Ranged",
@@ -29411,12 +29411,12 @@
     },
     {
       "id": "collection_log_elite_upgrade-to-the-dragon-archer-headpiece-e_002_a402ead165",
-      "name": "Upgrade to the dragon archer headpiece (expert if already dragon)",
+      "name": "Upgrade to the expert dragon archer hat",
       "source": "COLLECTION_LOG",
-      "tier": "ELITE",
+      "tier": "MASTER",
       "prereqs": "Big Chompy Bird Hunting quest; 5 Fletching; 30 Cooking; 30 Ranged",
-      "wikiTitle": "Chompy bird hat (dragon archer)",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Chompy_bird_hat_(dragon_archer)",
+      "wikiTitle": "Chompy bird hat (expert dragon archer)",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Chompy_bird_hat_(expert_dragon_archer)",
       "verification": {
         "method": "collection-log",
         "itemIds": [
