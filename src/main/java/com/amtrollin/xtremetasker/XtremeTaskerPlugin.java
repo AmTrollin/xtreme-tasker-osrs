@@ -1666,7 +1666,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         String id = currentTaskId;
-        currentTask = tasks.stream().filter(t -> id.equals(t.getId())).findFirst().orElse(null);
+        currentTask = tasks.stream()
+                .filter(t -> id.equals(t.getId()))
+                .findFirst()
+                .map(this::decorateCurrentSequenceTask)
+                .orElse(null);
 
         // If we can't resolve it (pack changed), don't keep saving a dead ID forever
         if (currentTask == null)
@@ -1847,7 +1851,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .collect(Collectors.toList());
 
         if (!available.isEmpty()) {
-            return available.get(random.nextInt(available.size()));
+            return normalizeRolledTask(available.get(random.nextInt(available.size())));
         }
 
         // Current tier's filtered source is exhausted — find next tier with available tasks
@@ -1862,12 +1866,195 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
                 if (!nextAvailable.isEmpty()) {
                     rollSkipNotice = buildSourceFilteredRollNotice(sourceFilter, currentTier, nextTier);
-                    return nextAvailable.get(random.nextInt(nextAvailable.size()));
+                    return normalizeRolledTask(nextAvailable.get(random.nextInt(nextAvailable.size())));
                 }
             }
         }
 
         return null;
+    }
+
+    private XtremeTask normalizeRolledTask(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return null;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (!isCountedCollectionLogSync(verification)
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return task;
+        }
+
+        List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
+        if (group.isEmpty())
+        {
+            return task;
+        }
+
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null && !isTaskCompleted(groupedTask))
+            {
+                return groupedTask;
+            }
+        }
+
+        return task;
+    }
+
+    private XtremeTask decorateCurrentSequenceTask(XtremeTask task)
+    {
+        SequenceStep step = sequenceStepForCurrentDisplay(task);
+        if (step == null)
+        {
+            return task;
+        }
+
+        String name = task.getName() + " (" + step.label + ")";
+        String wikiItemName = sequenceWikiItemName(task.getName(), step.label, step.itemName);
+        String wikiUrl = wikiItemName == null || wikiItemName.trim().isEmpty()
+                ? task.getWikiUrl()
+                : "https://oldschool.runescape.wiki/w/" + wikiItemName.trim().replace(' ', '_');
+
+        return new XtremeTask(
+                task.getId(),
+                name,
+                task.getSource(),
+                task.getTier(),
+                step.itemId > 0 ? step.itemId : task.getIconItemId(),
+                task.getIconKey(),
+                task.getDescription(),
+                step.prereqs == null || step.prereqs.isEmpty() ? task.getPrereqs() : step.prereqs,
+                wikiUrl,
+                task.getVerification(),
+                task.getTip()
+        );
+    }
+
+    private SequenceStep sequenceStepForCurrentDisplay(XtremeTask task)
+    {
+        if (task == null || task.getName() == null || !task.getName().toLowerCase(Locale.ROOT).contains("next tier"))
+        {
+            return null;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || verification.getCount() == null
+                || verification.getCount() <= 0)
+        {
+            return null;
+        }
+
+        int[] itemIds = verification.getItemIds();
+        int index = verification.getCount() - 1;
+        if (itemIds == null || index < 0 || index >= itemIds.length)
+        {
+            return null;
+        }
+
+        List<SequencePrereqLine> prereqLines = sequencePrereqLines(task.getPrereqs());
+        if (index >= prereqLines.size())
+        {
+            return null;
+        }
+
+        SequencePrereqLine prereqLine = prereqLines.get(index);
+        String label = prereqLine.label;
+        if (label == null || label.isEmpty())
+        {
+            return null;
+        }
+
+        return new SequenceStep(label, prereqLine.prereqs, itemIds[index], "");
+    }
+
+    private static List<SequencePrereqLine> sequencePrereqLines(String prereqs)
+    {
+        if (prereqs == null || prereqs.trim().isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        List<SequencePrereqLine> out = new ArrayList<>();
+        String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
+        for (String line : formatted.split("\n"))
+        {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty())
+            {
+                continue;
+            }
+
+            int colon = trimmed.indexOf(':');
+            if (colon <= 0)
+            {
+                continue;
+            }
+
+            String label = trimmed.substring(0, colon).trim();
+            String value = trimmed.substring(colon + 1).trim();
+            if (!label.isEmpty())
+            {
+                out.add(new SequencePrereqLine(label, value));
+            }
+        }
+        return out;
+    }
+
+    private static String sequenceWikiItemName(String taskName, String label, String itemName)
+    {
+        String cleanItemName = itemName == null ? "" : itemName.trim();
+        if (!cleanItemName.isEmpty() && !cleanItemName.toLowerCase(Locale.ROOT).startsWith("item "))
+        {
+            return cleanItemName;
+        }
+
+        String cleanLabel = label == null ? "" : label.trim();
+        if (cleanLabel.isEmpty())
+        {
+            return cleanItemName;
+        }
+
+        String lowerTaskName = taskName == null ? "" : taskName.toLowerCase(Locale.ROOT);
+        if (lowerTaskName.contains("boots") && !cleanLabel.toLowerCase(Locale.ROOT).endsWith("boots"))
+        {
+            return cleanLabel + " boots";
+        }
+
+        return cleanLabel;
+    }
+
+    private static final class SequencePrereqLine
+    {
+        private final String label;
+        private final String prereqs;
+
+        private SequencePrereqLine(String label, String prereqs)
+        {
+            this.label = label == null ? "" : label;
+            this.prereqs = prereqs == null ? "" : prereqs;
+        }
+    }
+
+    private static final class SequenceStep
+    {
+        private final String label;
+        private final String prereqs;
+        private final int itemId;
+        private final String itemName;
+
+        private SequenceStep(String label, String prereqs, int itemId, String itemName)
+        {
+            this.label = label == null ? "" : label;
+            this.prereqs = prereqs == null ? "" : prereqs;
+            this.itemId = itemId;
+            this.itemName = itemName == null ? "" : itemName;
+        }
     }
 
     private static String prettyTier(TaskTier t) {
@@ -1946,10 +2133,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         XtremeTask newTask = rollRandomTask();
-        setCurrentTask(newTask);
+        currentTask = decorateCurrentSequenceTask(newTask);
         rollAnimEndMs = System.currentTimeMillis() + com.amtrollin.xtremetasker.ui.style.UiConstants.ROLL_ANIM_MS;
 
-        currentTaskId = (newTask != null) ? newTask.getId() : null;
+        currentTaskId = (currentTask != null) ? currentTask.getId() : null;
         dirty = true;
         persistIfPossible(); // writes immediately if activeAccountKey != null
     }

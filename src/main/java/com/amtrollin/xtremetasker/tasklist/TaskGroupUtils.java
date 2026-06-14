@@ -1,7 +1,9 @@
 package com.amtrollin.xtremetasker.tasklist;
 
 import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,9 +61,48 @@ public final class TaskGroupUtils
             return "";
         }
 
+        String countedCollectionLogKey = countedCollectionLogKey(task);
+        if (countedCollectionLogKey != null)
+        {
+            return countedCollectionLogKey;
+        }
+
         return normalize(task.getName())
                 + "|source=" + Objects.toString(task.getSource(), "")
                 + "|tier=" + Objects.toString(task.getTier(), "");
+    }
+
+    private static String countedCollectionLogKey(XtremeTask task)
+    {
+        TaskVerification verification = task.getVerification();
+        if (verification == null
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || verification.getCount() == null)
+        {
+            return null;
+        }
+
+        int[] itemIds = verification.getItemIds();
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return null;
+        }
+
+        String items = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .mapToObj(String::valueOf)
+                .reduce((a, b) -> a + "," + b)
+                .orElse("");
+        if (items.isEmpty())
+        {
+            return null;
+        }
+
+        return "counted-cl|source=" + Objects.toString(task.getSource(), "")
+                + "|tier=" + Objects.toString(task.getTier(), "")
+                + "|items=" + items;
     }
 
     private static String normalize(String value)

@@ -3317,7 +3317,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3327,9 +3327,7 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 1
       },
@@ -3343,7 +3341,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3353,9 +3351,7 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 2
       },
@@ -3369,7 +3365,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3379,9 +3375,7 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 3
       },
@@ -3395,7 +3389,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3405,9 +3399,7 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 4
       },
@@ -3421,7 +3413,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3431,9 +3423,7 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 5
       },
@@ -10071,25 +10061,20 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "75 Slayer (Adamant); 80 Slayer (Rune)",
+      "prereqs": "Adamant: 75 Slayer (Gargoyles) or Giant frogs; Rune: 80 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          4119,
-          4121,
-          4123,
-          4125,
-          4127,
           4129,
           4131
         ],
-        "count": 6
+        "count": 1
       },
-      "displayItemId": 4119,
+      "displayItemId": 4129,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Adamant_boots_detail.png/320px-Adamant_boots_detail.png",
       "version": 1
     },
     {
@@ -10097,25 +10082,20 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "75 Slayer (Adamant); 80 Slayer (Rune)",
+      "prereqs": "Adamant: 75 Slayer (Gargoyles) or Giant frogs; Rune: 80 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          4119,
-          4121,
-          4123,
-          4125,
-          4127,
           4129,
           4131
         ],
-        "count": 7
+        "count": 2
       },
-      "displayItemId": 4119,
+      "displayItemId": 4129,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Adamant_boots_detail.png/320px-Adamant_boots_detail.png",
       "version": 1
     },
     {
@@ -20092,7 +20072,7 @@
     },
     {
       "id": "collection_log_hard_get-1-unique-nihil-shard-ceremonial-robe_001_60e35bf02f",
-      "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
+      "name": "Get 1 unique Nihil shard or Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "All GWD Frozen Key Pieces",
