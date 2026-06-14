@@ -5419,21 +5419,21 @@
       "name": "Get the next reward from The Tempor Tantrum",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Pandemonium quest; 30 Sailing",
+      "prereqs": "30 Sailing; 14 Construction",
       "wikiTitle": "The Tempor Tantrum",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Tempor_Tantrum",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31732,
+          31734,
           31733,
-          31734
+          31732
         ],
         "count": 1
       },
-      "displayItemId": 31732,
+      "displayItemId": 31734,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Stormy_key_detail.png/320px-Stormy_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -5441,21 +5441,21 @@
       "name": "Get the next reward from The Tempor Tantrum",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Pandemonium quest; 30 Sailing",
+      "prereqs": "30 Sailing; 14 Construction",
       "wikiTitle": "The Tempor Tantrum",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Tempor_Tantrum",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31732,
+          31734,
           31733,
-          31734
+          31732
         ],
         "count": 2
       },
-      "displayItemId": 31732,
+      "displayItemId": 31734,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Stormy_key_detail.png/320px-Stormy_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -5463,21 +5463,21 @@
       "name": "Get the next reward from The Tempor Tantrum",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Pandemonium quest; 30 Sailing",
+      "prereqs": "30 Sailing; 14 Construction",
       "wikiTitle": "The Tempor Tantrum",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Tempor_Tantrum",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31732,
+          31734,
           31733,
-          31734
+          31732
         ],
         "count": 3
       },
-      "displayItemId": 31732,
+      "displayItemId": 31734,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Stormy_key_detail.png/320px-Stormy_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
     },
     {

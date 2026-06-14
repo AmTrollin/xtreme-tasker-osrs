@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.IntUnaryOperator;
+import java.util.function.ToIntFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,26 +51,37 @@ public class PrerequisiteTrackerService
         "^a\\s+combined\\s+([A-Za-z][A-Za-z\\- ]+)\\s+and\\s+([A-Za-z][A-Za-z\\- ]+)\\s+level\\s+of\\s+at\\s+least\\s+(\\d+)(?:.*?level\\s+(\\d+)\\s+in\\s+either\\s+skill)?",
         Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern TRACKABLE_SKILL_SPAN_PATTERN = Pattern.compile(
+        "\\b(\\d+)\\+?\\s+([A-Za-z][A-Za-z\\- ]*?)(?=\\s*(?:\\(|\\bor\\b|\\band\\b|,|;|$))",
+        Pattern.CASE_INSENSITIVE
+    );
 
     private final Map<String, Skill> skillsByName = new HashMap<>();
     private final Map<String, Quest> questsByName = new HashMap<>();
     private final Map<String, Integer> varbitsByName = new HashMap<>();
     private final IntUnaryOperator varbitReader;
+    private final ToIntFunction<Skill> skillLevelReader;
 
     @Inject
     private Client client;
 
     public PrerequisiteTrackerService()
     {
-        this(null);
+        this(null, null);
     }
 
     PrerequisiteTrackerService(IntUnaryOperator varbitReader)
+    {
+        this(varbitReader, null);
+    }
+
+    PrerequisiteTrackerService(IntUnaryOperator varbitReader, ToIntFunction<Skill> skillLevelReader)
     {
         registerSkills();
         registerQuests();
         registerVarbits();
         this.varbitReader = varbitReader;
+        this.skillLevelReader = skillLevelReader;
     }
 
     public List<PrerequisiteStatus> evaluate(@NonNull String prereqs)
@@ -83,7 +95,7 @@ public class PrerequisiteTrackerService
                 continue;
             }
 
-            out.add(new PrerequisiteStatus(text, isSatisfied(text)));
+            out.add(new PrerequisiteStatus(text, isSatisfied(text), checkSpans(text)));
         }
         return out;
     }
@@ -149,7 +161,7 @@ public class PrerequisiteTrackerService
         for (String name : skillNames)
         {
             Skill skill = findSkill(name);
-            if (skill != null && client.getRealSkillLevel(skill) >= 99)
+            if (skill != null && realSkillLevel(skill) >= 99)
             {
                 count++;
             }
@@ -184,7 +196,7 @@ public class PrerequisiteTrackerService
 
     private boolean isSatisfied(String prerequisite)
     {
-        String normalizedPrereq = cleanupToken(prerequisite).replaceFirst("(?i)^either\\s+", "");
+        String normalizedPrereq = stripLeadingLabel(cleanupToken(prerequisite)).replaceFirst("(?i)^either\\s+", "");
 
         Matcher combinedMatcher = COMBINED_LEVEL_PATTERN.matcher(normalizedPrereq);
         if (combinedMatcher.matches())
@@ -197,8 +209,8 @@ public class PrerequisiteTrackerService
             }
 
             int requiredCombined = Integer.parseInt(combinedMatcher.group(3));
-            int firstLevel = client.getRealSkillLevel(firstSkill);
-            int secondLevel = client.getRealSkillLevel(secondSkill);
+            int firstLevel = realSkillLevel(firstSkill);
+            int secondLevel = realSkillLevel(secondSkill);
             if ((firstLevel + secondLevel) >= requiredCombined)
             {
                 return true;
@@ -234,27 +246,28 @@ public class PrerequisiteTrackerService
 
     private boolean isSatisfiedAtomic(String prerequisite)
     {
-        String normalized = cleanupToken(prerequisite).replaceFirst("(?i)^either\\s+", "");
+        String normalized = stripLeadingLabel(cleanupToken(prerequisite)).replaceFirst("(?i)^either\\s+", "");
 
         if (BARBARIAN_FIREMAKING_PART_1_PATTERN.matcher(normalized).matches())
         {
             return isBarbarianFiremakingPart1Complete();
         }
 
-        Matcher skillMatcher = SKILL_PREREQ_PATTERN.matcher(normalized);
+        String skillCandidate = stripTrailingParenthetical(normalized);
+        Matcher skillMatcher = SKILL_PREREQ_PATTERN.matcher(skillCandidate);
         if (skillMatcher.matches())
         {
             int requiredLevel = Integer.parseInt(skillMatcher.group(1));
             Skill skill = findSkill(skillMatcher.group(2));
-            return skill != null && client.getRealSkillLevel(skill) >= requiredLevel;
+            return skill != null && realSkillLevel(skill) >= requiredLevel;
         }
 
-        Matcher skillPlusMatcher = SKILL_PREREQ_PLUS_PATTERN.matcher(normalized);
+        Matcher skillPlusMatcher = SKILL_PREREQ_PLUS_PATTERN.matcher(skillCandidate);
         if (skillPlusMatcher.matches())
         {
             int requiredLevel = Integer.parseInt(skillPlusMatcher.group(1));
             Skill skill = findSkill(skillPlusMatcher.group(2));
-            return skill != null && client.getRealSkillLevel(skill) >= requiredLevel;
+            return skill != null && realSkillLevel(skill) >= requiredLevel;
         }
 
         Matcher questPointsMatcher = QUEST_POINTS_PATTERN.matcher(normalized);
@@ -528,9 +541,60 @@ public class PrerequisiteTrackerService
     private static String cleanupToken(String token)
     {
         return token
-                .replaceAll("^[\\s,:()]+", "")
-                .replaceAll("[\\s,:()]+$", "")
+                .replaceAll("^[\\s,:]+", "")
+                .replaceAll("[\\s,:]+$", "")
                 .trim();
+    }
+
+    private List<PrerequisiteStatus.CheckSpan> checkSpans(String prerequisite)
+    {
+        List<PrerequisiteStatus.CheckSpan> spans = new ArrayList<>();
+        Matcher matcher = TRACKABLE_SKILL_SPAN_PATTERN.matcher(prerequisite);
+        while (matcher.find())
+        {
+            Skill skill = findSkill(matcher.group(2));
+            if (skill == null)
+            {
+                continue;
+            }
+
+            int requiredLevel;
+            try
+            {
+                requiredLevel = Integer.parseInt(matcher.group(1));
+            }
+            catch (NumberFormatException ignored)
+            {
+                continue;
+            }
+
+            spans.add(new PrerequisiteStatus.CheckSpan(
+                    matcher.start(),
+                    matcher.end(),
+                    realSkillLevel(skill) >= requiredLevel
+            ));
+        }
+        return spans;
+    }
+
+    private int realSkillLevel(Skill skill)
+    {
+        return skillLevelReader == null ? client.getRealSkillLevel(skill) : skillLevelReader.applyAsInt(skill);
+    }
+
+    private static String stripLeadingLabel(String token)
+    {
+        int colon = token.indexOf(':');
+        if (colon < 0 || colon >= token.length() - 1)
+        {
+            return token;
+        }
+        return cleanupToken(token.substring(colon + 1));
+    }
+
+    private static String stripTrailingParenthetical(String token)
+    {
+        return token.replaceAll("\\s*\\([^)]*\\)\\s*$", "").trim();
     }
 
     private Integer getPointsFor(String rawPointsLabel)

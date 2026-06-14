@@ -1586,7 +1586,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             XtremeTask task = byId.get(id);
             if (task != null && task.getName() != null)
             {
-                names.add(task.getName());
+                names.add(sequenceDisplayName(task));
             }
             else
             {
@@ -1934,9 +1934,24 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         );
     }
 
+    private String sequenceDisplayName(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return "";
+        }
+
+        XtremeTask decorated = decorateCurrentSequenceTask(task);
+        if (decorated == null || decorated.getName() == null)
+        {
+            return task.getName();
+        }
+        return decorated.getName();
+    }
+
     private SequenceStep sequenceStepForCurrentDisplay(XtremeTask task)
     {
-        if (task == null || task.getName() == null || !task.getName().toLowerCase(Locale.ROOT).contains("next tier"))
+        if (task == null || task.getName() == null || !isDisplaySequenceTask(task.getName()))
         {
             return null;
         }
@@ -1955,6 +1970,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (itemIds == null || index < 0 || index >= itemIds.length)
         {
             return null;
+        }
+
+        SequenceItemMeta meta = SEQUENCE_ITEM_META.get(itemIds[index]);
+        if (meta != null)
+        {
+            return new SequenceStep(meta.label, meta.prereqs, itemIds[index], meta.wikiItemName);
         }
 
         List<SequencePrereqLine> prereqLines = sequencePrereqLines(task.getPrereqs());
@@ -2006,6 +2027,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return out;
     }
 
+    private static boolean isDisplaySequenceTask(String name)
+    {
+        String normalized = name == null ? "" : name.toLowerCase(Locale.ROOT);
+        return normalized.contains("next tier") || normalized.contains("next reward");
+    }
+
     private static String sequenceWikiItemName(String taskName, String label, String itemName)
     {
         String cleanItemName = itemName == null ? "" : itemName.trim();
@@ -2027,6 +2054,33 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return cleanLabel;
+    }
+
+    private static final Map<Integer, SequenceItemMeta> SEQUENCE_ITEM_META = Map.ofEntries(
+            Map.entry(4119, new SequenceItemMeta("Bronze", "10 Slayer", "Bronze boots")),
+            Map.entry(4121, new SequenceItemMeta("Iron", "17 Slayer (Cave slimes) or 25 Slayer (Cockatrices)", "Iron boots")),
+            Map.entry(4123, new SequenceItemMeta("Steel", "30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms)", "Steel boots")),
+            Map.entry(4125, new SequenceItemMeta("Black", "50 Slayer", "Black boots")),
+            Map.entry(4127, new SequenceItemMeta("Mithril", "52 Slayer", "Mithril boots")),
+            Map.entry(4129, new SequenceItemMeta("Adamant", "75 Slayer (Gargoyles) or Giant frogs", "Adamant boots")),
+            Map.entry(4131, new SequenceItemMeta("Rune", "80 Slayer", "Rune boots")),
+            Map.entry(31734, new SequenceItemMeta("Ralph's fabric roll", "30 Sailing; 14 Construction", "Ralph%27s fabric roll")),
+            Map.entry(31733, new SequenceItemMeta("Barrel stand", "30 Sailing; 14 Construction", "Barrel stand")),
+            Map.entry(31732, new SequenceItemMeta("Stormy key", "30 Sailing; 14 Construction", "Stormy key"))
+    );
+
+    private static final class SequenceItemMeta
+    {
+        private final String label;
+        private final String prereqs;
+        private final String wikiItemName;
+
+        private SequenceItemMeta(String label, String prereqs, String wikiItemName)
+        {
+            this.label = label == null ? "" : label;
+            this.prereqs = prereqs == null ? "" : prereqs;
+            this.wikiItemName = wikiItemName == null ? "" : wikiItemName;
+        }
     }
 
     private static final class SequencePrereqLine
@@ -2701,6 +2755,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return 0;
         }
 
+        if (isDisplaySequenceGroup(group))
+        {
+            return desiredCompletedForDisplaySequenceGroup(group);
+        }
+
         List<Integer> thresholds = countedGroupThresholds(group);
         int desired = 0;
         for (Integer threshold : thresholds)
@@ -2711,6 +2770,52 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
         return Math.min(group.size(), desired);
+    }
+
+    private boolean isDisplaySequenceGroup(List<XtremeTask> group)
+    {
+        if (group == null || group.isEmpty())
+        {
+            return false;
+        }
+
+        for (XtremeTask task : group)
+        {
+            if (task != null && isDisplaySequenceTask(task.getName()))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int desiredCompletedForDisplaySequenceGroup(List<XtremeTask> group)
+    {
+        if (collectionLogService == null)
+        {
+            return 0;
+        }
+
+        int completed = 0;
+        for (XtremeTask task : group)
+        {
+            TaskVerification verification = task == null ? null : task.getVerification();
+            Integer count = verification == null ? null : verification.getCount();
+            int[] itemIds = verification == null ? null : verification.getItemIds();
+            int index = count == null ? -1 : count - 1;
+            if (itemIds == null || index < 0 || index >= itemIds.length)
+            {
+                break;
+            }
+
+            if (!collectionLogService.isItemObtained(itemIds[index]))
+            {
+                break;
+            }
+
+            completed++;
+        }
+        return Math.min(group.size(), completed);
     }
 
     private List<Integer> countedGroupThresholds(List<XtremeTask> group)
@@ -3082,7 +3187,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             XtremeTask task = byId.get(id);
             if (task != null && isTaskCompleted(task))
             {
-                out.add(task);
+                out.add(decorateCurrentSequenceTask(task));
             }
         }
         updateSyncMismatchTasksCache(out, capturedItemCount);
@@ -3280,6 +3385,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
         if (group.size() <= 1)
+        {
+            return null;
+        }
+        if (isDisplaySequenceGroup(group))
         {
             return null;
         }

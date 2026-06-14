@@ -501,13 +501,7 @@ public final class TaskDetailsPopup
                 for (String line : TextUtils.wrapText(lineText, fm, contentW))
                 {
                     String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                    g.setColor(status.isCompleted() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
-                    g.drawString(drawLine, contentLeft, y);
-
-                    if (status.isCompleted())
-                    {
-                        drawStrikeThrough(g, fm, drawLine, contentLeft, y);
-                    }
+                    drawPrerequisiteStatusLine(g, fm, status, drawLine, contentLeft, y);
 
                     y += ROW_HEIGHT;
                 }
@@ -756,6 +750,49 @@ public final class TaskDetailsPopup
         int x = badgeBounds.x;
         int y = badgeBounds.y - 4;
         g.drawString(text, x, y);
+    }
+
+    private void drawPrerequisiteStatusLine(
+            Graphics2D g,
+            FontMetrics fm,
+            PrerequisiteStatus status,
+            String drawLine,
+            int x,
+            int baselineY
+    )
+    {
+        boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
+        g.setColor(!hasCheckSpans && status.isCompleted() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
+        g.drawString(drawLine, x, baselineY);
+
+        if (!hasCheckSpans)
+        {
+            if (status.isCompleted())
+            {
+                drawStrikeThrough(g, fm, drawLine, x, baselineY);
+            }
+            return;
+        }
+
+        for (PrerequisiteStatus.CheckSpan span : status.getCheckSpans())
+        {
+            if (!span.isCompleted() || span.getStart() < 0 || span.getEnd() > status.getText().length() || span.getStart() >= span.getEnd())
+            {
+                continue;
+            }
+
+            String spanText = status.getText().substring(span.getStart(), span.getEnd());
+            int lineIndex = drawLine.indexOf(spanText);
+            if (lineIndex < 0)
+            {
+                continue;
+            }
+
+            int spanX = x + fm.stringWidth(drawLine.substring(0, lineIndex));
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(spanText, spanX, baselineY);
+            drawStrikeThrough(g, fm, spanText, spanX, baselineY);
+        }
     }
 
     private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)

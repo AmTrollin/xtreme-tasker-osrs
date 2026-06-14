@@ -1668,6 +1668,10 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             return "";
         }
+        if (isDecoratedSequenceTaskName(task.getName()))
+        {
+            return task.getName();
+        }
 
         List<XtremeTask> group = plugin.getTaskGroupInstances(task);
         if (group == null || group.size() <= 1)
@@ -1687,6 +1691,18 @@ public class XtremeTaskerOverlay extends Overlay {
             return task.getName() + " " + progress.label();
         }
         return task.getName() + " (" + instanceOrdinal + "/" + group.size() + ")";
+    }
+
+    private static boolean isDecoratedSequenceTaskName(String name)
+    {
+        if (name == null)
+        {
+            return false;
+        }
+
+        String normalized = name.toLowerCase(Locale.ROOT);
+        return (normalized.contains("next tier") || normalized.contains("next reward"))
+                && normalized.matches(".*\\([^)]*\\)\\s*$");
     }
 
     private int completedInstanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)

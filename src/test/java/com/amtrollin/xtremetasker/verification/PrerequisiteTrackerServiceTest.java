@@ -1,11 +1,13 @@
 package com.amtrollin.xtremetasker.verification;
 
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import net.runelite.api.Skill;
 import net.runelite.api.gameval.VarbitID;
 import org.junit.Test;
 
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -52,6 +54,26 @@ public class PrerequisiteTrackerServiceTest
         assertTrue(statuses.get(0).isCompleted());
     }
 
+    @Test
+    public void skillOrPrerequisiteWithParentheticalNotesTracksEachSkillRequirement()
+    {
+        PrerequisiteTrackerService service = serviceWithSkillLevel(Skill.SLAYER, 23);
+        PrerequisiteStatus status = service.evaluate("Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices)").get(0);
+
+        assertTrue("17 Slayer option should satisfy the OR at level 23", status.isCompleted());
+        assertEquals(2, status.getCheckSpans().size());
+        assertEquals("17 Slayer", status.getText().substring(
+                status.getCheckSpans().get(0).getStart(),
+                status.getCheckSpans().get(0).getEnd()
+        ));
+        assertTrue(status.getCheckSpans().get(0).isCompleted());
+        assertEquals("25 Slayer", status.getText().substring(
+                status.getCheckSpans().get(1).getStart(),
+                status.getCheckSpans().get(1).getEnd()
+        ));
+        assertFalse(status.getCheckSpans().get(1).isCompleted());
+    }
+
     private static void assertKaramjaDiaryThreshold(int varbitId, String difficulty, int partialValue, int completeValue)
     {
         PrerequisiteTrackerService partialService = serviceWithVarbitValue(varbitId, partialValue);
@@ -73,5 +95,10 @@ public class PrerequisiteTrackerServiceTest
     private static PrerequisiteTrackerService serviceWithVarbitValue(int varbitId, int varbitValue)
     {
         return new PrerequisiteTrackerService(id -> id == varbitId ? varbitValue : 0);
+    }
+
+    private static PrerequisiteTrackerService serviceWithSkillLevel(Skill targetSkill, int level)
+    {
+        return new PrerequisiteTrackerService(id -> 0, skill -> skill == targetSkill ? level : 1);
     }
 }

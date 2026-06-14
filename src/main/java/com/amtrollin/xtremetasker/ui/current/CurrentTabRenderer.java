@@ -1054,16 +1054,7 @@ public final class CurrentTabRenderer
                 }
 
                 String drawLine = truncateToWidth(line, fm, maxWidth);
-                g.setColor(status.isCompleted() ? uiTextDim : uiText);
-                g.drawString(drawLine, x, y);
-
-                if (status.isCompleted())
-                {
-                    int lineW = fm.stringWidth(drawLine);
-                    int strikeY = y - (fm.getAscent() * 3 / 5);
-                    g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 170));
-                    g.drawLine(x, strikeY, x + lineW, strikeY);
-                }
+                drawPrerequisiteStatusLine(g, fm, status, drawLine, x, y);
 
                 y += rowHeight;
                 drawn++;
@@ -1071,6 +1062,49 @@ public final class CurrentTabRenderer
         }
 
         return y;
+    }
+
+    private void drawPrerequisiteStatusLine(
+            Graphics2D g,
+            FontMetrics fm,
+            PrerequisiteStatus status,
+            String drawLine,
+            int x,
+            int y
+    )
+    {
+        boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
+        g.setColor(!hasCheckSpans && status.isCompleted() ? uiTextDim : uiText);
+        g.drawString(drawLine, x, y);
+
+        if (!hasCheckSpans)
+        {
+            if (status.isCompleted())
+            {
+                drawStrikeThrough(g, fm, drawLine, x, y);
+            }
+            return;
+        }
+
+        for (PrerequisiteStatus.CheckSpan span : status.getCheckSpans())
+        {
+            if (!span.isCompleted() || span.getStart() < 0 || span.getEnd() > status.getText().length() || span.getStart() >= span.getEnd())
+            {
+                continue;
+            }
+
+            String spanText = status.getText().substring(span.getStart(), span.getEnd());
+            int lineIndex = drawLine.indexOf(spanText);
+            if (lineIndex < 0)
+            {
+                continue;
+            }
+
+            int spanX = x + fm.stringWidth(drawLine.substring(0, lineIndex));
+            g.setColor(uiTextDim);
+            g.drawString(spanText, spanX, y);
+            drawStrikeThrough(g, fm, spanText, spanX, y);
+        }
     }
 
     private int drawCollectionLogRequirementPreview(
