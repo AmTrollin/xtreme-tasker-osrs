@@ -12256,21 +12256,21 @@
       "name": "Get the next reward from The Jubbly Jive",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 55 Sailing",
+      "prereqs": "55 Sailing; 47 Construction",
       "wikiTitle": "The Jubbly Jive",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Jubbly_Jive",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31744,
+          31746,
           31745,
-          31746
+          31744
         ],
         "count": 1
       },
-      "displayItemId": 31744,
+      "displayItemId": 31746,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Fetid_key_detail.png/320px-Fetid_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -12278,21 +12278,21 @@
       "name": "Get the next reward from The Jubbly Jive",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 55 Sailing",
+      "prereqs": "55 Sailing; 47 Construction",
       "wikiTitle": "The Jubbly Jive",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Jubbly_Jive",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31744,
+          31746,
           31745,
-          31746
+          31744
         ],
         "count": 2
       },
-      "displayItemId": 31744,
+      "displayItemId": 31746,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Fetid_key_detail.png/320px-Fetid_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -12300,21 +12300,21 @@
       "name": "Get the next reward from The Jubbly Jive",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 55 Sailing",
+      "prereqs": "55 Sailing; 47 Construction",
       "wikiTitle": "The Jubbly Jive",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Jubbly_Jive",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31744,
+          31746,
           31745,
-          31746
+          31744
         ],
         "count": 3
       },
-      "displayItemId": 31744,
+      "displayItemId": 31746,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Fetid_key_detail.png/320px-Fetid_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -21225,21 +21225,21 @@
       "name": "Get the next reward from The Gwyneth Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "Pandemonium quest; 72 Sailing",
+      "prereqs": "72 Sailing; 70 Construction",
       "wikiTitle": "The Gwenith Glide",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Gwenith_Glide",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31756,
+          31758,
           31757,
-          31758
+          31756
         ],
         "count": 1
       },
-      "displayItemId": 31756,
+      "displayItemId": 31758,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Serrated_key_detail.png/320px-Serrated_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -21247,21 +21247,21 @@
       "name": "Get the next reward from The Gwyneth Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "Pandemonium quest; 72 Sailing",
+      "prereqs": "72 Sailing; 70 Construction",
       "wikiTitle": "The Gwenith Glide",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Gwenith_Glide",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31756,
+          31758,
           31757,
-          31758
+          31756
         ],
         "count": 2
       },
-      "displayItemId": 31756,
+      "displayItemId": 31758,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Serrated_key_detail.png/320px-Serrated_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -21269,21 +21269,21 @@
       "name": "Get the next reward from The Gwyneth Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "Pandemonium quest; 72 Sailing",
+      "prereqs": "72 Sailing; 70 Construction",
       "wikiTitle": "The Gwenith Glide",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Gwenith_Glide",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31756,
+          31758,
           31757,
-          31758
+          31756
         ],
         "count": 3
       },
-      "displayItemId": 31756,
+      "displayItemId": 31758,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Serrated_key_detail.png/320px-Serrated_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {

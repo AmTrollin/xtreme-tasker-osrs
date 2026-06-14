@@ -484,7 +484,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
 
-        return recentTask;
+        return decorateCurrentSequenceTask(recentTask);
     }
 
     public boolean isOverlayEnabled() {
@@ -2066,7 +2066,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             Map.entry(4131, new SequenceItemMeta("Rune", "80 Slayer", "Rune boots")),
             Map.entry(31734, new SequenceItemMeta("Ralph's fabric roll", "30 Sailing; 14 Construction", "Ralph%27s fabric roll")),
             Map.entry(31733, new SequenceItemMeta("Barrel stand", "30 Sailing; 14 Construction", "Barrel stand")),
-            Map.entry(31732, new SequenceItemMeta("Stormy key", "30 Sailing; 14 Construction", "Stormy key"))
+            Map.entry(31732, new SequenceItemMeta("Stormy key", "30 Sailing; 14 Construction", "Stormy key")),
+            Map.entry(31746, new SequenceItemMeta("Gurtob's fabric roll", "55 Sailing; 47 Construction", "Gurtob%27s fabric roll")),
+            Map.entry(31745, new SequenceItemMeta("Captured wind mote", "55 Sailing; 47 Construction", "Captured wind mote")),
+            Map.entry(31744, new SequenceItemMeta("Fetid key", "55 Sailing; 47 Construction", "Fetid key")),
+            Map.entry(31758, new SequenceItemMeta("Gwyna's fabric roll", "72 Sailing; 70 Construction", "Gwyna%27s fabric roll")),
+            Map.entry(31757, new SequenceItemMeta("Heart of Ithell", "72 Sailing; 70 Construction", "Heart of ithell")),
+            Map.entry(31756, new SequenceItemMeta("Serrated key", "72 Sailing; 70 Construction", "Serrated key"))
     );
 
     private static final class SequenceItemMeta

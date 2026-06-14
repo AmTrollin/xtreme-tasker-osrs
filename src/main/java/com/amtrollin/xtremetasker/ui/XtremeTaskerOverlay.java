@@ -230,6 +230,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
+        Integer sequenceItemId = sequencePreviewFocusItemId(task);
+        if (sequenceItemId != null && sequenceItemId > 0) return plugin.getItemImage(sequenceItemId);
         Integer id = task.getIconItemId();
         if (id != null && id > 0) return plugin.getItemImage(id);
         if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT && task.getTier() != null) {
@@ -284,6 +286,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 itemIds,
                 repeatedDistinctPool,
                 repeatedRequirementState);
+        applySequenceTaskCompletionStatuses(task, itemIds, statusByItemId);
         Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
         Map<String, Integer> itemIdByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
@@ -305,12 +308,113 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         boolean sameNameFamily = statusByItemName.size() == 1;
-        String summaryText = repeatedDistinctPool
-            ? repeatedRequirementState.summaryText
+        String sequenceSummaryText = sequencePreviewSummaryText(task, itemIds);
+        String summaryText = !sequenceSummaryText.isEmpty()
+            ? sequenceSummaryText
+            : repeatedDistinctPool
+                ? repeatedRequirementState.summaryText
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
         return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, true, items);
+    }
+
+    private String sequencePreviewSummaryText(XtremeTask task, int[] itemIds)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName()))
+        {
+            return "";
+        }
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (progress != null && progress.isComplete())
+        {
+            return "";
+        }
+
+        Integer itemId = sequencePreviewFocusItemId(task, itemIds);
+        if (itemId == null || itemId <= 0)
+        {
+            return "";
+        }
+
+        String itemName = plugin.getItemName(itemId);
+        if (itemName == null || itemName.trim().isEmpty())
+        {
+            itemName = "item " + itemId;
+        }
+
+        return "Next: " + itemName;
+    }
+
+    private Integer sequencePreviewFocusItemId(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return null;
+        }
+        return sequencePreviewFocusItemId(task, verification.getItemIds());
+    }
+
+    private Integer sequencePreviewFocusItemId(XtremeTask task, int[] itemIds)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName()) || itemIds == null || itemIds.length == 0)
+        {
+            return null;
+        }
+
+        int completedPrefix = sequencePreviewCompletedPrefixCount(task, itemIds);
+        if (completedPrefix >= itemIds.length)
+        {
+            return itemIds[itemIds.length - 1];
+        }
+        return itemIds[completedPrefix];
+    }
+
+    private int sequencePreviewCompletedPrefixCount(XtremeTask task, int[] itemIds)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName()) || itemIds == null || itemIds.length == 0)
+        {
+            return 0;
+        }
+
+        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
+        int completed = 0;
+        for (int i = 0; i < itemIds.length; i++)
+        {
+            boolean taskComplete = i < sequence.size() && plugin.isTaskCompleted(sequence.get(i));
+            boolean itemObtained = plugin.isCollectionLogItemObtained(itemIds[i]);
+            if (!taskComplete && !itemObtained)
+            {
+                break;
+            }
+            completed++;
+        }
+        return completed;
+    }
+
+    private void applySequenceTaskCompletionStatuses(
+            XtremeTask task,
+            int[] itemIds,
+            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName())
+                || itemIds == null
+                || itemIds.length == 0
+                || statusByItemId == null)
+        {
+            return;
+        }
+
+        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
+        for (int i = 0; i < itemIds.length && i < sequence.size(); i++)
+        {
+            XtremeTask sequenceTask = sequence.get(i);
+            if (sequenceTask != null && plugin.isTaskCompleted(sequenceTask))
+            {
+                statusByItemId.put(itemIds[i], CollectionLogRequirementItem.Status.APPLIED);
+            }
+        }
     }
 
     private Map<Integer, CollectionLogRequirementItem.Status> collectionLogRequirementStatuses(
@@ -468,6 +572,11 @@ public class XtremeTaskerOverlay extends Overlay {
                 sequence.add(candidate);
             }
         }
+        sequence.sort(Comparator.comparingInt(candidate -> {
+            TaskVerification verification = candidate == null ? null : candidate.getVerification();
+            Integer count = verification == null ? null : verification.getCount();
+            return count == null ? Integer.MAX_VALUE : count;
+        }));
         return sequence;
     }
 
@@ -1701,8 +1810,19 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         String normalized = name.toLowerCase(Locale.ROOT);
-        return (normalized.contains("next tier") || normalized.contains("next reward"))
+        return isDisplaySequenceTaskName(normalized)
                 && normalized.matches(".*\\([^)]*\\)\\s*$");
+    }
+
+    private static boolean isDisplaySequenceTaskName(String name)
+    {
+        if (name == null)
+        {
+            return false;
+        }
+
+        String normalized = name.toLowerCase(Locale.ROOT);
+        return normalized.contains("next tier") || normalized.contains("next reward");
     }
 
     private int completedInstanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)
