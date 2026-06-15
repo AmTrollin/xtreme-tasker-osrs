@@ -5,13 +5,20 @@ import java.util.List;
 public final class CollectionLogRequirementPreview
 {
     private final String summaryText;
+    private final String titleText;
     private final boolean showSummaryText;
     private final boolean showItemList;
     private final List<CollectionLogRequirementItem> items;
 
     public CollectionLogRequirementPreview(String summaryText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items)
     {
+        this(summaryText, null, showSummaryText, showItemList, items);
+    }
+
+    public CollectionLogRequirementPreview(String summaryText, String titleText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items)
+    {
         this.summaryText = summaryText == null ? "" : summaryText;
+        this.titleText = titleText == null ? "" : titleText;
         this.showSummaryText = showSummaryText;
         this.showItemList = showItemList;
         this.items = items == null ? List.of() : items;
@@ -40,5 +47,10 @@ public final class CollectionLogRequirementPreview
     public String summaryText()
     {
         return summaryText;
+    }
+
+    public String titleText()
+    {
+        return titleText;
     }
 }

@@ -1101,6 +1101,10 @@ public final class TaskDetailsPopup
 
     private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
     {
+        if (requirementPreview != null && requirementPreview.titleText() != null && !requirementPreview.titleText().trim().isEmpty())
+        {
+            return requirementPreview.titleText();
+        }
         return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
                 ? "Collection Log Progress"
                 : "Eligible Collection Log Items";

@@ -261,11 +261,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int[] itemIds = verification.getItemIds();
         if (itemIds == null || itemIds.length == 0) return null;
-        if (itemIds.length == 1) return null;
 
         List<XtremeTask> requirementSequence = collectionLogRequirementSequence(task, itemIds);
         boolean isCountedSequence = requirementSequence.size() > 1;
         boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
+        boolean singleEligibleItem = itemIds.length == 1;
 
         int requiredCount = collectionLogPreviewRequiredCount(task, verification, itemIds);
         requiredCount = Math.max(1, Math.min(requiredCount, itemIds.length));
@@ -310,14 +310,17 @@ public class XtremeTaskerOverlay extends Overlay {
 
         boolean sameNameFamily = statusByItemName.size() == 1;
         String sequenceSummaryText = sequencePreviewSummaryText(task, itemIds);
-        String summaryText = !sequenceSummaryText.isEmpty()
+        String summaryText = singleEligibleItem
+            ? ""
+            : !sequenceSummaryText.isEmpty()
             ? sequenceSummaryText
             : repeatedDistinctPool
                 ? repeatedRequirementState.summaryText
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, true, items);
+        String titleText = singleEligibleItem ? "Collection Log item needed:" : "";
+        return new CollectionLogRequirementPreview(summaryText, titleText, !singleEligibleItem && (sameNameFamily || repeatedDistinctPool), true, items);
     }
 
     private String sequencePreviewSummaryText(XtremeTask task, int[] itemIds)
