@@ -2071,6 +2071,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin.getCompletionInfo(recentCompleted),
                 plugin.getTaskTimeTicks(recentCompleted),
                 plugin.canUndoRecentTaskCompletion(),
+                plugin.isCurrentTaskCompletionCriteriaMet(),
                 keyboardHintsOpen,
                 keyboardHintsButtonBounds,
                 keyboardHintsPopupBounds,
@@ -2129,6 +2130,7 @@ public class XtremeTaskerOverlay extends Overlay {
         boolean rollEnabled = current == null || currentCompleted;
         boolean completeEnabled = current != null && !currentCompleted;
         boolean canUndoRecentCompletion = plugin.canUndoRecentTaskCompletion();
+        boolean currentCompletionCriteriaMet = plugin.isCurrentTaskCompletionCriteriaMet();
         int buttonGap = 6;
         int wikiW = current != null && current.getWikiUrl() != null && !current.getWikiUrl().trim().isEmpty()
                 ? Math.max(48, fm.stringWidth("Wiki") + 18)
@@ -2137,7 +2139,11 @@ public class XtremeTaskerOverlay extends Overlay {
         if (completeEnabled) {
             Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
             currentLayout.completeButtonBounds.setBounds(actionBounds);
-            buttonRenderer.drawPrimaryButton(g, currentLayout.completeButtonBounds, "Mark complete");
+            buttonRenderer.drawPrimaryButton(
+                    g,
+                    currentLayout.completeButtonBounds,
+                    "Mark complete",
+                    currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
         } else if (rollEnabled) {
             if (canUndoRecentCompletion) {
                 int undoW = Math.min(70, Math.max(48, fm.stringWidth("Undo") + 22));

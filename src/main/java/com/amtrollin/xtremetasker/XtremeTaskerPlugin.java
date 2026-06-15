@@ -1857,6 +1857,139 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return currentTaskCollectionLogBaselineCount;
     }
 
+    public boolean isCurrentTaskCompletionCriteriaMet()
+    {
+        XtremeTask task = getCurrentTask();
+        if (task == null || isTaskCompleted(task))
+        {
+            return false;
+        }
+
+        if (!areKnownPrerequisitesSatisfied(task))
+        {
+            return false;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null)
+        {
+            return false;
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return isCurrentCollectionLogRequirementSatisfied(task, verification);
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY)
+        {
+            return prerequisiteTrackerService.isDiaryComplete(verification.getRegion(), verification.getDifficulty());
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.SKILL
+                && verification.getExperience() != null
+                && verification.getCount() != null)
+        {
+            return prerequisiteTrackerService.countSkillsAt99(verification.getExperience().keySet()) >= verification.getCount();
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.COMBAT_ACHIEVEMENT)
+        {
+            Integer taskId = resolveCombatAchievementTaskId(task);
+            return taskId != null && combatAchievementService.isTaskComplete(taskId);
+        }
+
+        return false;
+    }
+
+    private boolean areKnownPrerequisitesSatisfied(XtremeTask task)
+    {
+        List<PrerequisiteStatus> statuses = getPrerequisiteStatuses(task);
+        if (statuses == null || statuses.isEmpty())
+        {
+            return true;
+        }
+
+        for (PrerequisiteStatus status : statuses)
+        {
+            if (status != null && !status.isCompleted())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isCurrentCollectionLogRequirementSatisfied(XtremeTask task, TaskVerification verification)
+    {
+        ItemRequirement requirement = resolveCollectionLogRequirement(task);
+        if (requirement == null)
+        {
+            return false;
+        }
+
+        int totalObtainedCount = countObtainedCollectionLogItems(requirement.itemIds);
+        List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
+        if (group.size() <= 1)
+        {
+            return totalObtainedCount >= requirement.requiredCount;
+        }
+
+        int currentIndex = requirementIndex(task, group);
+        if (currentIndex < 0)
+        {
+            return totalObtainedCount >= requirement.requiredCount;
+        }
+
+        List<Integer> thresholds = countedGroupThresholds(group);
+        int previousThreshold = currentIndex <= 0 ? 0 : thresholdAt(thresholds, currentIndex - 1);
+        int currentThreshold = Math.max(thresholdAt(thresholds, currentIndex), previousThreshold);
+        int currentRequired = Math.max(1, currentThreshold - previousThreshold);
+
+        int completedCount = 0;
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null && isTaskCompleted(groupedTask))
+            {
+                completedCount++;
+            }
+        }
+
+        int completedThreshold = thresholdAt(thresholds, completedCount - 1);
+        Integer baselineCount = getCurrentTaskCollectionLogBaselineCount(collectionLogRequirementSignature(requirement.itemIds));
+        int baseline = baselineCount != null
+                ? Math.min(Math.max(0, baselineCount), Math.max(0, completedThreshold))
+                : Math.max(previousThreshold, completedThreshold);
+        return Math.max(0, totalObtainedCount - baseline) >= currentRequired;
+    }
+
+    private static int requirementIndex(XtremeTask task, List<XtremeTask> group)
+    {
+        if (task == null || task.getId() == null || group == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < group.size(); i++)
+        {
+            XtremeTask groupedTask = group.get(i);
+            if (groupedTask != null && task.getId().equals(groupedTask.getId()))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int thresholdAt(List<Integer> thresholds, int index)
+    {
+        if (thresholds == null || thresholds.isEmpty() || index < 0)
+        {
+            return 0;
+        }
+        return Math.max(0, thresholds.get(Math.min(index, thresholds.size() - 1)));
+    }
+
     public long getCollectionLogItemObtainedOrder(int itemId) {
         return collectionLogService == null ? Long.MAX_VALUE : collectionLogService.getObtainedItemOrder(itemId);
     }

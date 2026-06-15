@@ -63,6 +63,7 @@ public final class CurrentTabViewRenderer
             CompletionInfo recentCompletionInfo,
             Long recentTaskTimeTicks,
             boolean canUndoRecentCompletion,
+            boolean currentCompletionCriteriaMet,
             boolean keyboardHintsOpen,
             Rectangle keyboardHintsButtonBounds,
             Rectangle keyboardHintsPopupBounds,
@@ -125,7 +126,11 @@ public final class CurrentTabViewRenderer
 
         if (activeBounds.width > 0 && activeBounds.height > 0)
         {
-            buttonRenderer.drawPrimaryButton(g, activeBounds, activeText);
+            buttonRenderer.drawPrimaryButton(
+                    g,
+                    activeBounds,
+                    activeText,
+                    showComplete && currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
         }
 
         if (canUndoRecentCompletion

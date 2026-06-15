@@ -44,6 +44,11 @@ public final class ButtonRenderer
     /** Primary action button — used for Roll task / Mark complete. Brighter bg, solid gold border. */
     public void drawPrimaryButton(Graphics2D g, Rectangle bounds, String text)
     {
+        drawPrimaryButton(g, bounds, text, null);
+    }
+
+    public void drawPrimaryButton(Graphics2D g, Rectangle bounds, String text, Color borderAccent)
+    {
         if (bounds.width <= 0 || bounds.height <= 0) return;
 
         // Dark, slightly warm fill — not golden
@@ -54,7 +59,8 @@ public final class ButtonRenderer
         g.setColor(palette.UI_EDGE_DARK);
         g.drawRect(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1);
         // Inner gold accent at 130 alpha for a subtle decorative border
-        g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 130));
+        Color accent = borderAccent == null ? palette.UI_GOLD : borderAccent;
+        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), borderAccent == null ? 130 : 230));
         g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
 
         // White/light text instead of gold
