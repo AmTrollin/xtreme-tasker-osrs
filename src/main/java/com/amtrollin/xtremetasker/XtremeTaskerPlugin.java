@@ -248,6 +248,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     void setCollectionLogServiceForTesting(CollectionLogService collectionLogService)
     {
         this.collectionLogService = collectionLogService;
+        attachCollectionLogCacheListener();
     }
 
     void setSyncMismatchTitleForTesting(String syncMismatchTitle)
@@ -260,6 +261,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     protected void startUp() {
         log.info("Xtreme Tasker started");
 
+        attachCollectionLogCacheListener();
         collectionLogService.startUp();
 
         updateOverlayState();
@@ -289,6 +291,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     protected void shutDown() {
         log.info("Xtreme Tasker stopped");
 
+        if (collectionLogService != null)
+        {
+            collectionLogService.setCacheChangeListener(null);
+        }
         collectionLogService.shutDown();
 
         saveActiveState("plugin shutdown");
@@ -325,6 +331,25 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         taskPackLoaded = false;
 
         rebuildTierCounts();
+    }
+
+    private void attachCollectionLogCacheListener()
+    {
+        if (collectionLogService != null)
+        {
+            collectionLogService.setCacheChangeListener(this::onCollectionLogCacheChanged);
+        }
+    }
+
+    private void onCollectionLogCacheChanged()
+    {
+        syncMismatchTasksCacheValid = false;
+        dirty = true;
+
+        if (activeAccountKey != null)
+        {
+            persistIfPossible();
+        }
     }
 
     private synchronized void saveActiveState(String reason) {

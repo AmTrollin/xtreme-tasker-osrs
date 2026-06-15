@@ -93,6 +93,12 @@ public class CollectionLogService
     private final Set<Integer> seenItems = new HashSet<>();
     private final Map<Integer, Long> obtainedItemOrder = new HashMap<>();
     private long nextObtainedItemOrder = 1L;
+    private Runnable cacheChangeListener;
+
+    public void setCacheChangeListener(Runnable cacheChangeListener)
+    {
+        this.cacheChangeListener = cacheChangeListener;
+    }
 
     public void startUp()
     {
@@ -215,7 +221,10 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
-            markObtainedItem(itemId, null);
+            if (markObtainedItem(itemId, null))
+            {
+                notifyCacheChanged();
+            }
         }
     }
 
@@ -349,21 +358,23 @@ public class CollectionLogService
         return order == null ? Long.MAX_VALUE : order;
     }
 
-    private void markObtainedItem(int itemId, Long restoredOrder)
+    private boolean markObtainedItem(int itemId, Long restoredOrder)
     {
         int canonicalItemId = canonicalCollectionLogItemId(itemId);
-        obtainedItems.add(itemId);
-        obtainedItems.add(canonicalItemId);
+        boolean changed = obtainedItems.add(itemId);
+        changed |= obtainedItems.add(canonicalItemId);
 
         Long order = restoredOrder != null && restoredOrder > 0 ? restoredOrder : existingOrder(itemId, canonicalItemId);
         if (order == null)
         {
             order = nextObtainedItemOrder++;
+            changed = true;
         }
 
-        obtainedItemOrder.putIfAbsent(itemId, order);
-        obtainedItemOrder.putIfAbsent(canonicalItemId, order);
+        changed |= obtainedItemOrder.putIfAbsent(itemId, order) == null;
+        changed |= obtainedItemOrder.putIfAbsent(canonicalItemId, order) == null;
         nextObtainedItemOrder = Math.max(nextObtainedItemOrder, order + 1);
+        return changed;
     }
 
     private Long existingOrder(int itemId, int canonicalItemId)
@@ -379,5 +390,13 @@ public class CollectionLogService
     private int canonicalCollectionLogItemId(int itemId)
     {
         return COLLECTION_LOG_ITEM_ALIASES.getOrDefault(itemId, itemId);
+    }
+
+    private void notifyCacheChanged()
+    {
+        if (cacheChangeListener != null)
+        {
+            cacheChangeListener.run();
+        }
     }
 }

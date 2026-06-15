@@ -14,12 +14,32 @@ import java.util.List;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class CollectionLogMismatchTest
 {
+    @Test
+    public void collectionLogCacheListenerFiresForNewObtainedItemsOnly()
+    {
+        CollectionLogService collectionLogService = new CollectionLogService();
+        AtomicInteger changes = new AtomicInteger();
+        collectionLogService.setCacheChangeListener(changes::incrementAndGet);
+
+        collectionLogService.storeItem(10878);
+        assertEquals(1, changes.get());
+        assertTrue(collectionLogService.isItemObtained(10878));
+
+        collectionLogService.storeItem(10878);
+        assertEquals(1, changes.get());
+
+        collectionLogService.restoreCachedItemIds(Collections.singleton(10879));
+        assertEquals(1, changes.get());
+        assertTrue(collectionLogService.isItemObtained(10879));
+    }
+
     @Test
     public void collectionLogRequirementNotFoundBySyncIsMarkedAsMismatch() throws Exception
     {
