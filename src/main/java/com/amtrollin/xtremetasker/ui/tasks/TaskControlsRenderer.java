@@ -93,7 +93,9 @@ public class TaskControlsRenderer
             int panelW,
             int mouseX,
             int mouseY,
-            boolean hasNewTasks
+            boolean hasNewTasks,
+            String forcedTooltipText,
+            Rectangle forcedTooltipAnchor
     )
     {
         // Shared geometry
@@ -440,6 +442,13 @@ public class TaskControlsRenderer
         if (layout.hoverTooltipText != null)
         {
             drawTooltip(g, fm, layout.hoverTooltipText, layout.hoverTooltipAnchor);
+        }
+        else if (forcedTooltipText != null
+                && forcedTooltipAnchor != null
+                && forcedTooltipAnchor.width > 0
+                && forcedTooltipAnchor.height > 0)
+        {
+            drawTooltip(g, fm, forcedTooltipText, forcedTooltipAnchor);
         }
 
         return cursorY;

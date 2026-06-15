@@ -147,6 +147,10 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
     private boolean keyboardHintsOpen = false;
+    private static final long KEYBOARD_TRIGGERED_TOOLTIP_MS = 3000L;
+    private String keyboardTriggeredTaskTooltipText = null;
+    private final Rectangle keyboardTriggeredTaskTooltipAnchor = new Rectangle();
+    private long keyboardTriggeredTaskTooltipUntilMs = 0L;
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
     private boolean syncMismatchReviewOpen = false;
@@ -2767,8 +2771,35 @@ public class XtremeTaskerOverlay extends Overlay {
                 this::getSortedTasksForTier,
                 hoverX,
                 hoverY,
-                keyboardHintsOpen
+                keyboardHintsOpen,
+                currentKeyboardTriggeredTaskTooltipText(),
+                currentKeyboardTriggeredTaskTooltipAnchor()
         );
+    }
+
+    private void showKeyboardTriggeredTaskTooltip(String text, Rectangle anchor) {
+        keyboardTriggeredTaskTooltipText = text;
+        keyboardTriggeredTaskTooltipAnchor.setBounds(anchor == null ? new Rectangle() : anchor);
+        keyboardTriggeredTaskTooltipUntilMs = System.currentTimeMillis() + KEYBOARD_TRIGGERED_TOOLTIP_MS;
+    }
+
+    private String currentKeyboardTriggeredTaskTooltipText() {
+        if (keyboardTriggeredTaskTooltipText == null) {
+            return null;
+        }
+
+        if (System.currentTimeMillis() > keyboardTriggeredTaskTooltipUntilMs) {
+            keyboardTriggeredTaskTooltipText = null;
+            keyboardTriggeredTaskTooltipAnchor.setBounds(0, 0, 0, 0);
+            keyboardTriggeredTaskTooltipUntilMs = 0L;
+            return null;
+        }
+
+        return keyboardTriggeredTaskTooltipText;
+    }
+
+    private Rectangle currentKeyboardTriggeredTaskTooltipAnchor() {
+        return keyboardTriggeredTaskTooltipText == null ? null : keyboardTriggeredTaskTooltipAnchor;
     }
 
 
@@ -2933,7 +2964,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // S toggles completion sort (new model)
         if (code == KeyEvent.VK_S) {
             if (taskQuery.statusFilter != TaskListQuery.StatusFilter.ALL) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"Status\" filter currently applied", controls.sortCompletion);
+                return true;
             }
 
             if (!taskQuery.sortByCompletion) {
@@ -2949,7 +2981,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // T toggles tier sort
         if (code == KeyEvent.VK_T) {
             if (taskQuery.tierScope != TaskListQuery.TierScope.ALL_TIERS) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"All Tiers\" filter must be applied", controls.sortTier);
+                return true;
             }
 
             if (!taskQuery.sortByTier) {
@@ -2965,7 +2998,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // D toggles time-completed sort (requires Complete filter)
         if (code == KeyEvent.VK_D) {
             if (taskQuery.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"Complete\" filter must be applied", controls.sortDate);
+                return true;
             }
 
             if (!taskQuery.sortByDate) {
@@ -2982,7 +3016,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // M toggles time-spent sort (requires Complete filter)
         if (code == KeyEvent.VK_M) {
             if (taskQuery.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"Complete\" filter must be applied", controls.sortTimeTicks);
+                return true;
             }
 
             if (!taskQuery.sortByTimeTicks) {

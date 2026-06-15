@@ -49,7 +49,9 @@ public final class TasksTabRenderer {
             Function<TaskTier, List<XtremeTask>> sortedTasksProvider,
             int hoverX,
             int hoverY,
-            boolean keyboardHintsOpen
+            boolean keyboardHintsOpen,
+            String keyboardTriggeredTooltipText,
+            Rectangle keyboardTriggeredTooltipAnchor
     ) {
         if (!plugin.hasTaskPackLoaded()) {
             g.setColor(palette.UI_TEXT_DIM);
@@ -107,7 +109,9 @@ public final class TasksTabRenderer {
                 controlsColumnW,
                 hoverX,
                 hoverY,
-                plugin.hasNewTasks()
+                plugin.hasNewTasks(),
+                keyboardTriggeredTooltipText,
+                keyboardTriggeredTooltipAnchor
             );
 
             int dividerTop = contentTopBaseline - fm.getAscent();
