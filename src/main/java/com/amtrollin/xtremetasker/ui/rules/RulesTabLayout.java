@@ -14,6 +14,10 @@ public final class RulesTabLayout
     public final Rectangle githubReadmeLinkBounds = new Rectangle();
     public final Rectangle syncClogsButtonBounds = new Rectangle();
     public final Rectangle syncCAsButtonBounds = new Rectangle();
+    public final Rectangle syncCaFoundReviewButtonBounds = new Rectangle();
+    public final Rectangle syncCaFoundIgnoreButtonBounds = new Rectangle();
+    public final Rectangle syncClogFoundReviewButtonBounds = new Rectangle();
+    public final Rectangle syncClogFoundIgnoreButtonBounds = new Rectangle();
     public final Rectangle syncCaReviewButtonBounds = new Rectangle();
     public final Rectangle syncCaReviewIgnoreButtonBounds = new Rectangle();
     public final Rectangle syncClogReviewButtonBounds = new Rectangle();

@@ -116,6 +116,29 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void applyingSyncCandidatesMarksTasksCompleteAsSynced() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        tasks.add(task);
+
+        plugin.markSyncCompletionCandidateTasksCompleteAndPersist(Collections.singletonList(task));
+
+        assertTrue(plugin.isTaskCompleted(task));
+        assertTrue(plugin.manualCompletedTaskIdsForTesting().isEmpty());
+        assertTrue(plugin.syncedCompletedTaskIdsForTesting().contains(task.getId()));
+    }
+
+    @Test
     public void manualOnlyCollectionLogTaskIsNotMarkedAsSyncMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

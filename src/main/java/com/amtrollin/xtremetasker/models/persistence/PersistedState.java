@@ -44,6 +44,7 @@ public class PersistedState {
     private List<String> lastCollectionLogSyncedTaskNames = new ArrayList<>();
     private boolean combatAchievementSyncedTasksExpanded = false;
     private boolean collectionLogSyncedTasksExpanded = false;
+    private List<String> syncCompletionCandidateTaskIds = new ArrayList<>();
     private List<String> syncMismatchTaskIds = new ArrayList<>();
     private String syncMismatchTitle;
     /** Task ids present the last time this account loaded the bundled task pack. */

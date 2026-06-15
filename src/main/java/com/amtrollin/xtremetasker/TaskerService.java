@@ -80,6 +80,12 @@ public interface TaskerService
 
     boolean isCollectionLogSyncPending();
 
+    List<XtremeTask> getSyncCompletionCandidateTasks(TaskSource source);
+
+    void dismissSyncCompletionCandidateReview(TaskSource source);
+
+    void markSyncCompletionCandidateTasksCompleteAndPersist(List<XtremeTask> tasks);
+
     List<XtremeTask> getSyncMismatchTasks();
 
     List<XtremeTask> getSyncMismatchTasks(TaskSource source);

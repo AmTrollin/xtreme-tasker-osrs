@@ -81,6 +81,7 @@ public interface OverlayInputAccess
     void toggleClogSyncedTasksExpanded();
     void setCaSyncedTasksExpanded(boolean expanded);
     void setClogSyncedTasksExpanded(boolean expanded);
+    void openSyncCompletionCandidateReview(TaskSource source);
     void openSyncMismatchReview();
     void openSyncMismatchReview(TaskSource source);
     void closeSyncMismatchReview();
@@ -145,6 +146,7 @@ public interface OverlayInputAccess
     void setMarkIncompleteDontShowChecked(boolean checked);
 
     boolean isSyncMismatchReviewOpen();
+    boolean isSyncCompletionCandidateReviewOpen();
     Rectangle syncMismatchReviewBounds();
     Rectangle syncMismatchViewportBounds();
     Rectangle syncMismatchCloseBounds();

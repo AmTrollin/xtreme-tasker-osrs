@@ -154,6 +154,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
     private boolean syncMismatchReviewOpen = false;
+    private enum SyncReviewMode { MISMATCH, COMPLETION_CANDIDATES }
+    private SyncReviewMode syncReviewMode = SyncReviewMode.MISMATCH;
     private TaskSource syncMismatchReviewSource = null;
     private XtremeTask syncMismatchDescriptionTask = null;
     private int dragOffsetX = 0;
@@ -1408,6 +1410,7 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchDescriptionBounds.setBounds(0, 0, 0, 0);
         syncMismatchDescriptionCloseBounds.setBounds(0, 0, 0, 0);
         syncMismatchReviewOpen = false;
+        syncReviewMode = SyncReviewMode.MISMATCH;
         syncMismatchReviewSource = null;
         syncMismatchApplyConfirmOpen = false;
         syncMismatchDescriptionTask = null;
@@ -1445,13 +1448,29 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchCloseBounds.setBounds(x + w - pad - closeW, y + pad - 2, closeW, buttonH);
         drawPopupCloseX(g, syncMismatchCloseBounds);
 
+        boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
         boolean hasCollectionLogReview = mismatches.stream()
                 .anyMatch(task -> isCollectionLogSyncSource(task.getSource()));
         boolean hasCombatAchievementReview = mismatches.stream()
                 .anyMatch(task -> task.getSource() == TaskSource.COMBAT_ACHIEVEMENT);
         g.setColor(P.UI_GOLD);
         String reviewMessage;
-        if (hasCollectionLogReview && hasCombatAchievementReview)
+        if (reviewingCompletionCandidates)
+        {
+            if (hasCollectionLogReview && hasCombatAchievementReview)
+            {
+                reviewMessage = "Tasks found complete by sync. Choose which ones to mark complete in Xtreme Tasker";
+            }
+            else if (hasCollectionLogReview)
+            {
+                reviewMessage = "CLOG/AD tasks found complete by sync. Choose which ones to mark complete";
+            }
+            else
+            {
+                reviewMessage = "CA tasks found complete by sync. Choose which ones to mark complete";
+            }
+        }
+        else if (hasCollectionLogReview && hasCombatAchievementReview)
         {
             reviewMessage = "Tasks marked complete in Xtreme Tasker but not detected in-game after sync";
         }
@@ -1476,7 +1495,9 @@ public class XtremeTaskerOverlay extends Overlay {
         if (hasCollectionLogReview)
         {
             g.setColor(P.UI_TEXT_DIM);
-            String refreshHint = "If new CLOG items are missing, open your Collection Log in game, then sync again.";
+            String refreshHint = reviewingCompletionCandidates
+                    ? "Nothing will be marked complete unless you choose it."
+                    : "If new CLOG items are missing, open your Collection Log in game, then sync again.";
             g.drawString(TextUtils.truncateToWidth(refreshHint, fm, w - pad * 2),
                     x + pad, nextY + fm.getAscent());
             nextY += fm.getHeight();
@@ -1491,7 +1512,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setColor(P.UI_TEXT_DIM);
         g.drawString("Task", listFrame.x, headerTop + fm.getAscent());
 
-        String actionHeader = "Mark incomplete?";
+        String actionHeader = reviewingCompletionCandidates ? "Mark complete?" : "Mark incomplete?";
         int headerCheckboxSize = 16;
         int actionHeaderW = fm.stringWidth(actionHeader);
         int actionHeaderContentW = actionHeaderW + 5 + headerCheckboxSize;
@@ -1559,7 +1580,7 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawRect(row.x, row.y, row.width, row.height);
             g.drawLine(actionColumnX, row.y, actionColumnX, row.y + row.height);
 
-            String label = TextUtils.truncateToWidth(syncMismatchRowLabel(task), fm, actionColumnX - row.x - 16);
+            String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm, actionColumnX - row.x - 16);
             Rectangle taskNameArea = new Rectangle(row.x, row.y, Math.max(0, actionColumnX - row.x), row.height);
             boolean hoverRow = row.contains(mouseX, mouseY);
             boolean hoverTaskName = taskNameArea.contains(mouseX, mouseY);
@@ -1665,6 +1686,10 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private List<XtremeTask> visibleSyncMismatchTasks()
     {
+        if (syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES)
+        {
+            return plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource);
+        }
         return plugin.getSyncMismatchTasks(syncMismatchReviewSource);
     }
 
@@ -1799,7 +1824,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
     }
 
-    private String syncMismatchRowLabel(XtremeTask task)
+    private String syncReviewRowLabel(XtremeTask task)
     {
         if (task == null)
         {
@@ -1822,7 +1847,9 @@ public class XtremeTaskerOverlay extends Overlay {
             return task.getName();
         }
 
-        int instanceOrdinal = completedInstanceOrdinalInGroup(group, task);
+        int instanceOrdinal = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? instanceOrdinalInGroup(group, task)
+                : completedInstanceOrdinalInGroup(group, task);
         if (instanceOrdinal <= 0)
         {
             return task.getName() + " " + progress.label();
@@ -1851,6 +1878,24 @@ public class XtremeTaskerOverlay extends Overlay {
 
         String normalized = name.toLowerCase(Locale.ROOT);
         return normalized.contains("next tier") || normalized.contains("next reward");
+    }
+
+    private int instanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)
+    {
+        if (group == null || task == null || task.getId() == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < group.size(); i++)
+        {
+            XtremeTask groupedTask = group.get(i);
+            if (groupedTask != null && Objects.equals(groupedTask.getId(), task.getId()))
+            {
+                return i + 1;
+            }
+        }
+        return -1;
     }
 
     private int completedInstanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)
@@ -1902,8 +1947,13 @@ public class XtremeTaskerOverlay extends Overlay {
                 syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
 
         int count = selectedVisibleSyncMismatchCount(visibleSyncMismatchTasks());
-        String message = "Mark " + count + " task(s) incomplete?";
-        String warning = "Completion dates and time spent will be cleared.";
+        boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
+        String message = reviewingCompletionCandidates
+                ? "Mark " + count + " task(s) complete?"
+                : "Mark " + count + " task(s) incomplete?";
+        String warning = reviewingCompletionCandidates
+                ? "Completion source will be recorded as sync."
+                : "Completion dates and time spent will be cleared.";
         int w = Math.min(syncMismatchReviewBounds.width - 50,
                 Math.max(fm.stringWidth(message), fm.stringWidth(warning)) + 36);
         int h = 104;
@@ -2824,6 +2874,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin.isCombatAchievementSyncedTasksExpanded(),
                 plugin.isCollectionLogSyncedTasksExpanded(),
                 plugin.isCollectionLogSyncPending(),
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size(),
                 plugin.getSyncMismatchTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
                 plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).size()
         );
@@ -2835,6 +2887,10 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesLayout.githubReadmeLinkBounds.setBounds(layout.githubReadmeLinkBounds);
         rulesLayout.syncClogsButtonBounds.setBounds(layout.syncClogsButtonBounds);
         rulesLayout.syncCAsButtonBounds.setBounds(layout.syncCAsButtonBounds);
+        rulesLayout.syncCaFoundReviewButtonBounds.setBounds(layout.syncCaFoundReviewButtonBounds);
+        rulesLayout.syncCaFoundIgnoreButtonBounds.setBounds(layout.syncCaFoundIgnoreButtonBounds);
+        rulesLayout.syncClogFoundReviewButtonBounds.setBounds(layout.syncClogFoundReviewButtonBounds);
+        rulesLayout.syncClogFoundIgnoreButtonBounds.setBounds(layout.syncClogFoundIgnoreButtonBounds);
         rulesLayout.syncCaReviewButtonBounds.setBounds(layout.syncCaReviewButtonBounds);
         rulesLayout.syncCaReviewIgnoreButtonBounds.setBounds(layout.syncCaReviewIgnoreButtonBounds);
         rulesLayout.syncClogReviewButtonBounds.setBounds(layout.syncClogReviewButtonBounds);
@@ -2853,6 +2909,18 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         if (rulesLayout.syncCAsButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "SYNC CAs", P.BTN_DISABLED_BG);
+        }
+        if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+        }
+        if (rulesLayout.syncCaFoundIgnoreButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
+        }
+        if (rulesLayout.syncClogFoundReviewButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogFoundReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+        }
+        if (rulesLayout.syncClogFoundIgnoreButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogFoundIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
         }
         if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
@@ -3524,6 +3592,18 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public void openSyncCompletionCandidateReview(TaskSource source) {
+                if (!plugin.getSyncCompletionCandidateTasks(source).isEmpty()) {
+                    syncMismatchReviewSource = source;
+                    syncReviewMode = SyncReviewMode.COMPLETION_CANDIDATES;
+                    syncMismatchReviewOpen = true;
+                    syncMismatchScroll.reset();
+                    selectedSyncMismatchTaskIds.clear();
+                    syncMismatchApplyConfirmOpen = false;
+                }
+            }
+
+            @Override
             public void openSyncMismatchReview() {
                 openSyncMismatchReview(null);
             }
@@ -3532,6 +3612,7 @@ public class XtremeTaskerOverlay extends Overlay {
             public void openSyncMismatchReview(TaskSource source) {
                 if (!plugin.getSyncMismatchTasks(source).isEmpty()) {
                     syncMismatchReviewSource = source;
+                    syncReviewMode = SyncReviewMode.MISMATCH;
                     syncMismatchReviewOpen = true;
                     syncMismatchScroll.reset();
                     selectedSyncMismatchTaskIds.clear();
@@ -3542,6 +3623,7 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void closeSyncMismatchReview() {
                 syncMismatchReviewOpen = false;
+                syncReviewMode = SyncReviewMode.MISMATCH;
                 syncMismatchReviewSource = null;
                 selectedSyncMismatchTaskIds.clear();
                 syncMismatchApplyConfirmOpen = false;
@@ -3814,6 +3896,11 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public boolean isSyncMismatchReviewOpen() {
                 return syncMismatchReviewOpen && !visibleSyncMismatchTasks().isEmpty();
+            }
+
+            @Override
+            public boolean isSyncCompletionCandidateReviewOpen() {
+                return syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
             }
 
             @Override

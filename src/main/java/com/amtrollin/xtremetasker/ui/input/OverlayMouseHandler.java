@@ -571,6 +571,32 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 e.consume();
                 return e;
             }
+            if (a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)) {
+                a.openSyncCompletionCandidateReview(TaskSource.COMBAT_ACHIEVEMENT);
+                syncMismatchReviewOpenedAt = e.getWhen();
+                rememberSyncMismatchClick(e, p, button);
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncCaFoundIgnoreButtonBounds.contains(p)) {
+                a.plugin().dismissSyncCompletionCandidateReview(TaskSource.COMBAT_ACHIEVEMENT);
+                a.closeSyncMismatchReview();
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncClogFoundReviewButtonBounds.contains(p)) {
+                a.openSyncCompletionCandidateReview(TaskSource.COLLECTION_LOG);
+                syncMismatchReviewOpenedAt = e.getWhen();
+                rememberSyncMismatchClick(e, p, button);
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncClogFoundIgnoreButtonBounds.contains(p)) {
+                a.plugin().dismissSyncCompletionCandidateReview(TaskSource.COLLECTION_LOG);
+                a.closeSyncMismatchReview();
+                e.consume();
+                return e;
+            }
             if (a.rulesLayout().syncCaReviewButtonBounds.contains(p)) {
                 a.openSyncMismatchReview(TaskSource.COMBAT_ACHIEVEMENT);
                 syncMismatchReviewOpenedAt = e.getWhen();
@@ -692,7 +718,14 @@ public final class OverlayMouseHandler extends MouseAdapter {
         {
             if (a.syncMismatchConfirmYesBounds().contains(p))
             {
-                a.plugin().markSyncMismatchTasksIncompleteAndPersist(a.selectedSyncMismatchTasks());
+                if (a.isSyncCompletionCandidateReviewOpen())
+                {
+                    a.plugin().markSyncCompletionCandidateTasksCompleteAndPersist(a.selectedSyncMismatchTasks());
+                }
+                else
+                {
+                    a.plugin().markSyncMismatchTasksIncompleteAndPersist(a.selectedSyncMismatchTasks());
+                }
                 a.clearSyncMismatchSelection();
                 a.closeSyncMismatchApplyConfirm();
                 rememberSyncMismatchClick(e, p, button);
@@ -1085,6 +1118,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().syncCAsButtonBounds.contains(p)
                         || a.rulesLayout().syncCaMarkedTasksToggleBounds.contains(p)
                         || a.rulesLayout().syncClogMarkedTasksToggleBounds.contains(p)
+                        || a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)
+                        || a.rulesLayout().syncCaFoundIgnoreButtonBounds.contains(p)
+                        || a.rulesLayout().syncClogFoundReviewButtonBounds.contains(p)
+                        || a.rulesLayout().syncClogFoundIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncCaReviewButtonBounds.contains(p)
                         || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncClogReviewButtonBounds.contains(p)

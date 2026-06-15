@@ -31,6 +31,8 @@ public final class RulesTabRenderer {
     private static final String LINE_GITHUB_README_BUTTON = "[GITHUB_README_BUTTON]";
     private static final String LINE_SYNC_CA_BUTTON_ROW = "[SYNC_CA_BUTTON_ROW]";
     private static final String LINE_SYNC_CLOG_BUTTON_ROW = "[SYNC_CLOG_BUTTON_ROW]";
+    private static final String LINE_SYNC_CA_FOUND_ACTIONS_ROW = "[SYNC_CA_FOUND_ACTIONS_ROW]";
+    private static final String LINE_SYNC_CLOG_FOUND_ACTIONS_ROW = "[SYNC_CLOG_FOUND_ACTIONS_ROW]";
     private static final String LINE_SYNC_CA_REVIEW_ACTIONS_ROW = "[SYNC_CA_REVIEW_ACTIONS_ROW]";
     private static final String LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW = "[SYNC_CLOG_REVIEW_ACTIONS_ROW]";
     private static final String LINE_SYNC_CA_MARKED_TOGGLE_PREFIX = "[SYNC_CA_MARKED_TOGGLE]";
@@ -81,6 +83,8 @@ public final class RulesTabRenderer {
                 boolean showCombatAchievementSyncedTaskNames,
                 boolean showCollectionLogSyncedTaskNames,
             boolean collectionLogSyncPending,
+            int combatAchievementFoundCount,
+            int collectionLogFoundCount,
             int combatAchievementReviewCount,
             int collectionLogReviewCount
     ) {
@@ -89,6 +93,10 @@ public final class RulesTabRenderer {
         layout.reloadButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncClogsButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncCAsButtonBounds.setBounds(0, 0, 0, 0);
+        layout.syncCaFoundReviewButtonBounds.setBounds(0, 0, 0, 0);
+        layout.syncCaFoundIgnoreButtonBounds.setBounds(0, 0, 0, 0);
+        layout.syncClogFoundReviewButtonBounds.setBounds(0, 0, 0, 0);
+        layout.syncClogFoundIgnoreButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncCaReviewButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncCaReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncClogReviewButtonBounds.setBounds(0, 0, 0, 0);
@@ -149,6 +157,8 @@ public final class RulesTabRenderer {
                     showCombatAchievementSyncedTaskNames,
                     showCollectionLogSyncedTaskNames,
                     collectionLogSyncPending,
+                    combatAchievementFoundCount,
+                    collectionLogFoundCount,
                     combatAchievementReviewCount,
                     collectionLogReviewCount
             );
@@ -229,7 +239,10 @@ public final class RulesTabRenderer {
                 continue;
             }
 
-            if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line) || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line)) {
+            if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line)
+                    || LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line)
+                    || LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line)
+                    || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line)) {
                 int gap = 6;
                 int reviewW = Math.max(fm.stringWidth("Review") + 18, 76);
                 int ignoreW = Math.max(fm.stringWidth("Ignore") + 18, 72);
@@ -237,7 +250,17 @@ public final class RulesTabRenderer {
                 int btnX = bx;
                 int by = drawY - fm.getAscent();
                 if (by + btnH <= viewportY + viewportH) {
-                    if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line))
+                    if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line))
+                    {
+                        layout.syncCaFoundReviewButtonBounds.setBounds(btnX, by, reviewW, btnH);
+                        layout.syncCaFoundIgnoreButtonBounds.setBounds(btnX + reviewW + gap, by, ignoreW, btnH);
+                    }
+                    else if (LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line))
+                    {
+                        layout.syncClogFoundReviewButtonBounds.setBounds(btnX, by, reviewW, btnH);
+                        layout.syncClogFoundIgnoreButtonBounds.setBounds(btnX + reviewW + gap, by, ignoreW, btnH);
+                    }
+                    else if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line))
                     {
                         layout.syncCaReviewButtonBounds.setBounds(btnX, by, reviewW, btnH);
                         layout.syncCaReviewIgnoreButtonBounds.setBounds(btnX + reviewW + gap, by, ignoreW, btnH);
@@ -379,6 +402,8 @@ public final class RulesTabRenderer {
             boolean showCombatAchievementSyncedTaskNames,
             boolean showCollectionLogSyncedTaskNames,
             boolean collectionLogSyncPending,
+            int combatAchievementFoundCount,
+            int collectionLogFoundCount,
             int combatAchievementReviewCount,
             int collectionLogReviewCount
     )
@@ -405,6 +430,7 @@ public final class RulesTabRenderer {
                 lastCombatAchievementSyncResultAtLocalTime,
                 lastCombatAchievementSyncedTaskNames,
                 showCombatAchievementSyncedTaskNames,
+                combatAchievementFoundCount,
                 combatAchievementReviewCount
         );
         List<String> clogLines = buildCollectionLogSyncColumn(
@@ -415,6 +441,7 @@ public final class RulesTabRenderer {
                 lastCollectionLogSyncedTaskNames,
                 showCollectionLogSyncedTaskNames,
                 collectionLogSyncPending,
+                collectionLogFoundCount,
                 collectionLogReviewCount
         );
 
@@ -455,6 +482,7 @@ public final class RulesTabRenderer {
             String lastCombatAchievementSyncResultAtLocalTime,
             List<String> lastCombatAchievementSyncedTaskNames,
             boolean showCombatAchievementSyncedTaskNames,
+            int combatAchievementFoundCount,
             int combatAchievementReviewCount
     )
     {
@@ -473,8 +501,13 @@ public final class RulesTabRenderer {
                 lastCombatAchievementSyncedTaskNames,
                 showCombatAchievementSyncedTaskNames,
                 LINE_SYNC_CA_MARKED_TOGGLE_PREFIX,
+                LINE_SYNC_CA_FOUND_ACTIONS_ROW,
                 fm,
                 maxWidth);
+        if (combatAchievementFoundCount <= 0)
+        {
+            lines.remove(LINE_SYNC_CA_FOUND_ACTIONS_ROW);
+        }
         addReviewLines(lines, combatAchievementReviewCount, "CA", fm, maxWidth, LINE_SYNC_CA_REVIEW_ACTIONS_ROW);
         lines.add("");
         return lines;
@@ -488,6 +521,7 @@ public final class RulesTabRenderer {
             List<String> lastCollectionLogSyncedTaskNames,
             boolean showCollectionLogSyncedTaskNames,
             boolean collectionLogSyncPending,
+            int collectionLogFoundCount,
             int collectionLogReviewCount
     )
     {
@@ -510,8 +544,13 @@ public final class RulesTabRenderer {
                 lastCollectionLogSyncedTaskNames,
                 showCollectionLogSyncedTaskNames,
                 LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX,
+                LINE_SYNC_CLOG_FOUND_ACTIONS_ROW,
                 fm,
                 maxWidth);
+        if (collectionLogFoundCount <= 0)
+        {
+            lines.remove(LINE_SYNC_CLOG_FOUND_ACTIONS_ROW);
+        }
         addReviewLines(lines, collectionLogReviewCount, "CLOG/AD", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
         lines.add("");
         return lines;
@@ -555,7 +594,10 @@ public final class RulesTabRenderer {
                 continue;
             }
 
-            if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line) || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line))
+            if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line)
+                    || LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line)
+                    || LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line)
+                    || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line))
             {
                 int gap = 6;
                 int reviewW = Math.max(fm.stringWidth("Review") + 18, 76);
@@ -564,7 +606,17 @@ public final class RulesTabRenderer {
                 int by = drawY - fm.getAscent();
                 int groupW = reviewW + gap + ignoreW;
                 int groupX = x + Math.max(0, (colW - groupW) / 2);
-                if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line))
+                if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line))
+                {
+                    layout.syncCaFoundReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
+                    layout.syncCaFoundIgnoreButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
+                }
+                else if (LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line))
+                {
+                    layout.syncClogFoundReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
+                    layout.syncClogFoundIgnoreButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
+                }
+                else if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line))
                 {
                     layout.syncCaReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
                     layout.syncCaReviewIgnoreButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
@@ -706,6 +758,8 @@ public final class RulesTabRenderer {
             boolean showCombatAchievementSyncedTaskNames,
             boolean showCollectionLogSyncedTaskNames,
             boolean collectionLogSyncPending,
+            int combatAchievementFoundCount,
+            int collectionLogFoundCount,
             int combatAchievementReviewCount,
             int collectionLogReviewCount) {
         List<String> lines = buildDataSyncLines(fm, maxWidth);
@@ -724,8 +778,13 @@ public final class RulesTabRenderer {
                 lastCombatAchievementSyncedTaskNames,
                 showCombatAchievementSyncedTaskNames,
                 LINE_SYNC_CA_MARKED_TOGGLE_PREFIX,
+                LINE_SYNC_CA_FOUND_ACTIONS_ROW,
                 fm,
                 maxWidth);
+        if (combatAchievementFoundCount <= 0)
+        {
+            lines.remove(LINE_SYNC_CA_FOUND_ACTIONS_ROW);
+        }
         addReviewLines(lines, combatAchievementReviewCount, "CA", fm, maxWidth, LINE_SYNC_CA_REVIEW_ACTIONS_ROW);
         if (combatAchievementReviewCount > 0)
         {
@@ -749,8 +808,13 @@ public final class RulesTabRenderer {
             lastCollectionLogSyncedTaskNames,
             showCollectionLogSyncedTaskNames,
             LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX,
+            LINE_SYNC_CLOG_FOUND_ACTIONS_ROW,
             fm,
             maxWidth);
+        if (collectionLogFoundCount <= 0)
+        {
+            lines.remove(LINE_SYNC_CLOG_FOUND_ACTIONS_ROW);
+        }
         addReviewLines(lines, collectionLogReviewCount, "CLOG/AD", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
 
         lines.add("");
@@ -769,6 +833,7 @@ public final class RulesTabRenderer {
             List<String> taskNames,
             boolean expanded,
             String markerPrefix,
+            String actionsMarker,
             FontMetrics fm,
             int maxWidth)
     {
@@ -782,6 +847,7 @@ public final class RulesTabRenderer {
                 + taskNames.size()
                 + ")";
         lines.add(markerPrefix + " " + toggleLabel);
+        lines.add(actionsMarker);
 
         if (!expanded)
         {
