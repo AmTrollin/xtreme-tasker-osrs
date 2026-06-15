@@ -2892,7 +2892,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (code == KeyEvent.VK_SPACE || code == KeyEvent.VK_ENTER) {
-            return toggleSelectedTaskFromKeyboard();
+            return openSelectedTaskDetailsFromKeyboard();
         }
 
         // S toggles completion sort (new model)
@@ -3083,7 +3083,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return false;
     }
 
-    private boolean toggleSelectedTaskFromKeyboard()
+    private boolean openSelectedTaskDetailsFromKeyboard()
     {
         List<XtremeTask> tasks = getSortedTasksForTier(activeTierTab);
         if (tasks.isEmpty()) {
@@ -3099,37 +3099,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return false;
         }
 
-        boolean condensedRows = useCondensedTaskRows();
-        boolean wasDone = condensedRows
-                ? plugin.getTaskGroupProgress(task).isComplete()
-                : plugin.isTaskCompleted(task);
-        if (!wasDone) {
-            animations.startCompletionAnim(task.getId());
-        }
-
-        if (wasDone) {
-            boolean groupedTask = condensedRows
-                    && plugin.getTaskGroupProgress(task) != null
-                    && plugin.getTaskGroupProgress(task).isGrouped();
-            if (groupedTask || !plugin.skipSingleIncompleteConfirmation()) {
-                pendingMarkAllIncompleteTask = task;
-                pendingMarkAllIncompleteGroupMode = groupedTask;
-                markIncompleteDontShowChecked = false;
-            } else {
-                plugin.toggleTaskCompletedAndPersist(task);
-            }
-        } else if (condensedRows) {
-            if (plugin.getTaskGroupProgress(task).isGrouped()) {
-                plugin.toggleTaskGroupProgressAndPersist(task);
-            } else {
-                plugin.toggleTaskCompletedAndPersist(task);
-            }
-        } else {
-            plugin.toggleTaskCompletedAndPersist(task);
-        }
-
-        List<XtremeTask> tasksAfter = getSortedTasksForTier(activeTierTab);
-        selectionModel.setSelectionToTask(activeTierTab, tasksAfter, task);
+        taskDetailsPopup.open(task);
         return true;
     }
 

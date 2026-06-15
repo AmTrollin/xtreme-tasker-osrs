@@ -176,58 +176,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     return e;
                 }
 
-                // Toggle button in popup
-                if (a.taskDetailsToggleBounds().contains(p)) {
-                    XtremeTask t = a.taskDetailsTask();
-                    if (t != null) {
-                        boolean groupedMode = a.useCondensedTaskRows();
-                        com.amtrollin.xtremetasker.models.TaskGroupProgress progress = a.plugin().getTaskGroupProgress(t);
-                        boolean wasDone = groupedMode ? progress.isComplete() : a.plugin().isTaskCompleted(t);
-                        if (!wasDone) {
-                            a.animations().startCompletionAnim(t.getId());
-                        }
-
-                        if (wasDone) {
-                            if (groupedMode && progress.isGrouped()) {
-                                a.requestMarkAllIncompleteConfirmation(t, true);
-                            } else if (a.plugin().skipSingleIncompleteConfirmation()) {
-                                a.plugin().toggleTaskCompletedAndPersist(t);
-                            } else {
-                                a.requestMarkAllIncompleteConfirmation(t, false);
-                            }
-                        } else if (groupedMode && progress.isGrouped()) {
-                                a.plugin().setTaskGroupCompletedCountAndPersist(t, progress.getTotal());
-                        } else {
-                            a.plugin().toggleTaskCompletedAndPersist(t);
-                        }
-                    }
-                    e.consume();
-                    return e;
-                }
-
-                XtremeTask detailTask = a.taskDetailsTask();
-                synchronized (a.taskDetailsInstanceRemoveBounds()) {
-                    for (Map.Entry<XtremeTask, Rectangle> entry : a.taskDetailsInstanceRemoveBounds().entrySet()) {
-                        Rectangle bounds = entry.getValue();
-                        XtremeTask instance = entry.getKey();
-                        if (bounds != null && instance != null && bounds.contains(p)) {
-                            if (a.plugin().isTaskCompleted(instance)) {
-                                a.plugin().toggleTaskCompletedAndPersist(instance);
-                            }
-                            e.consume();
-                            return e;
-                        }
-                    }
-                }
-
-                if (detailTask != null && a.taskDetailsIncrementGroupBounds().contains(p)) {
-                    int completed = a.plugin().getTaskGroupProgress(detailTask).getCompleted();
-                    a.plugin().setTaskGroupCompletedCountAndPersist(detailTask, completed + 1);
-                    a.animations().startCompletionAnim(detailTask.getId());
-                    e.consume();
-                    return e;
-                }
-
                 // General click inside popup — consume and stop
                 e.consume();
                 return e;
@@ -1003,49 +951,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
         List<XtremeTask> tasksBefore = a.getSortedTasksForTier(a.activeTier());
         a.selectionModel().setSelectionToTask(a.activeTier(), tasksBefore, task);
 
-        Rectangle cb;
-        synchronized (a.taskCheckboxBounds()) {
-            cb = a.taskCheckboxBounds().get(task);
-        }
-        boolean clickedCheckbox = (cb != null && cb.contains(p));
-
-        if (button == MouseEvent.BUTTON1 && clickedCheckbox)
-        {
-            boolean wasDone = a.useCondensedTaskRows()
-                    ? a.plugin().getTaskGroupProgress(task).isComplete()
-                    : a.plugin().isTaskCompleted(task);
-            if (!wasDone) {
-                a.animations().startCompletionAnim(task.getId());
-            }
-
-            if (wasDone) {
-                com.amtrollin.xtremetasker.models.TaskGroupProgress progress = a.plugin().getTaskGroupProgress(task);
-                if (a.useCondensedTaskRows() && progress != null && progress.isGrouped()) {
-                    a.requestMarkAllIncompleteConfirmation(task, true);
-                } else if (a.plugin().skipSingleIncompleteConfirmation()) {
-                    a.plugin().toggleTaskCompletedAndPersist(task);
-                } else {
-                    a.requestMarkAllIncompleteConfirmation(task, false);
-                }
-            } else if (a.useCondensedTaskRows()) {
-                if (a.plugin().getTaskGroupProgress(task).isGrouped()) {
-                    a.plugin().toggleTaskGroupProgressAndPersist(task);
-                } else {
-                    a.plugin().toggleTaskCompletedAndPersist(task);
-                }
-            } else {
-                a.plugin().toggleTaskCompletedAndPersist(task);
-            }
-
-            List<XtremeTask> tasksAfter = a.getSortedTasksForTier(a.activeTier());
-            a.selectionModel().setSelectionToTask(a.activeTier(), tasksAfter, task);
-
-            rememberTaskRowClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        if (button == MouseEvent.BUTTON1 && !clickedCheckbox)
+        if (button == MouseEvent.BUTTON1)
         {
             a.openTaskDetails(task);
             rememberTaskRowClick(e, p, button);
@@ -1158,12 +1064,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.isTaskDetailsOpen() && (
                         a.taskDetailsCloseBounds().contains(p)
                         || a.taskDetailsWikiBounds().contains(p)
-                        || a.taskDetailsToggleBounds().contains(p)
                         || a.taskDetailsScrollbarThumbBounds().contains(p)
                         || a.taskDetailsScrollbarRailBounds().contains(p)
-                        || a.taskDetailsDecrementGroupBounds().contains(p)
-                        || a.taskDetailsIncrementGroupBounds().contains(p)
-                        || containsAny(a.taskDetailsInstanceRemoveBounds(), p)
                 ))
                 // RULES tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.RULES && (

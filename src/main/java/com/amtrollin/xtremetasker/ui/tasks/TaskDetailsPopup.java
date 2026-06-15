@@ -298,6 +298,7 @@ public final class TaskDetailsPopup
         decrementGroupBounds.setBounds(0, 0, 0, 0);
         incrementGroupBounds.setBounds(0, 0, 0, 0);
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
+        toggleBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
         java.awt.Point mousePoint = mouse == null ? null : new java.awt.Point(mouse.getX(), mouse.getY());
 
@@ -317,8 +318,7 @@ public final class TaskDetailsPopup
                 ? buildInstanceHistoryLines(groupInstances, isCompleted, completionInfoProvider, taskTicksProvider)
                 : List.of();
         int footerPad = 12;
-        int footerH = ROW_HEIGHT + 10;
-        int footerY = bounds.y + bounds.height - footerH - footerPad;
+        int footerY = bounds.y + bounds.height - footerPad;
 
         // Scrollable viewport between content top and footer divider
         final int scrollBarW = 5;
@@ -672,23 +672,6 @@ public final class TaskDetailsPopup
                 footerY - 6
         );
 
-        boolean footerDone = grouped ? groupProgress.isComplete() : done;
-        String toggleText = grouped
-                ? (footerDone ? "Mark all incomplete" : "Mark all complete")
-                : (footerDone ? "Mark incomplete" : "Mark complete");
-        int btnW = grouped ? 160 : 140;
-
-        int btnX = bounds.x + (bounds.width - btnW) / 2;
-
-        toggleBounds.setBounds(btnX, footerY, btnW, footerH);
-
-        drawPopupButton(
-                g,
-                fm,
-                toggleBounds,
-                toggleText,
-                !footerDone
-        );
     }
 
     private void drawPopupButton(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean enabled)
@@ -723,9 +706,9 @@ public final class TaskDetailsPopup
     )
     {
         final int rowH = 18;
-        final int btn = 18;
         final int gap = 6;
         decrementGroupBounds.setBounds(0, 0, 0, 0);
+        incrementGroupBounds.setBounds(0, 0, 0, 0);
 
         String text = "Completed: " + progress.getCompleted() + "/" + progress.getTotal();
         int textX = x;
@@ -737,11 +720,8 @@ public final class TaskDetailsPopup
                 textX,
                 textBaseline);
 
-        int plusX = textX + fm.stringWidth(drawText) + gap;
-        incrementGroupBounds.setBounds(plusX, rowTop, btn, btn);
-        drawTinyButton(g, fm, incrementGroupBounds, "+", progress.getCompleted() < progress.getTotal());
-
-        drawGroupProgressHelpIcon(g, fm, plusX + btn + gap, rowTop, rowH, x + contentW, mouse);
+        int helpX = textX + fm.stringWidth(drawText) + gap;
+        drawGroupProgressHelpIcon(g, fm, helpX, rowTop, rowH, x + contentW, mouse);
     }
 
     private void drawBadgeHoverText(Graphics2D g, FontMetrics fm, String text, Rectangle badgeBounds)
@@ -810,14 +790,7 @@ public final class TaskDetailsPopup
 
     private void drawInstanceHistoryLine(Graphics2D g, FontMetrics fm, int x, int baselineY, int contentW, InstanceHistoryLine line)
     {
-        final int btn = 18;
-        int blockTop = baselineY - fm.getAscent();
-        int buttonTop = blockTop + 1;
-        Rectangle removeBounds = new Rectangle(x, buttonTop, btn, btn);
-        instanceRemoveBounds.put(line.task, removeBounds);
-        drawTinyButton(g, fm, removeBounds, "-", true);
-
-        int textX = x + btn + 8;
+        int textX = x;
         int textW = Math.max(0, contentW - (textX - x));
         g.setColor(palette.UI_TEXT_DIM);
         int textYOffset = 2;
