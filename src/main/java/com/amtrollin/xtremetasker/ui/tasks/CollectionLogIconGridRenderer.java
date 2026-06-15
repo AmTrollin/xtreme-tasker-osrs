@@ -202,10 +202,10 @@ public final class CollectionLogIconGridRenderer
         int w = textW + padX * 2;
         int h = fm.getHeight() * lines.size() + padY * 2;
         int x = anchor.x + anchor.width / 2 - w / 2;
-        int y = anchor.y - h - 4;
-        if (y < clamp.y + 4)
+        int y = anchor.y + anchor.height - 6;
+        if (y + h > clamp.y + clamp.height - 4)
         {
-            y = anchor.y + anchor.height + 4;
+            y = anchor.y - h + 3;
         }
 
         x = Math.max(clamp.x + 4, Math.min(x, clamp.x + clamp.width - w - 4));
