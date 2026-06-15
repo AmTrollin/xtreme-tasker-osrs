@@ -361,6 +361,19 @@ public final class TaskDetailsPopup
         }
         if (showDescriptionSection)
         {
+            totalPx += 6 + 12; // divider gap before next section
+        }
+        if (hasRequirementPreview)
+        {
+            totalPx += ROW_HEIGHT; // collection log requirement header
+            if (requirementPreview.showSummaryText())
+            {
+                totalPx += ROW_HEIGHT; // counter summary
+            }
+            if (requirementPreview.showItemList())
+            {
+                totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), contentW);
+            }
             totalPx += 6 + 12; // divider gap before "Prereqs"
         }
         totalPx += ROW_HEIGHT; // "Prereqs" header
@@ -382,19 +395,6 @@ public final class TaskDetailsPopup
                 String p = para.trim();
                 if (p.isEmpty()) continue;
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(p, fm, contentW).size();
-            }
-        }
-        if (hasRequirementPreview)
-        {
-            totalPx += 6 + 12; // divider gap before eligible CLog items
-            totalPx += ROW_HEIGHT; // "Eligible Collection Log Items" header
-            if (requirementPreview.showSummaryText())
-            {
-                totalPx += ROW_HEIGHT; // counter summary
-            }
-            if (requirementPreview.showItemList())
-            {
-                totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), contentW);
             }
         }
         if (!taskTip.isEmpty())
@@ -483,6 +483,42 @@ public final class TaskDetailsPopup
             y += 12;
         }
 
+        if (hasRequirementPreview)
+        {
+            g.setColor(palette.UI_GOLD);
+            g.drawString(collectionLogRequirementTitle(requirementPreview), contentLeft, y);
+            y += ROW_HEIGHT;
+
+            if (requirementPreview.showSummaryText())
+            {
+                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
+                y += ROW_HEIGHT;
+            }
+
+            if (requirementPreview.showItemList())
+            {
+                y = CollectionLogIconGridRenderer.render(
+                        g,
+                        fm,
+                        contentLeft,
+                        y,
+                        contentW,
+                        requirementPreview.getItems(),
+                        collectionLogItemImageProvider,
+                        mousePoint,
+                        viewportBounds,
+                        palette.UI_TEXT,
+                        palette.UI_TEXT_DIM,
+                        palette.UI_EDGE_LIGHT,
+                        palette.UI_EDGE_DARK);
+            }
+
+            y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
+        }
+
         g.setColor(palette.UI_GOLD);
         g.drawString("Prereqs", contentLeft, y);
         y += ROW_HEIGHT;
@@ -520,42 +556,6 @@ public final class TaskDetailsPopup
                     g.drawString(TextUtils.truncateToWidth(line, fm, contentW), contentLeft, y);
                     y += ROW_HEIGHT;
                 }
-            }
-        }
-
-        if (hasRequirementPreview)
-        {
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
-
-            g.setColor(palette.UI_GOLD);
-            g.drawString(collectionLogRequirementTitle(requirementPreview), contentLeft, y);
-            y += ROW_HEIGHT;
-
-            if (requirementPreview.showSummaryText())
-            {
-                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
-                y += ROW_HEIGHT;
-            }
-
-            if (requirementPreview.showItemList())
-            {
-                y = CollectionLogIconGridRenderer.render(
-                        g,
-                        fm,
-                        contentLeft,
-                        y,
-                        contentW,
-                        requirementPreview.getItems(),
-                        collectionLogItemImageProvider,
-                        mousePoint,
-                        viewportBounds,
-                        palette.UI_TEXT,
-                        palette.UI_TEXT_DIM,
-                        palette.UI_EDGE_LIGHT,
-                        palette.UI_EDGE_DARK);
             }
         }
 

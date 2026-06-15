@@ -813,6 +813,12 @@ public final class CurrentTabRenderer
             y += 8;
         }
 
+        if (hasRequirementPreview)
+        {
+            y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview, collectionLogItemImageProvider, mousePoint);
+            y += 8;
+        }
+
         g.setColor(uiGold);
         g.drawString("Prereqs", x, y);
         y += rowHeight;
@@ -842,12 +848,6 @@ public final class CurrentTabRenderer
             y += rowHeight;
         }
         y += 8;
-
-        if (hasRequirementPreview)
-        {
-            y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview, collectionLogItemImageProvider, mousePoint);
-            y += 8;
-        }
 
         if (hasTip)
         {
