@@ -778,7 +778,7 @@ public final class RulesTabRenderer {
         }
 
         String toggleLabel = (expanded ? "Hide" : "Show")
-                + " tasks marked complete ("
+                + " tasks found by sync ("
                 + taskNames.size()
                 + ")";
         lines.add(markerPrefix + " " + toggleLabel);

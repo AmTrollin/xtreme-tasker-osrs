@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class CollectionLogMismatchTest
@@ -81,6 +82,37 @@ public class CollectionLogMismatchTest
         collectionLogService.storeItem(10878);
         List<XtremeTask> mismatchesWhenObtained = plugin.findCollectionLogSyncMismatches(true);
         assertTrue("Obtained requirement should no longer mismatch", mismatchesWhenObtained.isEmpty());
+    }
+
+    @Test
+    public void collectionLogSyncFindsCandidatesWithoutMarkingTasksComplete() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        tasks.add(task);
+
+        collectionLogService.storeItem(10878);
+
+        List<String> candidates = new java.util.ArrayList<>();
+        int found = plugin.findCollectionLogCompletionCandidatesFromCache(candidates);
+
+        assertEquals(1, found);
+        assertEquals(task.getId(), candidates.get(0));
+        assertFalse("Sync discovery must not auto-mark the task complete", plugin.isTaskCompleted(task));
+        assertTrue(plugin.manualCompletedTaskIdsForTesting().isEmpty());
+        assertTrue(plugin.syncedCompletedTaskIdsForTesting().isEmpty());
     }
 
     @Test
