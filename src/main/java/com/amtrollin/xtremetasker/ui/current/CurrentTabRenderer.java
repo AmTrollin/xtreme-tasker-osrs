@@ -9,6 +9,7 @@ import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
+import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import javax.imageio.ImageIO;
@@ -1192,8 +1193,57 @@ public final class CurrentTabRenderer
 
         g.setColor(uiTextDim);
         g.drawString(prefix, x, y);
-        g.setColor(uiGold);
-        g.drawString(truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
+        drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
+    }
+
+    private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)
+    {
+        String currentTaskPrefix = "current task: ";
+        if (!suffix.startsWith(currentTaskPrefix))
+        {
+            g.setColor(uiTextDim);
+            g.drawString(truncateToWidth(suffix, fm, maxWidth), x, y);
+            return;
+        }
+
+        int prefixWidth = fm.stringWidth(currentTaskPrefix);
+        if (prefixWidth >= maxWidth)
+        {
+            g.setColor(uiTextDim);
+            g.drawString(truncateToWidth(suffix, fm, maxWidth), x, y);
+            return;
+        }
+
+        String progress = suffix.substring(currentTaskPrefix.length());
+        g.setColor(uiTextDim);
+        g.drawString(currentTaskPrefix, x, y);
+        g.setColor(isCollectionLogProgressComplete(progress) ? UiPalette.TIER_COMPLETE_GLOW : uiTextDim);
+        g.drawString(truncateToWidth(progress, fm, maxWidth - prefixWidth), x + prefixWidth, y);
+    }
+
+    private static boolean isCollectionLogProgressComplete(String progress)
+    {
+        if (progress == null)
+        {
+            return false;
+        }
+
+        String[] parts = progress.trim().split("/");
+        if (parts.length != 2)
+        {
+            return false;
+        }
+
+        try
+        {
+            int current = Integer.parseInt(parts[0].trim());
+            int required = Integer.parseInt(parts[1].trim());
+            return required > 0 && current >= required;
+        }
+        catch (NumberFormatException e)
+        {
+            return false;
+        }
     }
 
     private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport)

@@ -278,6 +278,7 @@ public class XtremeTaskerOverlay extends Overlay {
                         task,
                         requirementSequence,
                         countedRequirementThresholds(requirementSequence),
+                        itemIds,
                         totalObtainedCount,
                         completedInstanceCanApplyAll)
                 : null;
@@ -672,6 +673,7 @@ public class XtremeTaskerOverlay extends Overlay {
             XtremeTask task,
             List<XtremeTask> sequence,
             List<Integer> thresholds,
+            int[] itemIds,
             int totalObtainedCount,
             boolean completedInstanceCanApplyAll)
     {
@@ -703,7 +705,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return new RepeatedCollectionLogRequirementState(
                     Math.max(0, totalObtainedCount),
                     0,
-                    repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
+                    repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired, 0)
             );
         }
 
@@ -711,18 +713,29 @@ public class XtremeTaskerOverlay extends Overlay {
         if (currentIndex >= 0)
         {
             int previousThreshold = currentIndex <= 0 ? 0 : thresholdAt(thresholds, currentIndex - 1);
-            previousThreshold = Math.max(previousThreshold, completedThreshold);
             int currentThreshold = Math.max(thresholdAt(thresholds, currentIndex), previousThreshold);
             currentRequired = Math.max(1, currentThreshold - previousThreshold);
-            currentDone = Math.min(Math.max(0, totalObtainedCount - previousThreshold), currentRequired);
-            appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, previousThreshold + currentDone));
+
+            Integer baselineCount = plugin.getCurrentTaskCollectionLogBaselineCount(canonicalItemIds(itemIds));
+            if (baselineCount != null)
+            {
+                int baseline = Math.min(Math.max(0, baselineCount), Math.max(0, completedThreshold));
+                currentDone = Math.max(0, totalObtainedCount - baseline);
+                appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, baseline));
+            }
+            else
+            {
+                previousThreshold = Math.max(previousThreshold, completedThreshold);
+                currentDone = Math.max(0, totalObtainedCount - previousThreshold);
+                appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, previousThreshold + currentDone));
+            }
             availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
         }
 
         return new RepeatedCollectionLogRequirementState(
                 appliedObtainedCount,
                 availableObtainedCount,
-                repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
+                repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired, availableObtainedCount)
         );
     }
 
@@ -787,10 +800,18 @@ public class XtremeTaskerOverlay extends Overlay {
         return Math.max(0, thresholds.get(Math.min(index, thresholds.size() - 1)));
     }
 
-    private static String repeatedCollectionLogRequirementSummary(int totalObtainedCount, int currentDone, int currentRequired)
+    private static String repeatedCollectionLogRequirementSummary(
+            int totalObtainedCount,
+            int currentDone,
+            int currentRequired,
+            int notYetAppliedCount)
     {
         String summary = "total obtained: " + totalObtainedCount;
-        return currentRequired > 1 ? summary + " | current task: " + currentDone + "/" + currentRequired : summary;
+        if (currentRequired > 0)
+        {
+            return summary + " | current task: " + currentDone + "/" + currentRequired;
+        }
+        return notYetAppliedCount > 0 ? summary + " | not yet applied: " + notYetAppliedCount : summary;
     }
 
     private static final class RepeatedCollectionLogRequirementState {

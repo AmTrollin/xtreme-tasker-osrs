@@ -181,6 +181,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private long loadedStateAtMillis = 0L;
     private String currentTaskId = null;
     private String undoableCompletedTaskId = null;
+    private String currentTaskCollectionLogBaselineSignature = null;
+    private Integer currentTaskCollectionLogBaselineCount = null;
 
     private final List<XtremeTask> tasks = new ArrayList<>();
     private boolean taskPackLoaded = false;
@@ -309,6 +311,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTask = null;
         currentTaskId = null;
         undoableCompletedTaskId = null;
+        currentTaskCollectionLogBaselineSignature = null;
+        currentTaskCollectionLogBaselineCount = null;
 
         manualCompletedTaskIds.clear();
         syncedCompletedTaskIds.clear();
@@ -1110,6 +1114,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setRetiredTaskIds(new HashSet<>(retiredTaskIds));
         state.setCurrentTaskId(currentTaskId);
         state.setUndoableCompletedTaskId(undoableCompletedTaskId);
+        state.setCurrentTaskCollectionLogBaselineSignature(currentTaskCollectionLogBaselineSignature);
+        state.setCurrentTaskCollectionLogBaselineCount(currentTaskCollectionLogBaselineCount);
         state.setLastSeenPackVersion(lastSeenPackVersion);
         state.setLastKnownTaskCount(lastKnownTaskCount);
         state.setLastSyncResult(lastSyncResult);
@@ -1181,6 +1187,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 && isValidLongMap(state.getTaskTimeTicksById())
                 && isValidLongMap(state.getCompletedTaskTimeTicksById())
                 && isValidPositiveIntegerSet(state.getCollectionLogItemIds())
+                && (state.getCurrentTaskCollectionLogBaselineCount() == null
+                || state.getCurrentTaskCollectionLogBaselineCount() >= 0)
                 && state.getLastSeenPackVersion() >= 0
                 && state.getLastKnownTaskCount() >= 0;
     }
@@ -1508,6 +1516,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         currentTaskId = safeTrim(state.getCurrentTaskId());
         undoableCompletedTaskId = safeTrim(state.getUndoableCompletedTaskId());
+        currentTaskCollectionLogBaselineSignature = safeTrim(state.getCurrentTaskCollectionLogBaselineSignature());
+        currentTaskCollectionLogBaselineCount = state.getCurrentTaskCollectionLogBaselineCount();
         lastSeenPackVersion = state.getLastSeenPackVersion();
         lastKnownTaskCount = state.getLastKnownTaskCount();
         lastSyncResult = safeTrim(state.getLastSyncResult());
@@ -1561,6 +1571,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTask = null;
         currentTaskId = null;
         undoableCompletedTaskId = null;
+        currentTaskCollectionLogBaselineSignature = null;
+        currentTaskCollectionLogBaselineCount = null;
         loadedStateAccountKey = null;
         loadedStateAtMillis = 0L;
         lastSeenPackVersion = 0;
@@ -1717,6 +1729,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (currentTask == null)
         {
             currentTaskId = null;
+            clearCurrentTaskCollectionLogBaseline();
         }
 
         XtremeTask undoableTask = findTaskById(undoableCompletedTaskId);
@@ -1830,6 +1843,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     public int countObtainedCollectionLogItems(int[] itemIds) {
         return collectionLogService == null ? 0 : Math.toIntExact(collectionLogService.countObtained(itemIds));
+    }
+
+    public Integer getCurrentTaskCollectionLogBaselineCount(String requirementSignature)
+    {
+        String signature = safeTrim(requirementSignature);
+        if (signature == null
+                || currentTaskCollectionLogBaselineSignature == null
+                || !signature.equals(currentTaskCollectionLogBaselineSignature))
+        {
+            return null;
+        }
+        return currentTaskCollectionLogBaselineCount;
     }
 
     public long getCollectionLogItemObtainedOrder(int itemId) {
@@ -2279,6 +2304,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         rollAnimEndMs = System.currentTimeMillis() + com.amtrollin.xtremetasker.ui.style.UiConstants.ROLL_ANIM_MS;
 
         currentTaskId = (currentTask != null) ? currentTask.getId() : null;
+        captureCurrentTaskCollectionLogBaseline();
         dirty = true;
         persistIfPossible(); // writes immediately if activeAccountKey != null
     }
@@ -2487,6 +2513,47 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             taskTimeTicksById.put(id, completedTicks);
         }
+    }
+
+    private void captureCurrentTaskCollectionLogBaseline()
+    {
+        clearCurrentTaskCollectionLogBaseline();
+
+        TaskVerification verification = currentTask == null ? null : currentTask.getVerification();
+        if (currentTask == null
+                || currentTask.getSource() != TaskSource.COLLECTION_LOG
+                || verification == null
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || verification.getItemIds() == null
+                || verification.getItemIds().length == 0)
+        {
+            return;
+        }
+
+        currentTaskCollectionLogBaselineSignature = collectionLogRequirementSignature(verification.getItemIds());
+        currentTaskCollectionLogBaselineCount = countObtainedCollectionLogItems(verification.getItemIds());
+    }
+
+    private void clearCurrentTaskCollectionLogBaseline()
+    {
+        currentTaskCollectionLogBaselineSignature = null;
+        currentTaskCollectionLogBaselineCount = null;
+    }
+
+    private static String collectionLogRequirementSignature(int[] itemIds)
+    {
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return null;
+        }
+
+        String signature = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .mapToObj(String::valueOf)
+                .collect(Collectors.joining(","));
+        return signature.isEmpty() ? null : signature;
     }
 
     @Subscribe
@@ -3635,6 +3702,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             currentTask = null;
             currentTaskId = null;
+            clearCurrentTaskCollectionLogBaseline();
         }
         if (syncMismatchTaskIds.isEmpty())
         {

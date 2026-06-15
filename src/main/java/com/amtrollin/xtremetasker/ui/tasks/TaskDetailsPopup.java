@@ -984,8 +984,57 @@ public final class TaskDetailsPopup
 
         g.setColor(palette.UI_TEXT_DIM);
         g.drawString(prefix, x, y);
-        g.setColor(palette.UI_GOLD);
-        g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
+        drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
+    }
+
+    private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)
+    {
+        String currentTaskPrefix = "current task: ";
+        if (!suffix.startsWith(currentTaskPrefix))
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth), x, y);
+            return;
+        }
+
+        int prefixWidth = fm.stringWidth(currentTaskPrefix);
+        if (prefixWidth >= maxWidth)
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth), x, y);
+            return;
+        }
+
+        String progress = suffix.substring(currentTaskPrefix.length());
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(currentTaskPrefix, x, y);
+        g.setColor(isCollectionLogProgressComplete(progress) ? UiPalette.TIER_COMPLETE_GLOW : palette.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(progress, fm, maxWidth - prefixWidth), x + prefixWidth, y);
+    }
+
+    private static boolean isCollectionLogProgressComplete(String progress)
+    {
+        if (progress == null)
+        {
+            return false;
+        }
+
+        String[] parts = progress.trim().split("/");
+        if (parts.length != 2)
+        {
+            return false;
+        }
+
+        try
+        {
+            int current = Integer.parseInt(parts[0].trim());
+            int required = Integer.parseInt(parts[1].trim());
+            return required > 0 && current >= required;
+        }
+        catch (NumberFormatException e)
+        {
+            return false;
+        }
     }
 
     private static boolean isAchievementDiaryTask(XtremeTask task)
