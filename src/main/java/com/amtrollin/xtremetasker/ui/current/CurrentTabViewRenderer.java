@@ -62,6 +62,7 @@ public final class CurrentTabViewRenderer
             XtremeTask recentCompletedTask,
             CompletionInfo recentCompletionInfo,
             Long recentTaskTimeTicks,
+            boolean canUndoRecentCompletion,
             boolean keyboardHintsOpen,
             Rectangle keyboardHintsButtonBounds,
             Rectangle keyboardHintsPopupBounds,
@@ -98,12 +99,14 @@ public final class CurrentTabViewRenderer
                 taskTimeTicks,
                 recentCompletedTask,
                 recentCompletionInfo,
-                recentTaskTimeTicks
+                recentTaskTimeTicks,
+                canUndoRecentCompletion
         );
 
         state.layout().wikiButtonBounds.setBounds(layout.wikiButtonBounds);
         state.layout().rollButtonBounds.setBounds(layout.rollButtonBounds);
         state.layout().completeButtonBounds.setBounds(layout.completeButtonBounds);
+        state.layout().undoButtonBounds.setBounds(layout.undoButtonBounds);
         state.layout().viewportBounds.setBounds(layout.viewportBounds);
         state.layout().totalContentPx = layout.totalContentPx;
 
@@ -111,6 +114,7 @@ public final class CurrentTabViewRenderer
         {
             state.layout().rollButtonBounds.setBounds(0, 0, 0, 0);
             state.layout().completeButtonBounds.setBounds(0, 0, 0, 0);
+            state.layout().undoButtonBounds.setBounds(0, 0, 0, 0);
             renderKeyboardHints(g, fm, panelBounds, keyboardHintsOpen, keyboardHintsButtonBounds, keyboardHintsPopupBounds, hoverX, hoverY);
             return;
         }
@@ -122,6 +126,13 @@ public final class CurrentTabViewRenderer
         if (activeBounds.width > 0 && activeBounds.height > 0)
         {
             buttonRenderer.drawPrimaryButton(g, activeBounds, activeText);
+        }
+
+        if (canUndoRecentCompletion
+                && state.layout().undoButtonBounds.width > 0
+                && state.layout().undoButtonBounds.height > 0)
+        {
+            buttonRenderer.drawPlainButton(g, state.layout().undoButtonBounds, "Undo");
         }
 
         renderKeyboardHints(g, fm, panelBounds, keyboardHintsOpen, keyboardHintsButtonBounds, keyboardHintsPopupBounds, hoverX, hoverY);

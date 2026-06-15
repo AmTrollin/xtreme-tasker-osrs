@@ -155,6 +155,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Map<String, Long> manualCompletionTimestamps = new HashMap<>();
     private final Map<String, Long> syncedCompletionTimestamps = new HashMap<>();
     private final Map<String, Long> taskTimeTicksById = new HashMap<>();
+    private final Map<String, Long> completedTaskTimeTicksById = new HashMap<>();
     private final List<String> syncMismatchTaskIds = new ArrayList<>();
     private List<XtremeTask> syncMismatchTasksCache = Collections.emptyList();
     private boolean syncMismatchTasksCacheValid = false;
@@ -179,6 +180,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private String loadedStateAccountKey = null;
     private long loadedStateAtMillis = 0L;
     private String currentTaskId = null;
+    private String undoableCompletedTaskId = null;
 
     private final List<XtremeTask> tasks = new ArrayList<>();
     private boolean taskPackLoaded = false;
@@ -300,10 +302,15 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         currentTask = null;
         currentTaskId = null;
+        undoableCompletedTaskId = null;
 
         manualCompletedTaskIds.clear();
         syncedCompletedTaskIds.clear();
         retiredTaskIds.clear();
+        manualCompletionTimestamps.clear();
+        syncedCompletionTimestamps.clear();
+        taskTimeTicksById.clear();
+        completedTaskTimeTicksById.clear();
 
         activeAccountKey = null;
         pendingAccountKey = null;
@@ -1077,6 +1084,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setSyncedCompletedTaskIds(new HashSet<>(syncedCompletedTaskIds));
         state.setRetiredTaskIds(new HashSet<>(retiredTaskIds));
         state.setCurrentTaskId(currentTaskId);
+        state.setUndoableCompletedTaskId(undoableCompletedTaskId);
         state.setLastSeenPackVersion(lastSeenPackVersion);
         state.setLastKnownTaskCount(lastKnownTaskCount);
         state.setLastSyncResult(lastSyncResult);
@@ -1098,6 +1106,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setManualCompletionTimestamps(new HashMap<>(manualCompletionTimestamps));
         state.setSyncedCompletionTimestamps(new HashMap<>(syncedCompletionTimestamps));
         state.setTaskTimeTicksById(new HashMap<>(taskTimeTicksById));
+        state.setCompletedTaskTimeTicksById(new HashMap<>(completedTaskTimeTicksById));
         state.setCollectionLogItemIds(new HashSet<>(collectionLogService.getCachedItemIds()));
         state.setCollectionLogItemOrder(new HashMap<>(collectionLogService.getCachedItemOrder()));
         return state;
@@ -1145,6 +1154,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 && isValidLongMap(state.getManualCompletionTimestamps())
                 && isValidLongMap(state.getSyncedCompletionTimestamps())
                 && isValidLongMap(state.getTaskTimeTicksById())
+                && isValidLongMap(state.getCompletedTaskTimeTicksById())
                 && isValidPositiveIntegerSet(state.getCollectionLogItemIds())
                 && state.getLastSeenPackVersion() >= 0
                 && state.getLastKnownTaskCount() >= 0;
@@ -1466,9 +1476,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (state.getTaskTimeTicksById() != null) {
             taskTimeTicksById.putAll(state.getTaskTimeTicksById());
         }
+        if (state.getCompletedTaskTimeTicksById() != null) {
+            completedTaskTimeTicksById.putAll(state.getCompletedTaskTimeTicksById());
+        }
         collectionLogService.restoreCachedItemState(state.getCollectionLogItemIds(), state.getCollectionLogItemOrder());
 
         currentTaskId = safeTrim(state.getCurrentTaskId());
+        undoableCompletedTaskId = safeTrim(state.getUndoableCompletedTaskId());
         lastSeenPackVersion = state.getLastSeenPackVersion();
         lastKnownTaskCount = state.getLastKnownTaskCount();
         lastSyncResult = safeTrim(state.getLastSyncResult());
@@ -1518,8 +1532,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         manualCompletionTimestamps.clear();
         syncedCompletionTimestamps.clear();
         taskTimeTicksById.clear();
+        completedTaskTimeTicksById.clear();
         currentTask = null;
         currentTaskId = null;
+        undoableCompletedTaskId = null;
         loadedStateAccountKey = null;
         loadedStateAtMillis = 0L;
         lastSeenPackVersion = 0;
@@ -1677,6 +1693,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             currentTaskId = null;
         }
+
+        XtremeTask undoableTask = findTaskById(undoableCompletedTaskId);
+        if (undoableTask == null || !isTaskCompleted(undoableTask))
+        {
+            undoableCompletedTaskId = null;
+        }
     }
 
     private void retireUnknownCompletedTaskIds(Set<String> validIds) {
@@ -1709,6 +1731,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         retiredTaskIds.addAll(unknownIds);
         completedIds.removeAll(unknownIds);
+        for (String id : unknownIds)
+        {
+            completedTaskTimeTicksById.remove(id);
+        }
+        if (unknownIds.contains(undoableCompletedTaskId))
+        {
+            undoableCompletedTaskId = null;
+        }
     }
 
     private void detectNewTaskIds(List<XtremeTask> loadedTasks, int previousKnownCount) {
@@ -1822,10 +1852,31 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return null;
     }
 
+    private XtremeTask findTaskById(String id)
+    {
+        if (id == null || id.trim().isEmpty())
+        {
+            return null;
+        }
+
+        return tasks.stream()
+                .filter(task -> id.equals(task.getId()))
+                .findFirst()
+                .orElse(null);
+    }
+
     public Long getTaskTimeTicks(XtremeTask task)
     {
         if (task == null) return null;
-        return taskTimeTicksById.get(task.getId());
+        String id = task.getId();
+        Long liveTicks = taskTimeTicksById.get(id);
+        if (id != null && id.equals(currentTaskId))
+        {
+            return liveTicks;
+        }
+
+        Long completedTicks = completedTaskTimeTicksById.get(id);
+        return completedTicks != null ? completedTicks : liveTicks;
     }
 
     // ---------- core actions ----------
@@ -2192,6 +2243,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
+        if (undoableCompletedTaskId != null)
+        {
+            freezeCompletedTaskTime(undoableCompletedTaskId);
+            undoableCompletedTaskId = null;
+        }
+
         XtremeTask newTask = rollRandomTask();
         currentTask = decorateCurrentSequenceTask(newTask);
         rollAnimEndMs = System.currentTimeMillis() + com.amtrollin.xtremetasker.ui.style.UiConstants.ROLL_ANIM_MS;
@@ -2209,13 +2266,54 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         String id = cur.getId();
         manualCompletedTaskIds.add(id);
         manualCompletionTimestamps.put(id, System.currentTimeMillis());
+        snapshotCompletedTaskTime(id);
         // If previously synced, remove synced timestamp so manual takes precedence
         syncedCompletionTimestamps.remove(id);
         clientThread.invokeLater(() -> client.playSoundEffect(3925)); // collection log new-entry ding
 
-        // Clear current when done so it won't pin on restart
+        undoableCompletedTaskId = id;
         currentTask = null;
         currentTaskId = null;
+
+        rebuildTierCounts();
+        dirty = true;
+        persistIfPossible();
+    }
+
+    public boolean canUndoRecentTaskCompletion()
+    {
+        if (undoableCompletedTaskId == null || undoableCompletedTaskId.trim().isEmpty())
+        {
+            return false;
+        }
+
+        XtremeTask task = findTaskById(undoableCompletedTaskId);
+        return task != null && isTaskCompleted(task);
+    }
+
+    public void undoCurrentTaskCompletionAndPersist()
+    {
+        if (!canUndoRecentTaskCompletion())
+        {
+            return;
+        }
+
+        String id = undoableCompletedTaskId;
+        XtremeTask task = findTaskById(id);
+        if (task == null)
+        {
+            undoableCompletedTaskId = null;
+            return;
+        }
+
+        manualCompletedTaskIds.remove(id);
+        syncedCompletedTaskIds.remove(id);
+        manualCompletionTimestamps.remove(id);
+        syncedCompletionTimestamps.remove(id);
+        completedTaskTimeTicksById.remove(id);
+        currentTask = decorateCurrentSequenceTask(task);
+        currentTaskId = id;
+        undoableCompletedTaskId = null;
 
         rebuildTierCounts();
         dirty = true;
@@ -2242,6 +2340,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             manualCompletedTaskIds.add(id);
             manualCompletionTimestamps.put(id, System.currentTimeMillis());
+            snapshotCompletedTaskTime(id);
             syncedCompletionTimestamps.remove(id);
         }
 
@@ -2296,6 +2395,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
                 manualCompletedTaskIds.add(id);
                 manualCompletionTimestamps.putIfAbsent(id, now);
+                snapshotCompletedTaskTime(id);
                 syncedCompletionTimestamps.remove(id);
                 remainingToAdd--;
             }
@@ -2321,12 +2421,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
 
-        if (currentTask != null && isTaskCompleted(currentTask))
-        {
-            currentTask = null;
-            currentTaskId = null;
-        }
-
         rebuildTierCounts();
         dirty = true;
         persistIfPossible();
@@ -2339,6 +2433,35 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         manualCompletionTimestamps.remove(id);
         syncedCompletionTimestamps.remove(id);
         taskTimeTicksById.remove(id);
+        completedTaskTimeTicksById.remove(id);
+        if (id != null && id.equals(undoableCompletedTaskId))
+        {
+            undoableCompletedTaskId = null;
+        }
+    }
+
+    private void snapshotCompletedTaskTime(String id)
+    {
+        if (id == null || id.trim().isEmpty())
+        {
+            return;
+        }
+
+        completedTaskTimeTicksById.put(id, Math.max(0L, taskTimeTicksById.getOrDefault(id, 0L)));
+    }
+
+    private void freezeCompletedTaskTime(String id)
+    {
+        if (id == null || id.trim().isEmpty())
+        {
+            return;
+        }
+
+        Long completedTicks = completedTaskTimeTicksById.get(id);
+        if (completedTicks != null)
+        {
+            taskTimeTicksById.put(id, completedTicks);
+        }
     }
 
     @Subscribe
@@ -2354,10 +2477,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        // Accumulate in-game ticks for the current task (only while logged in).
-        if (currentTaskId != null && client.getGameState() == GameState.LOGGED_IN)
+        // Accumulate in-game ticks for the current task, or for the just-completed
+        // undoable task while it is waiting in the empty Current state.
+        String timerTaskId = currentTaskId != null ? currentTaskId : undoableCompletedTaskId;
+        if (timerTaskId != null && client.getGameState() == GameState.LOGGED_IN)
         {
-            taskTimeTicksById.merge(currentTaskId, 1L, Long::sum);
+            taskTimeTicksById.merge(timerTaskId, 1L, Long::sum);
             dirty = true;
         }
 
@@ -2441,6 +2566,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     if (syncedCompletedTaskIds.add(task.getId()))
                     {
                         syncedCompletionTimestamps.putIfAbsent(task.getId(), System.currentTimeMillis());
+                        snapshotCompletedTaskTime(task.getId());
                         newlySyncedTaskIds.add(task.getId());
                         newlySynced++;
                     }
@@ -2568,6 +2694,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             if (complete && syncedCompletedTaskIds.add(task.getId()))
             {
                 syncedCompletionTimestamps.putIfAbsent(task.getId(), System.currentTimeMillis());
+                snapshotCompletedTaskTime(task.getId());
                 if (newlySyncedTaskIds != null)
                 {
                     newlySyncedTaskIds.add(task.getId());
@@ -2743,6 +2870,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
             syncedCompletedTaskIds.add(id);
             syncedCompletionTimestamps.putIfAbsent(id, now);
+            snapshotCompletedTaskTime(id);
             if (newlySyncedTaskIds != null)
             {
                 newlySyncedTaskIds.add(id);

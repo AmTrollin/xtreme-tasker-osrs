@@ -46,6 +46,10 @@ public interface TaskerService
 
     void completeCurrentTaskAndPersist();
 
+    boolean canUndoRecentTaskCompletion();
+
+    void undoCurrentTaskCompletionAndPersist();
+
     void rollRandomTaskAndPersist();
 
     void reloadTaskPack();

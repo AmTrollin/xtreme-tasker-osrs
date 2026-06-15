@@ -105,7 +105,8 @@ public final class CurrentTabRenderer
             Long taskTimeTicks,
             XtremeTask recentCompletedTask,
             CompletionInfo recentCompletionInfo,
-            Long recentTaskTimeTicks
+            Long recentTaskTimeTicks,
+            boolean canUndoRecentCompletion
     )
     {
         CurrentTabLayout layout = new CurrentTabLayout();
@@ -113,6 +114,7 @@ public final class CurrentTabRenderer
         layout.wikiButtonBounds.setBounds(0, 0, 0, 0);
         layout.rollButtonBounds.setBounds(0, 0, 0, 0);
         layout.completeButtonBounds.setBounds(0, 0, 0, 0);
+        layout.undoButtonBounds.setBounds(0, 0, 0, 0);
         layout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
         layout.viewportBounds.setBounds(0, 0, 0, 0);
         layout.totalContentPx = 0;
@@ -193,6 +195,7 @@ public final class CurrentTabRenderer
                 recentCompletedTask,
                 recentCompletionInfo,
                 recentTaskTimeTicks,
+                canUndoRecentCompletion,
                 layout
         );
 
@@ -247,6 +250,7 @@ public final class CurrentTabRenderer
             XtremeTask recentCompletedTask,
             CompletionInfo recentCompletionInfo,
             Long recentTaskTimeTicks,
+            boolean canUndoRecentCompletion,
             CurrentTabLayout layout
     )
     {
@@ -279,6 +283,7 @@ public final class CurrentTabRenderer
                 recentCompletedTask,
                 recentCompletionInfo,
                 recentTaskTimeTicks,
+                canUndoRecentCompletion,
                 layout
         );
 
@@ -433,6 +438,7 @@ public final class CurrentTabRenderer
             XtremeTask recentCompletedTask,
             CompletionInfo recentCompletionInfo,
             Long recentTaskTimeTicks,
+            boolean canUndoRecentCompletion,
             CurrentTabLayout layout
     )
     {
@@ -479,7 +485,18 @@ public final class CurrentTabRenderer
         int buttonW = Math.max(110, Math.min(innerW, card.width - 36));
         int buttonX = card.x + (card.width - buttonW) / 2;
         int buttonY = Math.min(card.y + card.height - buttonH - 54, y);
-        layout.rollButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
+        if (canUndoRecentCompletion)
+        {
+            int undoW = Math.min(70, Math.max(48, fm.stringWidth("Undo") + 22));
+            int buttonGap = 6;
+            int rollW = Math.max(90, buttonW - undoW - buttonGap);
+            layout.rollButtonBounds.setBounds(buttonX, buttonY, rollW, buttonH);
+            layout.undoButtonBounds.setBounds(buttonX + rollW + buttonGap, buttonY, undoW, buttonH);
+        }
+        else
+        {
+            layout.rollButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
+        }
 
         int noticeBaselineY = buttonY + buttonH + Math.max(rowHeight + 2, card.height / 15);
         g.setFont(smallFont);

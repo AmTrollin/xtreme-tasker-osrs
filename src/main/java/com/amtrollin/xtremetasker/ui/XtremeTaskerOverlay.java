@@ -2046,6 +2046,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 recentCompleted,
                 plugin.getCompletionInfo(recentCompleted),
                 plugin.getTaskTimeTicks(recentCompleted),
+                plugin.canUndoRecentTaskCompletion(),
                 keyboardHintsOpen,
                 keyboardHintsButtonBounds,
                 keyboardHintsPopupBounds,
@@ -2103,18 +2104,29 @@ public class XtremeTaskerOverlay extends Overlay {
 
         boolean rollEnabled = current == null || currentCompleted;
         boolean completeEnabled = current != null && !currentCompleted;
+        boolean canUndoRecentCompletion = plugin.canUndoRecentTaskCompletion();
         int buttonGap = 6;
         int wikiW = current != null && current.getWikiUrl() != null && !current.getWikiUrl().trim().isEmpty()
                 ? Math.max(48, fm.stringWidth("Wiki") + 18)
                 : 0;
         int actionW = wikiW > 0 ? innerW - wikiW - buttonGap : innerW;
-        Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
         if (completeEnabled) {
+            Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
             currentLayout.completeButtonBounds.setBounds(actionBounds);
             buttonRenderer.drawPrimaryButton(g, currentLayout.completeButtonBounds, "Mark complete");
         } else if (rollEnabled) {
-            currentLayout.rollButtonBounds.setBounds(actionBounds);
-            buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+            if (canUndoRecentCompletion) {
+                int undoW = Math.min(70, Math.max(48, fm.stringWidth("Undo") + 22));
+                int rollW = Math.max(90, actionW - undoW - buttonGap);
+                currentLayout.rollButtonBounds.setBounds(innerX, y, rollW, actionH);
+                currentLayout.undoButtonBounds.setBounds(innerX + rollW + buttonGap, y, undoW, actionH);
+                buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+                buttonRenderer.drawPlainButton(g, currentLayout.undoButtonBounds, "Undo");
+            } else {
+                Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
+                currentLayout.rollButtonBounds.setBounds(actionBounds);
+                buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+            }
         }
 
         if (wikiW > 0) {
@@ -2267,14 +2279,6 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString(time, timeX, textY + 2);
         }
 
-        if (completed) {
-            String done = "Complete";
-            int doneW = fm.stringWidth(done) + 14;
-            Rectangle doneBadge = new Rectangle(card.x + card.width - doneW - pad, card.y + 7, doneW, ROW_HEIGHT + 2);
-            drawBevelBox(g, doneBadge, new Color(38, 56, 32, 220));
-            g.setColor(new Color(120, 210, 130, 230));
-            g.drawString(done, doneBadge.x + 7, doneBadge.y + ((doneBadge.height - fm.getHeight()) / 2) + fm.getAscent());
-        }
     }
 
     private void drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task, java.awt.Point mousePoint) {
@@ -2603,6 +2607,7 @@ public class XtremeTaskerOverlay extends Overlay {
         currentLayout.wikiButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.rollButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.completeButtonBounds.setBounds(0, 0, 0, 0);
+        currentLayout.undoButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
         currentLayout.viewportBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
@@ -4086,6 +4091,7 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(currentLayout.wikiButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.rollButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.completeButtonBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.undoButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.rollSourceIconBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.viewportBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.scrollbarRailBounds, anchorX, anchorY, scale);

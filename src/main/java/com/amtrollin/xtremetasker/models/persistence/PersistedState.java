@@ -26,6 +26,7 @@ public class PersistedState {
     /** Completed task ids no longer present in the bundled task pack. Preserved for history/recovery. */
     private Set<String> retiredTaskIds = new HashSet<>();
     private String currentTaskId;
+    private String undoableCompletedTaskId;
     private int lastSeenPackVersion = 0;
     private int lastKnownTaskCount = 0;
     private String lastSyncResult;
@@ -51,6 +52,8 @@ public class PersistedState {
     private Map<String, Long> syncedCompletionTimestamps = new HashMap<>();
     /** accumulated in-game ticks spent on each task while logged in. */
     private Map<String, Long> taskTimeTicksById = new HashMap<>();
+    /** accumulated in-game ticks captured at the moment each task was completed. */
+    private Map<String, Long> completedTaskTimeTicksById = new HashMap<>();
     /** Collection log item IDs RuneLite has exposed for this account. */
     private Set<Integer> collectionLogItemIds = new HashSet<>();
     /** Per collection-log item acquisition order, used to show applied vs not-yet-applied items chronologically. */

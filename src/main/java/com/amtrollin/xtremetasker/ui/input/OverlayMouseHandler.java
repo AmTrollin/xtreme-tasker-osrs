@@ -479,6 +479,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
             boolean rollEnabled = (current == null) || currentCompleted;
             boolean completeEnabled = (current != null) && !currentCompleted;
+            boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
 
             if (completeEnabled && a.currentLayout().completeButtonBounds.contains(p)) {
                 if (current != null) {
@@ -486,6 +487,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 }
 
                 a.plugin().completeCurrentTaskAndPersist();
+                e.consume();
+                return e;
+            }
+
+            if (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p)) {
+                a.plugin().undoCurrentTaskCompletionAndPersist();
                 e.consume();
                 return e;
             }
@@ -1043,6 +1050,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
         boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
         boolean rollEnabled = (current == null) || currentCompleted;
         boolean completeEnabled = (current != null) && !currentCompleted;
+        boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
 
         TaskListQuery tq = a.taskQuery();
         boolean completionDisabled = tq.statusFilter != TaskListQuery.StatusFilter.ALL;
@@ -1089,6 +1097,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         a.currentLayout().wikiButtonBounds.contains(p)
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
+                        || (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p))
                         || a.keyboardHintsButtonBounds().contains(p)
                 ))
                 // TASKS tab
