@@ -32,10 +32,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
 
         if (a.isCompactPanelMode())
         {
-            if (a.currentViewportBounds().contains(p))
-            {
-                a.scrollCompactCurrent(precise);
-            }
+            a.scrollCompactCurrent(precise);
             return e;
         }
 

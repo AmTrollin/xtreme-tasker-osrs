@@ -208,12 +208,25 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         if (button == MouseEvent.BUTTON1 && a.isCompactPanelMode() && a.currentLayout().scrollbarRailBounds.width > 0) {
             Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
+            Rectangle rail = a.currentLayout().scrollbarRailBounds;
+            Rectangle thumbHit = expandedCompactScrollbarHitBounds(thumb);
+            Rectangle railHit = expandedCompactScrollbarHitBounds(rail);
 
-            if (thumb.contains(p)) {
+            if (thumbHit.contains(p)) {
                 draggingCompactCurrentScrollbar = true;
                 compactCurrentDragRailBounds.setBounds(a.currentLayout().scrollbarRailBounds);
                 compactCurrentDragThumbBounds.setBounds(thumb);
-                compactCurrentScrollbarGrabOffsetY = p.y - thumb.y;
+                compactCurrentScrollbarGrabOffsetY = Math.max(0, Math.min(thumb.height, p.y - thumb.y));
+                e.consume();
+                return e;
+            }
+
+            if (railHit.contains(p)) {
+                draggingCompactCurrentScrollbar = true;
+                compactCurrentDragRailBounds.setBounds(rail);
+                compactCurrentDragThumbBounds.setBounds(thumb);
+                compactCurrentScrollbarGrabOffsetY = Math.max(0, thumb.height / 2);
+                updateCompactCurrentScrollbarDrag(e.getY());
                 e.consume();
                 return e;
             }
@@ -1135,6 +1148,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
                         || (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p))
+                        || (a.isCompactPanelMode() && expandedCompactScrollbarHitBounds(a.currentLayout().scrollbarRailBounds).contains(p))
                         || a.keyboardHintsButtonBounds().contains(p)
                 ))
                 // TASKS tab
@@ -1458,6 +1472,16 @@ public final class OverlayMouseHandler extends MouseAdapter {
         int thumbY = Math.max(rail.y, Math.min(mouseY - compactCurrentScrollbarGrabOffsetY, rail.y + trackH));
         double frac = (double) (thumbY - rail.y) / (double) trackH;
         a.setCompactCurrentScrollFraction(frac);
+    }
+
+    private Rectangle expandedCompactScrollbarHitBounds(Rectangle bounds) {
+        if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
+            return new Rectangle();
+        }
+
+        Rectangle hit = new Rectangle(bounds);
+        hit.grow(6, 2);
+        return hit;
     }
 
     // =========================
