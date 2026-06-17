@@ -704,11 +704,18 @@ public final class CurrentTabRenderer
         {
             tip = tip.trim();
         }
+        boolean tipInDescriptionSection = hasTip && hasDesc && !hasRequirementPreview;
+        boolean tipInRequirementSection = hasTip && hasRequirementPreview;
 
         if (hasDesc)
         {
             totalPx += rowHeight;
             totalPx += rowHeight * Math.min(wrapText(desc, fm, maxW).size(), 7);
+            if (tipInDescriptionSection)
+            {
+                totalPx += rowHeight;
+                totalPx += measureTipHeight(tip, fm, maxW, 5);
+            }
             totalPx += 8;
         }
 
@@ -744,6 +751,11 @@ public final class CurrentTabRenderer
 
         if (hasRequirementPreview)
         {
+            if (tipInRequirementSection)
+            {
+                totalPx += measureTipHeight(tip, fm, maxW, 5);
+                totalPx += 6;
+            }
             totalPx += rowHeight;
             if (requirementPreview.showSummaryText())
             {
@@ -753,16 +765,6 @@ public final class CurrentTabRenderer
             {
                 totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), maxW);
             }
-            totalPx += 8;
-        }
-
-        if (hasTip)
-        {
-            if (hasDesc)
-            {
-                totalPx += rowHeight;
-            }
-            totalPx += rowHeight * Math.min(wrapText(tip, fm, Math.max(hasDesc ? maxW - 8 : maxW, 40)).size(), 5);
             totalPx += 8;
         }
 
@@ -801,6 +803,8 @@ public final class CurrentTabRenderer
         {
             tip = tip.trim();
         }
+        boolean tipInDescriptionSection = hasTip && hasDesc && !hasRequirementPreview;
+        boolean tipInRequirementSection = hasTip && hasRequirementPreview;
 
         if (hasDesc)
         {
@@ -810,11 +814,21 @@ public final class CurrentTabRenderer
 
             g.setColor(uiText);
             y = drawWrapped(g, fm, desc, x, y, maxW, 7);
+            if (tipInDescriptionSection)
+            {
+                y += rowHeight;
+                y = drawTaskTip(g, fm, tip, x, y, maxW, 5);
+            }
             y += 8;
         }
 
         if (hasRequirementPreview)
         {
+            if (tipInRequirementSection)
+            {
+                y = drawTaskTip(g, fm, tip, x, y, maxW, 5);
+                y += 6;
+            }
             y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview, collectionLogItemImageProvider, mousePoint);
             y += 8;
         }
@@ -848,28 +862,6 @@ public final class CurrentTabRenderer
             y += rowHeight;
         }
         y += 8;
-
-        if (hasTip)
-        {
-            if (hasDesc)
-            {
-                y += rowHeight;
-            }
-            int tipIndent = hasDesc ? 8 : 0;
-            List<String> tipLines = wrapText(tip, fm, Math.max(maxW - tipIndent, 40));
-            g.setColor(uiTextDim);
-            if (!tipLines.isEmpty())
-            {
-                g.drawString("Tip: " + tipLines.get(0), x + tipIndent, y);
-                y += rowHeight;
-                for (int i = 1; i < Math.min(tipLines.size(), 5); i++)
-                {
-                    g.drawString(tipLines.get(i), x + tipIndent, y);
-                    y += rowHeight;
-                }
-            }
-            y += 8;
-        }
 
         return y;
     }
@@ -1123,6 +1115,24 @@ public final class CurrentTabRenderer
             g.drawString(spanText, spanX, y);
             drawStrikeThrough(g, fm, spanText, spanX, y);
         }
+    }
+
+    private int measureTipHeight(String tip, FontMetrics fm, int maxWidth, int maxLines)
+    {
+        return rowHeight * Math.min(wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40)).size(), maxLines);
+    }
+
+    private int drawTaskTip(Graphics2D g, FontMetrics fm, String tip, int x, int yBaseline, int maxWidth, int maxLines)
+    {
+        List<String> tipLines = wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40));
+        g.setColor(uiTextDim);
+        int y = yBaseline;
+        for (int i = 0; i < Math.min(tipLines.size(), maxLines); i++)
+        {
+            g.drawString(truncateToWidth(tipLines.get(i), fm, maxWidth), x, y);
+            y += rowHeight;
+        }
+        return y;
     }
 
     private int drawCollectionLogRequirementPreview(

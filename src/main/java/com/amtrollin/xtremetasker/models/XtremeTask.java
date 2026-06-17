@@ -51,7 +51,7 @@ public class XtremeTask {
         this.description = safeTrimToNull(description);
         this.prereqs = safeTrimToNull(prereqs);
         this.wikiUrl = safeTrimToNull(wikiUrl);
-        this.tip = safeTrimToNull(tip);
+        this.tip = safeTipTrimToNull(tip);
         this.verification = verification;
 
         // Critical: NEVER allow null/blank IDs (null IDs cause completion collisions)
@@ -115,6 +115,14 @@ public class XtremeTask {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private static String safeTipTrimToNull(String s) {
+        String t = safeTrimToNull(s);
+        if (t == null || t.equalsIgnoreCase("none") || t.equalsIgnoreCase("n/a") || t.equals("-")) {
+            return null;
+        }
+        return t;
     }
 
     /**

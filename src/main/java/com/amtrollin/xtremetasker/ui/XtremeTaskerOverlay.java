@@ -2406,9 +2406,18 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         String desc = current.getDescription();
+        String tip = plugin.showTips() ? current.getTip() : null;
+        boolean hasTip = tip != null && !tip.trim().isEmpty();
+        if (hasTip) {
+            tip = tip.trim();
+        }
         if (desc != null && !desc.trim().isEmpty()) {
             lines.add(new CompactLine("Description", true, false));
             lines.addAll(wrappedCompactLines(desc.trim(), false));
+            if (hasTip && current.getSource() != TaskSource.COLLECTION_LOG) {
+                lines.add(CompactLine.spacer());
+                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
+            }
             lines.add(CompactLine.spacer());
         }
 
@@ -2430,6 +2439,10 @@ public class XtremeTaskerOverlay extends Overlay {
         CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(current);
         if (preview != null && preview.hasItems()) {
             lines.add(CompactLine.spacer());
+            if (hasTip) {
+                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
+                lines.add(CompactLine.spacer());
+            }
             lines.add(new CompactLine("Eligible CLOGs", true, false));
             if (preview.showSummaryText()) {
                 lines.addAll(wrappedCompactLines(preview.summaryText(), true));

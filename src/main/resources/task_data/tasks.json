@@ -12269,7 +12269,7 @@
         "count": 1
       },
       "displayItemId": 31746,
-      "tip": "None",
+      "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
@@ -12291,7 +12291,7 @@
         "count": 2
       },
       "displayItemId": 31746,
-      "tip": "None",
+      "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement. No toad is needed on the green pillar next to the supply boat, as Jubblys spawn there by default.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
@@ -12313,7 +12313,7 @@
         "count": 3
       },
       "displayItemId": 31746,
-      "tip": "None",
+      "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement. No toad is needed on the green pillar next to the supply boat, as Jubblys spawn there by default.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
@@ -44870,6 +44870,7 @@
       "wikiTitle": "Pet List",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Pet#Boss_pets",
       "displayItemId": 20851,
+      "tip": "Beef is the easiest boss to beat to complete this task.",
       "verification": {
         "method": "collection-log",
         "itemIds": [

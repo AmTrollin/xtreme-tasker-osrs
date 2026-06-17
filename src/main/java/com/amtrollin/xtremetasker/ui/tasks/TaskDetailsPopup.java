@@ -346,6 +346,9 @@ public final class TaskDetailsPopup
                 ? diaryTaskDescription(task)
                 : (hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim());
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
+        boolean hasTaskTip = !taskTip.isEmpty();
+        boolean tipInDescriptionSection = hasTaskTip && showDescriptionSection && !hasRequirementPreview;
+        boolean tipInRequirementSection = hasTaskTip && hasRequirementPreview;
         int totalPx = 0;
         if (showDescriptionSection)
         {
@@ -358,6 +361,11 @@ public final class TaskDetailsPopup
             {
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(desc, fm, contentW).size();
             }
+            if (tipInDescriptionSection)
+            {
+                totalPx += ROW_HEIGHT; // blank line before tip
+                totalPx += measureTipHeight(taskTip, fm, contentW);
+            }
         }
         if (showDescriptionSection)
         {
@@ -365,6 +373,11 @@ public final class TaskDetailsPopup
         }
         if (hasRequirementPreview)
         {
+            if (tipInRequirementSection)
+            {
+                totalPx += measureTipHeight(taskTip, fm, contentW);
+                totalPx += 6;
+            }
             totalPx += ROW_HEIGHT; // collection log requirement header
             if (requirementPreview.showSummaryText())
             {
@@ -396,16 +409,6 @@ public final class TaskDetailsPopup
                 if (p.isEmpty()) continue;
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(p, fm, contentW).size();
             }
-        }
-        if (!taskTip.isEmpty())
-        {
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW, 40));
-            if (showDescriptionSection)
-            {
-                totalPx += ROW_HEIGHT; // blank line before tip
-            }
-            totalPx += ROW_HEIGHT * tipLines.size();
-            totalPx += 6;
         }
         if (!instanceHistoryLines.isEmpty())
         {
@@ -473,6 +476,12 @@ public final class TaskDetailsPopup
                     y += ROW_HEIGHT;
                 }
             }
+
+            if (tipInDescriptionSection)
+            {
+                y += ROW_HEIGHT;
+                y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
+            }
         }
 
         if (showDescriptionSection)
@@ -485,6 +494,12 @@ public final class TaskDetailsPopup
 
         if (hasRequirementPreview)
         {
+            if (tipInRequirementSection)
+            {
+                y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
+                y += 6;
+            }
+
             g.setColor(palette.UI_GOLD);
             g.drawString(collectionLogRequirementTitle(requirementPreview), contentLeft, y);
             y += ROW_HEIGHT;
@@ -557,27 +572,6 @@ public final class TaskDetailsPopup
                     y += ROW_HEIGHT;
                 }
             }
-        }
-
-        if (!taskTip.isEmpty())
-        {
-            if (showDescriptionSection)
-            {
-                y += ROW_HEIGHT; // blank line before tip
-            }
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW - 8, 40));
-            g.setColor(palette.UI_TEXT_DIM);
-            if (!tipLines.isEmpty())
-            {
-                g.drawString(TextUtils.truncateToWidth("Tip: " + tipLines.get(0), fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
-                for (int i = 1; i < tipLines.size(); i++)
-                {
-                    g.drawString(TextUtils.truncateToWidth(tipLines.get(i), fm, contentW), contentLeft, y);
-                    y += ROW_HEIGHT;
-                }
-            }
-            y += 6;
         }
 
         if (groupProgress != null && groupProgress.isGrouped())
@@ -672,6 +666,23 @@ public final class TaskDetailsPopup
                 footerY - 6
         );
 
+    }
+
+    private int measureTipHeight(String tip, FontMetrics fm, int maxWidth)
+    {
+        return ROW_HEIGHT * TextUtils.wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40)).size();
+    }
+
+    private int drawTaskTip(Graphics2D g, FontMetrics fm, String tip, int x, int y, int maxWidth)
+    {
+        List<String> tipLines = TextUtils.wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40));
+        g.setColor(palette.UI_TEXT_DIM);
+        for (String line : tipLines)
+        {
+            g.drawString(TextUtils.truncateToWidth(line, fm, maxWidth), x, y);
+            y += ROW_HEIGHT;
+        }
+        return y;
     }
 
     private void drawPopupButton(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean enabled)

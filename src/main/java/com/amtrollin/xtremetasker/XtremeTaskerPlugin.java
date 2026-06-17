@@ -4470,6 +4470,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public boolean showTips()
     {
-        return false; // temporarily disabled
+        return true;
     }
 }
