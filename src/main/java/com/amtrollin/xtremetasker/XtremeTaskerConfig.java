@@ -9,8 +9,8 @@ public interface XtremeTaskerConfig extends Config {
 
     enum RollSourceFilter {
         ALL("All tasks"),
-        CA_ONLY("Roll only CA tasks"),
-        CLOG_ONLY("Roll CLOGS and ADs only");
+        CA_ONLY("CAs only"),
+        CLOG_ONLY("CLOGS + ADs only");
 
         private final String label;
         RollSourceFilter(String label) { this.label = label; }
