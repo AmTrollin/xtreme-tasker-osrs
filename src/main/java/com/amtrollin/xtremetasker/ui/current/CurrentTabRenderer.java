@@ -786,7 +786,10 @@ public final class CurrentTabRenderer
             }
             if (requirementPreview.showItemList())
             {
-                totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), maxW);
+                totalPx += CollectionLogIconGridRenderer.measureHeight(
+                        requirementPreview.getItems().size(),
+                        maxW,
+                        requirementPreview.iconColumns());
             }
             totalPx += rowHeight;
         }
@@ -1196,7 +1199,8 @@ public final class CurrentTabRenderer
                     uiText,
                     uiTextDim,
                     edgeLight,
-                    edgeDark);
+                    edgeDark,
+                    requirementPreview.iconColumns());
         }
 
         return y;

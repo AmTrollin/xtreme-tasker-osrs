@@ -385,7 +385,10 @@ public final class TaskDetailsPopup
             }
             if (requirementPreview.showItemList())
             {
-                totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), contentW);
+                totalPx += CollectionLogIconGridRenderer.measureHeight(
+                        requirementPreview.getItems().size(),
+                        contentW,
+                        requirementPreview.iconColumns());
             }
             totalPx += 6 + 12; // divider gap before "Prereqs"
         }
@@ -525,7 +528,8 @@ public final class TaskDetailsPopup
                         palette.UI_TEXT,
                         palette.UI_TEXT_DIM,
                         palette.UI_EDGE_LIGHT,
-                        palette.UI_EDGE_DARK);
+                        palette.UI_EDGE_DARK,
+                        requirementPreview.iconColumns());
             }
 
             y += 6;

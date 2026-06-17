@@ -358,7 +358,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
         List<CollectionLogRequirementItem> items = new ArrayList<>(statusByItemName.size());
         for (Map.Entry<String, CollectionLogRequirementItem.Status> entry : statusByItemName.entrySet()) {
-            items.add(new CollectionLogRequirementItem(itemIdByItemName.getOrDefault(entry.getKey(), -1), entry.getKey(), entry.getValue()));
+            int itemId = itemIdByItemName.getOrDefault(entry.getKey(), -1);
+            items.add(new CollectionLogRequirementItem(itemId, entry.getKey(), entry.getValue(), collectionLogRequirementBadgeText(itemId)));
         }
 
         boolean sameNameFamily = statusByItemName.size() == 1;
@@ -377,7 +378,9 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             summaryText = summaryText.isEmpty() ? pendingAncientPageSummary : summaryText + "  " + pendingAncientPageSummary;
         }
-        String titleText = ancientPageRequirement ? "Ancient pages" : singleEligibleItem ? "Collection log item needed:" : "";
+        String titleText = ancientPageRequirement
+                ? "Ancient pages"
+                : singleEligibleItem ? "Collection log item needed:" : "";
         return new CollectionLogRequirementPreview(summaryText, titleText, !singleEligibleItem && (sameNameFamily || repeatedDistinctPool), true, items);
     }
 
@@ -389,6 +392,16 @@ public class XtremeTaskerOverlay extends Overlay {
             return "Page " + ancientPageNumber;
         }
         return plugin.getItemName(itemId);
+    }
+
+    private String collectionLogRequirementBadgeText(int itemId)
+    {
+        int ancientPageNumber = ancientPageNumber(itemId);
+        if (ancientPageNumber > 0)
+        {
+            return String.valueOf(ancientPageNumber);
+        }
+        return "";
     }
 
     private String pendingAncientPageSummary()
@@ -2442,7 +2455,8 @@ public class XtremeTaskerOverlay extends Overlay {
                         P.UI_TEXT,
                         P.UI_TEXT_DIM,
                         P.UI_EDGE_LIGHT,
-                        P.UI_EDGE_DARK);
+                        P.UI_EDGE_DARK,
+                        line.collectionLogPreview.iconColumns());
             } else {
                 drawCompactLine(g, fm, line, textX, textY, textW);
                 textY += ROW_HEIGHT;
@@ -2722,7 +2736,10 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private int compactLineHeight(CompactLine line, int maxWidth) {
         if (line != null && line.collectionLogPreview != null) {
-            return CollectionLogIconGridRenderer.measureHeight(line.collectionLogPreview.getItems().size(), maxWidth);
+            return CollectionLogIconGridRenderer.measureHeight(
+                    line.collectionLogPreview.getItems().size(),
+                    maxWidth,
+                    line.collectionLogPreview.iconColumns());
         }
         return ROW_HEIGHT;
     }

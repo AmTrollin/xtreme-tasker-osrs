@@ -22,13 +22,19 @@ public final class CollectionLogIconGridRenderer
 
     public static int measureHeight(int itemCount, int maxWidth)
     {
+        return measureHeight(itemCount, maxWidth, ICONS_PER_ROW);
+    }
+
+    public static int measureHeight(int itemCount, int maxWidth, int iconsPerRow)
+    {
         if (itemCount <= 0)
         {
             return 0;
         }
 
-        int rows = (itemCount + ICONS_PER_ROW - 1) / ICONS_PER_ROW;
-        int iconSize = iconSize(maxWidth);
+        int columns = normalizeColumns(iconsPerRow);
+        int rows = (itemCount + columns - 1) / columns;
+        int iconSize = iconSize(maxWidth, columns);
         return rows * iconSize + Math.max(0, rows - 1) * ROW_GAP;
     }
 
@@ -48,12 +54,34 @@ public final class CollectionLogIconGridRenderer
             Color edgeDark
     )
     {
+        return render(g, fm, x, yBaseline, maxWidth, items, imageProvider, mousePoint, tooltipBounds,
+                textColor, dimTextColor, edgeLight, edgeDark, ICONS_PER_ROW);
+    }
+
+    public static int render(
+            Graphics2D g,
+            FontMetrics fm,
+            int x,
+            int yBaseline,
+            int maxWidth,
+            List<CollectionLogRequirementItem> items,
+            Function<Integer, BufferedImage> imageProvider,
+            Point mousePoint,
+            Rectangle tooltipBounds,
+            Color textColor,
+            Color dimTextColor,
+            Color edgeLight,
+            Color edgeDark,
+            int iconsPerRow
+    )
+    {
         if (items == null || items.isEmpty())
         {
             return yBaseline;
         }
 
-        int iconSize = iconSize(maxWidth);
+        int columns = normalizeColumns(iconsPerRow);
+        int iconSize = iconSize(maxWidth, columns);
         int top = yBaseline - fm.getAscent();
         CollectionLogRequirementItem hoveredItem = null;
         Rectangle hoveredBounds = null;
@@ -69,13 +97,14 @@ public final class CollectionLogIconGridRenderer
                 continue;
             }
 
-            int col = i % ICONS_PER_ROW;
-            int row = i / ICONS_PER_ROW;
+            int col = i % columns;
+            int row = i / columns;
             int iconX = x + col * (iconSize + ICON_GAP);
             int iconY = top + row * (iconSize + ROW_GAP);
             Rectangle iconBounds = new Rectangle(iconX, iconY, iconSize, iconSize);
 
             drawItemImage(g, iconBounds, item, imageProvider, dimTextColor);
+            drawBadgeText(g, iconBounds, item.getBadgeText(), textColor);
 
             if (item.isObtained())
             {
@@ -95,13 +124,25 @@ public final class CollectionLogIconGridRenderer
         }
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
-        return yBaseline + measureHeight(items.size(), maxWidth);
+        return yBaseline + measureHeight(items.size(), maxWidth, columns);
     }
 
     private static int iconSize(int maxWidth)
     {
-        int available = Math.max(MIN_ICON_SIZE * ICONS_PER_ROW, maxWidth - (ICONS_PER_ROW - 1) * ICON_GAP);
-        return Math.max(MIN_ICON_SIZE, Math.min(MAX_ICON_SIZE, available / ICONS_PER_ROW));
+        return iconSize(maxWidth, ICONS_PER_ROW);
+    }
+
+    private static int iconSize(int maxWidth, int iconsPerRow)
+    {
+        int columns = normalizeColumns(iconsPerRow);
+        int available = Math.max(MIN_ICON_SIZE * columns, maxWidth - (columns - 1) * ICON_GAP);
+        int maxIconSize = columns < ICONS_PER_ROW ? 56 : MAX_ICON_SIZE;
+        return Math.max(MIN_ICON_SIZE, Math.min(maxIconSize, available / columns));
+    }
+
+    private static int normalizeColumns(int iconsPerRow)
+    {
+        return Math.max(1, iconsPerRow);
     }
 
     private static void drawItemImage(
@@ -133,6 +174,109 @@ public final class CollectionLogIconGridRenderer
         int drawX = bounds.x + (bounds.width - drawSize) / 2;
         int drawY = bounds.y + (bounds.height - drawSize) / 2;
         g.drawImage(image, drawX, drawY, drawSize, drawSize, null);
+    }
+
+    private static void drawBadgeText(Graphics2D g, Rectangle bounds, String text, Color textColor)
+    {
+        if (text == null || text.trim().isEmpty())
+        {
+            return;
+        }
+
+        String badge = text.trim();
+        if (badge.length() > 3)
+        {
+            drawFittedIconLabel(g, bounds, badge);
+            return;
+        }
+
+        drawFittedIconLabel(g, bounds, badge);
+    }
+
+    private static void drawFittedIconLabel(Graphics2D g, Rectangle bounds, String text)
+    {
+        Font oldFont = g.getFont();
+        int labelW = Math.max(1, bounds.width - 2);
+        int labelH = Math.max(10, bounds.height - 4);
+        LabelFit fit = fitLabel(g, oldFont, text, labelW, labelH);
+        g.setFont(fit.font);
+        FontMetrics fm = g.getFontMetrics();
+        int totalTextH = fit.lines.size() * fm.getHeight();
+        int lineY = bounds.y + (bounds.height - totalTextH) / 2 + fm.getAscent();
+        boolean shortNumericLabel = text.matches("\\d{1,2}");
+        for (String line : fit.lines)
+        {
+            int lineX = bounds.x + (bounds.width - fm.stringWidth(line)) / 2;
+            if (shortNumericLabel)
+            {
+                lineX -= Math.max(1, bounds.width / 14);
+            }
+            drawOutlinedText(g, line, lineX, lineY);
+            lineY += fm.getHeight();
+        }
+
+        g.setFont(oldFont);
+    }
+
+    private static void drawOutlinedText(Graphics2D g, String text, int x, int y)
+    {
+        g.setColor(new Color(0, 0, 0, 230));
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0)
+                {
+                    continue;
+                }
+                g.drawString(text, x + dx, y + dy);
+            }
+        }
+
+        g.setColor(new Color(24, 54, 135, 255));
+        g.drawString(text, x, y);
+    }
+
+    private static LabelFit fitLabel(Graphics2D g, Font baseFont, String text, int maxWidth, int maxHeight)
+    {
+        boolean shortNumericLabel = text != null && text.matches("\\d{1,2}");
+        float maxSize = shortNumericLabel
+                ? Math.min(20f, Math.max(12f, maxHeight * 0.82f))
+                : Math.min(15f, Math.max(10f, maxHeight * 0.62f));
+        for (float size = maxSize; size >= 7f; size -= 0.5f)
+        {
+            Font font = baseFont.deriveFont(Font.BOLD, size);
+            g.setFont(font);
+            FontMetrics fm = g.getFontMetrics();
+            List<String> lines = TextUtils.wrapText(text, fm, maxWidth);
+            if (lines.size() > 2)
+            {
+                lines = List.of(
+                        TextUtils.truncateToWidth(lines.get(0), fm, maxWidth),
+                        TextUtils.truncateToWidth(String.join(" ", lines.subList(1, lines.size())), fm, maxWidth));
+            }
+            if (!lines.isEmpty() && lines.size() * fm.getHeight() <= maxHeight + 2)
+            {
+                return new LabelFit(font, lines);
+            }
+        }
+
+        Font font = baseFont.deriveFont(Font.BOLD, 7f);
+        g.setFont(font);
+        FontMetrics fm = g.getFontMetrics();
+        return new LabelFit(font, List.of(TextUtils.truncateToWidth(text, fm, maxWidth)));
+    }
+
+    private static final class LabelFit
+    {
+        private final Font font;
+        private final List<String> lines;
+
+        private LabelFit(Font font, List<String> lines)
+        {
+            this.font = font;
+            this.lines = lines;
+        }
     }
 
     private static void drawObtainedCheck(Graphics2D g, Rectangle bounds)

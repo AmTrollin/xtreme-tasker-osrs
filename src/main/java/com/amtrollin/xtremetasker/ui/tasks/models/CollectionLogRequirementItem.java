@@ -5,6 +5,7 @@ public final class CollectionLogRequirementItem
     private final int itemId;
     private final String name;
     private final Status status;
+    private final String badgeText;
 
     public CollectionLogRequirementItem(String name, boolean obtained)
     {
@@ -18,9 +19,15 @@ public final class CollectionLogRequirementItem
 
     public CollectionLogRequirementItem(int itemId, String name, Status status)
     {
+        this(itemId, name, status, null);
+    }
+
+    public CollectionLogRequirementItem(int itemId, String name, Status status, String badgeText)
+    {
         this.itemId = itemId;
         this.name = name;
         this.status = status == null ? Status.MISSING : status;
+        this.badgeText = badgeText == null ? "" : badgeText.trim();
     }
 
     public int getItemId()
@@ -51,6 +58,11 @@ public final class CollectionLogRequirementItem
     public Status getStatus()
     {
         return status;
+    }
+
+    public String getBadgeText()
+    {
+        return badgeText;
     }
 
     public enum Status

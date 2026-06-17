@@ -9,6 +9,7 @@ public final class CollectionLogRequirementPreview
     private final boolean showSummaryText;
     private final boolean showItemList;
     private final List<CollectionLogRequirementItem> items;
+    private final int iconColumns;
 
     public CollectionLogRequirementPreview(String summaryText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items)
     {
@@ -17,11 +18,17 @@ public final class CollectionLogRequirementPreview
 
     public CollectionLogRequirementPreview(String summaryText, String titleText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items)
     {
+        this(summaryText, titleText, showSummaryText, showItemList, items, 8);
+    }
+
+    public CollectionLogRequirementPreview(String summaryText, String titleText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items, int iconColumns)
+    {
         this.summaryText = summaryText == null ? "" : summaryText;
         this.titleText = titleText == null ? "" : titleText;
         this.showSummaryText = showSummaryText;
         this.showItemList = showItemList;
         this.items = items == null ? List.of() : items;
+        this.iconColumns = Math.max(1, iconColumns);
     }
 
     public List<CollectionLogRequirementItem> getItems()
@@ -52,5 +59,10 @@ public final class CollectionLogRequirementPreview
     public String titleText()
     {
         return titleText;
+    }
+
+    public int iconColumns()
+    {
+        return iconColumns;
     }
 }
