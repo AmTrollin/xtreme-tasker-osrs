@@ -234,6 +234,43 @@ public class XtremeTaskerOverlay extends Overlay {
         CA_TIER_SPRITE_IDS.put(TaskTier.GRANDMASTER, 3398);
     }
 
+    private static final Map<String, SkillcapeDisplay> SKILLCAPE_DISPLAYS = skillcapeDisplays();
+
+    private static Map<String, SkillcapeDisplay> skillcapeDisplays()
+    {
+        Map<String, SkillcapeDisplay> displays = new LinkedHashMap<>();
+        addSkillcapeDisplay(displays, "fishing", "Fishing skillcape", 9799, 9798);
+        addSkillcapeDisplay(displays, "fletching", "Fletching skillcape", 9784, 9783);
+        addSkillcapeDisplay(displays, "herblore", "Herblore skillcape", 9775, 9774);
+        addSkillcapeDisplay(displays, "hunter", "Hunter skillcape", 9949, 9948);
+        addSkillcapeDisplay(displays, "magic", "Magic skillcape", 9763, 9762);
+        addSkillcapeDisplay(displays, "mining", "Mining skillcape", 9793, 9792);
+        addSkillcapeDisplay(displays, "prayer", "Prayer skillcape", 9760, 9759);
+        addSkillcapeDisplay(displays, "ranged", "Ranging skillcape", 9757, 9756);
+        addSkillcapeDisplay(displays, "runecraft", "Runecraft skillcape", 9766, 9765);
+        addSkillcapeDisplay(displays, "sailing", "Sailing skillcape", 31290, 31289);
+        addSkillcapeDisplay(displays, "slayer", "Slayer skillcape", 9787, 9786);
+        addSkillcapeDisplay(displays, "smithing", "Smithing skillcape", 9796, 9795);
+        addSkillcapeDisplay(displays, "strength", "Strength skillcape", 9751, 9750);
+        addSkillcapeDisplay(displays, "thieving", "Thieving skillcape", 9778, 9777);
+        addSkillcapeDisplay(displays, "woodcutting", "Woodcutting skillcape", 9808, 9807);
+        addSkillcapeDisplay(displays, "agility", "Agility skillcape", 9772, 9771, 13341, 13340);
+        addSkillcapeDisplay(displays, "attack", "Attack skillcape", 9748, 9747);
+        addSkillcapeDisplay(displays, "construction", "Construction skillcape", 9790, 9789);
+        addSkillcapeDisplay(displays, "cooking", "Cooking skillcape", 9802, 9801);
+        addSkillcapeDisplay(displays, "crafting", "Crafting skillcape", 9781, 9780);
+        addSkillcapeDisplay(displays, "defence", "Defence skillcape", 9754, 9753);
+        addSkillcapeDisplay(displays, "farming", "Farming skillcape", 9811, 9810);
+        addSkillcapeDisplay(displays, "firemaking", "Firemaking skillcape", 9805, 9804);
+        addSkillcapeDisplay(displays, "hitpoints", "Hitpoints skillcape", 9769, 9768);
+        return Collections.unmodifiableMap(displays);
+    }
+
+    private static void addSkillcapeDisplay(Map<String, SkillcapeDisplay> displays, String skillKey, String name, int... itemIds)
+    {
+        displays.put(skillKey, new SkillcapeDisplay(name, itemIds));
+    }
+
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
         Integer sequenceItemId = sequencePreviewFocusItemId(task);
@@ -263,7 +300,14 @@ public class XtremeTaskerOverlay extends Overlay {
         if (task == null || task.getSource() != TaskSource.COLLECTION_LOG) return null;
 
         TaskVerification verification = task.getVerification();
-        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG) return null;
+        if (verification == null) return null;
+
+        if (verification.getType() == TaskVerification.VerificationType.SKILL)
+        {
+            return buildSkillcapeRequirementPreview(task, verification);
+        }
+
+        if (verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG) return null;
 
         int[] itemIds = verification.getItemIds();
         if (itemIds == null || itemIds.length == 0) return null;
@@ -327,6 +371,60 @@ public class XtremeTaskerOverlay extends Overlay {
             : "";
         String titleText = singleEligibleItem ? "Collection log item needed:" : "";
         return new CollectionLogRequirementPreview(summaryText, titleText, !singleEligibleItem && (sameNameFamily || repeatedDistinctPool), true, items);
+    }
+
+    private CollectionLogRequirementPreview buildSkillcapeRequirementPreview(XtremeTask task, TaskVerification verification)
+    {
+        if (task == null
+                || task.getName() == null
+                || !task.getName().toLowerCase(Locale.ROOT).contains("level 99 skillcape")
+                || verification == null
+                || verification.getExperience() == null
+                || verification.getExperience().isEmpty())
+        {
+            return null;
+        }
+
+        List<CollectionLogRequirementItem> items = new ArrayList<>();
+        for (String skillKey : SKILLCAPE_DISPLAYS.keySet())
+        {
+            if (!verification.getExperience().containsKey(skillKey))
+            {
+                continue;
+            }
+
+            SkillcapeDisplay display = SKILLCAPE_DISPLAYS.get(skillKey);
+            items.add(new CollectionLogRequirementItem(
+                    display.displayItemId(),
+                    display.name,
+                    isAnyCollectionLogItemObtained(display.itemIds)
+                            ? CollectionLogRequirementItem.Status.OBTAINED
+                            : CollectionLogRequirementItem.Status.MISSING));
+        }
+
+        if (items.isEmpty())
+        {
+            return null;
+        }
+
+        return new CollectionLogRequirementPreview("", "Eligible Skillcapes", false, true, items);
+    }
+
+    private boolean isAnyCollectionLogItemObtained(int[] itemIds)
+    {
+        if (itemIds == null)
+        {
+            return false;
+        }
+
+        for (int itemId : itemIds)
+        {
+            if (plugin.isCollectionLogItemObtained(itemId))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String sequencePreviewSummaryText(XtremeTask task, int[] itemIds)
@@ -4541,4 +4639,20 @@ public class XtremeTaskerOverlay extends Overlay {
         return getTasksForTier(activeTier);
     }
 
+    private static final class SkillcapeDisplay
+    {
+        private final String name;
+        private final int[] itemIds;
+
+        private SkillcapeDisplay(String name, int[] itemIds)
+        {
+            this.name = name;
+            this.itemIds = itemIds == null ? new int[0] : itemIds;
+        }
+
+        private int displayItemId()
+        {
+            return itemIds.length == 0 ? -1 : itemIds[0];
+        }
+    }
 }

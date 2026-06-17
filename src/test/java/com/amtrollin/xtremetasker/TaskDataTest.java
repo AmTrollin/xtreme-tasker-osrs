@@ -74,7 +74,7 @@ public class TaskDataTest
     public void taskSearchMatchesTwoCharacterTermsInAnyOrder()
     {
         List<XtremeTask> tasks = Arrays.asList(
-                new XtremeTask("cape", "1 level 99 cape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
+                new XtremeTask("cape", "Obtain any level 99 skillcape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
                 new XtremeTask("other", "Get bolt racks from Barrows", TaskSource.COLLECTION_LOG, TaskTier.EASY)
         );
 
