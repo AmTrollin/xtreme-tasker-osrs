@@ -394,7 +394,7 @@ public final class CurrentTabRenderer
         );
 
         g.setClip(oldClip);
-        drawCurrentScrollbar(g, totalPx, vpH, clampedScroll, layout.viewportBounds);
+        drawCurrentScrollbar(g, totalPx, vpH, clampedScroll, new Rectangle(rightX, contentTop, rightW, contentH), layout);
 
         return layout;
     }
@@ -1246,8 +1246,10 @@ public final class CurrentTabRenderer
         }
     }
 
-    private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport)
+    private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport, CurrentTabLayout layout)
     {
+        layout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
+        layout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
         if (totalPx <= viewportH || viewportH <= 0)
         {
             return;
@@ -1268,6 +1270,8 @@ public final class CurrentTabRenderer
         int thumbY = railY + (int) ((railH - thumbH) * scrollRatio);
 
         Rectangle thumb = new Rectangle(railX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+        layout.scrollbarRailBounds.setBounds(railX, railY, scrollBarW, railH);
+        layout.scrollbarThumbBounds.setBounds(thumb);
         drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
 
         g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));

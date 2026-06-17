@@ -35,6 +35,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private int taskScrollbarGrabOffsetY = 0;
     private boolean draggingRulesScrollbar = false;
     private int rulesScrollbarGrabOffsetY = 0;
+    private boolean draggingCurrentScrollbar = false;
+    private int currentScrollbarGrabOffsetY = 0;
     private boolean draggingTaskDetailsScrollbar = false;
     private int taskDetailsScrollbarGrabOffsetY = 0;
     private boolean draggingSyncMismatchScrollbar = false;
@@ -460,6 +462,26 @@ public final class OverlayMouseHandler extends MouseAdapter {
         // CURRENT tab clicks
         if (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && button == MouseEvent.BUTTON1) {
             XtremeTask current = a.plugin().getCurrentTask();
+
+            if (!a.isCompactPanelMode() && a.currentLayout().scrollbarRailBounds.width > 0) {
+                Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
+                Rectangle rail = a.currentLayout().scrollbarRailBounds;
+
+                if (thumb.contains(p)) {
+                    draggingCurrentScrollbar = true;
+                    currentScrollbarGrabOffsetY = p.y - thumb.y;
+                    e.consume();
+                    return e;
+                }
+
+                if (rail.contains(p)) {
+                    draggingCurrentScrollbar = true;
+                    currentScrollbarGrabOffsetY = Math.max(0, thumb.height / 2);
+                    updateCurrentScrollbarDrag(e.getY());
+                    e.consume();
+                    return e;
+                }
+            }
 
             if (current != null && a.currentLayout().wikiButtonBounds.contains(p)) {
                 String url = current.getWikiUrl();
@@ -1129,6 +1151,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
                         || (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p))
+                        || (!a.isCompactPanelMode() && (
+                                a.currentLayout().scrollbarThumbBounds.contains(p)
+                                        || a.currentLayout().scrollbarRailBounds.contains(p)
+                        ))
                         || (a.isCompactPanelMode() && compactScrollbarHitBounds().contains(p))
                         || a.keyboardHintsButtonBounds().contains(p)
                 ))
@@ -1242,6 +1268,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
+        if (draggingCurrentScrollbar) {
+            updateCurrentScrollbarDrag(e.getY());
+            e.consume();
+            return e;
+        }
+
         if (draggingTaskDetailsScrollbar) {
             updateTaskDetailsScrollbarDrag(e.getY());
             e.consume();
@@ -1313,6 +1345,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
         if (draggingRulesScrollbar) {
             draggingRulesScrollbar = false;
+            e.consume();
+        }
+        if (draggingCurrentScrollbar) {
+            draggingCurrentScrollbar = false;
             e.consume();
         }
         if (draggingTaskDetailsScrollbar) {
@@ -1407,6 +1443,32 @@ public final class OverlayMouseHandler extends MouseAdapter {
         double frac = (double) (thumbY - rail.y) / (double) trackH;
         int nextOffset = (int) Math.round(frac * maxOffset);
         a.taskDetailsScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
+    }
+
+    private void updateCurrentScrollbarDrag(int mouseY) {
+        Rectangle rail = a.currentLayout().scrollbarRailBounds;
+        Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
+        if (rail.height <= 0 || thumb.height <= 0) {
+            return;
+        }
+
+        int totalRows = (a.currentLayout().totalContentPx + com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT - 1)
+                / com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
+        int rowBlock = a.currentRowBlock();
+        int viewportH = a.currentViewportBounds().height;
+        int visible = a.currentScroll().visibleRows(viewportH, rowBlock);
+        int maxOffset = Math.max(0, totalRows - visible);
+        int trackH = Math.max(0, rail.height - thumb.height);
+        if (totalRows <= 0 || visible <= 0 || maxOffset <= 0 || trackH <= 0) {
+            a.currentScroll().setOffsetRows(0, viewportH, rowBlock, totalRows);
+            return;
+        }
+
+        int thumbY = Math.max(rail.y, Math.min(mouseY - currentScrollbarGrabOffsetY, rail.y + trackH));
+        double frac = (double) (thumbY - rail.y) / (double) trackH;
+        int nextOffset = (int) Math.round(frac * maxOffset);
+        a.currentScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
+        a.client().getCanvas().repaint();
     }
 
     private void updateRulesScrollbarDrag(int mouseY) {

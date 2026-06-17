@@ -109,6 +109,8 @@ public final class CurrentTabViewRenderer
         state.layout().completeButtonBounds.setBounds(layout.completeButtonBounds);
         state.layout().undoButtonBounds.setBounds(layout.undoButtonBounds);
         state.layout().viewportBounds.setBounds(layout.viewportBounds);
+        state.layout().scrollbarRailBounds.setBounds(layout.scrollbarRailBounds);
+        state.layout().scrollbarThumbBounds.setBounds(layout.scrollbarThumbBounds);
         state.layout().totalContentPx = layout.totalContentPx;
 
         if (rolling)
