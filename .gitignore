@@ -5,6 +5,7 @@ build
 .project
 .settings/
 .classpath
+hs_err_pid*.log
 nbactions.xml
 nb-configuration.xml
 nbproject/
