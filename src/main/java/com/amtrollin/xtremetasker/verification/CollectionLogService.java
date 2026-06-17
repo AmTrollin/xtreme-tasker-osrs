@@ -27,6 +27,8 @@ import java.util.regex.Pattern;
 @Singleton
 public class CollectionLogService
 {
+    private static final String ANCIENT_PAGE_ITEM_NAME = "Ancient page";
+
     // Matches "New item added to your collection log: Mark of grace x1."
     // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
@@ -93,6 +95,7 @@ public class CollectionLogService
     private final Set<Integer> seenItems = new HashSet<>();
     private final Map<Integer, Long> obtainedItemOrder = new HashMap<>();
     private long nextObtainedItemOrder = 1L;
+    private int pendingAncientPageDropCountSinceLastSync = 0;
     private Runnable cacheChangeListener;
 
     public void setCacheChangeListener(Runnable cacheChangeListener)
@@ -157,6 +160,14 @@ public class CollectionLogService
 
     private void resolveAndStoreByName(String itemName)
     {
+        if (ANCIENT_PAGE_ITEM_NAME.equalsIgnoreCase(itemName))
+        {
+            pendingAncientPageDropCountSinceLastSync++;
+            notifyCacheChanged();
+            log.debug("Collection log chat capture deferred ambiguous Ancient page drop until CLOG sync");
+            return;
+        }
+
         List<ItemPrice> results = itemManager.search(itemName);
         if (results == null || results.isEmpty())
         {
@@ -306,6 +317,20 @@ public class CollectionLogService
         return java.util.Collections.unmodifiableMap(obtainedItemOrder);
     }
 
+    public int getPendingAncientPageDropCountSinceLastSync()
+    {
+        return Math.max(0, pendingAncientPageDropCountSinceLastSync);
+    }
+
+    public void clearPendingAncientPageDropCountSinceLastSync()
+    {
+        if (pendingAncientPageDropCountSinceLastSync > 0)
+        {
+            pendingAncientPageDropCountSinceLastSync = 0;
+            notifyCacheChanged();
+        }
+    }
+
     public void restoreCachedItemIds(Set<Integer> itemIds)
     {
         restoreCachedItemState(itemIds, null);
@@ -345,6 +370,7 @@ public class CollectionLogService
         seenItems.clear();
         obtainedItemOrder.clear();
         nextObtainedItemOrder = 1L;
+        pendingAncientPageDropCountSinceLastSync = 0;
     }
 
     public long getObtainedItemOrder(int itemId)

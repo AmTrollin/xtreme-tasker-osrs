@@ -78,6 +78,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final BufferedImage PLUGIN_ICON = loadPluginIconSafe();
     private static final BufferedImage HEADER_ICON = loadHeaderIconSafe();
     private static final UiPalette P = UiPalette.DEFAULT;
+    private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
+    private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
 
     private static BufferedImage loadPluginIconSafe() {
         try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_icon.png")) {
@@ -338,10 +340,11 @@ public class XtremeTaskerOverlay extends Overlay {
                 repeatedDistinctPool,
                 repeatedRequirementState);
         applySequenceTaskCompletionStatuses(task, itemIds, statusByItemId);
+        boolean ancientPageRequirement = isAncientPageRequirement(itemIds);
         Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
         Map<String, Integer> itemIdByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
-            String itemName = plugin.getItemName(itemId);
+            String itemName = collectionLogRequirementItemName(itemId);
             CollectionLogRequirementItem.Status status = statusByItemId.getOrDefault(
                     itemId,
                     CollectionLogRequirementItem.Status.MISSING);
@@ -369,8 +372,72 @@ public class XtremeTaskerOverlay extends Overlay {
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        String titleText = singleEligibleItem ? "Collection log item needed:" : "";
+        String pendingAncientPageSummary = ancientPageRequirement ? pendingAncientPageSummary() : "";
+        if (!pendingAncientPageSummary.isEmpty())
+        {
+            summaryText = summaryText.isEmpty() ? pendingAncientPageSummary : summaryText + "  " + pendingAncientPageSummary;
+        }
+        String titleText = ancientPageRequirement ? "Ancient pages" : singleEligibleItem ? "Collection log item needed:" : "";
         return new CollectionLogRequirementPreview(summaryText, titleText, !singleEligibleItem && (sameNameFamily || repeatedDistinctPool), true, items);
+    }
+
+    private String collectionLogRequirementItemName(int itemId)
+    {
+        int ancientPageNumber = ancientPageNumber(itemId);
+        if (ancientPageNumber > 0)
+        {
+            return "Page " + ancientPageNumber;
+        }
+        return plugin.getItemName(itemId);
+    }
+
+    private String pendingAncientPageSummary()
+    {
+        int pendingDrops = plugin.getPendingAncientPageDropCountSinceLastSync();
+        if (pendingDrops <= 0)
+        {
+            return "";
+        }
+
+        return pendingDrops + " Ancient page " + (pendingDrops == 1 ? "drop needs" : "drops need")
+                + " CLOG sync to identify page number.";
+    }
+
+    private static int ancientPageNumber(int itemId)
+    {
+        if (itemId < ANCIENT_PAGE_FIRST_ITEM_ID || itemId > ANCIENT_PAGE_LAST_ITEM_ID)
+        {
+            return -1;
+        }
+        return itemId - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
+    }
+
+    private static boolean isAncientPageRequirement(int[] itemIds)
+    {
+        int expectedCount = ANCIENT_PAGE_LAST_ITEM_ID - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
+        if (itemIds == null || itemIds.length != expectedCount)
+        {
+            return false;
+        }
+
+        int[] sorted = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .toArray();
+        if (sorted.length != expectedCount)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < sorted.length; i++)
+        {
+            if (sorted[i] != ANCIENT_PAGE_FIRST_ITEM_ID + i)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private CollectionLogRequirementPreview buildSkillcapeRequirementPreview(XtremeTask task, TaskVerification verification)

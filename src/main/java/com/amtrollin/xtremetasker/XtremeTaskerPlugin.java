@@ -66,6 +66,8 @@ import java.util.stream.Stream;
         tags = {"tasks", "combat achievements", "collection log"}
 )
 public class XtremeTaskerPlugin extends Plugin implements TaskerService {
+    private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
+    private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
 
         /**
          * Returns the roll skip notice if the current tier is exhausted for the active filter,
@@ -1856,6 +1858,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return collectionLogService != null && collectionLogService.isItemObtained(itemId);
     }
 
+    public int getPendingAncientPageDropCountSinceLastSync() {
+        return collectionLogService == null ? 0 : collectionLogService.getPendingAncientPageDropCountSinceLastSync();
+    }
+
     public int countObtainedCollectionLogItems(int[] itemIds) {
         return collectionLogService == null ? 0 : Math.toIntExact(collectionLogService.countObtained(itemIds));
     }
@@ -3088,7 +3094,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         StringBuilder key = new StringBuilder();
         key.append("source=").append(Objects.toString(task.getSource(), ""))
-                .append("|tier=").append(Objects.toString(task.getTier(), ""))
                 .append("|type=").append(Objects.toString(verification.getType(), ""));
 
         if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
@@ -3107,6 +3112,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             if (sortedItemIds.length == 0)
             {
                 return null;
+            }
+
+            if (!isAncientPageRequirement(sortedItemIds))
+            {
+                key.append("|tier=").append(Objects.toString(task.getTier(), ""));
             }
 
             key.append("|items=");
@@ -3135,11 +3145,40 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 return null;
             }
 
+            key.append("|tier=").append(Objects.toString(task.getTier(), ""));
             key.append("|skills=").append(String.join(",", skillKeys));
             return key.toString();
         }
 
         return null;
+    }
+
+    private static boolean isAncientPageRequirement(int[] itemIds)
+    {
+        int expectedCount = ANCIENT_PAGE_LAST_ITEM_ID - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
+        if (itemIds == null || itemIds.length != expectedCount)
+        {
+            return false;
+        }
+
+        int[] sorted = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .toArray();
+        if (sorted.length != expectedCount)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < sorted.length; i++)
+        {
+            if (sorted[i] != ANCIENT_PAGE_FIRST_ITEM_ID + i)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private List<XtremeTask> countedCollectionLogGroupFor(XtremeTask task, TaskVerification verification)
@@ -3366,6 +3405,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! No new completions found."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG));
+        }
+
+        if (capturedItems > 0)
+        {
+            collectionLogService.clearPendingAncientPageDropCountSinceLastSync();
         }
 
         rebuildTierCounts();
