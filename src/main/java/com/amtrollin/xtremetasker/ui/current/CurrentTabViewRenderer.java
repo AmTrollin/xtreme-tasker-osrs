@@ -63,6 +63,8 @@ public final class CurrentTabViewRenderer
             CompletionInfo recentCompletionInfo,
             Long recentTaskTimeTicks,
             boolean canUndoRecentCompletion,
+            boolean skipEnabled,
+            int skippedTaskCount,
             boolean currentCompletionCriteriaMet,
             boolean keyboardHintsOpen,
             Rectangle keyboardHintsButtonBounds,
@@ -101,12 +103,15 @@ public final class CurrentTabViewRenderer
                 recentCompletedTask,
                 recentCompletionInfo,
                 recentTaskTimeTicks,
-                canUndoRecentCompletion
+                canUndoRecentCompletion,
+                skipEnabled,
+                skippedTaskCount
         );
 
         state.layout().wikiButtonBounds.setBounds(layout.wikiButtonBounds);
         state.layout().rollButtonBounds.setBounds(layout.rollButtonBounds);
         state.layout().completeButtonBounds.setBounds(layout.completeButtonBounds);
+        state.layout().skipButtonBounds.setBounds(layout.skipButtonBounds);
         state.layout().undoButtonBounds.setBounds(layout.undoButtonBounds);
         state.layout().viewportBounds.setBounds(layout.viewportBounds);
         state.layout().scrollbarRailBounds.setBounds(layout.scrollbarRailBounds);
@@ -117,6 +122,7 @@ public final class CurrentTabViewRenderer
         {
             state.layout().rollButtonBounds.setBounds(0, 0, 0, 0);
             state.layout().completeButtonBounds.setBounds(0, 0, 0, 0);
+            state.layout().skipButtonBounds.setBounds(0, 0, 0, 0);
             state.layout().undoButtonBounds.setBounds(0, 0, 0, 0);
             renderKeyboardHints(g, fm, panelBounds, keyboardHintsOpen, keyboardHintsButtonBounds, keyboardHintsPopupBounds, hoverX, hoverY);
             return;
@@ -133,6 +139,15 @@ public final class CurrentTabViewRenderer
                     activeBounds,
                     activeText,
                     showComplete && currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
+        }
+
+        if (skipEnabled
+                && current != null
+                && !currentCompleted
+                && state.layout().skipButtonBounds.width > 0
+                && state.layout().skipButtonBounds.height > 0)
+        {
+            buttonRenderer.drawPlainButton(g, state.layout().skipButtonBounds, "Skip");
         }
 
         if (canUndoRecentCompletion

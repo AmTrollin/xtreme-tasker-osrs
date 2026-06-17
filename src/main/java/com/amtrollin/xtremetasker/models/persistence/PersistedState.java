@@ -27,6 +27,7 @@ public class PersistedState {
     private Set<String> retiredTaskIds = new HashSet<>();
     private String currentTaskId;
     private String undoableCompletedTaskId;
+    private int skippedTaskCount = 0;
     private String currentTaskCollectionLogBaselineSignature;
     private Integer currentTaskCollectionLogBaselineCount;
     private int lastSeenPackVersion = 0;

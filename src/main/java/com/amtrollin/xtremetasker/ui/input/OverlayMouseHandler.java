@@ -495,6 +495,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
             boolean rollEnabled = (current == null) || currentCompleted;
             boolean completeEnabled = (current != null) && !currentCompleted;
+            boolean skipEnabled = completeEnabled && a.plugin().isTaskSkippingEnabled();
             boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
 
             if (completeEnabled && a.currentLayout().completeButtonBounds.contains(p)) {
@@ -503,6 +504,13 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 }
 
                 a.plugin().completeCurrentTaskAndPersist();
+                e.consume();
+                return e;
+            }
+
+            if (skipEnabled && a.currentLayout().skipButtonBounds.contains(p)) {
+                a.animations().startRoll();
+                a.plugin().skipCurrentTaskAndPersist();
                 e.consume();
                 return e;
             }
@@ -1150,6 +1158,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         a.currentLayout().wikiButtonBounds.contains(p)
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
+                        || (completeEnabled && a.plugin().isTaskSkippingEnabled() && a.currentLayout().skipButtonBounds.contains(p))
                         || (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p))
                         || (!a.isCompactPanelMode() && (
                                 a.currentLayout().scrollbarThumbBounds.contains(p)
