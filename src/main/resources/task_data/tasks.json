@@ -12520,12 +12520,12 @@
     },
     {
       "id": "collection_log_medium_get-a-sea-treasure_001_89606e7d40",
-      "name": "Get a Sea Treasure",
+      "name": "Get a Sea Treasure (excluding Medallion fragments)",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "Pandemonium quest; 15 Sailing",
       "wikiTitle": "Shipwreck salvaging",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Shipwreck_salvaging",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Collection_Log/Sailing#Sea_Treasures",
       "verification": {
         "method": "collection-log",
         "itemIds": [
