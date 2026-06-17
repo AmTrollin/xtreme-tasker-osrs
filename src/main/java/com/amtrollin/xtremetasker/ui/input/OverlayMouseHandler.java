@@ -207,26 +207,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
 
         if (button == MouseEvent.BUTTON1 && a.isCompactPanelMode() && a.currentLayout().scrollbarRailBounds.width > 0) {
-            Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
-            Rectangle rail = a.currentLayout().scrollbarRailBounds;
-            Rectangle thumbHit = expandedCompactScrollbarHitBounds(thumb);
-            Rectangle railHit = expandedCompactScrollbarHitBounds(rail);
-
-            if (thumbHit.contains(p)) {
-                draggingCompactCurrentScrollbar = true;
-                compactCurrentDragRailBounds.setBounds(a.currentLayout().scrollbarRailBounds);
-                compactCurrentDragThumbBounds.setBounds(thumb);
-                compactCurrentScrollbarGrabOffsetY = Math.max(0, Math.min(thumb.height, p.y - thumb.y));
-                e.consume();
-                return e;
-            }
-
-            if (railHit.contains(p)) {
-                draggingCompactCurrentScrollbar = true;
-                compactCurrentDragRailBounds.setBounds(rail);
-                compactCurrentDragThumbBounds.setBounds(thumb);
-                compactCurrentScrollbarGrabOffsetY = Math.max(0, thumb.height / 2);
-                updateCompactCurrentScrollbarDrag(e.getY());
+            if (tryStartCompactCurrentScrollbarDrag(p, e.getY())) {
                 e.consume();
                 return e;
             }
@@ -1148,7 +1129,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
                         || (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p))
-                        || (a.isCompactPanelMode() && expandedCompactScrollbarHitBounds(a.currentLayout().scrollbarRailBounds).contains(p))
+                        || (a.isCompactPanelMode() && compactScrollbarHitBounds().contains(p))
                         || a.keyboardHintsButtonBounds().contains(p)
                 ))
                 // TASKS tab
@@ -1274,7 +1255,15 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
 
         if (draggingCompactCurrentScrollbar) {
+            updateHandCursor(true);
             updateCompactCurrentScrollbarDrag(e.getY());
+            e.consume();
+            return e;
+        }
+
+        if (a.isCompactPanelMode()
+                && (e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) != 0
+                && tryStartCompactCurrentScrollbarDrag(e.getPoint(), e.getY())) {
             e.consume();
             return e;
         }
@@ -1338,6 +1327,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             draggingCompactCurrentScrollbar = false;
             compactCurrentDragRailBounds.setBounds(0, 0, 0, 0);
             compactCurrentDragThumbBounds.setBounds(0, 0, 0, 0);
+            updateHandCursor(compactScrollbarHitBounds().contains(e.getPoint()));
             e.consume();
         }
         if (pressedOnIcon) {
@@ -1356,6 +1346,17 @@ public final class OverlayMouseHandler extends MouseAdapter {
             pressedOnIcon = false;
             e.consume();
         }
+        return e;
+    }
+
+    @Override
+    public MouseEvent mouseExited(MouseEvent e) {
+        if (draggingCompactCurrentScrollbar) {
+            draggingCompactCurrentScrollbar = false;
+            compactCurrentDragRailBounds.setBounds(0, 0, 0, 0);
+            compactCurrentDragThumbBounds.setBounds(0, 0, 0, 0);
+        }
+        updateHandCursor(false);
         return e;
     }
 
@@ -1458,29 +1459,45 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
     private void updateCompactCurrentScrollbarDrag(int mouseY) {
         Rectangle rail = compactCurrentDragRailBounds.width > 0 ? compactCurrentDragRailBounds : a.currentLayout().scrollbarRailBounds;
-        Rectangle thumb = compactCurrentDragThumbBounds.height > 0 ? compactCurrentDragThumbBounds : a.currentLayout().scrollbarThumbBounds;
-        if (rail.height <= 0 || thumb.height <= 0) {
+        if (rail.height <= 0) {
             return;
         }
 
-        int trackH = Math.max(0, rail.height - thumb.height);
-        if (trackH <= 0) {
-            a.setCompactCurrentScrollFraction(0.0);
-            return;
-        }
-
-        int thumbY = Math.max(rail.y, Math.min(mouseY - compactCurrentScrollbarGrabOffsetY, rail.y + trackH));
-        double frac = (double) (thumbY - rail.y) / (double) trackH;
+        int trackH = Math.max(1, rail.height - 1);
+        int y = Math.max(rail.y, Math.min(mouseY - compactCurrentScrollbarGrabOffsetY, rail.y + trackH));
+        double frac = (double) (y - rail.y) / (double) trackH;
         a.setCompactCurrentScrollFraction(frac);
+        a.client().getCanvas().repaint();
     }
 
-    private Rectangle expandedCompactScrollbarHitBounds(Rectangle bounds) {
-        if (bounds == null || bounds.width <= 0 || bounds.height <= 0) {
+    private boolean tryStartCompactCurrentScrollbarDrag(Point p, int mouseY) {
+        if (!a.isCompactPanelMode() || !compactScrollbarHitBounds().contains(p)) {
+            return false;
+        }
+
+        Rectangle rail = a.currentLayout().scrollbarRailBounds;
+        Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
+        if (rail.width <= 0 || rail.height <= 0) {
+            return false;
+        }
+
+        draggingCompactCurrentScrollbar = true;
+        compactCurrentDragRailBounds.setBounds(rail);
+        compactCurrentDragThumbBounds.setBounds(thumb);
+        compactCurrentScrollbarGrabOffsetY = 0;
+        updateHandCursor(true);
+        updateCompactCurrentScrollbarDrag(mouseY);
+        return true;
+    }
+
+    private Rectangle compactScrollbarHitBounds() {
+        Rectangle rail = a.currentLayout().scrollbarRailBounds;
+        if (rail == null || rail.width <= 0 || rail.height <= 0) {
             return new Rectangle();
         }
 
-        Rectangle hit = new Rectangle(bounds);
-        hit.grow(6, 2);
+        Rectangle hit = new Rectangle(rail);
+        hit.grow(8, 3);
         return hit;
     }
 

@@ -894,8 +894,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private final TaskListScrollController rulesScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController currentScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
-    private final TaskListScrollController compactCurrentScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController syncMismatchScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
+    private int compactCurrentScrollPx = 0;
+    private int compactCurrentMaxOffsetPx = 0;
+    private double compactCurrentWheelRemainderPx = 0.0;
+    private double compactCurrentPendingWheelRotation = 0.0;
 
     private final TaskRowsRenderer taskRowsRenderer = new TaskRowsRenderer(PANEL_W_TASKS, PANEL_PADDING, ROW_HEIGHT, LIST_ROW_SPACING, STATUS_PIP_SIZE, STATUS_PIP_PAD_LEFT, TASK_TEXT_PAD_LEFT, P.ROW_HOVER_BG, P.ROW_SELECTED_BG, P.ROW_SELECTED_OUTLINE, P.ROW_DONE_BG, P.ROW_LINE, P.STRIKE_COLOR, P.UI_TEXT, P.UI_TEXT_DIM, P.PIP_RING, P.PIP_DONE_FILL, P.PIP_DONE_RING, P.UI_GOLD, P.UI_EDGE_LIGHT, P.UI_EDGE_DARK);
 
@@ -2231,7 +2234,9 @@ public class XtremeTaskerOverlay extends Overlay {
         Rectangle textClip = new Rectangle(viewport.x + 4, viewport.y + 4, Math.max(0, viewport.width - 8), Math.max(0, viewport.height - 8));
         int visiblePx = Math.max(0, textClip.height);
         int maxOffsetPx = Math.max(0, totalPx - visiblePx);
-        int scrollPx = Math.max(0, Math.min(compactCurrentScroll.offsetRows * ROW_HEIGHT, maxOffsetPx));
+        compactCurrentMaxOffsetPx = maxOffsetPx;
+        applyCompactScrollInputs(maxOffsetPx);
+        int scrollPx = compactCurrentScrollPx;
 
         g.setClip(textClip);
         int textY = textClip.y + fm.getAscent() + 2 - scrollPx;
@@ -2542,27 +2547,37 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        Rectangle viewport = currentLayout.viewportBounds;
-        if (viewport.height <= 0) {
-            return;
-        }
-
-        int totalRows = (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT;
-        compactCurrentScroll.onWheel(preciseWheelRotation, viewport.height, currentRowBlock(), totalRows <= 0 ? 1 : totalRows, null);
+        compactCurrentPendingWheelRotation += preciseWheelRotation;
     }
 
     private void setCompactCurrentScrollFraction(double fraction) {
-        Rectangle viewport = currentLayout.viewportBounds;
-        int totalRows = (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT;
-        int rowBlock = currentRowBlock();
-        int visible = compactCurrentScroll.visibleRows(viewport.height, rowBlock);
-        int maxOffset = Math.max(0, totalRows - visible);
         double clamped = Math.max(0.0, Math.min(1.0, fraction));
-        compactCurrentScroll.setOffsetRows((int) Math.round(clamped * maxOffset), viewport.height, rowBlock, totalRows);
+        compactCurrentScrollPx = (int) Math.round(clamped * Math.max(0, compactCurrentMaxOffsetPx));
+        compactCurrentWheelRemainderPx = 0.0;
     }
 
     private void resetCompactScroll() {
-        compactCurrentScroll.reset();
+        compactCurrentScrollPx = 0;
+        compactCurrentMaxOffsetPx = 0;
+        compactCurrentWheelRemainderPx = 0.0;
+        compactCurrentPendingWheelRotation = 0.0;
+    }
+
+    private void applyCompactScrollInputs(int maxOffsetPx) {
+        if (maxOffsetPx <= 0) {
+            resetCompactScroll();
+            return;
+        }
+
+        if (compactCurrentPendingWheelRotation != 0.0) {
+            double pixels = compactCurrentPendingWheelRotation * SCROLL_ROWS_PER_NOTCH * ROW_HEIGHT + compactCurrentWheelRemainderPx;
+            int deltaPx = pixels > 0 ? (int) Math.floor(pixels) : (int) Math.ceil(pixels);
+            compactCurrentWheelRemainderPx = pixels - deltaPx;
+            compactCurrentPendingWheelRotation = 0.0;
+            compactCurrentScrollPx += deltaPx;
+        }
+
+        compactCurrentScrollPx = Math.max(0, Math.min(maxOffsetPx, compactCurrentScrollPx));
     }
 
     private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {

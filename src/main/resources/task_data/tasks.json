@@ -3317,7 +3317,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer + 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -5729,7 +5729,7 @@
     },
     {
       "id": "combat_achievement_easy_preparation-is-key_001_c1ba794eac",
-      "name": "Preparation Is Key",
+      "name": "Preparation is Key",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "None",
@@ -22306,7 +22306,7 @@
       "prereqs": "35 Fishing",
       "wikiTitle": "Dress Like You Mean It",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Dress_Like_You_Mean_It",
-      "description": "Subdue Tempoross while wearing all four pieces of the angler's outfit. Players may mix and match regular angler's outfit pieces with spirit angler's outfit pieces. The outfit can either be obtained from the Fishing Trawler (15 Fishing minimum) or aerial fishing (43 Fishing and 35 Hunter). However, 34 Fishing is required in order to wear it.",
+      "description": "Subdue Tempoross while wearing all four pieces of the angler's outfit. Players may mix and match regular angler's outfit pieces with spirit angler's outfit pieces. The outfit can either be obtained from the Fishing Trawler (15 Fishing minimum) or aerial fishing (43 Fishing + 35 Hunter). However, 34 Fishing is required in order to wear it.",
       "version": 1
     },
     {
