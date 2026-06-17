@@ -325,7 +325,7 @@ public class XtremeTaskerOverlay extends Overlay {
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        String titleText = singleEligibleItem ? "Collection Log item needed:" : "";
+        String titleText = singleEligibleItem ? "Collection log item needed:" : "";
         return new CollectionLogRequirementPreview(summaryText, titleText, !singleEligibleItem && (sameNameFamily || repeatedDistinctPool), true, items);
     }
 
@@ -2442,14 +2442,31 @@ public class XtremeTaskerOverlay extends Overlay {
             lines.add(CompactLine.spacer());
         }
 
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(current);
+        if (preview != null && preview.hasItems()) {
+            if (hasTip) {
+                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
+                lines.add(CompactLine.spacer());
+            }
+            lines.add(new CompactLine(compactCollectionLogRequirementTitle(preview), true, false));
+            if (preview.showSummaryText()) {
+                lines.addAll(wrappedCompactLines(preview.summaryText(), true));
+            }
+            if (preview.showItemList()) {
+                lines.add(CompactLine.collectionLogIcons(preview));
+            }
+            lines.add(CompactLine.spacer());
+        }
+
         lines.add(new CompactLine("Prereqs", true, false));
         List<PrerequisiteStatus> statuses = plugin.getPrerequisiteStatuses(current);
+        String prereqs = normalizeCompactPrereqs(current.getPrereqs());
         if (statuses != null && !statuses.isEmpty()) {
             for (PrerequisiteStatus status : statuses) {
                 lines.addAll(wrappedCompactPrereqLines(status));
             }
-        } else if (current.getPrereqs() != null && !current.getPrereqs().trim().isEmpty()) {
-            String formatted = current.getPrereqs().replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
+        } else if (!prereqs.isEmpty()) {
+            String formatted = prereqs.replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
             for (String prereq : formatted.split("\n")) {
                 lines.addAll(wrappedCompactLines("- " + prereq, true));
             }
@@ -2457,23 +2474,23 @@ public class XtremeTaskerOverlay extends Overlay {
             lines.add(new CompactLine("None", false, true));
         }
 
-        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(current);
-        if (preview != null && preview.hasItems()) {
-            lines.add(CompactLine.spacer());
-            if (hasTip) {
-                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
-                lines.add(CompactLine.spacer());
-            }
-            lines.add(new CompactLine("Eligible CLOGs", true, false));
-            if (preview.showSummaryText()) {
-                lines.addAll(wrappedCompactLines(preview.summaryText(), true));
-            }
-            if (preview.showItemList()) {
-                lines.add(CompactLine.collectionLogIcons(preview));
-            }
-        }
-
         return lines;
+    }
+
+    private static String compactCollectionLogRequirementTitle(CollectionLogRequirementPreview preview) {
+        if (preview != null && preview.titleText() != null && !preview.titleText().trim().isEmpty()) {
+            return preview.titleText();
+        }
+        return "Eligible Collection Log items";
+    }
+
+    private static String normalizeCompactPrereqs(String prereqs) {
+        String normalized = prereqs == null ? "" : prereqs.replace("\r", "").trim();
+        return isNoPrereqsText(normalized) ? "" : normalized;
+    }
+
+    private static boolean isNoPrereqsText(String prereqs) {
+        return prereqs.isEmpty() || prereqs.equalsIgnoreCase("none") || prereqs.equalsIgnoreCase("n/a") || prereqs.equals("-");
     }
 
     private void drawCompactLine(Graphics2D g, FontMetrics fm, CompactLine line, int x, int y, int maxWidth) {

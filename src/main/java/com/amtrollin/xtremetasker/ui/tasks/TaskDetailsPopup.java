@@ -1118,7 +1118,7 @@ public final class TaskDetailsPopup
         }
         return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
                 ? "Collection Log Progress"
-                : "Eligible Collection Log Items";
+                : "Eligible Collection Log items";
     }
 
     private static String buildCompletionLine(CompletionInfo info, Long ticks)

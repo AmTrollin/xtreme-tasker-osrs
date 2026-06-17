@@ -743,8 +743,8 @@ public final class CurrentTabRenderer
         }
 
         totalPx += rowHeight;
-        String prereqs = current.getPrereqs();
-        boolean hasPrereqs = prereqs != null && !prereqs.trim().isEmpty();
+        String prereqs = normalizePrereqs(current.getPrereqs());
+        boolean hasPrereqs = !prereqs.isEmpty();
         if (hasPrereqs)
         {
             List<PrerequisiteStatus> statuses = prerequisiteStatusProvider == null
@@ -788,7 +788,7 @@ public final class CurrentTabRenderer
             {
                 totalPx += CollectionLogIconGridRenderer.measureHeight(requirementPreview.getItems().size(), maxW);
             }
-            totalPx += 8;
+            totalPx += rowHeight;
         }
 
         return totalPx + fm.getAscent() + 8;
@@ -818,8 +818,8 @@ public final class CurrentTabRenderer
                 ? diaryTaskDescription(current)
                 : (hideDescription ? null : current.getDescription());
         boolean hasDesc = desc != null && !desc.trim().isEmpty();
-        String prereqs = current.getPrereqs();
-        boolean hasPrereqs = prereqs != null && !prereqs.trim().isEmpty();
+        String prereqs = normalizePrereqs(current.getPrereqs());
+        boolean hasPrereqs = !prereqs.isEmpty();
         String tip = showTips ? current.getTip() : null;
         boolean hasTip = tip != null && !tip.trim().isEmpty();
         if (hasTip)
@@ -853,7 +853,7 @@ public final class CurrentTabRenderer
                 y += 6;
             }
             y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview, collectionLogItemImageProvider, mousePoint);
-            y += 8;
+            y += rowHeight;
         }
 
         g.setColor(uiGold);
@@ -1340,7 +1340,7 @@ public final class CurrentTabRenderer
         }
         return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
                 ? "Collection Log Progress"
-                : "Eligible Collection Log Items";
+                : "Eligible Collection Log items";
     }
 
     private void drawBadgesLeftAligned(Graphics2D g, FontMetrics fm, int panelX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
@@ -1452,6 +1452,14 @@ public final class CurrentTabRenderer
     private static String safe(String text)
     {
         return text == null ? "" : text;
+    }
+
+    private static String normalizePrereqs(String prereqs)
+    {
+        String normalized = safe(prereqs).replace("\r", "").trim();
+        return normalized.isEmpty() || normalized.equalsIgnoreCase("none") || normalized.equalsIgnoreCase("n/a") || normalized.equals("-")
+                ? ""
+                : normalized;
     }
 
     private static boolean isAchievementDiaryTask(XtremeTask task)
