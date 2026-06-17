@@ -1873,7 +1873,12 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         String normalized = name.toLowerCase(Locale.ROOT);
-        return normalized.contains("next tier") || normalized.contains("next reward");
+        return normalized.contains("next tier")
+                || normalized.contains("next reward")
+                || normalized.contains("mta wand")
+                || normalized.equals("upgrade to apprentice wand")
+                || normalized.equals("upgrade to teacher wand")
+                || normalized.equals("upgrade to master wand");
     }
 
     private int instanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)

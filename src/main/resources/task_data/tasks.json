@@ -2255,12 +2255,11 @@
     },
     {
       "id": "collection_log_easy_upgrade-the-mta-wand-once_001_c0ffabb7fb",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Beginner wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Beginner_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -4941,12 +4940,11 @@
     },
     {
       "id": "collection_log_easy_upgrade-the-mta-wand-once_002_ad191602f6",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Apprentice wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Apprentice_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -4957,19 +4955,18 @@
         ],
         "count": 2
       },
-      "displayItemId": 6908,
+      "displayItemId": 6910,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Teacher_wand_detail.png/320px-Teacher_wand_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Apprentice_wand_detail.png/320px-Apprentice_wand_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_easy_upgrade-the-mta-wand-once_003_9e8d477596",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Teacher wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Teacher_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -4980,7 +4977,7 @@
         ],
         "count": 3
       },
-      "displayItemId": 6908,
+      "displayItemId": 6912,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Teacher_wand_detail.png/320px-Teacher_wand_detail.png",
       "version": 1
@@ -8912,12 +8909,11 @@
     },
     {
       "id": "collection_log_medium_upgrade-the-mta-wand-once_001_6f613bc509",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Master wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Master_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -8930,7 +8926,7 @@
       },
       "displayItemId": 6914,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Teacher_wand_detail.png/320px-Teacher_wand_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Master_wand_detail.png/320px-Master_wand_detail.png",
       "version": 1
     },
     {

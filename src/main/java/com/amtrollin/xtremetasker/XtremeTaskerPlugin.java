@@ -2169,7 +2169,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return task;
         }
 
-        String name = task.getName() + " (" + step.label + ")";
+        String name = sequenceTaskDisplayName(task, step);
         String wikiItemName = sequenceWikiItemName(task.getName(), step.label, step.itemName);
         String wikiUrl = wikiItemName == null || wikiItemName.trim().isEmpty()
                 ? task.getWikiUrl()
@@ -2188,6 +2188,38 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 task.getVerification(),
                 task.getTip()
         );
+    }
+
+    private static String sequenceTaskDisplayName(XtremeTask task, SequenceStep step)
+    {
+        if (step == null)
+        {
+            return task == null ? "" : task.getName();
+        }
+
+        if (isMtaWandSequenceTask(task, step))
+        {
+            switch (step.itemId)
+            {
+                case 6908:
+                    return "Obtain Beginner MTA wand";
+                case 6910:
+                    return "Upgrade to Apprentice MTA wand";
+                case 6912:
+                    return "Upgrade to Teacher MTA wand";
+                case 6914:
+                    return "Upgrade to Master MTA wand";
+                default:
+                    break;
+            }
+        }
+
+        if (step.itemId == 4119 && task.getName() != null && task.getName().toLowerCase(Locale.ROOT).contains("metal boots"))
+        {
+            return task.getName().replace("next tier", "first tier") + " (" + step.label + ")";
+        }
+
+        return task.getName() + " (" + step.label + ")";
     }
 
     private String sequenceDisplayName(XtremeTask task)
@@ -2286,7 +2318,26 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static boolean isDisplaySequenceTask(String name)
     {
         String normalized = name == null ? "" : name.toLowerCase(Locale.ROOT);
-        return normalized.contains("next tier") || normalized.contains("next reward");
+        return normalized.contains("next tier")
+                || normalized.contains("next reward")
+                || isMtaWandSequenceTaskName(normalized);
+    }
+
+    private static boolean isMtaWandSequenceTask(XtremeTask task, SequenceStep step)
+    {
+        return step != null
+                && (step.itemId == 6908 || step.itemId == 6910 || step.itemId == 6912 || step.itemId == 6914)
+                && isMtaWandSequenceTaskName(task == null ? null : task.getName());
+    }
+
+    private static boolean isMtaWandSequenceTaskName(String name)
+    {
+        String normalized = name == null ? "" : name.toLowerCase(Locale.ROOT);
+        return normalized.contains("mta wand")
+                || normalized.contains("magic training arena wand")
+                || normalized.equals("upgrade to apprentice mta wand")
+                || normalized.equals("upgrade to teacher mta wand")
+                || normalized.equals("upgrade to master mta wand");
     }
 
     private static String sequenceWikiItemName(String taskName, String label, String itemName)
@@ -2320,6 +2371,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             Map.entry(4127, new SequenceItemMeta("Mithril", "52 Slayer", "Mithril boots")),
             Map.entry(4129, new SequenceItemMeta("Adamant", "75 Slayer (Gargoyles) or Giant frogs", "Adamant boots")),
             Map.entry(4131, new SequenceItemMeta("Rune", "80 Slayer", "Rune boots")),
+            Map.entry(6908, new SequenceItemMeta("Beginner wand", "", "Beginner wand")),
+            Map.entry(6910, new SequenceItemMeta("Apprentice wand", "", "Apprentice wand")),
+            Map.entry(6912, new SequenceItemMeta("Teacher wand", "", "Teacher wand")),
+            Map.entry(6914, new SequenceItemMeta("Master wand", "", "Master wand")),
             Map.entry(31734, new SequenceItemMeta("Ralph's fabric roll", "30 Sailing; 14 Construction", "Ralph%27s fabric roll")),
             Map.entry(31733, new SequenceItemMeta("Barrel stand", "30 Sailing; 14 Construction", "Barrel stand")),
             Map.entry(31732, new SequenceItemMeta("Stormy key", "30 Sailing; 14 Construction", "Stormy key")),
