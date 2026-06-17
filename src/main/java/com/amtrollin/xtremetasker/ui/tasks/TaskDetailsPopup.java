@@ -18,8 +18,9 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,8 @@ public final class TaskDetailsPopup
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
     private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
+    private static final DateTimeFormatter COMPLETION_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
 
     private final UiPalette palette;
     private final TaskListScrollController scroll;
@@ -1129,7 +1132,7 @@ public final class TaskDetailsPopup
     {
         if (info == null) return null;
         if (info.timestamp <= 0) return "Completed: date unknown";
-        String date = new SimpleDateFormat("MMM d, yyyy").format(new Date(info.timestamp));
+        String date = COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
         return "Completed: " + date + completionSourceSuffix(info, ticks);
     }
 
@@ -1263,7 +1266,7 @@ public final class TaskDetailsPopup
         {
             return "Date unknown";
         }
-        return new SimpleDateFormat("MMM d, yyyy").format(new Date(info.timestamp)) + completionSourceSuffix(info, ticks);
+        return COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp)) + completionSourceSuffix(info, ticks);
     }
 
     private static String completionSourceSuffix(CompletionInfo info, Long ticks)

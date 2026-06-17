@@ -5,16 +5,34 @@ import com.amtrollin.xtremetasker.ui.text.TextUtils;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class CollectionLogIconGridRenderer
 {
+    private static final Logger log = LoggerFactory.getLogger(CollectionLogIconGridRenderer.class);
     private static final int ICONS_PER_ROW = 8;
     private static final int MAX_ICON_SIZE = 36;
     private static final int MIN_ICON_SIZE = 20;
     private static final int ICON_GAP = 3;
     private static final int ROW_GAP = 6;
+    private static final long SLOW_RENDER_LOG_THRESHOLD_NANOS = 8_000_000L;
+    private static final long SLOW_RENDER_LOG_INTERVAL_MS = 2_000L;
+    private static long lastSlowRenderLogMs = 0L;
+    private static final Map<String, LabelFit> LABEL_FIT_CACHE = Collections.synchronizedMap(
+            new LinkedHashMap<String, LabelFit>(256, 0.75f, true)
+            {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, LabelFit> eldest)
+                {
+                    return size() > 256;
+                }
+            });
 
     private CollectionLogIconGridRenderer()
     {
@@ -80,11 +98,13 @@ public final class CollectionLogIconGridRenderer
             return yBaseline;
         }
 
+        long renderStartNanos = items.size() >= 16 ? System.nanoTime() : 0L;
         int columns = normalizeColumns(iconsPerRow);
         int iconSize = iconSize(maxWidth, columns);
         int top = yBaseline - fm.getAscent();
         CollectionLogRequirementItem hoveredItem = null;
         Rectangle hoveredBounds = null;
+        Rectangle clipBounds = g.getClipBounds();
 
         Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -102,16 +122,20 @@ public final class CollectionLogIconGridRenderer
             int iconX = x + col * (iconSize + ICON_GAP);
             int iconY = top + row * (iconSize + ROW_GAP);
             Rectangle iconBounds = new Rectangle(iconX, iconY, iconSize, iconSize);
+            boolean hovered = mousePoint != null && iconBounds.contains(mousePoint);
 
-            drawItemImage(g, iconBounds, item, imageProvider, dimTextColor);
-            drawBadgeText(g, iconBounds, item.getBadgeText(), textColor);
-
-            if (item.isObtained())
+            if (clipBounds == null || iconBounds.intersects(clipBounds) || hovered)
             {
-                drawObtainedCheck(g, iconBounds);
+                drawItemImage(g, iconBounds, item, imageProvider, dimTextColor);
+                drawBadgeText(g, iconBounds, item.getBadgeText(), textColor);
+
+                if (item.isObtained())
+                {
+                    drawObtainedCheck(g, iconBounds);
+                }
             }
 
-            if (mousePoint != null && iconBounds.contains(mousePoint))
+            if (hovered)
             {
                 hoveredItem = item;
                 hoveredBounds = iconBounds;
@@ -124,6 +148,7 @@ public final class CollectionLogIconGridRenderer
         }
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
+        logSlowRender(renderStartNanos, items.size(), columns, maxWidth);
         return yBaseline + measureHeight(items.size(), maxWidth, columns);
     }
 
@@ -239,6 +264,13 @@ public final class CollectionLogIconGridRenderer
 
     private static LabelFit fitLabel(Graphics2D g, Font baseFont, String text, int maxWidth, int maxHeight)
     {
+        String cacheKey = labelFitCacheKey(baseFont, text, maxWidth, maxHeight);
+        LabelFit cached = LABEL_FIT_CACHE.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
         boolean shortNumericLabel = text != null && text.matches("\\d{1,2}");
         float maxSize = shortNumericLabel
                 ? Math.min(20f, Math.max(12f, maxHeight * 0.82f))
@@ -257,14 +289,49 @@ public final class CollectionLogIconGridRenderer
             }
             if (!lines.isEmpty() && lines.size() * fm.getHeight() <= maxHeight + 2)
             {
-                return new LabelFit(font, lines);
+                LabelFit fit = new LabelFit(font, lines);
+                LABEL_FIT_CACHE.put(cacheKey, fit);
+                return fit;
             }
         }
 
         Font font = baseFont.deriveFont(Font.BOLD, 7f);
         g.setFont(font);
         FontMetrics fm = g.getFontMetrics();
-        return new LabelFit(font, List.of(TextUtils.truncateToWidth(text, fm, maxWidth)));
+        LabelFit fit = new LabelFit(font, List.of(TextUtils.truncateToWidth(text, fm, maxWidth)));
+        LABEL_FIT_CACHE.put(cacheKey, fit);
+        return fit;
+    }
+
+    private static String labelFitCacheKey(Font font, String text, int maxWidth, int maxHeight)
+    {
+        String fontName = font == null ? "" : font.getFontName();
+        int fontStyle = font == null ? 0 : font.getStyle();
+        return fontName + "|" + fontStyle + "|" + maxWidth + "x" + maxHeight + "|" + String.valueOf(text);
+    }
+
+    private static void logSlowRender(long renderStartNanos, int itemCount, int columns, int maxWidth)
+    {
+        if (renderStartNanos <= 0L)
+        {
+            return;
+        }
+
+        long elapsedNanos = System.nanoTime() - renderStartNanos;
+        if (elapsedNanos < SLOW_RENDER_LOG_THRESHOLD_NANOS)
+        {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastSlowRenderLogMs < SLOW_RENDER_LOG_INTERVAL_MS)
+        {
+            return;
+        }
+
+        lastSlowRenderLogMs = nowMs;
+        log.debug("Slow collection-log icon grid render: {} icons, {} columns, maxWidth={}, elapsed={}ms",
+                itemCount, columns, maxWidth, elapsedNanos / 1_000_000L);
     }
 
     private static final class LabelFit

@@ -55,6 +55,8 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.util.LinkBrowser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.imageio.ImageIO;
@@ -63,6 +65,9 @@ import java.awt.event.KeyEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -75,11 +80,28 @@ import static com.amtrollin.xtremetasker.ui.style.UiStrings.*;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
 
 public class XtremeTaskerOverlay extends Overlay {
+    private static final Logger log = LoggerFactory.getLogger(XtremeTaskerOverlay.class);
     private static final BufferedImage PLUGIN_ICON = loadPluginIconSafe();
     private static final BufferedImage HEADER_ICON = loadHeaderIconSafe();
     private static final UiPalette P = UiPalette.DEFAULT;
     private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
     private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
+    private static final int COLLECTION_LOG_PREVIEW_CACHE_LIMIT = 256;
+    private static final int COLLECTION_LOG_SEQUENCE_CACHE_LIMIT = 256;
+    private static final int ITEM_IMAGE_CACHE_LIMIT = 512;
+    private static final int SPRITE_CACHE_LIMIT = 32;
+    private static final int SORTED_TASK_LIST_CACHE_LIMIT = 48;
+    private static final int PREREQUISITE_STATUS_CACHE_LIMIT = 512;
+    private static final int COMPACT_LINES_CACHE_LIMIT = 128;
+    private static final int SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT = 8;
+    private static final long SLOW_PREVIEW_LOG_THRESHOLD_NANOS = 8_000_000L;
+    private static final long SLOW_PREVIEW_LOG_INTERVAL_MS = 2_000L;
+    private static final long SLOW_TASK_LIST_LOG_THRESHOLD_NANOS = 8_000_000L;
+    private static final long SLOW_TASK_LIST_LOG_INTERVAL_MS = 2_000L;
+    private static final long SLOW_PANEL_RENDER_LOG_THRESHOLD_NANOS = 12_000_000L;
+    private static final long SLOW_PANEL_RENDER_LOG_INTERVAL_MS = 2_000L;
+    private static final DateTimeFormatter COMPACT_COMPLETION_DATE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault());
 
     private static BufferedImage loadPluginIconSafe() {
         try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_icon.png")) {
@@ -95,6 +117,18 @@ public class XtremeTaskerOverlay extends Overlay {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private static <K, V> Map<K, V> lruCache(int maxEntries)
+    {
+        return Collections.synchronizedMap(new LinkedHashMap<K, V>(maxEntries + 1, 0.75f, true)
+        {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<K, V> eldest)
+            {
+                return size() > maxEntries;
+            }
+        });
     }
 
     // ---- bounds / layout ----
@@ -209,6 +243,17 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Client client;
     private final XtremeTaskerPlugin plugin;
     private final SpriteManager spriteManager;
+    private final Map<String, CollectionLogRequirementPreview> collectionLogPreviewCache = lruCache(COLLECTION_LOG_PREVIEW_CACHE_LIMIT);
+    private final Map<String, List<XtremeTask>> collectionLogSequenceCache = lruCache(COLLECTION_LOG_SEQUENCE_CACHE_LIMIT);
+    private final Map<Integer, BufferedImage> itemImageCache = lruCache(ITEM_IMAGE_CACHE_LIMIT);
+    private final Map<Integer, BufferedImage> spriteCache = lruCache(SPRITE_CACHE_LIMIT);
+    private final Map<String, List<XtremeTask>> sortedTaskListCache = lruCache(SORTED_TASK_LIST_CACHE_LIMIT);
+    private final Map<String, List<PrerequisiteStatus>> prerequisiteStatusCache = lruCache(PREREQUISITE_STATUS_CACHE_LIMIT);
+    private final Map<String, List<CompactLine>> compactLinesCache = lruCache(COMPACT_LINES_CACHE_LIMIT);
+    private final Map<String, List<XtremeTask>> syncReviewVisibleTasksCache = lruCache(SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT);
+    private long lastSlowPreviewLogMs = 0L;
+    private long lastSlowTaskListLogMs = 0L;
+    private long lastSlowPanelRenderLogMs = 0L;
 
     @Getter
     private final MouseAdapter mouseAdapter;
@@ -276,18 +321,163 @@ public class XtremeTaskerOverlay extends Overlay {
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
         Integer sequenceItemId = sequencePreviewFocusItemId(task);
-        if (sequenceItemId != null && sequenceItemId > 0) return plugin.getItemImage(sequenceItemId);
+        if (sequenceItemId != null && sequenceItemId > 0) return getCachedItemImage(sequenceItemId);
         Integer id = task.getIconItemId();
-        if (id != null && id > 0) return plugin.getItemImage(id);
+        if (id != null && id > 0) return getCachedItemImage(id);
         if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT && task.getTier() != null) {
             Integer spriteId = CA_TIER_SPRITE_IDS.get(task.getTier());
-            if (spriteId != null) return spriteManager.getSprite(spriteId, 0);
+            if (spriteId != null) return getCachedSprite(spriteId);
         }
         return null;
     }
 
+    private BufferedImage getCachedItemImage(int itemId)
+    {
+        if (itemId <= 0)
+        {
+            return null;
+        }
+
+        BufferedImage cached = itemImageCache.get(itemId);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        BufferedImage image = plugin.getItemImage(itemId);
+        if (image != null)
+        {
+            itemImageCache.put(itemId, image);
+        }
+        return image;
+    }
+
+    private BufferedImage getCachedSprite(int spriteId)
+    {
+        BufferedImage cached = spriteCache.get(spriteId);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        BufferedImage image = spriteManager.getSprite(spriteId, 0);
+        if (image != null)
+        {
+            spriteCache.put(spriteId, image);
+        }
+        return image;
+    }
+
+    private List<PrerequisiteStatus> getCachedPrerequisiteStatuses(XtremeTask task)
+    {
+        if (task == null || task.getPrereqs() == null)
+        {
+            return List.of();
+        }
+
+        String cacheKey = safeTaskId(task)
+                + "|tick=" + client.getTickCount()
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|prereqs=" + task.getPrereqs();
+        List<PrerequisiteStatus> cached = prerequisiteStatusCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        List<PrerequisiteStatus> statuses = plugin.getPrerequisiteStatuses(task);
+        List<PrerequisiteStatus> safeStatuses = statuses == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(statuses));
+        prerequisiteStatusCache.put(cacheKey, safeStatuses);
+        return safeStatuses;
+    }
+
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(XtremeTask task) {
         return buildCollectionLogRequirementPreview(task, true);
+    }
+
+    private String collectionLogRequirementPreviewCacheKey(XtremeTask task, boolean completedInstanceCanApplyAll)
+    {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return null;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null)
+        {
+            return null;
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.SKILL)
+        {
+            return skillcapePreviewCacheKey(task, verification, completedInstanceCanApplyAll);
+        }
+
+        if (verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return null;
+        }
+
+        int[] itemIds = verification.getItemIds();
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return null;
+        }
+
+        String canonicalItemIds = canonicalItemIds(itemIds);
+        XtremeTask current = plugin.getCurrentTask();
+        Integer baselineCount = plugin.getCurrentTaskCollectionLogBaselineCount(canonicalItemIds);
+
+        return "cl|pack=" + plugin.getLoadedPackVersion()
+                + "|task=" + safeTaskId(task)
+                + "|count=" + verification.getCount()
+                + "|applyAll=" + completedInstanceCanApplyAll
+                + "|items=" + canonicalItemIds
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|current=" + safeTaskId(current)
+                + "|baseline=" + baselineCount
+                + "|pendingPages=" + plugin.getPendingAncientPageDropCountSinceLastSync();
+    }
+
+    private String skillcapePreviewCacheKey(XtremeTask task, TaskVerification verification, boolean completedInstanceCanApplyAll)
+    {
+        if (verification.getExperience() == null || verification.getExperience().isEmpty())
+        {
+            return null;
+        }
+
+        return "skillcape|pack=" + plugin.getLoadedPackVersion()
+                + "|task=" + safeTaskId(task)
+                + "|applyAll=" + completedInstanceCanApplyAll
+                + "|xp=" + verification.getExperience().keySet()
+                + "|clState=" + plugin.getCollectionLogStateVersion();
+    }
+
+    private static String safeTaskId(XtremeTask task)
+    {
+        return task == null || task.getId() == null ? "" : task.getId();
+    }
+
+    private void logSlowPreviewBuild(long startNanos, XtremeTask task, CollectionLogRequirementPreview preview)
+    {
+        long elapsedNanos = System.nanoTime() - startNanos;
+        if (elapsedNanos < SLOW_PREVIEW_LOG_THRESHOLD_NANOS)
+        {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastSlowPreviewLogMs < SLOW_PREVIEW_LOG_INTERVAL_MS)
+        {
+            return;
+        }
+
+        lastSlowPreviewLogMs = nowMs;
+        int itemCount = preview == null ? 0 : preview.getItems().size();
+        log.debug("Slow collection-log preview build: taskId={}, items={}, elapsed={}ms",
+                safeTaskId(task), itemCount, elapsedNanos / 1_000_000L);
     }
 
     private static boolean isCollectionLogSyncSource(TaskSource source)
@@ -296,6 +486,32 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(
+            XtremeTask task,
+            boolean completedInstanceCanApplyAll)
+    {
+        String cacheKey = collectionLogRequirementPreviewCacheKey(task, completedInstanceCanApplyAll);
+        if (cacheKey == null)
+        {
+            return null;
+        }
+
+        CollectionLogRequirementPreview cached = collectionLogPreviewCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        long startNanos = System.nanoTime();
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreviewUncached(task, completedInstanceCanApplyAll);
+        if (preview != null)
+        {
+            collectionLogPreviewCache.put(cacheKey, preview);
+        }
+        logSlowPreviewBuild(startNanos, task, preview);
+        return preview;
+    }
+
+    private CollectionLogRequirementPreview buildCollectionLogRequirementPreviewUncached(
             XtremeTask task,
             boolean completedInstanceCanApplyAll)
     {
@@ -752,6 +968,13 @@ public class XtremeTaskerOverlay extends Overlay {
             return Collections.emptyList();
         }
 
+        String cacheKey = plugin.getLoadedPackVersion() + "|" + normalizeRequirementSequenceName(task.getName()) + "|" + canonicalItemIds(itemIds);
+        List<XtremeTask> cached = collectionLogSequenceCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
         List<XtremeTask> sequence = new ArrayList<>();
         for (XtremeTask candidate : plugin.getDummyTasks())
         {
@@ -765,7 +988,9 @@ public class XtremeTaskerOverlay extends Overlay {
             Integer count = verification == null ? null : verification.getCount();
             return count == null ? Integer.MAX_VALUE : count;
         }));
-        return sequence;
+        List<XtremeTask> immutableSequence = Collections.unmodifiableList(sequence);
+        collectionLogSequenceCache.put(cacheKey, immutableSequence);
+        return immutableSequence;
     }
 
     private boolean sameCollectionLogRequirementSignature(XtremeTask target, XtremeTask candidate, int[] targetItemIds) {
@@ -1332,6 +1557,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return null;
         }
 
+        long panelRenderStartNanos = System.nanoTime();
         g.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics fm = g.getFontMetrics();
         int canvasW = client.getCanvasWidth();
@@ -1486,6 +1712,7 @@ public class XtremeTaskerOverlay extends Overlay {
             scalePanelInputBounds(panelX, panelY, panelScale);
             panelBoundsScaledForInput = true;
             panelRenderMouse = null;
+            logSlowPanelRender(panelRenderStartNanos);
             return new Dimension(physicalPanelW, physicalPanelH);
         }
 
@@ -1542,6 +1769,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (taskDetailsPopup.isOpen() && pendingMarkAllIncompleteTask != null) {
             renderMarkAllIncompleteConfirm(g, fm);
         }
+        logSlowPanelRender(panelRenderStartNanos);
         return new Dimension(physicalPanelW, physicalPanelH);
     }
 
@@ -1559,9 +1787,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin::getTaskTimeTicks,
                 useCondensedTaskRows() ? plugin::getTaskGroupProgress : null,
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
-                plugin::getPrerequisiteStatuses,
+                this::getCachedPrerequisiteStatuses,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
-                plugin::getItemImage,
+                this::getCachedItemImage,
                 client.getMouseCanvasPosition(),
                 resolveTaskIcon(taskDetailsPopup.task()),
                 plugin.showTips()
@@ -1589,6 +1817,7 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchApplyConfirmOpen = false;
         syncMismatchDescriptionTask = null;
         selectedSyncMismatchTaskIds.clear();
+        syncReviewVisibleTasksCache.clear();
         synchronized (syncMismatchTaskBounds) {
             syncMismatchTaskBounds.clear();
         }
@@ -1860,11 +2089,32 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private List<XtremeTask> visibleSyncMismatchTasks()
     {
-        if (syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES)
+        String cacheKey = syncReviewVisibleTasksCacheKey();
+        List<XtremeTask> cached = syncReviewVisibleTasksCache.get(cacheKey);
+        if (cached != null)
         {
-            return plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource);
+            return cached;
         }
-        return plugin.getSyncMismatchTasks(syncMismatchReviewSource);
+
+        List<XtremeTask> tasks = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource)
+                : plugin.getSyncMismatchTasks(syncMismatchReviewSource);
+        List<XtremeTask> snapshot = tasks == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(tasks));
+        syncReviewVisibleTasksCache.put(cacheKey, snapshot);
+        return snapshot;
+    }
+
+    private String syncReviewVisibleTasksCacheKey()
+    {
+        return "mode=" + syncReviewMode
+                + "|source=" + syncMismatchReviewSource
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|lastSync=" + plugin.getLastSyncResultAtLocalTime()
+                + "|lastCa=" + plugin.getLastCombatAchievementSyncResultAtLocalTime()
+                + "|lastCl=" + plugin.getLastCollectionLogSyncResultAtLocalTime();
     }
 
     private int selectedVisibleSyncMismatchCount(List<XtremeTask> mismatches)
@@ -2285,9 +2535,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 rolling,
                 plugin::getTierProgressLabel,
                 (ignored) -> computeCurrentLineForRender(current, currentCompleted, fm),
-                plugin::getPrerequisiteStatuses,
+                this::getCachedPrerequisiteStatuses,
                 this::buildCollectionLogRequirementPreview,
-                plugin::getItemImage,
+                this::getCachedItemImage,
                 this::getTasksForTier,
                 tierForProgress,
                 src,
@@ -2449,7 +2699,7 @@ public class XtremeTaskerOverlay extends Overlay {
                         textY,
                         textW,
                         line.collectionLogPreview.getItems(),
-                        plugin::getItemImage,
+                        this::getCachedItemImage,
                         mousePoint,
                         textClip,
                         P.UI_TEXT,
@@ -2587,10 +2837,16 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private List<CompactLine> compactLines(XtremeTask current, boolean rolling) {
+        String cacheKey = compactLinesCacheKey(current, rolling);
+        List<CompactLine> cached = compactLinesCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         List<CompactLine> lines = new ArrayList<>();
         if (rolling) {
             lines.add(new CompactLine("Rolling a new task...", false, true));
-            return lines;
+            return cacheCompactLines(cacheKey, lines);
         }
         if (current == null) {
             String notice = Optional.ofNullable(plugin.getPendingRollSkipNotice()).orElse(plugin.getRollSkipNotice());
@@ -2602,7 +2858,7 @@ public class XtremeTaskerOverlay extends Overlay {
             } else {
                 lines.add(new CompactLine("No active task.", false, true));
             }
-            return lines;
+            return cacheCompactLines(cacheKey, lines);
         }
 
         String desc = current.getDescription();
@@ -2638,7 +2894,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         lines.add(new CompactLine("Prereqs", true, false));
-        List<PrerequisiteStatus> statuses = plugin.getPrerequisiteStatuses(current);
+        List<PrerequisiteStatus> statuses = getCachedPrerequisiteStatuses(current);
         String prereqs = normalizeCompactPrereqs(current.getPrereqs());
         if (statuses != null && !statuses.isEmpty()) {
             for (PrerequisiteStatus status : statuses) {
@@ -2653,7 +2909,24 @@ public class XtremeTaskerOverlay extends Overlay {
             lines.add(new CompactLine("None", false, true));
         }
 
-        return lines;
+        return cacheCompactLines(cacheKey, lines);
+    }
+
+    private String compactLinesCacheKey(XtremeTask current, boolean rolling) {
+        return "task=" + safeTaskId(current)
+                + "|rolling=" + rolling
+                + "|notice=" + Optional.ofNullable(plugin.getPendingRollSkipNotice()).orElse(plugin.getRollSkipNotice())
+                + "|tips=" + plugin.showTips()
+                + "|tick=" + client.getTickCount()
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|width=" + (PANEL_W_COMPACT - PANEL_PADDING * 2 - 26);
+    }
+
+    private List<CompactLine> cacheCompactLines(String cacheKey, List<CompactLine> lines) {
+        List<CompactLine> immutableLines = Collections.unmodifiableList(new ArrayList<>(lines));
+        compactLinesCache.put(cacheKey, immutableLines);
+        return immutableLines;
     }
 
     private static String compactCollectionLogRequirementTitle(CollectionLogRequirementPreview preview) {
@@ -2973,7 +3246,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (info == null || info.timestamp <= 0) {
             return "Completed: date unknown";
         }
-        return "Completed: " + new java.text.SimpleDateFormat("MMM d, h:mm a").format(new Date(info.timestamp));
+        return "Completed: " + COMPACT_COMPLETION_DATE_TIME_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
     private static String compactCompletionSourceSuffix(CompletionInfo info) {
@@ -3543,15 +3816,87 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private List<XtremeTask> getSortedTasksForTier(TaskTier tier) {
-        List<XtremeTask> base = getTasksForScope(taskQuery.tierScope, activeTierTab);
+        String cacheKey = sortedTaskListCacheKey(tier);
+        List<XtremeTask> cached = sortedTaskListCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
 
+        long startNanos = System.nanoTime();
+        List<XtremeTask> base = getTasksForScope(taskQuery.tierScope, tier);
         List<XtremeTask> sorted = TaskListPipeline.apply(base, taskQuery, plugin::isTaskCompleted, plugin::isNewTask, plugin::getCompletionInfo, plugin::getTaskTimeTicks);
-        return useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
+        List<XtremeTask> result = useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
+        List<XtremeTask> immutableResult = Collections.unmodifiableList(new ArrayList<>(result));
+        sortedTaskListCache.put(cacheKey, immutableResult);
+        logSlowTaskListBuild(startNanos, tier, base.size(), immutableResult.size());
+        return immutableResult;
     }
 
     private boolean useCondensedTaskRows()
     {
         return plugin.condenseRepeatedTasks() && !taskQuery.sortByDate && !taskQuery.sortByTimeTicks;
+    }
+
+    private String sortedTaskListCacheKey(TaskTier tier)
+    {
+        return "tier=" + tier
+                + "|scope=" + taskQuery.tierScope
+                + "|search=" + (taskQuery.searchText == null ? "" : taskQuery.searchText)
+                + "|src=" + taskQuery.sourceFilter
+                + "|ca=" + taskQuery.sourceCASelected
+                + "|cl=" + taskQuery.sourceClogsSelected
+                + "|da=" + taskQuery.sourceDasSelected
+                + "|status=" + taskQuery.statusFilter
+                + "|sortCompletion=" + taskQuery.sortByCompletion
+                + "|completedFirst=" + taskQuery.completedFirst
+                + "|sortTier=" + taskQuery.sortByTier
+                + "|easyFirst=" + taskQuery.easyTierFirst
+                + "|sortDate=" + taskQuery.sortByDate
+                + "|newestFirst=" + taskQuery.newestFirst
+                + "|sortTicks=" + taskQuery.sortByTimeTicks
+                + "|longestFirst=" + taskQuery.longestFirst
+                + "|newOnly=" + taskQuery.showNewTasksFilter
+                + "|condensed=" + useCondensedTaskRows()
+                + "|state=" + plugin.getTaskListRenderStateHash();
+    }
+
+    private void logSlowTaskListBuild(long startNanos, TaskTier tier, int inputCount, int outputCount)
+    {
+        long elapsedNanos = System.nanoTime() - startNanos;
+        if (elapsedNanos < SLOW_TASK_LIST_LOG_THRESHOLD_NANOS)
+        {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastSlowTaskListLogMs < SLOW_TASK_LIST_LOG_INTERVAL_MS)
+        {
+            return;
+        }
+
+        lastSlowTaskListLogMs = nowMs;
+        log.debug("Slow task list build: tier={}, input={}, output={}, elapsed={}ms",
+                tier, inputCount, outputCount, elapsedNanos / 1_000_000L);
+    }
+
+    private void logSlowPanelRender(long startNanos)
+    {
+        long elapsedNanos = System.nanoTime() - startNanos;
+        if (elapsedNanos < SLOW_PANEL_RENDER_LOG_THRESHOLD_NANOS)
+        {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastSlowPanelRenderLogMs < SLOW_PANEL_RENDER_LOG_INTERVAL_MS)
+        {
+            return;
+        }
+
+        lastSlowPanelRenderLogMs = nowMs;
+        log.debug("Slow Xtreme Tasker panel render: tab={}, compact={}, detailsOpen={}, elapsed={}ms",
+                activeTab, compactPanelMode, taskDetailsPopup.isOpen(), elapsedNanos / 1_000_000L);
     }
 
     // -----------------------------

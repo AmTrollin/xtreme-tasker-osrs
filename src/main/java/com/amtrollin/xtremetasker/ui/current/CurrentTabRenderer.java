@@ -16,8 +16,9 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
@@ -32,6 +33,8 @@ public final class CurrentTabRenderer
     private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
     private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
+    private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault());
 
     private final int panelWidth;
     private final int panelPadding;
@@ -994,7 +997,7 @@ public final class CurrentTabRenderer
         {
             return "Completed: date unknown";
         }
-        return "Completed: " + new SimpleDateFormat("MMM d, h:mm a").format(new Date(info.timestamp));
+        return "Completed: " + COMPLETION_DATE_TIME_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
     private static String completionSourceSuffix(CompletionInfo info)

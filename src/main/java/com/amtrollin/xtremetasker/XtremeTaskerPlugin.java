@@ -195,6 +195,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Set<String> knownTaskIds = new HashSet<>();
     /** Version of the last successfully loaded pack, independent of per-account state. */
     private int loadedPackVersion = 0;
+    private int collectionLogStateVersion = 0;
 
     private boolean dirty = false;
     private int flushTickCounter = 0;
@@ -202,6 +203,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private final Map<String, Integer> caTaskIdsByName = new HashMap<>();
     private final Map<String, Integer> caTaskIdsByNormalizedName = new HashMap<>();
+    private final Map<String, List<XtremeTask>> taskGroupInstancesCache = new HashMap<>();
+    private int taskGroupInstancesCachePackVersion = -1;
 
     private long rollAnimEndMs = 0L;
     private boolean inWorld = false;
@@ -351,6 +354,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void onCollectionLogCacheChanged()
     {
+        collectionLogStateVersion++;
         syncMismatchTasksCacheValid = false;
         dirty = true;
 
@@ -454,6 +458,26 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return tasks;
     }
 
+    public int getLoadedPackVersion() {
+        return loadedPackVersion;
+    }
+
+    public int getCollectionLogStateVersion() {
+        return collectionLogStateVersion;
+    }
+
+    public int getTaskListRenderStateHash() {
+        return Objects.hash(
+                loadedPackVersion,
+                manualCompletedTaskIds,
+                syncedCompletedTaskIds,
+                manualCompletionTimestamps,
+                syncedCompletionTimestamps,
+                taskTimeTicksById,
+                completedTaskTimeTicksById,
+                newTaskIds);
+    }
+
     public boolean hasTaskPackLoaded() {
         return taskPackLoaded && !tasks.isEmpty();
     }
@@ -466,7 +490,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public TaskGroupProgress getTaskGroupProgress(XtremeTask task)
     {
-        List<XtremeTask> group = TaskGroupUtils.groupFor(tasks, task);
+        List<XtremeTask> group = getCachedTaskGroupInstances(task);
         int completed = 0;
         for (XtremeTask groupedTask : group)
         {
@@ -481,7 +505,25 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public List<XtremeTask> getTaskGroupInstances(XtremeTask task)
     {
-        return TaskGroupUtils.groupFor(tasks, task);
+        return getCachedTaskGroupInstances(task);
+    }
+
+    private List<XtremeTask> getCachedTaskGroupInstances(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return List.of();
+        }
+
+        if (taskGroupInstancesCachePackVersion != loadedPackVersion)
+        {
+            taskGroupInstancesCache.clear();
+            taskGroupInstancesCachePackVersion = loadedPackVersion;
+        }
+
+        String key = TaskGroupUtils.key(task);
+        return taskGroupInstancesCache.computeIfAbsent(key, ignored ->
+                Collections.unmodifiableList(TaskGroupUtils.groupFor(tasks, task)));
     }
 
     /** Returns completion metadata for a task, or null if not completed. */
@@ -1523,6 +1565,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             completedTaskTimeTicksById.putAll(state.getCompletedTaskTimeTicksById());
         }
         collectionLogService.restoreCachedItemState(state.getCollectionLogItemIds(), state.getCollectionLogItemOrder());
+        collectionLogStateVersion++;
 
         currentTaskId = safeTrim(state.getCurrentTaskId());
         undoableCompletedTaskId = safeTrim(state.getUndoableCompletedTaskId());
@@ -1607,6 +1650,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         knownTaskIds.clear();
         lastSyncedTaskNames.clear();
         collectionLogService.resetCachedItemIds();
+        collectionLogStateVersion++;
         syncCompletionCandidateTaskIds.clear();
         clearSyncMismatchReviewState();
     }
@@ -3410,6 +3454,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (capturedItems > 0)
         {
             collectionLogService.clearPendingAncientPageDropCountSinceLastSync();
+            collectionLogStateVersion++;
         }
 
         rebuildTierCounts();
