@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "tasks": [
     {
       "id": "collection_log_easy_get-bolt-racks-from-barrows_001_0c221876a7",
@@ -44970,6 +44970,111 @@
       "wikiTitle": "Brutus Speed-Trialist",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Brutus_Speed-Trialist",
       "description": "Kill Brutus in under 2 seconds."
+    },
+    {
+      "id": "combat_achievement_easy_shellbane-adept_52f9f85535",
+      "name": "Shellbane Adept",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "EASY",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Adept",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Adept",
+      "description": "Kill the Shellbane Gryphon 25 times.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 625
+      }
+    },
+    {
+      "id": "combat_achievement_easy_dry-cleaning_ed232c8698",
+      "name": "Dry Cleaning",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "EASY",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Dry Cleaning",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Dry_Cleaning",
+      "description": "Kill the Shellbane Gryphon after clearing its corrosive spit from your armour.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 630
+      }
+    },
+    {
+      "id": "combat_achievement_medium_perfect-shellbane_0d9a85d14e",
+      "name": "Perfect Shellbane",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Perfect Shellbane",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Perfect_Shellbane",
+      "description": "Kill the Shellbane Gryphon without taking damage.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 627
+      }
+    },
+    {
+      "id": "combat_achievement_medium_shellbane-veteran_5143dfe455",
+      "name": "Shellbane Veteran",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Veteran",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Veteran",
+      "description": "Kill the Shellbane Gryphon 50 times.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 626
+      }
+    },
+    {
+      "id": "combat_achievement_medium_shellbane-speedrunner_c072760611",
+      "name": "Shellbane Speedrunner",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Speedrunner",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Speedrunner",
+      "description": "Kill the Shellbane Gryphon 10 times within 12:30 minutes of entering the cave.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 628
+      }
+    },
+    {
+      "id": "combat_achievement_hard_shellbane-survivor_ccc64afd86",
+      "name": "Shellbane Survivor",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Survivor",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Survivor",
+      "description": "Kill the Shellbane Gryphon 25 times without leaving the cave.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 629
+      }
+    },
+    {
+      "id": "combat_achievement_hard_featherweight-fighter_fc68951ec6",
+      "name": "Featherweight Fighter",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Featherweight Fighter",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Featherweight_Fighter",
+      "description": "Kill the Shellbane Gryphon 5 times without leaving the cave, while wearing gear weighing less than 40kg.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 631
+      }
     }
   ]
 }

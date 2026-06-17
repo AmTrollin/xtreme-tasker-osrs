@@ -186,10 +186,50 @@ public class TaskControlsRenderer
         g.drawString(truncateToWidth(caretText, fm, layout.searchBox.width - 16), textX, baseY);
 
         // extra padding below search (you wanted this)
-        cursorY += searchRowH + 18;
+        cursorY += searchRowH + 14;
 
         // ================================
-        // Row 2: Filters header + applied state
+        // Row 2: "See New Tasks" button (session-only, shown only when new tasks exist)
+        // ================================
+        if (hasNewTasks) {
+            int newRowTop = cursorY - fm.getAscent();
+            int newRowH = rowHeight + 6;
+            int helpSize = Math.min(16, newRowH - 4);
+            int helpGap = 6;
+            int newBtnW = Math.min(rowW - helpGap - helpSize, Math.max(150, rowW / 2));
+            int groupX = rowX + (rowW - newBtnW) / 2;
+
+            layout.filterNewTasks.setBounds(groupX, newRowTop, newBtnW, newRowH);
+
+            boolean active = query.showNewTasksFilter;
+            drawBevelBox(g, layout.filterNewTasks, active ? pillOnBg : pillOffBg, uiEdgeLight, uiEdgeDark);
+            g.setColor(uiGold);
+            g.drawRect(layout.filterNewTasks.x, layout.filterNewTasks.y, layout.filterNewTasks.width, layout.filterNewTasks.height);
+
+            String btnLabel = active ? "Showing New Tasks" : "See New Tasks";
+            g.setColor(active ? uiText : uiGold);
+            int bw = fm.stringWidth(btnLabel);
+            g.drawString(truncateToWidth(btnLabel, fm, newBtnW - leftPad * 2),
+                    layout.filterNewTasks.x + (layout.filterNewTasks.width - Math.min(bw, newBtnW - leftPad * 2)) / 2,
+                    centeredTextBaseline(layout.filterNewTasks, fm));
+
+            int helpX = layout.filterNewTasks.x + layout.filterNewTasks.width + helpGap;
+            int helpY = newRowTop + (newRowH - helpSize) / 2;
+            layout.filterNewTasksHelp.setBounds(helpX, helpY, helpSize, helpSize);
+            drawHelpIcon(g, fm, layout.filterNewTasksHelp);
+            if (layout.filterNewTasksHelp.contains(mouseX, mouseY))
+            {
+                drawTooltipBelowRightAligned(g, fm, "New tasks have been added since your last login", layout.filterNewTasksHelp, panelX + panelW + 5);
+            }
+
+            cursorY += newRowH + fm.getHeight() + 8;
+        } else {
+            layout.filterNewTasks.setBounds(0, 0, 0, 0);
+            layout.filterNewTasksHelp.setBounds(0, 0, 0, 0);
+        }
+
+        // ================================
+        // Row 3: Filters header + applied state
         // ================================
         cursorY += 6;
         layout.filtersExpanded = true;
@@ -401,43 +441,6 @@ public class TaskControlsRenderer
         drawPill(g, fm, layout.sortTimeTicks, timeTicksText, query.sortByTimeTicks, dateEnabledScope);
 
         cursorY += (rowH * 2) + 12;
-
-        // ================================
-        // Row 8: "See New Tasks" button (session-only, shown only when new tasks exist)
-        // ================================
-        if (hasNewTasks) {
-            int newRowTop = cursorY - fm.getAscent();
-            int newRowH = rowHeight + 6;
-            int newBtnW = Math.min(rowW, Math.max(150, rowW / 2));
-            layout.filterNewTasks.setBounds(rowX, newRowTop, newBtnW, newRowH);
-
-            boolean active = query.showNewTasksFilter;
-            drawBevelBox(g, layout.filterNewTasks, active ? pillOnBg : pillOffBg, uiEdgeLight, uiEdgeDark);
-            g.setColor(uiGold);
-            g.drawRect(layout.filterNewTasks.x, layout.filterNewTasks.y, layout.filterNewTasks.width, layout.filterNewTasks.height);
-
-            String btnLabel = active ? "Showing New Tasks" : "See New Tasks";
-            g.setColor(active ? uiText : uiGold);
-            int bw = fm.stringWidth(btnLabel);
-            g.drawString(truncateToWidth(btnLabel, fm, newBtnW - leftPad * 2),
-                    layout.filterNewTasks.x + (layout.filterNewTasks.width - Math.min(bw, newBtnW - leftPad * 2)) / 2,
-                    centeredTextBaseline(layout.filterNewTasks, fm));
-
-            int helpSize = Math.min(16, newRowH - 4);
-            int helpX = layout.filterNewTasks.x + layout.filterNewTasks.width + 6;
-            int helpY = newRowTop + (newRowH - helpSize) / 2;
-            layout.filterNewTasksHelp.setBounds(helpX, helpY, helpSize, helpSize);
-            drawHelpIcon(g, fm, layout.filterNewTasksHelp);
-            if (layout.filterNewTasksHelp.contains(mouseX, mouseY))
-            {
-                drawTooltipRight(g, fm, "New tasks have been added since your last login", layout.filterNewTasksHelp);
-            }
-
-            cursorY += newRowH + 4;
-        } else {
-            layout.filterNewTasks.setBounds(0, 0, 0, 0);
-            layout.filterNewTasksHelp.setBounds(0, 0, 0, 0);
-        }
 
         if (layout.hoverTooltipText != null)
         {
@@ -680,6 +683,25 @@ public class TaskControlsRenderer
                 anchor.y + (anchor.height - (th + padY * 2)) / 2,
                 tw + padX * 2,
                 th + padY * 2);
+
+        g.setColor(uiTextDim);
+        int baseline = centeredTextBaseline(r, fm);
+        g.drawString(text, r.x + padX, baseline);
+    }
+
+    private void drawTooltipBelowRightAligned(Graphics2D g, FontMetrics fm, String text, Rectangle anchor, int textRightX)
+    {
+        int padX = 8;
+        int padY = 3;
+
+        int tw = fm.stringWidth(text);
+        int th = fm.getHeight();
+        int w = tw + padX * 2;
+        int h = th + padY * 2;
+        int x = textRightX - padX - tw;
+        int y = anchor.y + anchor.height + 4;
+
+        Rectangle r = new Rectangle(x, y, w, h);
 
         g.setColor(uiTextDim);
         int baseline = centeredTextBaseline(r, fm);
