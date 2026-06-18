@@ -2076,7 +2076,7 @@
       "tier": "EASY",
       "prereqs": "None",
       "wikiTitle": "Castle Wars",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Castle_Wars",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Red_decorative_armour",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -2098,7 +2098,7 @@
     },
     {
       "id": "collection_log_easy_get-the-zamorak-hood-cloak_001_53931281fb",
-      "name": "Get the Zamorak hood & cloak",
+      "name": "Get the Castle Wars Zamorak hood & cloak",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
       "prereqs": "None",
@@ -2791,7 +2791,7 @@
       "name": "Get a Rune defender",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "A combined Attack and Strength level of at least 130 (or level 99 in either skill)",
+      "prereqs": "Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Rune defender",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Rune_defender",
       "verification": {
@@ -3316,7 +3316,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer + 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer OR 33 Slayer + 33 Firemaking; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3340,7 +3340,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer OR 33 Slayer + 33 Firemaking; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3364,7 +3364,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer OR 33 Slayer + 33 Firemaking; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3388,7 +3388,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer OR 33 Slayer + 33 Firemaking; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3412,7 +3412,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer (Cave slimes) or 25 Slayer (Cockatrices); Steel: 30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms); Black: 50 Slayer; Mithril: 52 Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer OR 33 Slayer + 33 Firemaking; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -9533,7 +9533,7 @@
       "name": "Get a Dragon defender",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "A combined Attack and Strength level of at least 130 (or level 99 in either skill)",
+      "prereqs": "Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Dragon defender",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Dragon_defender",
       "verification": {
@@ -10055,7 +10055,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Adamant: 75 Slayer (Gargoyles) or Giant frogs; Rune: 80 Slayer",
+      "prereqs": "Adamant: 75 Slayer; Rune: 80 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -10076,7 +10076,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Adamant: 75 Slayer (Gargoyles) or Giant frogs; Rune: 80 Slayer",
+      "prereqs": "Adamant: 75 Slayer; Rune: 80 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -20864,7 +20864,7 @@
       "name": "Get 1 unique from Tormented Demons",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Tormented Demon",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Tormented_Demon",
       "verification": {
@@ -20886,7 +20886,7 @@
       "name": "Get 1 unique from Tormented Demons",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Tormented Demon",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Tormented_Demon",
       "verification": {
@@ -21198,7 +21198,7 @@
       "name": "Get 1 unique from Tormented Demons",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Tormented Demon",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Tormented_Demon",
       "verification": {
@@ -33705,7 +33705,7 @@
       "name": "Unending Torment",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Unending Torment",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Unending_Torment",
       "description": "Kill a Tormented Demon. Only Tormented Demons killed after the completion of While Guthix Sleeps count. The two Tormented Demons killed during the quest while your stats are temporarily increased due to touching the Stone of Jas do not count.",
@@ -33716,7 +33716,7 @@
       "name": "Two Times the Torment",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Two Times the Torment",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Two_Times_the_Torment",
       "description": "Kill two Tormented Demons within two seconds.",
@@ -33727,7 +33727,7 @@
       "name": "Through Fire and Flames",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Through Fire and Flames",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Through_Fire_and_Flames",
       "description": "Kill a Tormented Demon while their fire shield is inactive, which is the duration they throw out the fireballs and stun.",
@@ -33738,7 +33738,7 @@
       "name": "Rapid Reload",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Rapid Reload",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Rapid_Reload",
       "description": "Hit three tormented demons within three seconds using a ballista or crossbow.",
@@ -43043,7 +43043,7 @@
       "name": "Three Times the Thrashing",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Three Times the Thrashing",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Three_Times_the_Thrashing",
       "description": "Kill three Tormented Demons within three seconds.",

@@ -12,6 +12,7 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
+import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
 import net.runelite.client.ui.FontManager;
 
 import javax.imageio.ImageIO;
@@ -21,6 +22,7 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +47,7 @@ public final class TaskDetailsPopup
     private final Rectangle viewportBounds = new Rectangle();
     private final Rectangle closeBounds = new Rectangle();
     private final Rectangle wikiBounds = new Rectangle();
+    private final Rectangle wikiMenuBounds = new Rectangle();
     private final Rectangle syncBounds = new Rectangle();
     private final Rectangle ignoreBounds = new Rectangle();
     private final Rectangle markIncompleteBounds = new Rectangle();
@@ -55,8 +58,11 @@ public final class TaskDetailsPopup
     private final Rectangle incrementGroupBounds = new Rectangle();
     private final Rectangle groupProgressHelpBounds = new Rectangle();
     private final Map<XtremeTask, Rectangle> instanceRemoveBounds = new LinkedHashMap<>();
+    private final List<WikiLink> wikiLinks = new ArrayList<>();
+    private final List<Rectangle> wikiLinkBounds = new ArrayList<>();
 
     private int totalContentRows = 0;
+    private boolean wikiMenuOpen = false;
 
     public TaskDetailsPopup(UiPalette palette, TaskListScrollController scroll)
     {
@@ -83,6 +89,7 @@ public final class TaskDetailsPopup
 
         this.task = task;
         scroll.reset();
+        closeWikiMenu();
     }
 
     public void close()
@@ -93,6 +100,7 @@ public final class TaskDetailsPopup
         viewportBounds.setBounds(0, 0, 0, 0);
         closeBounds.setBounds(0, 0, 0, 0);
         wikiBounds.setBounds(0, 0, 0, 0);
+        wikiMenuBounds.setBounds(0, 0, 0, 0);
         syncBounds.setBounds(0, 0, 0, 0);
         ignoreBounds.setBounds(0, 0, 0, 0);
         markIncompleteBounds.setBounds(0, 0, 0, 0);
@@ -103,7 +111,10 @@ public final class TaskDetailsPopup
         incrementGroupBounds.setBounds(0, 0, 0, 0);
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
+        wikiLinks.clear();
+        wikiLinkBounds.clear();
         totalContentRows = 0;
+        wikiMenuOpen = false;
     }
 
     public Rectangle bounds()
@@ -124,6 +135,45 @@ public final class TaskDetailsPopup
     public Rectangle wikiBounds()
     {
         return wikiBounds;
+    }
+
+    public Rectangle wikiMenuBounds()
+    {
+        return wikiMenuBounds;
+    }
+
+    public boolean isWikiMenuOpen()
+    {
+        return wikiMenuOpen;
+    }
+
+    public void openWikiMenu()
+    {
+        wikiMenuOpen = wikiLinks.size() > 1;
+    }
+
+    public void closeWikiMenu()
+    {
+        wikiMenuOpen = false;
+        wikiMenuBounds.setBounds(0, 0, 0, 0);
+        wikiLinkBounds.clear();
+    }
+
+    public WikiLink wikiLinkAt(java.awt.Point p)
+    {
+        if (p == null || !wikiMenuOpen)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < wikiLinkBounds.size() && i < wikiLinks.size(); i++)
+        {
+            if (wikiLinkBounds.get(i).contains(p))
+            {
+                return wikiLinks.get(i);
+            }
+        }
+        return null;
     }
 
     public Rectangle syncBounds()
@@ -197,6 +247,7 @@ public final class TaskDetailsPopup
             Function<XtremeTask, String> collectionLogMarkIncompleteButtonLabelProvider,
             Function<XtremeTask, Boolean> collectionLogMarkIncompleteSavedEditProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
+            Function<XtremeTask, List<WikiLink>> wikiLinksProvider,
             net.runelite.api.Point mouse,
             java.awt.image.BufferedImage taskIcon,
             boolean showTips
@@ -217,9 +268,12 @@ public final class TaskDetailsPopup
         TaskGroupProgress groupProgress = groupProgressProvider == null ? null : groupProgressProvider.apply(task);
         boolean grouped = groupProgress != null && groupProgress.isGrouped();
         boolean headerComplete = grouped ? groupProgress.isComplete() : done;
+        refreshWikiLinks(task, wikiLinksProvider);
         final int pad = 12;
         final int closeW = 28;
-        final String wikiText = "Open wiki";
+        final String wikiOpenText = "Open wiki";
+        final String wikiCloseText = "Close";
+        final String wikiText = wikiMenuOpen ? wikiCloseText : wikiOpenText;
         final int gap = 8;
         final int iconSize = 24;
         final int iconGap = 4;
@@ -252,7 +306,7 @@ public final class TaskDetailsPopup
         FontMetrics headerFm = g.getFontMetrics();
         g.setColor(palette.UI_GOLD);
 
-        final int wikiW = headerFm.stringWidth(wikiText) + 20;
+        final int wikiW = Math.max(headerFm.stringWidth(wikiOpenText), headerFm.stringWidth(wikiCloseText)) + 20;
         boolean collectionLogMismatch = collectionLogSyncMismatchProvider != null
                 && Boolean.TRUE.equals(collectionLogSyncMismatchProvider.apply(task));
         String syncButtonLabel = collectionLogSyncButtonLabelProvider == null
@@ -798,6 +852,81 @@ public final class TaskDetailsPopup
                 footerY - 6
         );
 
+        if (wikiMenuOpen)
+        {
+            drawWikiMenu(g, fm, mouse);
+        }
+
+    }
+
+    private void refreshWikiLinks(XtremeTask task, Function<XtremeTask, List<WikiLink>> wikiLinksProvider)
+    {
+        wikiLinks.clear();
+        if (wikiLinksProvider != null)
+        {
+            List<WikiLink> provided = wikiLinksProvider.apply(task);
+            if (provided != null)
+            {
+                for (WikiLink link : provided)
+                {
+                    if (link != null && link.isValid())
+                    {
+                        wikiLinks.add(link);
+                    }
+                }
+            }
+        }
+
+        if (wikiLinks.size() <= 1)
+        {
+            closeWikiMenu();
+        }
+    }
+
+    private void drawWikiMenu(Graphics2D g, FontMetrics fm, net.runelite.api.Point mouse)
+    {
+        wikiLinkBounds.clear();
+        if (wikiLinks.size() <= 1 || wikiBounds.width <= 0 || wikiBounds.height <= 0)
+        {
+            closeWikiMenu();
+            return;
+        }
+
+        final int rowH = ROW_HEIGHT + 4;
+        final int padX = 8;
+        int menuW = wikiBounds.width;
+        for (WikiLink link : wikiLinks)
+        {
+            menuW = Math.max(menuW, fm.stringWidth(link.label()) + padX * 2);
+        }
+        int menuH = rowH * wikiLinks.size();
+        int menuX = Math.max(bounds.x + 6, Math.min(wikiBounds.x + wikiBounds.width - menuW, bounds.x + bounds.width - menuW - 6));
+        int menuY = wikiBounds.y - menuH - 2;
+        if (menuY < bounds.y + 6)
+        {
+            menuY = wikiBounds.y + wikiBounds.height + 2;
+        }
+
+        wikiMenuBounds.setBounds(menuX, menuY, menuW, menuH);
+        g.setColor(new Color(24, 19, 13, 245));
+        g.fillRect(wikiMenuBounds.x, wikiMenuBounds.y, wikiMenuBounds.width, wikiMenuBounds.height);
+
+        int mouseX = mouse == null ? Integer.MIN_VALUE : mouse.getX();
+        int mouseY = mouse == null ? Integer.MIN_VALUE : mouse.getY();
+        for (int i = 0; i < wikiLinks.size(); i++)
+        {
+            Rectangle row = new Rectangle(menuX, menuY + i * rowH, menuW, rowH);
+            wikiLinkBounds.add(row);
+            if (row.contains(mouseX, mouseY))
+            {
+                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 45));
+                g.fillRect(row.x, row.y, row.width, row.height);
+            }
+
+            g.setColor(palette.UI_TEXT);
+            String label = TextUtils.truncateToWidth(wikiLinks.get(i).label(), fm, row.width - padX * 2);
+            g.drawString(label, row.x + padX, centeredTextBaseline(row, fm));
+        }
     }
 
     private int measureTipHeight(String tip, FontMetrics fm, int maxWidth)

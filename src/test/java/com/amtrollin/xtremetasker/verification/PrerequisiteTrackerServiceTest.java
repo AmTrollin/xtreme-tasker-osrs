@@ -74,6 +74,17 @@ public class PrerequisiteTrackerServiceTest
         assertFalse(status.getCheckSpans().get(1).isCompleted());
     }
 
+    @Test
+    public void combinedStrengthAndAttackPrerequisiteUsesCombinedOrEitherThreshold()
+    {
+        String prereq = "Combined Strength and Attack level of 130, or 99 in either";
+
+        assertTrue(serviceWithAttackStrengthLevels(65, 65).evaluate(prereq).get(0).isCompleted());
+        assertTrue(serviceWithAttackStrengthLevels(99, 1).evaluate(prereq).get(0).isCompleted());
+        assertTrue(serviceWithAttackStrengthLevels(1, 99).evaluate(prereq).get(0).isCompleted());
+        assertFalse(serviceWithAttackStrengthLevels(64, 65).evaluate(prereq).get(0).isCompleted());
+    }
+
     private static void assertKaramjaDiaryThreshold(int varbitId, String difficulty, int partialValue, int completeValue)
     {
         PrerequisiteTrackerService partialService = serviceWithVarbitValue(varbitId, partialValue);
@@ -100,5 +111,22 @@ public class PrerequisiteTrackerServiceTest
     private static PrerequisiteTrackerService serviceWithSkillLevel(Skill targetSkill, int level)
     {
         return new PrerequisiteTrackerService(id -> 0, skill -> skill == targetSkill ? level : 1);
+    }
+
+    private static PrerequisiteTrackerService serviceWithAttackStrengthLevels(int attackLevel, int strengthLevel)
+    {
+        return new PrerequisiteTrackerService(id -> 0, skill -> {
+            if (skill == Skill.ATTACK)
+            {
+                return attackLevel;
+            }
+
+            if (skill == Skill.STRENGTH)
+            {
+                return strengthLevel;
+            }
+
+            return 1;
+        });
     }
 }

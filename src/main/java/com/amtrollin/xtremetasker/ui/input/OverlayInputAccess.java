@@ -12,6 +12,7 @@ import com.amtrollin.xtremetasker.ui.rules.RulesTabLayout;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskListViewController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskSelectionModel;
+import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
 import net.runelite.api.Client;
 
 import java.awt.*;
@@ -125,6 +126,12 @@ public interface OverlayInputAccess
     Rectangle taskDetailsBounds();
     Rectangle taskDetailsCloseBounds();
     Rectangle taskDetailsWikiBounds();
+    Rectangle taskDetailsWikiMenuBounds();
+    boolean isTaskDetailsWikiMenuOpen();
+    void openTaskDetailsWikiMenu();
+    void closeTaskDetailsWikiMenu();
+    WikiLink taskDetailsWikiLinkAt(Point point);
+    List<WikiLink> taskDetailsWikiLinks(XtremeTask task);
     Rectangle taskDetailsSyncBounds();
     Rectangle taskDetailsIgnoreBounds();
     Rectangle taskDetailsMarkIncompleteBounds();

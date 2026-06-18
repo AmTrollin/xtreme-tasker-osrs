@@ -24,6 +24,7 @@ import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPrevie
 import com.amtrollin.xtremetasker.ui.tasks.TasksTabRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
 import com.amtrollin.xtremetasker.ui.tasks.models.TasksTabState;
+import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
 import com.amtrollin.xtremetasker.ui.current.CurrentTabLayout;
 import com.amtrollin.xtremetasker.ui.current.CurrentTabRenderer;
 import com.amtrollin.xtremetasker.ui.current.CurrentTabViewRenderer;
@@ -102,6 +103,12 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final long SLOW_TASK_LIST_LOG_INTERVAL_MS = 2_000L;
     private static final long SLOW_PANEL_RENDER_LOG_THRESHOLD_NANOS = 12_000_000L;
     private static final long SLOW_PANEL_RENDER_LOG_INTERVAL_MS = 2_000L;
+    private static final List<WikiLink> ZAMORAK_HOOD_CLOAK_WIKI_LINKS = List.of(
+            new WikiLink("Zamorak hood", "https://oldschool.runescape.wiki/w/Castlewars_hood_(Zamorak)"),
+            new WikiLink("Zamorak cloak", "https://oldschool.runescape.wiki/w/Castlewars_cloak_(Zamorak)")
+    );
+    private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_ID = createTaskDetailsWikiLinksById();
+    private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_NAME = createTaskDetailsWikiLinksByName();
     private static final DateTimeFormatter COMPACT_COMPLETION_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter TASK_RESOLVE_COMPLETION_DATE_FORMAT =
@@ -113,6 +120,25 @@ public class XtremeTaskerOverlay extends Overlay {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private static Map<String, List<WikiLink>> createTaskDetailsWikiLinksByName()
+    {
+        Map<String, List<WikiLink>> links = new HashMap<>();
+        links.put(normalizeWikiTaskName("Get the Zamorak hood & cloak"), ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        return Collections.unmodifiableMap(links);
+    }
+
+    private static Map<String, List<WikiLink>> createTaskDetailsWikiLinksById()
+    {
+        Map<String, List<WikiLink>> links = new HashMap<>();
+        links.put("collection_log_easy_get-the-zamorak-hood-cloak_001_53931281fb", ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        return Collections.unmodifiableMap(links);
+    }
+
+    private static String normalizeWikiTaskName(String value)
+    {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     private static BufferedImage loadHeaderIconSafe() {
@@ -1964,10 +1990,38 @@ public class XtremeTaskerOverlay extends Overlay {
                 this::taskDetailsMarkIncompleteButtonLabel,
                 task -> taskResolveSavedIncompleteEdits,
                 this::getCachedItemImage,
+                this::taskDetailsWikiLinks,
                 client.getMouseCanvasPosition(),
                 resolveTaskIcon(taskDetailsPopup.task()),
                 plugin.showTips()
         );
+    }
+
+    private List<WikiLink> taskDetailsWikiLinks(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return List.of();
+        }
+
+        List<WikiLink> links = TASK_DETAILS_WIKI_LINKS_BY_ID.get(task.getId());
+        if (links != null)
+        {
+            return links;
+        }
+
+        links = TASK_DETAILS_WIKI_LINKS_BY_NAME.get(normalizeWikiTaskName(task.getName()));
+        if (links != null)
+        {
+            return links;
+        }
+
+        String url = task.getWikiUrl();
+        if (url == null || url.trim().isEmpty())
+        {
+            return List.of();
+        }
+        return List.of(new WikiLink("Wiki", url));
     }
 
     private void renderTaskSyncResultPopup(Graphics2D g, FontMetrics fm)
@@ -5286,6 +5340,36 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public Rectangle taskDetailsWikiBounds() {
                 return taskDetailsPopup.wikiBounds();
+            }
+
+            @Override
+            public Rectangle taskDetailsWikiMenuBounds() {
+                return taskDetailsPopup.wikiMenuBounds();
+            }
+
+            @Override
+            public boolean isTaskDetailsWikiMenuOpen() {
+                return taskDetailsPopup.isWikiMenuOpen();
+            }
+
+            @Override
+            public void openTaskDetailsWikiMenu() {
+                taskDetailsPopup.openWikiMenu();
+            }
+
+            @Override
+            public void closeTaskDetailsWikiMenu() {
+                taskDetailsPopup.closeWikiMenu();
+            }
+
+            @Override
+            public WikiLink taskDetailsWikiLinkAt(Point point) {
+                return taskDetailsPopup.wikiLinkAt(point);
+            }
+
+            @Override
+            public List<WikiLink> taskDetailsWikiLinks(XtremeTask task) {
+                return XtremeTaskerOverlay.this.taskDetailsWikiLinks(task);
             }
 
             @Override

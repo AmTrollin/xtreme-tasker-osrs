@@ -7,6 +7,7 @@ import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.rules.RulesTabLayout;
 import com.amtrollin.xtremetasker.ui.rules.RulesTabRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
+import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
@@ -155,6 +156,15 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     return e;
                 }
             } else {
+                if (a.isTaskDetailsWikiMenuOpen()) {
+                    WikiLink link = a.taskDetailsWikiLinkAt(p);
+                    if (link != null) {
+                        LinkBrowser.browse(link.url());
+                        e.consume();
+                        return e;
+                    }
+                }
+
                 if (a.taskDetailsScrollbarRailBounds().width > 0) {
                     Rectangle thumb = a.taskDetailsScrollbarThumbBounds();
                     Rectangle rail = a.taskDetailsScrollbarRailBounds();
@@ -186,9 +196,18 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 if (a.taskDetailsWikiBounds().contains(p)) {
                     XtremeTask t = a.taskDetailsTask();
                     if (t != null) {
-                        String url = t.getWikiUrl();
-                        if (url != null && !url.trim().isEmpty()) {
-                            LinkBrowser.browse(url);
+                        if (a.isTaskDetailsWikiMenuOpen()) {
+                            a.closeTaskDetailsWikiMenu();
+                        } else {
+                            List<WikiLink> links = a.taskDetailsWikiLinks(t);
+                            if (links.size() > 1) {
+                                a.openTaskDetailsWikiMenu();
+                            } else {
+                                String url = !links.isEmpty() ? links.get(0).url() : t.getWikiUrl();
+                                if (url != null && !url.trim().isEmpty()) {
+                                    LinkBrowser.browse(url);
+                                }
+                            }
                         }
                     }
                     e.consume();
@@ -1221,6 +1240,9 @@ public final class OverlayMouseHandler extends MouseAdapter {
         Point p = e.getPoint();
         if (!a.isPanelOpen())
         {
+            if (a.isTaskDetailsWikiMenuOpen()) {
+                a.closeTaskDetailsWikiMenu();
+            }
             updateHandCursor(a.iconBounds().contains(p));
             return e;
         }
@@ -1313,6 +1335,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.isTaskDetailsOpen() && (
                         a.taskDetailsCloseBounds().contains(p)
                         || a.taskDetailsWikiBounds().contains(p)
+                        || (a.isTaskDetailsWikiMenuOpen() && a.taskDetailsWikiMenuBounds().contains(p))
                         || a.taskDetailsSyncBounds().contains(p)
                         || a.taskDetailsIgnoreBounds().contains(p)
                         || a.taskDetailsMarkIncompleteBounds().contains(p)

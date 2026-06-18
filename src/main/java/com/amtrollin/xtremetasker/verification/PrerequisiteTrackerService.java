@@ -48,7 +48,7 @@ public class PrerequisiteTrackerService
         Pattern.CASE_INSENSITIVE
     );
     private static final Pattern COMBINED_LEVEL_PATTERN = Pattern.compile(
-        "^a\\s+combined\\s+([A-Za-z][A-Za-z\\- ]+)\\s+and\\s+([A-Za-z][A-Za-z\\- ]+)\\s+level\\s+of\\s+at\\s+least\\s+(\\d+)(?:.*?level\\s+(\\d+)\\s+in\\s+either\\s+skill)?",
+        "^(?:a\\s+)?combined\\s+([A-Za-z][A-Za-z\\- ]+?)\\s+and\\s+([A-Za-z][A-Za-z\\- ]+?)\\s+level\\s+of\\s+(?:at\\s+least\\s+)?(\\d+)(?:\\s*[,\\(]?\\s*or\\s+(?:level\\s+)?(\\d+)\\s+in\\s+(?:either(?:\\s+skill)?|one)\\)?)?",
         Pattern.CASE_INSENSITIVE
     );
     private static final Pattern TRACKABLE_SKILL_SPAN_PATTERN = Pattern.compile(
