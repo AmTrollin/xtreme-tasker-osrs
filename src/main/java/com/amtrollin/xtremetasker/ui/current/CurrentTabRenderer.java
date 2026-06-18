@@ -794,6 +794,15 @@ public final class CurrentTabRenderer
                         maxW,
                         requirementPreview.iconColumns());
             }
+            if (requirementPreview.showSecondaryItemList())
+            {
+                totalPx += 6;
+                totalPx += rowHeight;
+                totalPx += CollectionLogIconGridRenderer.measureHeight(
+                        requirementPreview.secondaryItems().size(),
+                        maxW,
+                        requirementPreview.secondaryIconColumns());
+            }
             totalPx += rowHeight;
         }
 
@@ -1204,6 +1213,29 @@ public final class CurrentTabRenderer
                     edgeLight,
                     edgeDark,
                     requirementPreview.iconColumns());
+        }
+
+        if (requirementPreview.showSecondaryItemList())
+        {
+            y += 6;
+            g.setColor(uiGold);
+            g.drawString(truncateToWidth(requirementPreview.secondaryTitleText(), fm, maxWidth), x, y);
+            y += rowHeight;
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    requirementPreview.secondaryItems(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    g.getClipBounds(),
+                    uiText,
+                    uiTextDim,
+                    edgeLight,
+                    edgeDark,
+                    requirementPreview.secondaryIconColumns());
         }
 
         return y;

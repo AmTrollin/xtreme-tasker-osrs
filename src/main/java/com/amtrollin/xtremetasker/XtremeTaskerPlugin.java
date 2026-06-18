@@ -1906,6 +1906,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return collectionLogService == null ? 0 : collectionLogService.getPendingAncientPageDropCountSinceLastSync();
     }
 
+    public int getPendingMedallionFragmentDropCountSinceLastSync() {
+        return collectionLogService == null ? 0 : collectionLogService.getPendingMedallionFragmentDropCountSinceLastSync();
+    }
+
     public int countObtainedCollectionLogItems(int[] itemIds) {
         if (itemIds == null || itemIds.length == 0)
         {
@@ -2004,6 +2008,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private boolean isCurrentCollectionLogRequirementSatisfied(XtremeTask task, TaskVerification verification)
     {
+        if (hasCollectionLogCompletionItem(verification))
+        {
+            return isCollectionLogItemObtained(verification.getCompletionItemId());
+        }
+
         ItemRequirement requirement = resolveCollectionLogRequirement(task);
         if (requirement == null)
         {
@@ -3101,10 +3110,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
             if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
             {
-                ItemRequirement requirement = resolveCollectionLogRequirement(task);
-                if (requirement != null)
+                if (hasCollectionLogCompletionItem(verification))
                 {
-                    complete = collectionLogService.countObtained(requirement.itemIds) >= requirement.requiredCount;
+                    complete = collectionLogService.isItemObtained(verification.getCompletionItemId());
+                }
+                else
+                {
+                    ItemRequirement requirement = resolveCollectionLogRequirement(task);
+                    if (requirement != null)
+                    {
+                        complete = collectionLogService.countObtained(requirement.itemIds) >= requirement.requiredCount;
+                    }
                 }
             }
             else if (verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY)
@@ -3142,6 +3158,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private boolean isCountedCollectionLogSync(TaskVerification verification)
     {
         if (verification == null || verification.getCount() == null)
+        {
+            return false;
+        }
+
+        if (hasCollectionLogCompletionItem(verification))
         {
             return false;
         }
@@ -3507,6 +3528,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (capturedItems > 0)
         {
             collectionLogService.clearPendingAncientPageDropCountSinceLastSync();
+            collectionLogService.clearPendingMedallionFragmentDropCountSinceLastSync();
             collectionLogStateVersion++;
         }
 
@@ -3621,6 +3643,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
         {
+            if (hasCollectionLogCompletionItem(verification))
+            {
+                return collectionLogService.isItemObtained(verification.getCompletionItemId());
+            }
+
             ItemRequirement requirement = resolveCollectionLogRequirement(task);
             return requirement != null
                     && collectionLogService.countObtained(requirement.itemIds) >= requirement.requiredCount;
@@ -3639,6 +3666,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return false;
+    }
+
+    private static boolean hasCollectionLogCompletionItem(TaskVerification verification)
+    {
+        return verification != null
+                && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG
+                && verification.getCompletionItemId() != null
+                && verification.getCompletionItemId() > 0;
     }
 
     @Override
@@ -3961,9 +3996,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 continue;
             }
 
-            ItemRequirement requirement = resolveCollectionLogRequirement(task);
-            if (requirement == null
-                    || countObtainedCollectionLogItems(requirement.itemIds) < requirement.requiredCount)
+            boolean completeInGame;
+            if (hasCollectionLogCompletionItem(verification))
+            {
+                completeInGame = isCollectionLogItemObtained(verification.getCompletionItemId());
+            }
+            else
+            {
+                ItemRequirement requirement = resolveCollectionLogRequirement(task);
+                completeInGame = requirement != null
+                        && countObtainedCollectionLogItems(requirement.itemIds) >= requirement.requiredCount;
+            }
+
+            if (!completeInGame)
             {
                 mismatchIds.add(task.getId());
             }

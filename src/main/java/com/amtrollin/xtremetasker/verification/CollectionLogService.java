@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
 public class CollectionLogService
 {
     private static final String ANCIENT_PAGE_ITEM_NAME = "Ancient page";
+    private static final String MEDALLION_FRAGMENT_ITEM_NAME = "Medallion fragment";
+    private static final int MEDALLION_OF_THE_DEEP_ITEM_ID = 32386;
 
     // Matches "New item added to your collection log: Mark of grace x1."
     // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
@@ -37,6 +39,10 @@ public class CollectionLogService
     );
     private static final Pattern CLOG_RECEIVED_ITEM_PATTERN = Pattern.compile(
             "^You have received\\s+(?:[\\d,]+\\s*x\\s*)?(.+?)\\s*\\.?\\s*$",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN = Pattern.compile(
+            "\\byou\\s+assemble\\s+the\\s+Medallion\\s+of\\s+the\\s+Deep\\b",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -96,6 +102,7 @@ public class CollectionLogService
     private final Map<Integer, Long> obtainedItemOrder = new HashMap<>();
     private long nextObtainedItemOrder = 1L;
     private int pendingAncientPageDropCountSinceLastSync = 0;
+    private int pendingMedallionFragmentDropCountSinceLastSync = 0;
     private Runnable cacheChangeListener;
 
     public void setCacheChangeListener(Runnable cacheChangeListener)
@@ -136,6 +143,12 @@ public class CollectionLogService
         // Strip any HTML colour tags RuneLite may inject.
         String clean = raw.replaceAll("<[^>]+>", "").trim();
 
+        if (MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN.matcher(clean).find())
+        {
+            storeItem(MEDALLION_OF_THE_DEEP_ITEM_ID);
+            return;
+        }
+
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
         if (m.find())
         {
@@ -165,6 +178,14 @@ public class CollectionLogService
             pendingAncientPageDropCountSinceLastSync++;
             notifyCacheChanged();
             log.debug("Collection log chat capture deferred ambiguous Ancient page drop until CLOG sync");
+            return;
+        }
+
+        if (MEDALLION_FRAGMENT_ITEM_NAME.equalsIgnoreCase(itemName))
+        {
+            pendingMedallionFragmentDropCountSinceLastSync++;
+            notifyCacheChanged();
+            log.debug("Collection log chat capture deferred ambiguous Medallion fragment drop until CLOG sync");
             return;
         }
 
@@ -322,11 +343,25 @@ public class CollectionLogService
         return Math.max(0, pendingAncientPageDropCountSinceLastSync);
     }
 
+    public int getPendingMedallionFragmentDropCountSinceLastSync()
+    {
+        return Math.max(0, pendingMedallionFragmentDropCountSinceLastSync);
+    }
+
     public void clearPendingAncientPageDropCountSinceLastSync()
     {
         if (pendingAncientPageDropCountSinceLastSync > 0)
         {
             pendingAncientPageDropCountSinceLastSync = 0;
+            notifyCacheChanged();
+        }
+    }
+
+    public void clearPendingMedallionFragmentDropCountSinceLastSync()
+    {
+        if (pendingMedallionFragmentDropCountSinceLastSync > 0)
+        {
+            pendingMedallionFragmentDropCountSinceLastSync = 0;
             notifyCacheChanged();
         }
     }
@@ -371,6 +406,7 @@ public class CollectionLogService
         obtainedItemOrder.clear();
         nextObtainedItemOrder = 1L;
         pendingAncientPageDropCountSinceLastSync = 0;
+        pendingMedallionFragmentDropCountSinceLastSync = 0;
     }
 
     public long getObtainedItemOrder(int itemId)

@@ -12496,7 +12496,7 @@
       "name": "Assemble the Medallion of the deep",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 33 Thieving OR 35 Woodcutting",
+      "prereqs": "63 Sailing; 50 Thieving; 35 Woodcutting",
       "wikiTitle": "Medallion fragment",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Medallion_fragment",
       "verification": {
@@ -12511,7 +12511,8 @@
           32394,
           32395
         ],
-        "count": 8
+        "count": 8,
+        "completionItemId": 32386
       },
       "displayItemId": 32386,
       "tip": "None",

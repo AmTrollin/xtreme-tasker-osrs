@@ -458,13 +458,15 @@ public class XtremeTaskerOverlay extends Overlay {
         return "cl|pack=" + plugin.getLoadedPackVersion()
                 + "|task=" + safeTaskId(task)
                 + "|count=" + verification.getCount()
+                + "|completion=" + verification.getCompletionItemId()
                 + "|applyAll=" + completedInstanceCanApplyAll
                 + "|items=" + canonicalItemIds
                 + "|taskState=" + plugin.getTaskListRenderStateHash()
                 + "|clState=" + plugin.getCollectionLogStateVersion()
                 + "|current=" + safeTaskId(current)
                 + "|baseline=" + baselineCount
-                + "|pendingPages=" + plugin.getPendingAncientPageDropCountSinceLastSync();
+                + "|pendingPages=" + plugin.getPendingAncientPageDropCountSinceLastSync()
+                + "|pendingMedallionFragments=" + plugin.getPendingMedallionFragmentDropCountSinceLastSync();
     }
 
     private String skillcapePreviewCacheKey(XtremeTask task, TaskVerification verification, boolean completedInstanceCanApplyAll)
@@ -560,6 +562,7 @@ public class XtremeTaskerOverlay extends Overlay {
         boolean isCountedSequence = requirementSequence.size() > 1;
         boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
         boolean singleEligibleItem = itemIds.length == 1;
+        boolean hasCompletionItem = verification.getCompletionItemId() != null && verification.getCompletionItemId() > 0;
 
         int requiredCount = collectionLogPreviewRequiredCount(task, verification, itemIds);
         requiredCount = Math.max(1, Math.min(requiredCount, itemIds.length));
@@ -583,6 +586,72 @@ public class XtremeTaskerOverlay extends Overlay {
                 repeatedRequirementState);
         applySequenceTaskCompletionStatuses(task, itemIds, statusByItemId);
         boolean ancientPageRequirement = isAncientPageRequirement(itemIds);
+        boolean medallionFragmentRequirement = isMedallionFragmentRequirement(itemIds);
+        List<CollectionLogRequirementItem> items = hasCompletionItem
+                ? distinctCollectionLogRequirementItems(itemIds, statusByItemId)
+                : coalescedCollectionLogRequirementItems(itemIds, statusByItemId);
+        boolean sameNameFamily = !hasCompletionItem && coalescedItemNameCount(itemIds) == 1;
+        boolean allRequiredItemsObtained = totalObtainedCount >= requiredCount;
+        List<CollectionLogRequirementItem> secondaryItems = completionRequirementItems(verification, allRequiredItemsObtained);
+        String sequenceSummaryText = sequencePreviewSummaryText(task, itemIds);
+        String summaryText = singleEligibleItem
+            ? ""
+            : !sequenceSummaryText.isEmpty()
+            ? sequenceSummaryText
+            : repeatedDistinctPool
+                ? repeatedRequirementState.summaryText
+            : sameNameFamily
+                ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
+            : "";
+        String pendingAncientPageSummary = ancientPageRequirement ? pendingAncientPageSummary() : "";
+        if (!pendingAncientPageSummary.isEmpty())
+        {
+            summaryText = summaryText.isEmpty() ? pendingAncientPageSummary : summaryText + "  " + pendingAncientPageSummary;
+        }
+        String pendingMedallionFragmentSummary = medallionFragmentRequirement ? pendingMedallionFragmentSummary() : "";
+        if (!pendingMedallionFragmentSummary.isEmpty())
+        {
+            summaryText = summaryText.isEmpty() ? pendingMedallionFragmentSummary : summaryText + "  " + pendingMedallionFragmentSummary;
+        }
+        String titleText = ancientPageRequirement
+                ? "Ancient pages"
+                : hasCompletionItem ? "Fragments needed:" : singleEligibleItem ? "Collection log item needed:" : "";
+        String secondaryTitleText = secondaryItems.isEmpty()
+                ? ""
+                : allRequiredItemsObtained ? "Now assemble:" : "Need all " + requiredCount + " fragments to assemble:";
+        return new CollectionLogRequirementPreview(
+                summaryText,
+                titleText,
+                !summaryText.isEmpty() && (!singleEligibleItem && !hasCompletionItem && (sameNameFamily || repeatedDistinctPool)
+                        || !pendingMedallionFragmentSummary.isEmpty()),
+                true,
+                items,
+                8,
+                secondaryTitleText,
+                secondaryItems,
+                1);
+    }
+
+    private List<CollectionLogRequirementItem> distinctCollectionLogRequirementItems(
+            int[] itemIds,
+            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
+    {
+        List<CollectionLogRequirementItem> items = new ArrayList<>();
+        for (int itemId : itemIds)
+        {
+            items.add(new CollectionLogRequirementItem(
+                    itemId,
+                    collectionLogRequirementItemName(itemId),
+                    statusByItemId.getOrDefault(itemId, CollectionLogRequirementItem.Status.MISSING),
+                    collectionLogRequirementBadgeText(itemId)));
+        }
+        return items;
+    }
+
+    private List<CollectionLogRequirementItem> coalescedCollectionLogRequirementItems(
+            int[] itemIds,
+            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
+    {
         Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
         Map<String, Integer> itemIdByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
@@ -603,31 +672,45 @@ public class XtremeTaskerOverlay extends Overlay {
             int itemId = itemIdByItemName.getOrDefault(entry.getKey(), -1);
             items.add(new CollectionLogRequirementItem(itemId, entry.getKey(), entry.getValue(), collectionLogRequirementBadgeText(itemId)));
         }
+        return items;
+    }
 
-        boolean sameNameFamily = statusByItemName.size() == 1;
-        String sequenceSummaryText = sequencePreviewSummaryText(task, itemIds);
-        String summaryText = singleEligibleItem
-            ? ""
-            : !sequenceSummaryText.isEmpty()
-            ? sequenceSummaryText
-            : repeatedDistinctPool
-                ? repeatedRequirementState.summaryText
-            : sameNameFamily
-                ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
-            : "";
-        String pendingAncientPageSummary = ancientPageRequirement ? pendingAncientPageSummary() : "";
-        if (!pendingAncientPageSummary.isEmpty())
+    private int coalescedItemNameCount(int[] itemIds)
+    {
+        Set<String> names = new HashSet<>();
+        for (int itemId : itemIds)
         {
-            summaryText = summaryText.isEmpty() ? pendingAncientPageSummary : summaryText + "  " + pendingAncientPageSummary;
+            names.add(collectionLogRequirementItemName(itemId));
         }
-        String titleText = ancientPageRequirement
-                ? "Ancient pages"
-                : singleEligibleItem ? "Collection log item needed:" : "";
-        return new CollectionLogRequirementPreview(summaryText, titleText, !singleEligibleItem && (sameNameFamily || repeatedDistinctPool), true, items);
+        return names.size();
+    }
+
+    private List<CollectionLogRequirementItem> completionRequirementItems(
+            TaskVerification verification,
+            boolean allRequiredItemsObtained)
+    {
+        Integer completionItemId = verification == null ? null : verification.getCompletionItemId();
+        if (completionItemId == null || completionItemId <= 0)
+        {
+            return List.of();
+        }
+
+        CollectionLogRequirementItem.Status status = plugin.isCollectionLogItemObtained(completionItemId)
+                ? CollectionLogRequirementItem.Status.OBTAINED
+                : allRequiredItemsObtained
+                ? CollectionLogRequirementItem.Status.READY
+                : CollectionLogRequirementItem.Status.MISSING;
+        return List.of(new CollectionLogRequirementItem(completionItemId, plugin.getItemName(completionItemId), status, "", true));
     }
 
     private String collectionLogRequirementItemName(int itemId)
     {
+        int medallionFragmentNumber = medallionFragmentNumber(itemId);
+        if (medallionFragmentNumber > 0)
+        {
+            return "Medallion fragment #" + medallionFragmentNumber;
+        }
+
         int ancientPageNumber = ancientPageNumber(itemId);
         if (ancientPageNumber > 0)
         {
@@ -644,6 +727,18 @@ public class XtremeTaskerOverlay extends Overlay {
             return String.valueOf(ancientPageNumber);
         }
         return "";
+    }
+
+    private String pendingMedallionFragmentSummary()
+    {
+        int pendingDrops = plugin.getPendingMedallionFragmentDropCountSinceLastSync();
+        if (pendingDrops <= 0)
+        {
+            return "";
+        }
+
+        return pendingDrops + " Medallion fragment " + (pendingDrops == 1 ? "drop needs" : "drops need")
+                + " CLOG sync to identify fragment number.";
     }
 
     private String pendingAncientPageSummary()
@@ -665,6 +760,42 @@ public class XtremeTaskerOverlay extends Overlay {
             return -1;
         }
         return itemId - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
+    }
+
+    private static int medallionFragmentNumber(int itemId)
+    {
+        if (itemId < 32388 || itemId > 32395)
+        {
+            return -1;
+        }
+        return itemId - 32388 + 1;
+    }
+
+    private static boolean isMedallionFragmentRequirement(int[] itemIds)
+    {
+        if (itemIds == null || itemIds.length != 8)
+        {
+            return false;
+        }
+
+        int[] sorted = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .toArray();
+        if (sorted.length != 8)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < sorted.length; i++)
+        {
+            if (sorted[i] != 32388 + i)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isAncientPageRequirement(int[] itemIds)
@@ -918,6 +1049,10 @@ public class XtremeTaskerOverlay extends Overlay {
         if (status == CollectionLogRequirementItem.Status.OBTAINED)
         {
             return 2;
+        }
+        if (status == CollectionLogRequirementItem.Status.READY)
+        {
+            return 1;
         }
         if (status == CollectionLogRequirementItem.Status.APPLIED)
         {
@@ -3645,6 +3780,12 @@ public class XtremeTaskerOverlay extends Overlay {
             if (preview.showItemList()) {
                 lines.add(CompactLine.collectionLogIcons(preview));
             }
+            if (preview.showSecondaryItemList()) {
+                lines.addAll(wrappedCompactLines(preview.secondaryTitleText(), true));
+                lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
+                        preview.secondaryItems(),
+                        preview.secondaryIconColumns())));
+            }
             lines.add(CompactLine.spacer());
         }
 
@@ -3689,6 +3830,10 @@ public class XtremeTaskerOverlay extends Overlay {
             return preview.titleText();
         }
         return "Eligible Collection Log items";
+    }
+
+    private static CollectionLogRequirementPreview singleSectionPreview(List<CollectionLogRequirementItem> items, int iconColumns) {
+        return new CollectionLogRequirementPreview("", "", false, true, items, iconColumns);
     }
 
     private static String normalizeCompactPrereqs(String prereqs) {

@@ -10,6 +10,9 @@ public final class CollectionLogRequirementPreview
     private final boolean showItemList;
     private final List<CollectionLogRequirementItem> items;
     private final int iconColumns;
+    private final String secondaryTitleText;
+    private final List<CollectionLogRequirementItem> secondaryItems;
+    private final int secondaryIconColumns;
 
     public CollectionLogRequirementPreview(String summaryText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items)
     {
@@ -23,12 +26,29 @@ public final class CollectionLogRequirementPreview
 
     public CollectionLogRequirementPreview(String summaryText, String titleText, boolean showSummaryText, boolean showItemList, List<CollectionLogRequirementItem> items, int iconColumns)
     {
+        this(summaryText, titleText, showSummaryText, showItemList, items, iconColumns, null, null, 1);
+    }
+
+    public CollectionLogRequirementPreview(
+            String summaryText,
+            String titleText,
+            boolean showSummaryText,
+            boolean showItemList,
+            List<CollectionLogRequirementItem> items,
+            int iconColumns,
+            String secondaryTitleText,
+            List<CollectionLogRequirementItem> secondaryItems,
+            int secondaryIconColumns)
+    {
         this.summaryText = summaryText == null ? "" : summaryText;
         this.titleText = titleText == null ? "" : titleText;
         this.showSummaryText = showSummaryText;
         this.showItemList = showItemList;
         this.items = items == null ? List.of() : items;
         this.iconColumns = Math.max(1, iconColumns);
+        this.secondaryTitleText = secondaryTitleText == null ? "" : secondaryTitleText;
+        this.secondaryItems = secondaryItems == null ? List.of() : secondaryItems;
+        this.secondaryIconColumns = Math.max(1, secondaryIconColumns);
     }
 
     public List<CollectionLogRequirementItem> getItems()
@@ -38,7 +58,7 @@ public final class CollectionLogRequirementPreview
 
     public boolean hasItems()
     {
-        return showSummaryText() || showItemList();
+        return showSummaryText() || showItemList() || showSecondaryItemList();
     }
 
     public boolean showItemList()
@@ -61,8 +81,28 @@ public final class CollectionLogRequirementPreview
         return titleText;
     }
 
+    public String secondaryTitleText()
+    {
+        return secondaryTitleText;
+    }
+
+    public List<CollectionLogRequirementItem> secondaryItems()
+    {
+        return secondaryItems;
+    }
+
+    public boolean showSecondaryItemList()
+    {
+        return !secondaryItems.isEmpty();
+    }
+
     public int iconColumns()
     {
         return iconColumns;
+    }
+
+    public int secondaryIconColumns()
+    {
+        return secondaryIconColumns;
     }
 }

@@ -433,6 +433,15 @@ public final class TaskDetailsPopup
                         contentW,
                         requirementPreview.iconColumns());
             }
+            if (requirementPreview.showSecondaryItemList())
+            {
+                totalPx += 6;
+                totalPx += ROW_HEIGHT;
+                totalPx += CollectionLogIconGridRenderer.measureHeight(
+                        requirementPreview.secondaryItems().size(),
+                        contentW,
+                        requirementPreview.secondaryIconColumns());
+            }
             totalPx += 6 + 12; // divider gap before "Prereqs"
         }
         totalPx += ROW_HEIGHT; // "Prereqs" header
@@ -622,6 +631,29 @@ public final class TaskDetailsPopup
                         palette.UI_EDGE_LIGHT,
                         palette.UI_EDGE_DARK,
                         requirementPreview.iconColumns());
+            }
+
+            if (requirementPreview.showSecondaryItemList())
+            {
+                y += 6;
+                g.setColor(palette.UI_GOLD);
+                g.drawString(TextUtils.truncateToWidth(requirementPreview.secondaryTitleText(), fm, contentW), contentLeft, y);
+                y += ROW_HEIGHT;
+                y = CollectionLogIconGridRenderer.render(
+                        g,
+                        fm,
+                        contentLeft,
+                        y,
+                        contentW,
+                        requirementPreview.secondaryItems(),
+                        collectionLogItemImageProvider,
+                        mousePoint,
+                        viewportBounds,
+                        palette.UI_TEXT,
+                        palette.UI_TEXT_DIM,
+                        palette.UI_EDGE_LIGHT,
+                        palette.UI_EDGE_DARK,
+                        requirementPreview.secondaryIconColumns());
             }
 
             y += 6;

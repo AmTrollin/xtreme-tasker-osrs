@@ -198,6 +198,15 @@ public final class CollectionLogIconGridRenderer
         int drawSize = Math.max(1, Math.min(bounds.width, bounds.height));
         int drawX = bounds.x + (bounds.width - drawSize) / 2;
         int drawY = bounds.y + (bounds.height - drawSize) / 2;
+        if (item.getStatus() == CollectionLogRequirementItem.Status.MISSING && item.isDimWhenMissing())
+        {
+            Composite oldComposite = g.getComposite();
+            g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+            g.drawImage(image, drawX, drawY, drawSize, drawSize, null);
+            g.setComposite(oldComposite);
+            return;
+        }
+
         g.drawImage(image, drawX, drawY, drawSize, drawSize, null);
     }
 

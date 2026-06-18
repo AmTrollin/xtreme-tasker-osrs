@@ -18,6 +18,9 @@ public class TaskVerification
     @SerializedName("count")
     private Integer count;
 
+    @SerializedName("completionItemId")
+    private Integer completionItemId;
+
     // achievement-diary fields
     @SerializedName("region")
     private String region;
@@ -47,6 +50,11 @@ public class TaskVerification
     public Integer getCount()
     {
         return count;
+    }
+
+    public Integer getCompletionItemId()
+    {
+        return completionItemId;
     }
 
     public String getRegion()
