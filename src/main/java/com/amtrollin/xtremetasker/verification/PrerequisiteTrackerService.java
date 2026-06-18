@@ -1,6 +1,7 @@
 package com.amtrollin.xtremetasker.verification;
 
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import lombok.NonNull;
 import net.runelite.api.Client;
 import net.runelite.api.InventoryID;
@@ -18,9 +19,11 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntUnaryOperator;
 import java.util.function.ToIntFunction;
 import java.util.regex.Matcher;
@@ -33,6 +36,8 @@ public class PrerequisiteTrackerService
     private static final Pattern SKILL_PREREQ_PLUS_PATTERN = Pattern.compile("^(\\d+)\\+\\s+([A-Za-z][A-Za-z\\- ]+)$");
     private static final Pattern QUEST_PREREQ_PATTERN = Pattern.compile("^(.+?)\\s+quest$", Pattern.CASE_INSENSITIVE);
     private static final Pattern START_QUEST_PREREQ_PATTERN = Pattern.compile("^start\\s+(.+)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SUBQUEST_PREREQ_PATTERN = Pattern.compile("^(.+?)\\s+subquest$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern MINIQUEST_PREREQ_PATTERN = Pattern.compile("^(.+?)\\s+miniquest$", Pattern.CASE_INSENSITIVE);
     private static final Pattern BARBARIAN_FIREMAKING_PART_1_PATTERN = Pattern.compile(
         "^part\\s+1\\s+of\\s+barbarian\\s+firemaking$",
         Pattern.CASE_INSENSITIVE
@@ -40,9 +45,11 @@ public class PrerequisiteTrackerService
     private static final Pattern QUEST_POINTS_PATTERN = Pattern.compile("^(\\d+)\\s+quest\\s+points?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMBAT_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+combat(?:\\s+level)?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern TOTAL_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+total\\s+level$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern FAVOR_PERCENT_PATTERN = Pattern.compile("^(\\d+)%\\s+(.+?)\\s+favou?r$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern FAVOR_PERCENT_PATTERN = Pattern.compile("^(?:reach\\s+)?(\\d+)%\\s+(.+?)\\s+favou?r$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern FAVOR_PREREQ_PATTERN = Pattern.compile("^(?:reach\\s+)?(.+?)\\s+favou?r$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern JAGEX_ACCOUNT_PATTERN = Pattern.compile("^own\\s+a\\s+jagex\\s+account$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COINS_PATTERN = Pattern.compile("^([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*([kmb]?)\\s*(?:coins?|gp)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern POINTS_PATTERN = Pattern.compile("^([0-9][0-9,]*(?:\\.[0-9]+)?)\\s+(.+?)\\s+points?$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern POINTS_PATTERN = Pattern.compile("^([0-9][0-9,]*(?:\\.[0-9]+)?)([kmb]?)\\s+(.+?)\\s+points?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern DIARY_PREREQ_PATTERN = Pattern.compile(
         "^complete\\s+the\\s+(.+?)\\s+(easy|medium|hard|elite)\\s+diary$",
         Pattern.CASE_INSENSITIVE
@@ -95,7 +102,7 @@ public class PrerequisiteTrackerService
                 continue;
             }
 
-            out.add(new PrerequisiteStatus(text, isSatisfied(text), checkSpans(text)));
+            out.add(new PrerequisiteStatus(text, isSatisfied(text), checkSpans(text), skillIcons(text), markerIcons(text)));
         }
         return out;
     }
@@ -274,7 +281,7 @@ public class PrerequisiteTrackerService
         if (questPointsMatcher.matches())
         {
             int requiredPoints = Integer.parseInt(questPointsMatcher.group(1));
-            return client.getVarpValue(VarPlayer.QUEST_POINTS) >= requiredPoints;
+            return client != null && client.getVarpValue(VarPlayer.QUEST_POINTS) >= requiredPoints;
         }
 
         Matcher favorMatcher = FAVOR_PERCENT_PATTERN.matcher(normalized);
@@ -283,6 +290,13 @@ public class PrerequisiteTrackerService
             int requiredFavor = Integer.parseInt(favorMatcher.group(1));
             Integer currentFavor = getFavorFor(favorMatcher.group(2));
             return currentFavor != null && currentFavor >= requiredFavor;
+        }
+
+        Matcher bareFavorMatcher = FAVOR_PREREQ_PATTERN.matcher(normalized);
+        if (bareFavorMatcher.matches())
+        {
+            Integer currentFavor = getFavorFor(bareFavorMatcher.group(1));
+            return currentFavor != null && currentFavor >= 100;
         }
 
         Matcher coinsMatcher = COINS_PATTERN.matcher(normalized);
@@ -300,13 +314,13 @@ public class PrerequisiteTrackerService
         Matcher pointsMatcher = POINTS_PATTERN.matcher(normalized);
         if (pointsMatcher.matches())
         {
-            long requiredPoints = parseScaledNumber(pointsMatcher.group(1), "");
+            long requiredPoints = parseScaledNumber(pointsMatcher.group(1), pointsMatcher.group(2));
             if (requiredPoints <= 0)
             {
                 return false;
             }
 
-            Integer currentPoints = getPointsFor(pointsMatcher.group(2));
+            Integer currentPoints = getPointsFor(pointsMatcher.group(3));
             return currentPoints != null && currentPoints >= requiredPoints;
         }
 
@@ -314,19 +328,24 @@ public class PrerequisiteTrackerService
         if (combatMatcher.matches())
         {
             int requiredCombat = Integer.parseInt(combatMatcher.group(1));
-            return client.getLocalPlayer() != null && client.getLocalPlayer().getCombatLevel() >= requiredCombat;
+            return client != null && client.getLocalPlayer() != null && client.getLocalPlayer().getCombatLevel() >= requiredCombat;
         }
 
         Matcher totalLevelMatcher = TOTAL_LEVEL_PATTERN.matcher(normalized);
         if (totalLevelMatcher.matches())
         {
             int requiredTotal = Integer.parseInt(totalLevelMatcher.group(1));
-            return client.getTotalLevel() >= requiredTotal;
+            return client != null && client.getTotalLevel() >= requiredTotal;
         }
 
         Matcher startQuestMatcher = START_QUEST_PREREQ_PATTERN.matcher(normalized);
         if (startQuestMatcher.matches())
         {
+            if (client == null)
+            {
+                return false;
+            }
+
             Quest quest = findQuestWithOptionalQuestSuffix(startQuestMatcher.group(1));
             if (quest == null)
             {
@@ -340,6 +359,11 @@ public class PrerequisiteTrackerService
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(normalized);
         if (questMatcher.matches())
         {
+            if (client == null)
+            {
+                return false;
+            }
+
             Quest quest = findQuestWithOptionalQuestSuffix(normalized);
             return quest != null && quest.getState(client) == QuestState.FINISHED;
         }
@@ -577,6 +601,257 @@ public class PrerequisiteTrackerService
         return spans;
     }
 
+    private List<Skill> skillIcons(String prerequisite)
+    {
+        Set<Skill> skills = new LinkedHashSet<>();
+
+        String normalizedPrereq = stripLeadingLabel(cleanupToken(prerequisite)).replaceFirst("(?i)^either\\s+", "");
+        addBarbarianAccessSkillIcons(normalizedPrereq, skills);
+
+        Matcher combinedMatcher = COMBINED_LEVEL_PATTERN.matcher(normalizedPrereq);
+        if (combinedMatcher.matches())
+        {
+            Skill firstSkill = findSkill(combinedMatcher.group(1));
+            Skill secondSkill = findSkill(combinedMatcher.group(2));
+            if (firstSkill != null)
+            {
+                skills.add(firstSkill);
+            }
+            if (secondSkill != null)
+            {
+                skills.add(secondSkill);
+            }
+        }
+
+        Matcher matcher = TRACKABLE_SKILL_SPAN_PATTERN.matcher(prerequisite);
+        while (matcher.find())
+        {
+            Skill skill = findSkill(matcher.group(2));
+            if (skill != null)
+            {
+                skills.add(skill);
+            }
+        }
+
+        return new ArrayList<>(skills);
+    }
+
+    private void addBarbarianAccessSkillIcons(String prerequisite, Set<Skill> skills)
+    {
+        String normalized = normalize(prerequisite);
+        if (!normalized.startsWith("accesstobarbarian"))
+        {
+            return;
+        }
+
+        if (normalized.contains("fishing"))
+        {
+            skills.add(Skill.FISHING);
+        }
+        if (normalized.contains("firemaking"))
+        {
+            skills.add(Skill.FIREMAKING);
+        }
+        if (normalized.contains("smithing"))
+        {
+            skills.add(Skill.SMITHING);
+        }
+        if (normalized.contains("herblore"))
+        {
+            skills.add(Skill.HERBLORE);
+        }
+    }
+
+    private List<MarkerIcon> markerIcons(String prerequisite)
+    {
+        Set<MarkerIcon> icons = new LinkedHashSet<>();
+        String normalizedPrereq = stripLeadingLabel(cleanupToken(prerequisite)).replaceFirst("(?i)^either\\s+", "");
+        String[] disjunctions = normalizedPrereq.split("(?i)\\s+or\\s+");
+        for (String option : disjunctions)
+        {
+            String normalized = cleanupToken(option);
+            MarkerIcon miniquestIcon = miniquestMarkerIcon(normalized);
+            if (miniquestIcon != null)
+            {
+                icons.add(miniquestIcon);
+                continue;
+            }
+            if (BARBARIAN_FIREMAKING_PART_1_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.BARBARIAN_MINIQUEST);
+                continue;
+            }
+            if (QUEST_POINTS_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.QUEST);
+                continue;
+            }
+            if (DIARY_PREREQ_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.ACHIEVEMENT_DIARY);
+                continue;
+            }
+            if (COMBAT_LEVEL_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.COMBAT);
+                continue;
+            }
+            if (TOTAL_LEVEL_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.TOTAL);
+                continue;
+            }
+            if (FAVOR_PERCENT_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.FAVOUR);
+                continue;
+            }
+            if (FAVOR_PREREQ_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.FAVOUR);
+                continue;
+            }
+            if (JAGEX_ACCOUNT_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.JAGEX_ACCOUNT);
+                continue;
+            }
+            List<MarkerIcon> namedPrereqIcons = namedPrerequisiteMarkerIcons(normalized);
+            if (!namedPrereqIcons.isEmpty())
+            {
+                icons.addAll(namedPrereqIcons);
+                continue;
+            }
+            if (COINS_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.CURRENCY);
+                continue;
+            }
+            if (POINTS_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.CURRENCY);
+                continue;
+            }
+
+            normalized = stripTrailingParenthetical(normalized);
+            if (START_QUEST_PREREQ_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.START_QUEST);
+            }
+            else if (QUEST_PREREQ_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.QUEST);
+            }
+            else if (SUBQUEST_PREREQ_PATTERN.matcher(normalized).matches())
+            {
+                icons.add(MarkerIcon.QUEST);
+            }
+            else if (normalize(normalized).contains("wilderness"))
+            {
+                icons.add(MarkerIcon.WILDERNESS);
+            }
+        }
+        return new ArrayList<>(icons);
+    }
+
+    private List<MarkerIcon> namedPrerequisiteMarkerIcons(String prerequisite)
+    {
+        String normalized = normalize(prerequisite);
+        if (normalized.contains("thermonuclearsmokedevil"))
+        {
+            return List.of(MarkerIcon.THERMONUCLEAR_SMOKE_DEVIL);
+        }
+
+        if (normalized.contains("chompy") || normalized.contains("jubblybirdkills"))
+        {
+            return List.of(MarkerIcon.CHOMPY_BIRD);
+        }
+
+        if (normalized.contains("kalphitequeen"))
+        {
+            return List.of(MarkerIcon.KALPHITE_QUEEN);
+        }
+
+        if (normalized.contains("penancequeen"))
+        {
+            return List.of(MarkerIcon.PENANCE_QUEEN);
+        }
+
+        switch (normalized)
+        {
+            case "defeatthecrazyarchaeologistchaosfanaticandscorpia":
+                return List.of(MarkerIcon.CRAZY_ARCHAEOLOGIST, MarkerIcon.CHAOS_FANATIC, MarkerIcon.SCORPIA);
+            case "accesstoatleastoneofthethreegodspells":
+                return List.of(MarkerIcon.SARADOMIN_STRIKE, MarkerIcon.CLAWS_OF_GUTHIX, MarkerIcon.FLAMES_OF_ZAMORAK);
+            case "defeateachofthedagannothkings":
+                return List.of(MarkerIcon.DAGANNOTH_REX, MarkerIcon.DAGANNOTH_SUPREME, MarkerIcon.DAGANNOTH_PRIME);
+            case "defeatcallistoartiovenenatisspindelandvetioncalvarion":
+                return List.of(MarkerIcon.CALLISTO, MarkerIcon.VENENATIS, MarkerIcon.VETION);
+            case "defeatallgodwarsdungeongeneralsexceptnex":
+                return List.of(MarkerIcon.KRIL_TSUTSAROTH, MarkerIcon.KREEARRA, MarkerIcon.COMMANDER_ZILYANA, MarkerIcon.GENERAL_GRAARDOR);
+            case "acquireandwearanycompletevoidset":
+                return List.of(MarkerIcon.VOID_TOP, MarkerIcon.VOID_ROBE, MarkerIcon.VOID_GLOVES);
+            case "seewikibasedonraid":
+                return List.of(MarkerIcon.RAID_WIKI);
+            case "defeatthegiantmole":
+                return List.of(MarkerIcon.GIANT_MOLE);
+            case "acquireaprospectorhelmetfromthemotherlodemine":
+                return List.of(MarkerIcon.PROSPECTOR_HELMET);
+            case "defeatalizardmanshamaninthelizardmantemple":
+                return List.of(MarkerIcon.LIZARDMAN_SHAMAN);
+            case "accesstothebonestopeachesspellfromthemagetrainingarena":
+                return List.of(MarkerIcon.BONES_TO_PEACHES);
+            case "defeatzulrah":
+                return List.of(MarkerIcon.ZULRAH);
+            case "defeatthechaoselemental":
+                return List.of(MarkerIcon.CHAOS_ELEMENTAL);
+            case "openthegrandgoldchestinthefinalroomofpyramidplunder":
+                return List.of(MarkerIcon.PYRAMID_PLUNDER);
+            case "defeatskotizo":
+                return List.of(MarkerIcon.SKOTIZO);
+            case "defeatahydrainthekaruulmslayerdungeon":
+                return List.of(MarkerIcon.HYDRA);
+            case "reachtherankofwhiteknightmaster":
+                return List.of(MarkerIcon.WHITE_KNIGHT);
+            case "defeataketzekinthetzhaarfightcaveonthe31stwave":
+                return List.of(MarkerIcon.KET_ZEK);
+            case "tzhaarfightcave":
+                return List.of(MarkerIcon.TZHAAR_FIGHT_CAVE);
+            case "openthebarrowschestwhilewearingafullbarrowsset":
+                return List.of(MarkerIcon.BARROWS_CHEST);
+            case "chambersofxeric":
+                return List.of(MarkerIcon.CHAMBERS_OF_XERIC);
+            default:
+                return List.of();
+        }
+    }
+
+    private MarkerIcon miniquestMarkerIcon(String prerequisite)
+    {
+        Matcher matcher = MINIQUEST_PREREQ_PATTERN.matcher(prerequisite);
+        if (!matcher.matches())
+        {
+            return null;
+        }
+
+        String miniquest = normalize(matcher.group(1));
+        switch (miniquest)
+        {
+            case "lairoftarnrazorlor":
+                return MarkerIcon.LAIR_OF_TARN_RAZORLOR;
+            case "magearena1":
+                return MarkerIcon.MAGE_ARENA_1;
+            case "entertheabyss":
+                return MarkerIcon.ENTER_THE_ABYSS;
+            case "valetotems":
+                return MarkerIcon.VALE_TOTEMS;
+            case "alfredgrimhandsbarcrawl":
+                return MarkerIcon.ALFRED_GRIMHANDS_BARCRAWL;
+            default:
+                return null;
+        }
+    }
+
     private int realSkillLevel(Skill skill)
     {
         return skillLevelReader == null ? client.getRealSkillLevel(skill) : skillLevelReader.applyAsInt(skill);
@@ -609,7 +884,7 @@ public class PrerequisiteTrackerService
 
         if (label.contains("nightmarezone") || label.equals("nmz"))
         {
-            int nmzRewardPoints = client.getVarpValue(VarPlayer.NMZ_REWARD_POINTS);
+            int nmzRewardPoints = client == null ? 0 : client.getVarpValue(VarPlayer.NMZ_REWARD_POINTS);
             Integer nmzPointsVarbit = varbitsByName.get("NMZ_POINTS");
             int nmzPoints = nmzPointsVarbit != null ? getVarbitValue(nmzPointsVarbit) : 0;
             return Math.max(nmzRewardPoints, nmzPoints);
@@ -629,7 +904,7 @@ public class PrerequisiteTrackerService
 
         if (label.contains("chambersofxeric") || label.equals("cox") || label.equals("raids") || label.equals("raid"))
         {
-            return client.getVarpValue(VarPlayer.RAIDS_PERSONAL_POINTS);
+            return client == null ? null : client.getVarpValue(VarPlayer.RAIDS_PERSONAL_POINTS);
         }
 
         return null;
@@ -701,6 +976,11 @@ public class PrerequisiteTrackerService
 
     private long getKnownCoins()
     {
+        if (client == null)
+        {
+            return 0;
+        }
+
         // Bank container is only populated while bank is open, so this is best-effort.
         return countCoinsIn(InventoryID.INVENTORY)
                 + countCoinsIn(InventoryID.BANK)

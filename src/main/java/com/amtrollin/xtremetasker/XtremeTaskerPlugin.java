@@ -2463,7 +2463,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static final Map<Integer, SequenceItemMeta> SEQUENCE_ITEM_META = Map.ofEntries(
             Map.entry(4119, new SequenceItemMeta("Bronze", "10 Slayer", "Bronze boots")),
             Map.entry(4121, new SequenceItemMeta("Iron", "17 Slayer (Cave slimes) or 25 Slayer (Cockatrices)", "Iron boots")),
-            Map.entry(4123, new SequenceItemMeta("Steel", "30 Slayer (Pyrefiends) or 33 Slayer and 33 Firemaking (Harpie bug swarms)", "Steel boots")),
+            Map.entry(4123, new SequenceItemMeta("Steel", "30 Slayer", "Steel boots")),
             Map.entry(4125, new SequenceItemMeta("Black", "50 Slayer", "Black boots")),
             Map.entry(4127, new SequenceItemMeta("Mithril", "52 Slayer", "Mithril boots")),
             Map.entry(4129, new SequenceItemMeta("Adamant", "75 Slayer (Gargoyles) or Giant frogs", "Adamant boots")),

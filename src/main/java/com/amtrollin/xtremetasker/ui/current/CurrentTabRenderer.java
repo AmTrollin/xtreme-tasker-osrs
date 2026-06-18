@@ -6,12 +6,15 @@ import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.CompletionInfo;
 import net.runelite.client.ui.FontManager;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
+import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
+import net.runelite.api.Skill;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -94,6 +97,8 @@ public final class CurrentTabRenderer
             Function<TaskTier, Integer> tierPercent, // optional, can be null
             Function<XtremeTask, String> currentLineProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             Function<TaskTier, List<XtremeTask>> tasksForTierProvider,
@@ -182,6 +187,8 @@ public final class CurrentTabRenderer
                     currentCompleted,
                     currentLineProvider,
                     prerequisiteStatusProvider,
+                    prerequisiteSkillImageProvider,
+                    prerequisiteMarkerImageProvider,
                     collectionLogRequirementPreviewProvider,
                     collectionLogItemImageProvider,
                     currentSource,
@@ -315,6 +322,8 @@ public final class CurrentTabRenderer
             boolean currentCompleted,
             Function<XtremeTask, String> currentLineProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             TaskSource currentSource,
@@ -379,6 +388,8 @@ public final class CurrentTabRenderer
                 detailsW,
                 current,
                 prerequisiteStatusProvider,
+                prerequisiteSkillImageProvider,
+                prerequisiteMarkerImageProvider,
                 collectionLogRequirementPreviewProvider,
                 showTips
         );
@@ -401,6 +412,8 @@ public final class CurrentTabRenderer
                 detailsW,
                 current,
                 prerequisiteStatusProvider,
+                prerequisiteSkillImageProvider,
+                prerequisiteMarkerImageProvider,
                 collectionLogRequirementPreviewProvider,
                 collectionLogItemImageProvider,
                 mousePoint,
@@ -709,6 +722,8 @@ public final class CurrentTabRenderer
             int maxW,
             XtremeTask current,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             boolean showTips
     )
@@ -765,7 +780,10 @@ public final class CurrentTabRenderer
             {
                 for (PrerequisiteStatus status : statuses)
                 {
-                    totalPx += rowHeight * wrapText("- " + status.getText(), fm, maxW).size();
+                    BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
+                    int lineHeight = PrerequisiteIconRenderer.lineHeight(rowHeight, status);
+                    totalPx += lineHeight * wrapText(status.getText(), fm,
+                            PrerequisiteIconRenderer.textWidth(fm, maxW, markerImage)).size();
                 }
             }
         }
@@ -817,6 +835,8 @@ public final class CurrentTabRenderer
             int maxW,
             XtremeTask current,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             java.awt.Point mousePoint,
@@ -890,7 +910,7 @@ public final class CurrentTabRenderer
             else
             {
                 g.setColor(uiTextDim);
-                y = drawPrerequisites(g, fm, x, y, maxW, statuses, 6);
+                y = drawPrerequisites(g, fm, x, y, maxW, statuses, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider, 6);
             }
         }
         else
@@ -1085,6 +1105,8 @@ public final class CurrentTabRenderer
             int yBaseline,
             int maxWidth,
             List<PrerequisiteStatus> statuses,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             int maxLines
     )
     {
@@ -1093,19 +1115,28 @@ public final class CurrentTabRenderer
 
         for (PrerequisiteStatus status : statuses)
         {
-            String lineText = "- " + status.getText();
-            for (String line : wrapText(lineText, fm, maxWidth))
+            BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
+            int textX = PrerequisiteIconRenderer.textX(fm, x, markerImage);
+            int textWidth = PrerequisiteIconRenderer.textWidth(fm, maxWidth, markerImage);
+            int lineHeight = PrerequisiteIconRenderer.lineHeight(rowHeight, status);
+            boolean firstLine = true;
+            for (String line : wrapText(status.getText(), fm, textWidth))
             {
                 if (drawn >= maxLines)
                 {
                     return y;
                 }
 
-                String drawLine = truncateToWidth(line, fm, maxWidth);
-                drawPrerequisiteStatusLine(g, fm, status, drawLine, x, y);
+                if (firstLine)
+                {
+                    PrerequisiteIconRenderer.drawMarker(g, fm, markerImage, x, y);
+                }
+                String drawLine = truncateToWidth(line, fm, textWidth);
+                drawPrerequisiteStatusLine(g, fm, status, drawLine, textX, y);
 
-                y += rowHeight;
+                y += lineHeight;
                 drawn++;
+                firstLine = false;
             }
         }
 

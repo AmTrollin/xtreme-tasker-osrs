@@ -9,6 +9,7 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
@@ -44,8 +45,10 @@ import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import lombok.Getter;
 import net.runelite.api.Client;
+import net.runelite.api.Skill;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseWheelListener;
@@ -90,6 +93,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int COLLECTION_LOG_PREVIEW_CACHE_LIMIT = 256;
     private static final int COLLECTION_LOG_SEQUENCE_CACHE_LIMIT = 256;
     private static final int ITEM_IMAGE_CACHE_LIMIT = 512;
+    private static final int SKILL_IMAGE_CACHE_LIMIT = 32;
     private static final int SPRITE_CACHE_LIMIT = 32;
     private static final int SORTED_TASK_LIST_CACHE_LIMIT = 48;
     private static final int PREREQUISITE_STATUS_CACHE_LIMIT = 512;
@@ -295,9 +299,11 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Client client;
     private final XtremeTaskerPlugin plugin;
     private final SpriteManager spriteManager;
+    private final SkillIconManager skillIconManager;
     private final Map<String, CollectionLogRequirementPreview> collectionLogPreviewCache = lruCache(COLLECTION_LOG_PREVIEW_CACHE_LIMIT);
     private final Map<String, List<XtremeTask>> collectionLogSequenceCache = lruCache(COLLECTION_LOG_SEQUENCE_CACHE_LIMIT);
     private final Map<Integer, BufferedImage> itemImageCache = lruCache(ITEM_IMAGE_CACHE_LIMIT);
+    private final Map<Skill, BufferedImage> skillImageCache = lruCache(SKILL_IMAGE_CACHE_LIMIT);
     private final Map<Integer, BufferedImage> spriteCache = lruCache(SPRITE_CACHE_LIMIT);
     private final Map<String, List<XtremeTask>> sortedTaskListCache = lruCache(SORTED_TASK_LIST_CACHE_LIMIT);
     private final Map<String, List<PrerequisiteStatus>> prerequisiteStatusCache = lruCache(PREREQUISITE_STATUS_CACHE_LIMIT);
@@ -372,6 +378,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
+        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return PrerequisiteIconRenderer.achievementDiaryIconImage();
         Integer sequenceItemId = sequencePreviewFocusItemId(task);
         if (sequenceItemId != null && sequenceItemId > 0) return getCachedItemImage(sequenceItemId);
         Integer id = task.getIconItemId();
@@ -402,6 +409,32 @@ public class XtremeTaskerOverlay extends Overlay {
             itemImageCache.put(itemId, image);
         }
         return image;
+    }
+
+    private BufferedImage getCachedSkillImage(Skill skill)
+    {
+        if (skill == null)
+        {
+            return null;
+        }
+
+        BufferedImage cached = skillImageCache.get(skill);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        BufferedImage image = skillIconManager == null ? null : skillIconManager.getSkillImage(skill, true);
+        if (image != null)
+        {
+            skillImageCache.put(skill, image);
+        }
+        return image;
+    }
+
+    private BufferedImage getCachedPrerequisiteMarkerImage(MarkerIcon markerIcon)
+    {
+        return null;
     }
 
     private BufferedImage getCachedSprite(int spriteId)
@@ -1523,10 +1556,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
 
     @Inject
-    public XtremeTaskerOverlay(Client client, XtremeTaskerPlugin plugin, SpriteManager spriteManager) {
+    public XtremeTaskerOverlay(Client client, XtremeTaskerPlugin plugin, SpriteManager spriteManager, SkillIconManager skillIconManager) {
         this.client = client;
         this.plugin = plugin;
         this.spriteManager = spriteManager;
+        this.skillIconManager = skillIconManager;
 
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.UNDER_WIDGETS);
@@ -1984,6 +2018,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 useCondensedTaskRows() ? plugin::getTaskGroupProgress : null,
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
                 this::getCachedPrerequisiteStatuses,
+                this::getCachedSkillImage,
+                this::getCachedPrerequisiteMarkerImage,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
                 plugin::isCollectionLogTaskSyncMismatch,
                 this::taskDetailsSyncButtonLabel,
@@ -3480,6 +3516,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin::getTierProgressLabel,
                 (ignored) -> computeCurrentLineForRender(current, currentCompleted, fm),
                 this::getCachedPrerequisiteStatuses,
+                this::getCachedSkillImage,
+                this::getCachedPrerequisiteMarkerImage,
                 this::buildCollectionLogRequirementPreview,
                 this::getCachedItemImage,
                 this::getTasksForTier,
@@ -3900,9 +3938,11 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private void drawCompactLine(Graphics2D g, FontMetrics fm, CompactLine line, int x, int y, int maxWidth) {
-        String drawLine = TextUtils.truncateToWidth(line.text, fm, maxWidth);
+        int drawX = x;
+        int drawMaxWidth = maxWidth;
         PrerequisiteStatus status = line.prerequisiteStatus;
         if (status == null) {
+            String drawLine = TextUtils.truncateToWidth(line.text, fm, maxWidth);
             g.setColor(line.heading ? P.UI_GOLD : (line.dim ? P.UI_TEXT_DIM : P.UI_TEXT));
             g.drawString(drawLine, x, y);
             return;
@@ -3910,11 +3950,17 @@ public class XtremeTaskerOverlay extends Overlay {
 
         boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
         g.setColor(!hasCheckSpans && status.isCompleted() ? P.UI_TEXT_DIM : P.UI_TEXT);
-        g.drawString(drawLine, x, y);
+        if (line.firstPrerequisiteLine) {
+            PrerequisiteIconRenderer.drawMarker(g, fm, line.prerequisiteMarkerImage, x, y);
+        }
+        drawX = PrerequisiteIconRenderer.textX(fm, x, line.prerequisiteMarkerImage);
+        drawMaxWidth = PrerequisiteIconRenderer.textWidth(fm, maxWidth, line.prerequisiteMarkerImage);
+        String drawLine = TextUtils.truncateToWidth(line.text, fm, drawMaxWidth);
+        g.drawString(drawLine, drawX, y);
 
         if (!hasCheckSpans) {
             if (status.isCompleted()) {
-                drawCompactStrikeThrough(g, fm, drawLine, x, y);
+                drawCompactStrikeThrough(g, fm, drawLine, drawX, y);
             }
             return;
         }
@@ -3930,7 +3976,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            int spanX = x + fm.stringWidth(drawLine.substring(0, lineIndex));
+            int spanX = drawX + fm.stringWidth(drawLine.substring(0, lineIndex));
             g.setColor(P.UI_TEXT_DIM);
             g.drawString(spanText, spanX, y);
             drawCompactStrikeThrough(g, fm, spanText, spanX, y);
@@ -3955,8 +4001,14 @@ public class XtremeTaskerOverlay extends Overlay {
     private List<CompactLine> wrappedCompactPrereqLines(PrerequisiteStatus status) {
         List<CompactLine> out = new ArrayList<>();
         String text = status == null ? "" : status.getText();
-        for (String line : TextUtils.wrapText("- " + text, fontMetrics(), PANEL_W_COMPACT - PANEL_PADDING * 2 - 26)) {
-            out.add(CompactLine.prerequisite(line, status));
+        FontMetrics fm = fontMetrics();
+        int width = PANEL_W_COMPACT - PANEL_PADDING * 2 - 26;
+        BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, this::getCachedSkillImage, this::getCachedPrerequisiteMarkerImage);
+        int textWidth = PrerequisiteIconRenderer.textWidth(fm, width, markerImage);
+        boolean firstLine = true;
+        for (String line : TextUtils.wrapText(text, fm, textWidth)) {
+            out.add(CompactLine.prerequisite(line, status, markerImage, firstLine));
+            firstLine = false;
         }
         return out;
     }
@@ -3967,6 +4019,9 @@ public class XtremeTaskerOverlay extends Overlay {
                     line.collectionLogPreview.getItems().size(),
                     maxWidth,
                     line.collectionLogPreview.iconColumns());
+        }
+        if (line != null && line.prerequisiteStatus != null) {
+            return PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, line.prerequisiteStatus);
         }
         return ROW_HEIGHT;
     }
@@ -4216,6 +4271,8 @@ public class XtremeTaskerOverlay extends Overlay {
         private final boolean dim;
         private final CollectionLogRequirementPreview collectionLogPreview;
         private final PrerequisiteStatus prerequisiteStatus;
+        private final BufferedImage prerequisiteMarkerImage;
+        private final boolean firstPrerequisiteLine;
 
         private CompactLine(String text, boolean heading, boolean dim) {
             this.text = text == null ? "" : text;
@@ -4223,6 +4280,8 @@ public class XtremeTaskerOverlay extends Overlay {
             this.dim = dim;
             this.collectionLogPreview = null;
             this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
         }
 
         private CompactLine(CollectionLogRequirementPreview collectionLogPreview) {
@@ -4231,14 +4290,18 @@ public class XtremeTaskerOverlay extends Overlay {
             this.dim = false;
             this.collectionLogPreview = collectionLogPreview;
             this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
         }
 
-        private CompactLine(String text, PrerequisiteStatus prerequisiteStatus) {
+        private CompactLine(String text, PrerequisiteStatus prerequisiteStatus, BufferedImage prerequisiteMarkerImage, boolean firstPrerequisiteLine) {
             this.text = text == null ? "" : text;
             this.heading = false;
             this.dim = false;
             this.collectionLogPreview = null;
             this.prerequisiteStatus = prerequisiteStatus;
+            this.prerequisiteMarkerImage = prerequisiteMarkerImage;
+            this.firstPrerequisiteLine = firstPrerequisiteLine;
         }
 
         private static CompactLine spacer() {
@@ -4249,8 +4312,8 @@ public class XtremeTaskerOverlay extends Overlay {
             return new CompactLine(collectionLogPreview);
         }
 
-        private static CompactLine prerequisite(String text, PrerequisiteStatus status) {
-            return new CompactLine(text, status);
+        private static CompactLine prerequisite(String text, PrerequisiteStatus status, BufferedImage markerImage, boolean firstLine) {
+            return new CompactLine(text, status, markerImage, firstLine);
         }
     }
 

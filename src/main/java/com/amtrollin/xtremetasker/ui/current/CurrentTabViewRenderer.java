@@ -5,12 +5,14 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.ui.current.models.CurrentTabState;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
+import net.runelite.api.Skill;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -46,6 +48,8 @@ public final class CurrentTabViewRenderer
             Function<TaskTier, String> tierProgressLabel,
             Function<XtremeTask, String> currentLineProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             Function<TaskTier, List<XtremeTask>> tasksForTierProvider,
@@ -87,6 +91,8 @@ public final class CurrentTabViewRenderer
                 null,
                 currentLineProvider,
                 prerequisiteStatusProvider,
+                prerequisiteSkillImageProvider,
+                prerequisiteMarkerImageProvider,
                 collectionLogRequirementPreviewProvider,
                 collectionLogItemImageProvider,
                 tasksForTierProvider,

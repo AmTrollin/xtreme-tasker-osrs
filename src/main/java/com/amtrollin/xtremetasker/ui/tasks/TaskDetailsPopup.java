@@ -4,15 +4,18 @@ import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
+import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
+import net.runelite.api.Skill;
 import net.runelite.client.ui.FontManager;
 
 import javax.imageio.ImageIO;
@@ -241,6 +244,8 @@ public final class TaskDetailsPopup
             Function<XtremeTask, TaskGroupProgress> groupProgressProvider,
             Function<XtremeTask, List<XtremeTask>> taskGroupProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<XtremeTask, Boolean> collectionLogSyncMismatchProvider,
             Function<XtremeTask, String> collectionLogSyncButtonLabelProvider,
@@ -534,7 +539,10 @@ public final class TaskDetailsPopup
         {
             for (PrerequisiteStatus status : prerequisiteStatuses)
             {
-                totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + status.getText(), fm, contentW).size();
+                BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
+                int lineHeight = PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, status);
+                totalPx += lineHeight * TextUtils.wrapText(status.getText(), fm,
+                        PrerequisiteIconRenderer.textWidth(fm, contentW, markerImage)).size();
             }
         }
         else
@@ -745,13 +753,22 @@ public final class TaskDetailsPopup
         {
             for (PrerequisiteStatus status : prerequisiteStatuses)
             {
-                String lineText = "- " + status.getText();
-                for (String line : TextUtils.wrapText(lineText, fm, contentW))
+                BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
+                int textX = PrerequisiteIconRenderer.textX(fm, contentLeft, markerImage);
+                int textW = PrerequisiteIconRenderer.textWidth(fm, contentW, markerImage);
+                int lineHeight = PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, status);
+                boolean firstLine = true;
+                for (String line : TextUtils.wrapText(status.getText(), fm, textW))
                 {
-                    String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                    drawPrerequisiteStatusLine(g, fm, status, drawLine, contentLeft, y);
+                    if (firstLine)
+                    {
+                        PrerequisiteIconRenderer.drawMarker(g, fm, markerImage, contentLeft, y);
+                    }
+                    String drawLine = TextUtils.truncateToWidth(line, fm, textW);
+                    drawPrerequisiteStatusLine(g, fm, status, drawLine, textX, y);
 
-                    y += ROW_HEIGHT;
+                    y += lineHeight;
+                    firstLine = false;
                 }
             }
         }

@@ -469,31 +469,36 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    public void chargedAndUnchargedRaidItemsCountAsOneLogSlot()
+    public void chargedRaidItemsDoNotSatisfyUnchargedCollectionLogSlots()
     {
-        int[][] chargedItemPairs = new int[][]{
-                {22323, 22481}, // Sanguinesti staff
-                {22325, 22486}, // Scythe of vitur
-                {28547, 28549}  // Tumeken's shadow
+        int[][] unchargedItemPairs = new int[][]{
+                {22481, 22323}, // Sanguinesti staff
+                {22486, 22325}, // Scythe of vitur
+                {28549, 28547}  // Tumeken's shadow
         };
 
-        for (int[] chargedItemPair : chargedItemPairs)
+        for (int[] unchargedItemPair : unchargedItemPairs)
         {
-            int canonicalItemId = chargedItemPair[0];
-            int alternateItemId = chargedItemPair[1];
+            int unchargedItemId = unchargedItemPair[0];
+            int chargedItemId = unchargedItemPair[1];
 
             CollectionLogService collectionLogService = new CollectionLogService();
-            collectionLogService.storeSeenItem(alternateItemId);
-            collectionLogService.storeItem(alternateItemId);
+            collectionLogService.storeSeenItem(unchargedItemId);
+            collectionLogService.storeItem(unchargedItemId);
 
-            assertTrue("Alternate item " + alternateItemId + " should satisfy canonical item " + canonicalItemId,
-                    collectionLogService.hasSeenAll(new int[]{canonicalItemId}));
-            assertEquals("Alternate item " + alternateItemId + " should count as one canonical slot",
-                    1, collectionLogService.countObtained(new int[]{canonicalItemId}));
-            assertEquals("Charged and uncharged aliases in one requirement should not double-count",
-                    1, collectionLogService.countObtained(new int[]{canonicalItemId, alternateItemId}));
-            assertTrue("Charged and uncharged aliases in one requirement should be satisfied by either form",
-                    collectionLogService.hasSeenAll(new int[]{canonicalItemId, alternateItemId}));
+            assertTrue("Uncharged item " + unchargedItemId + " should satisfy its collection log slot",
+                    collectionLogService.hasSeenAll(new int[]{unchargedItemId}));
+            assertEquals("Uncharged item " + unchargedItemId + " should count as one collection log slot",
+                    1, collectionLogService.countObtained(new int[]{unchargedItemId}));
+
+            CollectionLogService chargedOnlyCollectionLogService = new CollectionLogService();
+            chargedOnlyCollectionLogService.storeSeenItem(chargedItemId);
+            chargedOnlyCollectionLogService.storeItem(chargedItemId);
+
+            assertFalse("Charged item " + chargedItemId + " should not satisfy uncharged item " + unchargedItemId,
+                    chargedOnlyCollectionLogService.hasSeenAll(new int[]{unchargedItemId}));
+            assertEquals("Charged item " + chargedItemId + " should not count for uncharged item " + unchargedItemId,
+                    0, chargedOnlyCollectionLogService.countObtained(new int[]{unchargedItemId}));
         }
     }
 

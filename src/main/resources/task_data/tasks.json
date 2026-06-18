@@ -3057,7 +3057,7 @@
       "name": "Get Revenant ether",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenant ether",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenant_ether",
       "verification": {
@@ -10297,7 +10297,7 @@
       "name": "Get a Bracelet of ethereum or Rev cave teleport",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenant Caves",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenant_Caves",
       "verification": {
@@ -10318,7 +10318,7 @@
       "name": "Get a Bracelet of ethereum or Rev cave teleport",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenant Caves",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenant_Caves",
       "verification": {
@@ -10434,7 +10434,7 @@
       "name": "Karamja Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
-      "prereqs": "32 Agility; 3 Herblore; 20 Crafting; 41 Hunter; 40 Mining; 65 Fishing; 16 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Shilo Village quest; Start Dragon Slayer 1 quest; Start Tai Bwo Wannai Trio quest; Reach 100% Tai Bwo Wannai Cleanup favour",
+      "prereqs": "32 Agility; 3 Herblore; 20 Crafting; 41 Hunter; 40 Mining; 65 Fishing; 16 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Shilo Village quest; Start Dragon Slayer 1 quest; Start Tai Bwo Wannai Trio quest; Tai Bwo Wannai Cleanup favour",
       "wikiTitle": "Karamja Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Karamja_Diary",
       "verification": {
@@ -12065,7 +12065,7 @@
     },
     {
       "id": "collection_log_medium_1-graceful-recolor_001_34396fc6b4",
-      "name": "1 Graceful Recolor",
+      "name": "Recolour Graceful Outfit",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "None",
@@ -19022,7 +19022,7 @@
       "name": "Karamja Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 44 Runecrafting; 53 Agility; 25 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave; Reach 100% Tai Bwo Wannai Cleanup favour",
+      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 44 Runecrafting; 53 Agility; 25 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave; Tai Bwo Wannai Cleanup favour",
       "wikiTitle": "Karamja Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Karamja_Diary",
       "verification": {
@@ -20070,7 +20070,7 @@
       "name": "Get 1 unique Nihil shard or Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20095,7 +20095,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20120,7 +20120,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20145,7 +20145,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20170,7 +20170,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20195,7 +20195,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -29763,7 +29763,7 @@
       "name": "Karamja Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 91 Runecrafting; 53 Agility; 87 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 72 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; TzHaar Fight Cave; Reach 100% Tai Bwo Wannai Cleanup favour",
+      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 91 Runecrafting; 53 Agility; 87 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 72 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; TzHaar Fight Cave; Tai Bwo Wannai Cleanup favour",
       "wikiTitle": "Karamja Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Karamja_Diary",
       "verification": {
@@ -30468,7 +30468,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -30498,7 +30498,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -30528,7 +30528,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -30558,7 +30558,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -33188,7 +33188,7 @@
       "name": "Nex Veteran",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Veteran",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Veteran",
       "description": "Kill Nex once.",
@@ -33199,7 +33199,7 @@
       "name": "Nex Survivors",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Survivors",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Survivors",
       "description": "Kill Nex without having anyone die during the fight.",
@@ -37130,8 +37130,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37156,8 +37156,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37182,8 +37182,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37208,8 +37208,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37234,8 +37234,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37260,8 +37260,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37286,8 +37286,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37313,7 +37313,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37345,7 +37345,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37377,7 +37377,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37409,7 +37409,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37441,7 +37441,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37473,7 +37473,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37505,7 +37505,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37537,7 +37537,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37569,7 +37569,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -39803,7 +39803,7 @@
       "name": "1 Nex unique",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex",
       "verification": {
@@ -39828,7 +39828,7 @@
       "name": "1 Nex unique",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex",
       "verification": {
@@ -39853,7 +39853,7 @@
       "name": "1 Nex unique",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex",
       "verification": {
@@ -40907,7 +40907,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_001_aa081ebb86",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40947,7 +40947,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_002_3d4fb0bb3a",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40987,7 +40987,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_003_80028c57b9",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41027,7 +41027,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_004_2ba234e84a",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41067,7 +41067,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_005_f4ff84c454",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41107,7 +41107,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_006_b59a51619d",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41147,7 +41147,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_007_62a0d5f485",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41187,7 +41187,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_008_6721dc7fcb",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41227,7 +41227,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_009_9f7e2089e4",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41267,7 +41267,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_010_a1c5555067",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -42339,7 +42339,7 @@
       "name": "A siphon will solve this",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "A siphon will solve this",
       "wikiUrl": "https://oldschool.runescape.wiki/w/A_siphon_will_solve_this",
       "description": "Kill Nex without letting her heal from her Blood Siphon special attack.",
@@ -42350,7 +42350,7 @@
       "name": "There is no escape!",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "There is no escape!",
       "wikiUrl": "https://oldschool.runescape.wiki/w/There_is_no_escape%21",
       "description": "Kill Nex without having anyone take damage from her Smoke Dash attack.",
@@ -42361,7 +42361,7 @@
       "name": "Contain this!",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Contain this!",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Contain_this%21",
       "description": "Kill Nex without having anyone take damage from her Containment and Ice Prison attacks.",
@@ -42372,7 +42372,7 @@
       "name": "Nex Master",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Master",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Master",
       "description": "Kill Nex 25 times.",
@@ -42383,7 +42383,7 @@
       "name": "Nex Trio",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Trio",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Trio",
       "description": "Kill Nex with three or less players inside the arena at the start of the fight.",
@@ -42394,7 +42394,7 @@
       "name": "Shadows Move...",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Shadows Move...",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Shadows_Move...",
       "description": "Kill Nex without anyone being hit by her Shadow Smash attack. Upon the shadows appearing beneath you, they will have three ticks (1.8 seconds) to move out of it before they erupt and damage you.",
@@ -43890,7 +43890,7 @@
       "name": "Nex Duo",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Duo",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Duo",
       "description": "Kill Nex with only two or less players.",
@@ -43901,7 +43901,7 @@
       "name": "Perfect Nex",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Perfect Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Perfect_Nex",
       "description": "Kill Nex while qualifying for the completion of the following tasks: There is no escape!, Shadows Move..., A siphon will solve this, and Contain this!.",
@@ -43912,7 +43912,7 @@
       "name": "I should see a doctor",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "I should see a doctor",
       "wikiUrl": "https://oldschool.runescape.wiki/w/I_should_see_a_doctor",
       "description": "Get kill credit for Nex while a player is infected with Nex's Choke attack.",

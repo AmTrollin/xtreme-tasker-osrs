@@ -358,8 +358,8 @@ public final class CollectionLogIconGridRenderer
     private static void drawObtainedCheck(Graphics2D g, Rectangle bounds)
     {
         int size = Math.max(12, bounds.width / 2);
-        int x = bounds.x + bounds.width - size;
-        int y = bounds.y + bounds.height - size;
+        int x = bounds.x + (bounds.width - size) / 2;
+        int y = bounds.y + (bounds.height - size) / 2 + Math.max(2, bounds.height / 10);
         int x1 = x + Math.max(3, size / 4);
         int y1 = y + size / 2;
         int x2 = x + size / 2 - 1;

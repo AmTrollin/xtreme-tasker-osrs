@@ -61,10 +61,6 @@ public class CollectionLogService
             Map.entry(25751, 22473), // Lil' zik - Lil' Sot -> Lil' zik
             Map.entry(25752, 22473), // Lil' zik - Lil' Xarp -> Lil' zik
 
-            Map.entry(22481, 22323), // Sanguinesti staff (uncharged) -> Sanguinesti staff
-            Map.entry(22486, 22325), // Scythe of vitur (uncharged) -> Scythe of vitur
-            Map.entry(28549, 28547), // Tumeken's shadow (uncharged) -> Tumeken's shadow
-
             Map.entry(27382, 27352), // Tumeken's guardian - Akkhito -> Tumeken's guardian
             Map.entry(27383, 27352), // Tumeken's guardian - Babi -> Tumeken's guardian
             Map.entry(27387, 27352), // Tumeken's guardian - Elidinis' Damaged Guardian -> Tumeken's guardian
