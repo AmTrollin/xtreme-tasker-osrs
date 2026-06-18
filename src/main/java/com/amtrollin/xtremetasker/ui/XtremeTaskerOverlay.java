@@ -195,6 +195,11 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle syncMismatchConfirmBounds = new Rectangle();
     private final Rectangle syncMismatchConfirmYesBounds = new Rectangle();
     private final Rectangle syncMismatchConfirmNoBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardOkBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardViewportBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardScrollbarRailBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardScrollbarThumbBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarRailBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarThumbBounds = new Rectangle();
     private final Rectangle syncMismatchDescriptionBounds = new Rectangle();
@@ -237,6 +242,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private long keyboardTriggeredTaskTooltipUntilMs = 0L;
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
+    private String syncMismatchGuardMessage = null;
     private boolean syncMismatchReviewOpen = false;
     private enum SyncReviewMode { MISMATCH, COMPLETION_CANDIDATES }
     private SyncReviewMode syncReviewMode = SyncReviewMode.MISMATCH;
@@ -1520,6 +1526,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private final TaskListScrollController rulesScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController currentScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController syncMismatchScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
+    private final TaskListScrollController syncMismatchGuardScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
+    private int syncMismatchGuardTotalRows = 0;
     private int compactCurrentScrollPx = 0;
     private int compactCurrentMaxOffsetPx = 0;
     private double compactCurrentWheelRemainderPx = 0.0;
@@ -3061,6 +3069,11 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             renderSyncMismatchApplyConfirm(g, fm);
         }
+
+        if (syncMismatchGuardMessage != null)
+        {
+            renderSyncMismatchGuard(g, fm);
+        }
     }
 
     private List<XtremeTask> visibleSyncMismatchTasks()
@@ -3388,6 +3401,108 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchConfirmNoBounds.setBounds(syncMismatchConfirmYesBounds.x + buttonW + gap, buttonY, buttonW, buttonH);
         buttonRenderer.drawPlainButton(g, syncMismatchConfirmYesBounds, "Confirm", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
         buttonRenderer.drawPlainButton(g, syncMismatchConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
+    }
+
+    private void renderSyncMismatchGuard(Graphics2D g, FontMetrics fm)
+    {
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
+                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
+
+        String title = "Sequence blocked";
+        int maxW = Math.max(120, syncMismatchReviewBounds.width - 70);
+        int textW = Math.max(100, maxW - 36);
+        List<String> lines = TextUtils.wrapText(syncMismatchGuardMessage == null ? "" : syncMismatchGuardMessage, fm, textW);
+        syncMismatchGuardTotalRows = Math.max(1, lines.size());
+        int visibleLineCapacity = Math.min(8, syncMismatchGuardTotalRows);
+        int w = Math.min(maxW, Math.max(fm.stringWidth(title) + 36, widestLineWidth(lines, fm) + 36));
+        int buttonW = 70;
+        int buttonH = ROW_HEIGHT + 8;
+        int lineH = syncMismatchGuardRowBlock();
+        int h = Math.min(syncMismatchReviewBounds.height - 32, 64 + visibleLineCapacity * lineH + buttonH);
+        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
+        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
+        syncMismatchGuardBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, syncMismatchGuardBounds, new Color(45, 36, 24, 252));
+
+        int baseline = y + 16 + fm.getAscent();
+        g.setColor(P.UI_GOLD);
+        g.drawString(title, x + (w - fm.stringWidth(title)) / 2, baseline);
+
+        g.setColor(P.UI_TEXT_DIM);
+        int viewportY = baseline + fm.getHeight() + 8 - fm.getAscent();
+        int viewportH = Math.max(lineH, y + h - buttonH - 18 - viewportY);
+        boolean needsScrollbar = syncMismatchGuardTotalRows > visibleLineCapacity;
+        int scrollbarReserve = needsScrollbar ? 12 : 0;
+        syncMismatchGuardViewportBounds.setBounds(x + 12, viewportY, Math.max(20, w - 24 - scrollbarReserve), viewportH);
+
+        int visibleLines = Math.max(1, syncMismatchGuardScroll.visibleRows(syncMismatchGuardViewportBounds.height, lineH));
+        int maxOffset = Math.max(0, syncMismatchGuardTotalRows - visibleLines);
+        syncMismatchGuardScroll.offsetRows = Math.max(0, Math.min(syncMismatchGuardScroll.offsetRows, maxOffset));
+        int start = syncMismatchGuardScroll.offsetRows;
+        int end = Math.min(syncMismatchGuardTotalRows, start + visibleLines);
+
+        Shape oldClip = g.getClip();
+        g.setClip(syncMismatchGuardViewportBounds);
+        int textY = syncMismatchGuardViewportBounds.y + fm.getAscent();
+        for (int i = start; i < end; i++)
+        {
+            String line = lines.isEmpty() ? "" : lines.get(i);
+            line = TextUtils.truncateToWidth(line, fm, syncMismatchGuardViewportBounds.width);
+            g.drawString(line, syncMismatchGuardViewportBounds.x, textY);
+            textY += lineH;
+        }
+        g.setClip(oldClip);
+
+        renderSyncMismatchGuardScrollbar(g, syncMismatchGuardTotalRows, visibleLines, start);
+
+        syncMismatchGuardOkBounds.setBounds(x + (w - buttonW) / 2, y + h - buttonH - 10, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, syncMismatchGuardOkBounds, "OK", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+    }
+
+    private int syncMismatchGuardRowBlock()
+    {
+        return ROW_HEIGHT;
+    }
+
+    private void renderSyncMismatchGuardScrollbar(Graphics2D g, int totalRows, int visibleRows, int offsetRows)
+    {
+        syncMismatchGuardScrollbarRailBounds.setBounds(0, 0, 0, 0);
+        syncMismatchGuardScrollbarThumbBounds.setBounds(0, 0, 0, 0);
+        if (totalRows <= visibleRows || visibleRows <= 0 || syncMismatchGuardViewportBounds.height <= 0)
+        {
+            return;
+        }
+
+        int scrollBarW = 6;
+        int sbX = syncMismatchGuardBounds.x + syncMismatchGuardBounds.width - 12 - scrollBarW;
+        syncMismatchGuardScrollbarRailBounds.setBounds(sbX, syncMismatchGuardViewportBounds.y,
+                scrollBarW, syncMismatchGuardViewportBounds.height);
+        g.setColor(new Color(18, 14, 9, 200));
+        g.fillRect(sbX, syncMismatchGuardViewportBounds.y, scrollBarW, syncMismatchGuardViewportBounds.height);
+
+        float thumbRatio = (float) visibleRows / totalRows;
+        int thumbH = Math.max(14, (int) (syncMismatchGuardViewportBounds.height * thumbRatio));
+        int maxOffset = Math.max(1, totalRows - visibleRows);
+        float scrollRatio = (float) Math.max(0, Math.min(offsetRows, maxOffset)) / maxOffset;
+        int thumbY = syncMismatchGuardViewportBounds.y
+                + (int) ((syncMismatchGuardViewportBounds.height - thumbH) * scrollRatio);
+        syncMismatchGuardScrollbarThumbBounds.setBounds(sbX, thumbY, scrollBarW, thumbH);
+        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 160));
+        g.fillRoundRect(sbX, thumbY, scrollBarW, thumbH, 3, 3);
+    }
+
+    private static int widestLineWidth(List<String> lines, FontMetrics fm)
+    {
+        int width = 0;
+        if (lines != null)
+        {
+            for (String line : lines)
+            {
+                width = Math.max(width, fm.stringWidth(line == null ? "" : line));
+            }
+        }
+        return width;
     }
 
     private void renderMarkAllIncompleteConfirm(Graphics2D g, FontMetrics fm)
@@ -5241,6 +5356,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     syncMismatchScroll.reset();
                     selectedSyncMismatchTaskIds.clear();
                     syncMismatchApplyConfirmOpen = false;
+                    syncMismatchGuardMessage = null;
                 }
             }
 
@@ -5258,6 +5374,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     syncMismatchScroll.reset();
                     selectedSyncMismatchTaskIds.clear();
                     syncMismatchApplyConfirmOpen = false;
+                    syncMismatchGuardMessage = null;
                 }
             }
 
@@ -5268,6 +5385,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 syncMismatchReviewSource = null;
                 selectedSyncMismatchTaskIds.clear();
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
                 syncMismatchDescriptionTask = null;
             }
 
@@ -5661,6 +5779,63 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public boolean isSyncMismatchGuardOpen() {
+                return syncMismatchGuardMessage != null;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardBounds() {
+                return syncMismatchGuardBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardOkBounds() {
+                return syncMismatchGuardOkBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardViewportBounds() {
+                return syncMismatchGuardViewportBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardScrollbarRailBounds() {
+                return syncMismatchGuardScrollbarRailBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardScrollbarThumbBounds() {
+                return syncMismatchGuardScrollbarThumbBounds;
+            }
+
+            @Override
+            public TaskListScrollController syncMismatchGuardScroll() {
+                return syncMismatchGuardScroll;
+            }
+
+            @Override
+            public int syncMismatchGuardRowBlock() {
+                return scaleInputValue(XtremeTaskerOverlay.this.syncMismatchGuardRowBlock());
+            }
+
+            @Override
+            public int syncMismatchGuardTotalRows() {
+                return syncMismatchGuardTotalRows;
+            }
+
+            @Override
+            public void closeSyncMismatchGuard() {
+                syncMismatchGuardMessage = null;
+                syncMismatchGuardTotalRows = 0;
+                syncMismatchGuardScroll.reset();
+                syncMismatchGuardBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardOkBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardViewportBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardScrollbarRailBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardScrollbarThumbBounds.setBounds(0, 0, 0, 0);
+            }
+
+            @Override
             public Rectangle syncMismatchScrollbarRailBounds() {
                 return syncMismatchScrollbarRailBounds;
             }
@@ -5709,6 +5884,7 @@ public class XtremeTaskerOverlay extends Overlay {
             public void openSyncMismatchDescription(XtremeTask task) {
                 syncMismatchDescriptionTask = task;
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
@@ -5728,6 +5904,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     selectedSyncMismatchTaskIds.add(task.getId());
                 }
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
@@ -5738,12 +5915,14 @@ public class XtremeTaskerOverlay extends Overlay {
                     }
                 }
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
             public void clearSyncMismatchSelection() {
                 selectedSyncMismatchTaskIds.clear();
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
@@ -5765,6 +5944,16 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void requestSyncMismatchApplyConfirm() {
                 if (syncMismatchSelectedCount() > 0) {
+                    syncMismatchGuardMessage = null;
+                    if (syncReviewMode == SyncReviewMode.MISMATCH) {
+                        String guardMessage = plugin.getSyncMismatchIncompleteGuardMessage(selectedSyncMismatchTasks());
+                        if (guardMessage != null && !guardMessage.trim().isEmpty()) {
+                            syncMismatchGuardMessage = guardMessage;
+                            syncMismatchGuardScroll.reset();
+                            syncMismatchApplyConfirmOpen = false;
+                            return;
+                        }
+                    }
                     syncMismatchApplyConfirmOpen = true;
                 }
             }
@@ -6034,6 +6223,11 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(syncMismatchConfirmBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchConfirmYesBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchConfirmNoBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardOkBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardViewportBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardScrollbarRailBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardScrollbarThumbBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchScrollbarRailBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchScrollbarThumbBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchDescriptionBounds, anchorX, anchorY, scale);

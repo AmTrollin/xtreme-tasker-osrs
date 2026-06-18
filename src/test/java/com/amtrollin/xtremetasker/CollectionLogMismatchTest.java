@@ -311,6 +311,115 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void syncMismatchApplyBlocksIncompleteSelectionInsideDisplaySequence() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+
+        int[] mtaWandItemIds = new int[]{6908, 6910, 6912, 6914};
+        XtremeTask beginner = collectionLogTask(
+                "collection_log_easy_upgrade-the-mta-wand-once_001_test",
+                "Upgrade the MTA wand once",
+                TaskTier.EASY,
+                mtaWandItemIds,
+                1
+        );
+        XtremeTask apprentice = collectionLogTask(
+                "collection_log_easy_upgrade-the-mta-wand-once_002_test",
+                "Upgrade the MTA wand once",
+                TaskTier.EASY,
+                mtaWandItemIds,
+                2
+        );
+        XtremeTask teacher = collectionLogTask(
+                "collection_log_easy_upgrade-the-mta-wand-once_003_test",
+                "Upgrade the MTA wand once",
+                TaskTier.EASY,
+                mtaWandItemIds,
+                3
+        );
+        XtremeTask unrelated = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_guard_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+        XtremeTask bootsFirst = countedCollectionLogTask(
+                "collection_log_easy_get-the-next-tier-of-metal-boots_001_guard_test",
+                "Get the next tier of metal boots",
+                1
+        );
+        XtremeTask bootsSecond = countedCollectionLogTask(
+                "collection_log_easy_get-the-next-tier-of-metal-boots_002_guard_test",
+                "Get the next tier of metal boots",
+                2
+        );
+
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        tasks.add(beginner);
+        tasks.add(apprentice);
+        tasks.add(teacher);
+        tasks.add(unrelated);
+        tasks.add(bootsFirst);
+        tasks.add(bootsSecond);
+
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
+        manualCompletedTaskIds.clear();
+        manualCompletedTaskIds.add(beginner.getId());
+        manualCompletedTaskIds.add(apprentice.getId());
+        manualCompletedTaskIds.add(teacher.getId());
+        manualCompletedTaskIds.add(unrelated.getId());
+        manualCompletedTaskIds.add(bootsFirst.getId());
+        manualCompletedTaskIds.add(bootsSecond.getId());
+
+        List<String> syncMismatchTaskIds = plugin.syncMismatchTaskIdsForTesting();
+        syncMismatchTaskIds.clear();
+        syncMismatchTaskIds.add(beginner.getId());
+        syncMismatchTaskIds.add(apprentice.getId());
+        syncMismatchTaskIds.add(teacher.getId());
+        syncMismatchTaskIds.add(unrelated.getId());
+        syncMismatchTaskIds.add(bootsFirst.getId());
+        syncMismatchTaskIds.add(bootsSecond.getId());
+        plugin.setSyncMismatchTitleForTesting("Review completed tasks");
+
+        String guardMessage = plugin.getSyncMismatchIncompleteGuardMessage(Collections.singletonList(beginner));
+        assertTrue("Beginner wand should require higher wand steps to be selected too",
+                guardMessage != null && guardMessage.contains("Apprentice MTA wand"));
+        assertTrue("Single-sequence message should separate the headline from the fix",
+                guardMessage.contains("out of order.\n\nFor "));
+
+        List<XtremeTask> mixedInvalidSelection = List.of(beginner, apprentice, unrelated, bootsFirst);
+        guardMessage = plugin.getSyncMismatchIncompleteGuardMessage(mixedInvalidSelection);
+        assertTrue("Mixed saves should still be blocked by a bad wand sequence",
+                guardMessage != null && guardMessage.contains("Beginner MTA wand"));
+        assertTrue("Multiple bad selections in one wand series should be named",
+                guardMessage.contains("Apprentice MTA wand"));
+        assertTrue("Missing higher wand step should be named",
+                guardMessage.contains("Teacher MTA wand"));
+        assertTrue("Multiple bad series should be summarized together",
+                guardMessage.contains("2 sequences"));
+        assertTrue("A second bad sequence should be named too",
+                guardMessage.contains("metal boots"));
+        assertTrue("Multi-sequence message should put each sequence on its own paragraph",
+                guardMessage.contains("out of order.\n\nUpgrade the MTA wand once")
+                        && guardMessage.contains("incomplete.\n\nGet the next tier of metal boots"));
+
+        plugin.markSyncMismatchTasksIncompleteAndPersist(mixedInvalidSelection);
+        assertTrue("Guarded beginner wand should remain complete", plugin.isTaskCompleted(beginner));
+        assertTrue("Guarded apprentice wand should remain complete", plugin.isTaskCompleted(apprentice));
+        assertTrue("Guarded teacher wand should remain complete", plugin.isTaskCompleted(teacher));
+        assertTrue("Unrelated selected task should not be saved when any sequence is invalid", plugin.isTaskCompleted(unrelated));
+        assertTrue("Guarded boots task should remain complete", plugin.isTaskCompleted(bootsFirst));
+        assertTrue("Guarded higher boots task should remain complete", plugin.isTaskCompleted(bootsSecond));
+
+        plugin.markSyncMismatchTasksIncompleteAndPersist(List.of(beginner, apprentice, teacher));
+        assertFalse(plugin.isTaskCompleted(beginner));
+        assertFalse(plugin.isTaskCompleted(apprentice));
+        assertFalse(plugin.isTaskCompleted(teacher));
+    }
+
+    @Test
     public void satchelInterfaceItemsCountForSatchelRequirements() throws Exception
     {
         int[][] satchelIds = new int[][]{

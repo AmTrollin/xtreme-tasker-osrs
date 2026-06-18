@@ -170,6 +170,16 @@ public interface OverlayInputAccess
     Rectangle syncMismatchConfirmBounds();
     Rectangle syncMismatchConfirmYesBounds();
     Rectangle syncMismatchConfirmNoBounds();
+    boolean isSyncMismatchGuardOpen();
+    Rectangle syncMismatchGuardBounds();
+    Rectangle syncMismatchGuardOkBounds();
+    Rectangle syncMismatchGuardViewportBounds();
+    Rectangle syncMismatchGuardScrollbarRailBounds();
+    Rectangle syncMismatchGuardScrollbarThumbBounds();
+    TaskListScrollController syncMismatchGuardScroll();
+    int syncMismatchGuardRowBlock();
+    int syncMismatchGuardTotalRows();
+    void closeSyncMismatchGuard();
     Rectangle syncMismatchScrollbarRailBounds();
     Rectangle syncMismatchScrollbarThumbBounds();
     Map<XtremeTask, Rectangle> syncMismatchTaskBounds();
