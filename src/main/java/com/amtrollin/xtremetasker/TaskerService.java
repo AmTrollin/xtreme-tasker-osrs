@@ -60,6 +60,8 @@ public interface TaskerService
 
     void syncCollectionLogsAndPersist();
 
+    void syncCollectionLogTaskAndPersist(XtremeTask task);
+
     String getLastSyncResult();
 
     String getLastSyncResultAtLocalTime();
@@ -138,7 +140,15 @@ public interface TaskerService
 
     String getItemName(int itemId);
 
+    String getCollectionLogSequenceStepLabel(XtremeTask task);
+
     boolean isCollectionLogItemObtained(int itemId);
+
+    long getCollectionLogItemObtainedOrder(int itemId);
+
+    boolean isCollectionLogTaskSyncMismatch(XtremeTask task);
+
+    void dismissCollectionLogTaskSyncMismatchAndPersist(XtremeTask task);
 
     BufferedImage getItemImage(int itemId);
 }

@@ -418,6 +418,11 @@ public class CollectionLogService
         return COLLECTION_LOG_ITEM_ALIASES.getOrDefault(itemId, itemId);
     }
 
+    public int canonicalItemId(int itemId)
+    {
+        return canonicalCollectionLogItemId(itemId);
+    }
+
     private void notifyCacheChanged()
     {
         if (cacheChangeListener != null)

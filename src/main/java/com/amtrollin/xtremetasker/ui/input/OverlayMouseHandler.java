@@ -122,7 +122,19 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
+        if (tryHandleTaskDetailsIncompleteConfirmClick(e, p, button)) {
+            return e;
+        }
+
         if (tryHandleSyncMismatchClick(e, p, button)) {
+            return e;
+        }
+
+        if (tryHandleTaskSyncResultClick(e, p, button)) {
+            return e;
+        }
+
+        if (tryHandleTaskResolveClick(e, p, button)) {
             return e;
         }
 
@@ -137,6 +149,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 // Click outside popup — close it, then fall through so the
                 // row click (or other action) is still processed this frame.
                 a.closeTaskDetails();
+                if (a.isTaskDetailsIncompleteConfirmOpen())
+                {
+                    e.consume();
+                    return e;
+                }
             } else {
                 if (a.taskDetailsScrollbarRailBounds().width > 0) {
                     Rectangle thumb = a.taskDetailsScrollbarThumbBounds();
@@ -174,6 +191,24 @@ public final class OverlayMouseHandler extends MouseAdapter {
                             LinkBrowser.browse(url);
                         }
                     }
+                    e.consume();
+                    return e;
+                }
+
+                if (a.taskDetailsSyncBounds().contains(p)) {
+                    a.handleTaskDetailsSyncButton(a.taskDetailsTask());
+                    e.consume();
+                    return e;
+                }
+
+                if (a.taskDetailsIgnoreBounds().contains(p)) {
+                    a.plugin().dismissCollectionLogTaskSyncMismatchAndPersist(a.taskDetailsTask());
+                    e.consume();
+                    return e;
+                }
+
+                if (a.taskDetailsMarkIncompleteBounds().contains(p)) {
+                    a.handleTaskDetailsMarkIncompleteButton(a.taskDetailsTask());
                     e.consume();
                     return e;
                 }
@@ -674,11 +709,19 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         Point p = e.getPoint();
         int button = e.getButton();
+        if (tryHandleTaskDetailsIncompleteConfirmClick(e, p, button)) {
+            return e;
+        }
+
         if (tryHandleSyncMismatchClick(e, p, button)) {
             return e;
         }
 
-        if (a.isMarkAllIncompleteConfirmOpen() || a.isTaskDetailsOpen()) {
+        if (tryHandleTaskSyncResultClick(e, p, button)) {
+            return e;
+        }
+
+        if (a.isMarkAllIncompleteConfirmOpen() || a.isTaskDetailsOpen() || a.isTaskResolveOpen()) {
             return e;
         }
 
@@ -687,6 +730,121 @@ public final class OverlayMouseHandler extends MouseAdapter {
     }
 
     private boolean handCursorActive = false;
+
+    private boolean tryHandleTaskDetailsIncompleteConfirmClick(MouseEvent e, Point p, int button)
+    {
+        if (!a.isTaskDetailsIncompleteConfirmOpen() || button != MouseEvent.BUTTON1)
+        {
+            return false;
+        }
+
+        if (a.taskDetailsIncompleteConfirmYesBounds().contains(p))
+        {
+            a.confirmTaskDetailsIncompleteSelection();
+            e.consume();
+            return true;
+        }
+
+        if (a.taskDetailsIncompleteConfirmNoBounds().contains(p))
+        {
+            a.closeTaskDetailsIncompleteConfirm();
+            e.consume();
+            return true;
+        }
+
+        if (a.taskDetailsIncompleteConfirmBounds().contains(p))
+        {
+            e.consume();
+            return true;
+        }
+
+        a.closeTaskDetailsIncompleteConfirm();
+        e.consume();
+        return true;
+    }
+
+    private boolean tryHandleTaskSyncResultClick(MouseEvent e, Point p, int button)
+    {
+        if (!a.isTaskSyncResultOpen() || button != MouseEvent.BUTTON1)
+        {
+            return false;
+        }
+
+        if (a.taskSyncResultCloseBounds().contains(p))
+        {
+            a.closeTaskSyncResult();
+            e.consume();
+            return true;
+        }
+
+        if (a.taskSyncResultBounds().contains(p))
+        {
+            e.consume();
+            return true;
+        }
+
+        a.closeTaskSyncResult();
+        e.consume();
+        return true;
+    }
+
+    private boolean tryHandleTaskResolveClick(MouseEvent e, Point p, int button)
+    {
+        if (!a.isTaskResolveOpen() || button != MouseEvent.BUTTON1)
+        {
+            return false;
+        }
+
+        if (a.taskResolveCancelBounds().contains(p))
+        {
+            a.closeTaskResolve();
+            e.consume();
+            return true;
+        }
+
+        if (a.taskResolveSaveBounds().contains(p))
+        {
+            if (a.hasTaskResolveChanges())
+            {
+                a.saveTaskResolve();
+            }
+            e.consume();
+            return true;
+        }
+
+        XtremeTask instance = taskResolveInstanceAt(p);
+        if (instance != null)
+        {
+            a.toggleTaskResolveTaskIncomplete(instance);
+            e.consume();
+            return true;
+        }
+
+        if (a.taskResolveBounds().contains(p))
+        {
+            e.consume();
+            return true;
+        }
+
+        a.closeTaskResolve();
+        e.consume();
+        return true;
+    }
+
+    private XtremeTask taskResolveInstanceAt(Point p)
+    {
+        synchronized (a.taskResolveInstanceToggleBounds())
+        {
+            for (Map.Entry<XtremeTask, Rectangle> entry : a.taskResolveInstanceToggleBounds().entrySet())
+            {
+                if (entry.getValue() != null && entry.getValue().contains(p))
+                {
+                    return entry.getKey();
+                }
+            }
+        }
+        return null;
+    }
 
     private boolean tryHandleSyncMismatchClick(MouseEvent e, Point p, int button)
     {
@@ -1092,6 +1250,32 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
         }
 
+        if (a.isTaskSyncResultOpen())
+        {
+            updateHandCursor(a.taskSyncResultCloseBounds().contains(p));
+            return e;
+        }
+
+        if (a.isTaskResolveOpen())
+        {
+            XtremeTask hoveredResolveInstance = taskResolveInstanceAt(p);
+            updateHandCursor(
+                    a.taskResolveCancelBounds().contains(p)
+                            || (a.hasTaskResolveChanges() && a.taskResolveSaveBounds().contains(p))
+                            || (hoveredResolveInstance != null && a.canToggleTaskResolveTaskIncomplete(hoveredResolveInstance))
+            );
+            return e;
+        }
+
+        if (a.isTaskDetailsIncompleteConfirmOpen())
+        {
+            updateHandCursor(
+                    a.taskDetailsIncompleteConfirmYesBounds().contains(p)
+                            || a.taskDetailsIncompleteConfirmNoBounds().contains(p)
+            );
+            return e;
+        }
+
         if (a.isMarkAllIncompleteConfirmOpen())
         {
             updateHandCursor(
@@ -1129,6 +1313,9 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.isTaskDetailsOpen() && (
                         a.taskDetailsCloseBounds().contains(p)
                         || a.taskDetailsWikiBounds().contains(p)
+                        || a.taskDetailsSyncBounds().contains(p)
+                        || a.taskDetailsIgnoreBounds().contains(p)
+                        || a.taskDetailsMarkIncompleteBounds().contains(p)
                         || a.taskDetailsScrollbarThumbBounds().contains(p)
                         || a.taskDetailsScrollbarRailBounds().contains(p)
                 ))

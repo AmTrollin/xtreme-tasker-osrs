@@ -94,6 +94,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int PREREQUISITE_STATUS_CACHE_LIMIT = 512;
     private static final int COMPACT_LINES_CACHE_LIMIT = 128;
     private static final int SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT = 8;
+    private static final int TASK_RESOLVE_TOGGLE_SIZE = 18;
+    private static final int TASK_RESOLVE_TOGGLE_GAP = 6;
     private static final long SLOW_PREVIEW_LOG_THRESHOLD_NANOS = 8_000_000L;
     private static final long SLOW_PREVIEW_LOG_INTERVAL_MS = 2_000L;
     private static final long SLOW_TASK_LIST_LOG_THRESHOLD_NANOS = 8_000_000L;
@@ -102,6 +104,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final long SLOW_PANEL_RENDER_LOG_INTERVAL_MS = 2_000L;
     private static final DateTimeFormatter COMPACT_COMPLETION_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter TASK_RESOLVE_COMPLETION_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
 
     private static BufferedImage loadPluginIconSafe() {
         try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_icon.png")) {
@@ -163,6 +167,15 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle syncMismatchScrollbarThumbBounds = new Rectangle();
     private final Rectangle syncMismatchDescriptionBounds = new Rectangle();
     private final Rectangle syncMismatchDescriptionCloseBounds = new Rectangle();
+    private final Rectangle taskResolveBounds = new Rectangle();
+    private final Rectangle taskResolveCloseBounds = new Rectangle();
+    private final Rectangle taskResolveSaveBounds = new Rectangle();
+    private final Rectangle taskResolveCancelBounds = new Rectangle();
+    private final Rectangle taskSyncResultBounds = new Rectangle();
+    private final Rectangle taskSyncResultCloseBounds = new Rectangle();
+    private final Rectangle taskDetailsIncompleteConfirmBounds = new Rectangle();
+    private final Rectangle taskDetailsIncompleteConfirmYesBounds = new Rectangle();
+    private final Rectangle taskDetailsIncompleteConfirmNoBounds = new Rectangle();
     private final Rectangle keyboardHintsButtonBounds = new Rectangle();
     private final Rectangle keyboardHintsPopupBounds = new Rectangle();
     private final Rectangle taskViewModeBounds = new Rectangle();
@@ -171,7 +184,10 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Map<XtremeTask, Rectangle> taskRowBounds = Collections.synchronizedMap(new HashMap<>());
     private final Map<XtremeTask, Rectangle> syncMismatchTaskBounds = Collections.synchronizedMap(new HashMap<>());
     private final Map<XtremeTask, Rectangle> syncMismatchTaskNameBounds = Collections.synchronizedMap(new HashMap<>());
+    private final Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds = Collections.synchronizedMap(new HashMap<>());
     private final Set<String> selectedSyncMismatchTaskIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> selectedTaskResolveIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> taskResolveOriginalIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
 
     // Current tab bounds (now come from CurrentTabLayout)
     private final CurrentTabLayout currentLayout = new CurrentTabLayout();
@@ -198,6 +214,16 @@ public class XtremeTaskerOverlay extends Overlay {
     private int dragOffsetY = 0;
     private XtremeTask pendingMarkAllIncompleteTask = null;
     private boolean pendingMarkAllIncompleteGroupMode = false;
+    private XtremeTask taskResolveTask = null;
+    private boolean taskResolveSavedIncompleteEdits = false;
+    private String taskDetailsSyncPendingTaskId = null;
+    private String taskDetailsSyncStartedAt = null;
+    private int taskDetailsSyncStartedObservedCount = -1;
+    private XtremeTask taskSyncResultTask = null;
+    private String taskSyncResultText = "";
+    private boolean taskSyncResultResolvable = false;
+    private boolean taskSyncResultShowFreshnessHint = false;
+    private boolean taskDetailsIncompleteConfirmOpen = false;
 
     private Integer panelXOverride = null;
     private Integer panelYOverride = null;
@@ -1766,6 +1792,15 @@ public class XtremeTaskerOverlay extends Overlay {
         panelBoundsScaledForInput = true;
         panelRenderMouse = null;
         renderTaskDetailsPopupUnscaled(g, fm);
+        if (isTaskSyncResultOpen()) {
+            renderTaskSyncResultPopup(g, fm);
+        }
+        if (isTaskResolveOpen()) {
+            renderTaskResolvePopup(g, fm);
+        }
+        if (isTaskDetailsIncompleteConfirmOpen()) {
+            renderTaskDetailsIncompleteConfirm(g, fm);
+        }
         if (taskDetailsPopup.isOpen() && pendingMarkAllIncompleteTask != null) {
             renderMarkAllIncompleteConfirm(g, fm);
         }
@@ -1789,11 +1824,725 @@ public class XtremeTaskerOverlay extends Overlay {
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
                 this::getCachedPrerequisiteStatuses,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
+                plugin::isCollectionLogTaskSyncMismatch,
+                this::taskDetailsSyncButtonLabel,
+                this::taskDetailsMarkIncompleteButtonLabel,
+                task -> taskResolveSavedIncompleteEdits,
                 this::getCachedItemImage,
                 client.getMouseCanvasPosition(),
                 resolveTaskIcon(taskDetailsPopup.task()),
                 plugin.showTips()
         );
+    }
+
+    private void renderTaskSyncResultPopup(Graphics2D g, FontMetrics fm)
+    {
+        if (taskSyncResultTask == null || taskSyncResultText == null || taskSyncResultText.isEmpty())
+        {
+            return;
+        }
+
+        g.setColor(new Color(0, 0, 0, 130));
+        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+
+        int pad = 14;
+        int buttonH = ROW_HEIGHT + 8;
+        int buttonW = 78;
+        int textW = Math.min(300, panelBounds.width - 90);
+        List<String> lines = TextUtils.wrapText(taskSyncResultText, fm, textW);
+        String freshnessHint = "Open your Collection Log first, then sync again for the freshest data.";
+        List<String> hintLines = taskSyncResultShowFreshnessHint
+                ? TextUtils.wrapText(freshnessHint, fm, textW)
+                : Collections.emptyList();
+        int w = Math.min(panelBounds.width - 54, Math.max(240, textW + pad * 2));
+        int h = Math.max(96, pad * 2 + (lines.size() + hintLines.size()) * fm.getHeight() + 18 + buttonH);
+        int x = panelBounds.x + (panelBounds.width - w) / 2;
+        int y = panelBounds.y + (panelBounds.height - h) / 2;
+        taskSyncResultBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, taskSyncResultBounds, new Color(45, 36, 24, 252));
+
+        Color resultColor = taskSyncResultResolvable
+                ? new Color(245, 92, 82, 245)
+                : new Color(105, 220, 125, 245);
+        g.setColor(resultColor);
+        int textY = y + pad + fm.getAscent();
+        for (String line : lines)
+        {
+            String drawLine = TextUtils.truncateToWidth(line, fm, w - pad * 2);
+            g.drawString(drawLine, x + (w - fm.stringWidth(drawLine)) / 2, textY);
+            textY += fm.getHeight();
+        }
+        if (!hintLines.isEmpty())
+        {
+            textY += 2;
+            g.setColor(P.UI_TEXT_DIM);
+            for (String line : hintLines)
+            {
+                String drawLine = TextUtils.truncateToWidth(line, fm, w - pad * 2);
+                g.drawString(drawLine, x + (w - fm.stringWidth(drawLine)) / 2, textY);
+                textY += fm.getHeight();
+            }
+        }
+
+        int buttonY = y + h - pad - buttonH;
+        taskSyncResultCloseBounds.setBounds(x + w - pad - buttonW, buttonY, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, taskSyncResultCloseBounds, "Close", P.BTN_DISABLED_BG);
+    }
+
+    private void renderTaskResolvePopup(Graphics2D g, FontMetrics fm)
+    {
+        XtremeTask task = taskResolveTask;
+        if (task == null)
+        {
+            return;
+        }
+
+        g.setColor(new Color(0, 0, 0, 135));
+        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+
+        List<XtremeTask> resolveTasks = resolveTasksForTask(task);
+        boolean sequenceResolve = isTaskResolveSequence(resolveTasks);
+        int pad = 12;
+        int rowGap = 4;
+        int rowH = ROW_HEIGHT + rowGap;
+        int buttonH = ROW_HEIGHT + 8;
+        int listRows = Math.max(1, resolveTasks.size());
+        String title = "Mark instance(s) incomplete";
+        String taskLine = "Task: " + task.getName();
+        int w = taskResolvePopupWidth(fm, task, resolveTasks, title, taskLine, pad);
+        int h = Math.min(panelBounds.height - 48,
+                Math.max(132, pad * 2 + fm.getHeight() * (sequenceResolve ? 3 : 2) + 14 + listRows * rowH + 12 + buttonH));
+        int x = panelBounds.x + (panelBounds.width - w) / 2;
+        int y = panelBounds.y + (panelBounds.height - h) / 2;
+        taskResolveBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, taskResolveBounds, new Color(45, 36, 24, 252));
+        taskResolveCloseBounds.setBounds(0, 0, 0, 0);
+
+        g.setColor(P.UI_GOLD);
+        g.drawString(title, x + pad, y + pad + fm.getAscent());
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(taskLine, fm, w - pad * 2),
+                x + pad, y + pad + fm.getAscent() + fm.getHeight());
+        if (sequenceResolve)
+        {
+            g.drawString(TextUtils.truncateToWidth("Completion must be edited in sequence.", fm, w - pad * 2),
+                    x + pad, y + pad + fm.getAscent() + fm.getHeight() * 2);
+        }
+
+        int cursorY = y + pad + fm.getAscent() + fm.getHeight() * (sequenceResolve ? 4 : 3);
+        taskResolveInstanceToggleBounds.clear();
+        if (!resolveTasks.isEmpty())
+        {
+            for (XtremeTask instance : resolveTasks)
+            {
+                if (instance == null)
+                {
+                    continue;
+                }
+                boolean checked = instance.getId() != null && !selectedTaskResolveIncompleteTaskIds.contains(instance.getId());
+                boolean enabled = canToggleTaskResolveTaskIncomplete(instance);
+                Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
+                        TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
+                taskResolveInstanceToggleBounds.put(instance, toggle);
+                drawResolveToggleGlyph(g, toggle, checked, enabled);
+                String detailText = taskResolveCompletionDateText(instance)
+                        + " | " + taskResolveTimeSpentText(instance);
+                int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
+                int lineW = w - (pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad);
+                String lineText = taskResolveInstanceLine(task, instance, detailText);
+                String line = TextUtils.truncateToWidth(lineText, fm, lineW);
+                g.setColor(enabled ? P.UI_TEXT : P.UI_TEXT_DIM);
+                g.drawString(line, lineX, cursorY);
+                cursorY += rowH;
+            }
+        }
+
+        int actionY = y + h - pad - buttonH;
+        int buttonW = 72;
+        int gap = 8;
+        int buttonsW = buttonW * 2 + gap;
+        taskResolveSaveBounds.setBounds(x + (w - buttonsW) / 2, actionY, buttonW, buttonH);
+        taskResolveCancelBounds.setBounds(taskResolveSaveBounds.x + buttonW + gap, actionY, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, taskResolveSaveBounds, "Save",
+                hasTaskResolveChanges() ? P.BTN_ENABLED_BG : P.BTN_DISABLED_BG,
+                hasTaskResolveChanges() ? P.UI_TEXT : P.UI_TEXT_DIM,
+                hasTaskResolveChanges() ? P.UI_GOLD : null);
+        buttonRenderer.drawPlainButton(g, taskResolveCancelBounds, "Cancel", P.BTN_DISABLED_BG);
+    }
+
+    private int taskResolvePopupWidth(FontMetrics fm, XtremeTask task, List<XtremeTask> resolveTasks,
+                                      String title, String taskLine, int pad)
+    {
+        int desiredW = 255;
+        desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(title));
+        desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(taskLine));
+        if (isTaskResolveSequence(resolveTasks))
+        {
+            desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth("Completion must be edited in sequence."));
+        }
+
+        int rowReserve = pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad;
+        int fitBuffer = fm.charWidth('W');
+        for (XtremeTask instance : resolveTasks)
+        {
+            if (instance == null)
+            {
+                continue;
+            }
+            String detailText = taskResolveCompletionDateText(instance)
+                    + " | " + taskResolveTimeSpentText(instance);
+            String rowText = taskResolveInstanceLine(task, instance, detailText);
+            desiredW = Math.max(desiredW, rowReserve + fm.stringWidth(rowText) + fitBuffer);
+        }
+
+        return Math.min(Math.max(180, panelBounds.width - 50), desiredW);
+    }
+
+    private String taskResolveInstanceLine(XtremeTask task, XtremeTask instance, String detailText)
+    {
+        String marker = taskResolveInstanceMarker(task, instance);
+        return marker.isEmpty() ? detailText : marker + ": " + detailText;
+    }
+
+    private String taskResolveInstanceMarker(XtremeTask task, XtremeTask instance)
+    {
+        String sequenceSuffix = collectionLogSequenceSuffix(instance);
+        if (!sequenceSuffix.isEmpty())
+        {
+            return sequenceSuffix;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        int total = Math.max(1, group == null || group.isEmpty() ? 1 : group.size());
+        int index = -1;
+        if (group != null)
+        {
+            for (int i = 0; i < group.size(); i++)
+            {
+                XtremeTask groupedTask = group.get(i);
+                if (sameTask(groupedTask, instance))
+                {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        if (index < 0)
+        {
+            index = 0;
+            total = 1;
+        }
+        if (index == 0 && total == 1)
+        {
+            return "";
+        }
+        return (index + 1) + "/" + total;
+    }
+
+    private String collectionLogSequenceSuffix(XtremeTask task)
+    {
+        String suffix = plugin.getCollectionLogSequenceStepLabel(task);
+        return suffix == null ? "" : suffix.trim();
+    }
+
+    private boolean sameTask(XtremeTask a, XtremeTask b)
+    {
+        if (a == b)
+        {
+            return true;
+        }
+        if (a == null || b == null)
+        {
+            return false;
+        }
+        String aId = a.getId();
+        String bId = b.getId();
+        return aId != null && aId.equals(bId);
+    }
+
+    private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
+    {
+        g.setColor(new Color(0, 0, 0, 135));
+        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+
+        String message = "Mark selected task(s) incomplete?";
+        String warning = "This cannot be undone.";
+        int pad = 14;
+        int buttonH = ROW_HEIGHT + 8;
+        int buttonW = 78;
+        int gap = 8;
+        int textW = Math.max(fm.stringWidth(message), fm.stringWidth(warning));
+        int w = Math.min(panelBounds.width - 48, Math.max(240, textW + pad * 2));
+        int h = 112;
+        int x = panelBounds.x + (panelBounds.width - w) / 2;
+        int y = panelBounds.y + (panelBounds.height - h) / 2;
+        taskDetailsIncompleteConfirmBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, taskDetailsIncompleteConfirmBounds, new Color(45, 36, 24, 252));
+
+        int textY = y + pad + fm.getAscent() + 4;
+        g.setColor(P.UI_TEXT);
+        g.drawString(message, x + (w - fm.stringWidth(message)) / 2, textY);
+        g.setColor(new Color(245, 92, 82, 245));
+        g.drawString(warning, x + (w - fm.stringWidth(warning)) / 2, textY + fm.getHeight() + 3);
+
+        int buttonsW = buttonW * 2 + gap;
+        int buttonY = y + h - pad - buttonH;
+        taskDetailsIncompleteConfirmYesBounds.setBounds(x + (w - buttonsW) / 2, buttonY, buttonW, buttonH);
+        taskDetailsIncompleteConfirmNoBounds.setBounds(taskDetailsIncompleteConfirmYesBounds.x + buttonW + gap, buttonY, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmYesBounds, "Confirm",
+                new Color(86, 31, 24, 235), P.UI_TEXT, new Color(245, 92, 82, 220));
+        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
+    }
+
+    private void drawResolveToggleGlyph(Graphics2D g, Rectangle bounds, boolean selected, boolean enabled)
+    {
+        Color bg;
+        Color strokeColor;
+        if (!enabled)
+        {
+            bg = selected ? new Color(43, 45, 43, 210) : new Color(28, 28, 28, 185);
+            strokeColor = new Color(135, 135, 135, selected ? 185 : 95);
+        }
+        else
+        {
+            bg = selected ? new Color(45, 68, 38, 230) : P.INPUT_BG;
+            strokeColor = selected ? new Color(105, 220, 125, 245) : new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 185);
+        }
+
+        drawBevelBox(g, bounds, bg);
+        g.setColor(strokeColor);
+        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
+        if (!selected)
+        {
+            return;
+        }
+
+        Stroke oldStroke = g.getStroke();
+        g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.drawLine(bounds.x + 4, bounds.y + bounds.height / 2, bounds.x + bounds.width / 2 - 1, bounds.y + bounds.height - 5);
+        g.drawLine(bounds.x + bounds.width / 2 - 1, bounds.y + bounds.height - 5, bounds.x + bounds.width - 4, bounds.y + 4);
+        g.setStroke(oldStroke);
+    }
+
+    private String taskResolveCompletionDateText(XtremeTask task)
+    {
+        CompletionInfo info = plugin.getCompletionInfo(task);
+        if (info == null || info.timestamp <= 0)
+        {
+            return "date unknown";
+        }
+        return TASK_RESOLVE_COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
+    }
+
+    private String taskResolveTimeSpentText(XtremeTask task)
+    {
+        Long ticks = plugin.getTaskTimeTicks(task);
+        if (ticks == null || ticks <= 0)
+        {
+            return "time unknown";
+        }
+        return compactFormatTicks(Math.round(ticks * 0.6));
+    }
+
+    private String taskDetailsSyncButtonLabel(XtremeTask task)
+    {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return "";
+        }
+        updateTaskDetailsSyncResultIfReady(task);
+        return "Sync";
+    }
+
+    private String taskDetailsMarkIncompleteButtonLabel(XtremeTask task)
+    {
+        if (taskResolveSavedIncompleteEdits)
+        {
+            return isMultiInstanceTask(task)
+                    ? "Edit task(s) completion"
+                    : "Edit task completion";
+        }
+        return isMultiInstanceTask(task)
+                ? "Mark task(s) incomplete"
+                : "Mark task incomplete";
+    }
+
+    private boolean isMultiInstanceTask(XtremeTask task)
+    {
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (progress != null && progress.getTotal() > 1)
+        {
+            return true;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group != null && group.size() > 1)
+        {
+            return true;
+        }
+
+        TaskVerification verification = task == null ? null : task.getVerification();
+        Integer count = verification == null ? null : verification.getCount();
+        if (count != null && count > 1)
+        {
+            return true;
+        }
+
+        String name = task == null ? "" : String.valueOf(task.getName());
+        return name.matches(".*\\b\\d+\\s*/\\s*\\d+\\b.*")
+                || name.matches(".*\\b\\d+\\s*/\\s*#.*");
+    }
+
+    private void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
+    {
+        openTaskResolve(task);
+    }
+
+    private void handleTaskDetailsSyncButton(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return;
+        }
+
+        closeTaskSyncResult();
+        taskDetailsSyncPendingTaskId = task.getId();
+        taskDetailsSyncStartedAt = plugin.getLastCollectionLogSyncResultAtLocalTime();
+        taskDetailsSyncStartedObservedCount = syncedCollectionLogCountForTask(task);
+        plugin.syncCollectionLogTaskAndPersist(task);
+    }
+
+    private void updateTaskDetailsSyncResultIfReady(XtremeTask task)
+    {
+        if (task == null
+                || task.getId() == null
+                || !task.getId().equals(taskDetailsSyncPendingTaskId))
+        {
+            return;
+        }
+
+        String currentSyncAt = plugin.getLastCollectionLogSyncResultAtLocalTime();
+        if (currentSyncAt == null || Objects.equals(currentSyncAt, taskDetailsSyncStartedAt))
+        {
+            return;
+        }
+
+        boolean stillMismatch = plugin.isCollectionLogTaskSyncMismatch(task);
+        boolean foundRelevantCandidate = hasRelevantCompletionCandidate(task)
+                || syncedCollectionLogCountForTask(task) > taskDetailsSyncStartedObservedCount;
+        taskDetailsSyncPendingTaskId = null;
+        taskDetailsSyncStartedObservedCount = -1;
+        taskSyncResultTask = task;
+        taskSyncResultResolvable = stillMismatch;
+        taskSyncResultShowFreshnessHint = false;
+        if (!stillMismatch)
+        {
+            taskSyncResultText = "Found CLOG(s) to complete task(s).";
+        }
+        else if (foundRelevantCandidate)
+        {
+            taskSyncResultText = "Found some CLOG(s) to complete task(s), still not enough.";
+        }
+        else
+        {
+            taskSyncResultText = "Did not find any new CLOG for this task.";
+            taskSyncResultShowFreshnessHint = true;
+        }
+    }
+
+    private int syncedCollectionLogCountForTask(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null || verification.getItemIds() == null || verification.getItemIds().length == 0)
+        {
+            return 0;
+        }
+        return plugin.countSyncedCollectionLogItems(verification.getItemIds());
+    }
+
+    private boolean hasRelevantCompletionCandidate(XtremeTask task)
+    {
+        Set<String> relevantIds = taskAndGroupIds(task);
+        if (relevantIds.isEmpty())
+        {
+            return false;
+        }
+
+        for (XtremeTask candidate : plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG))
+        {
+            if (candidate != null && relevantIds.contains(candidate.getId()))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isTaskSyncResultOpen()
+    {
+        return taskSyncResultTask != null && taskSyncResultText != null && !taskSyncResultText.isEmpty();
+    }
+
+    private void closeTaskSyncResult()
+    {
+        taskSyncResultTask = null;
+        taskSyncResultText = "";
+        taskSyncResultResolvable = false;
+        taskSyncResultShowFreshnessHint = false;
+        taskDetailsSyncStartedObservedCount = -1;
+        taskSyncResultBounds.setBounds(0, 0, 0, 0);
+        taskSyncResultCloseBounds.setBounds(0, 0, 0, 0);
+    }
+
+    private void closeTaskDetailsWithPendingIncompleteCheck()
+    {
+        if (!selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            taskDetailsIncompleteConfirmOpen = true;
+            closeTaskResolveWithoutRestoring();
+            closeTaskSyncResult();
+            return;
+        }
+
+        closeTaskDetailsNow();
+    }
+
+    private void closeTaskDetailsNow()
+    {
+        taskDetailsPopup.close();
+        taskResolveSavedIncompleteEdits = false;
+        selectedTaskResolveIncompleteTaskIds.clear();
+        taskResolveOriginalIncompleteTaskIds.clear();
+        closeTaskResolveWithoutRestoring();
+        closeTaskSyncResult();
+        closeTaskDetailsIncompleteConfirm();
+    }
+
+    private void confirmTaskDetailsIncompleteSelection()
+    {
+        List<XtremeTask> tasksToMarkIncomplete = selectedIncompleteTasksForDetails();
+        if (!tasksToMarkIncomplete.isEmpty())
+        {
+            plugin.markSyncMismatchTasksIncompleteAndPersist(tasksToMarkIncomplete);
+        }
+        closeTaskDetailsNow();
+    }
+
+    private List<XtremeTask> selectedIncompleteTasksForDetails()
+    {
+        XtremeTask task = taskDetailsPopup.task();
+        if (task == null || selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        return resolveTasksForTask(task).stream()
+                .filter(candidate -> candidate != null
+                        && candidate.getId() != null
+                        && selectedTaskResolveIncompleteTaskIds.contains(candidate.getId()))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isTaskDetailsIncompleteConfirmOpen()
+    {
+        return taskDetailsIncompleteConfirmOpen;
+    }
+
+    private void closeTaskDetailsIncompleteConfirm()
+    {
+        taskDetailsIncompleteConfirmOpen = false;
+        taskDetailsIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
+        taskDetailsIncompleteConfirmYesBounds.setBounds(0, 0, 0, 0);
+        taskDetailsIncompleteConfirmNoBounds.setBounds(0, 0, 0, 0);
+    }
+
+    private Set<String> taskAndGroupIds(XtremeTask task)
+    {
+        if (task == null || task.getId() == null)
+        {
+            return Collections.emptySet();
+        }
+
+        Set<String> ids = new HashSet<>();
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group != null)
+        {
+            for (XtremeTask groupedTask : group)
+            {
+                if (groupedTask != null && groupedTask.getId() != null)
+                {
+                    ids.add(groupedTask.getId());
+                }
+            }
+        }
+        ids.add(task.getId());
+        return ids;
+    }
+
+    private void openTaskResolve(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return;
+        }
+        taskResolveTask = task;
+        taskResolveOriginalIncompleteTaskIds.clear();
+        taskResolveOriginalIncompleteTaskIds.addAll(selectedTaskResolveIncompleteTaskIds);
+        selectedTaskResolveIncompleteTaskIds.clear();
+        selectedTaskResolveIncompleteTaskIds.addAll(taskResolveOriginalIncompleteTaskIds);
+    }
+
+    private void closeTaskResolve()
+    {
+        selectedTaskResolveIncompleteTaskIds.clear();
+        selectedTaskResolveIncompleteTaskIds.addAll(taskResolveOriginalIncompleteTaskIds);
+        closeTaskResolveWithoutRestoring();
+    }
+
+    private void closeTaskResolveWithoutRestoring()
+    {
+        taskResolveTask = null;
+        taskResolveOriginalIncompleteTaskIds.clear();
+        taskResolveBounds.setBounds(0, 0, 0, 0);
+        taskResolveCloseBounds.setBounds(0, 0, 0, 0);
+        taskResolveSaveBounds.setBounds(0, 0, 0, 0);
+        taskResolveCancelBounds.setBounds(0, 0, 0, 0);
+        taskResolveInstanceToggleBounds.clear();
+    }
+
+    private boolean isTaskResolveOpen()
+    {
+        return taskResolveTask != null;
+    }
+
+    private void toggleTaskResolveTaskIncomplete(XtremeTask task)
+    {
+        if (task == null || task.getId() == null)
+        {
+            return;
+        }
+        if (!canToggleTaskResolveTaskIncomplete(task))
+        {
+            return;
+        }
+        if (!selectedTaskResolveIncompleteTaskIds.remove(task.getId()))
+        {
+            selectedTaskResolveIncompleteTaskIds.add(task.getId());
+        }
+    }
+
+    private void saveTaskResolve()
+    {
+        taskResolveSavedIncompleteEdits = !selectedTaskResolveIncompleteTaskIds.isEmpty();
+        closeTaskResolveWithoutRestoring();
+        closeTaskSyncResult();
+    }
+
+    private boolean hasTaskResolveChanges()
+    {
+        return !selectedTaskResolveIncompleteTaskIds.equals(taskResolveOriginalIncompleteTaskIds);
+    }
+
+    private boolean canToggleTaskResolveTaskIncomplete(XtremeTask task)
+    {
+        if (taskResolveTask == null || task == null || task.getId() == null)
+        {
+            return false;
+        }
+
+        List<XtremeTask> resolveTasks = resolveTasksForTask(taskResolveTask);
+        if (!isTaskResolveSequence(resolveTasks))
+        {
+            return true;
+        }
+
+        int index = taskResolveTaskIndex(resolveTasks, task);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        int firstIncomplete = resolveTasks.size();
+        for (int i = 0; i < resolveTasks.size(); i++)
+        {
+            XtremeTask candidate = resolveTasks.get(i);
+            if (candidate != null
+                    && candidate.getId() != null
+                    && selectedTaskResolveIncompleteTaskIds.contains(candidate.getId()))
+            {
+                firstIncomplete = i;
+                break;
+            }
+        }
+
+        boolean checked = !selectedTaskResolveIncompleteTaskIds.contains(task.getId());
+        if (checked)
+        {
+            return index == firstIncomplete - 1;
+        }
+        return index == firstIncomplete;
+    }
+
+    private boolean isTaskResolveSequence(List<XtremeTask> resolveTasks)
+    {
+        if (resolveTasks == null || resolveTasks.size() <= 1)
+        {
+            return false;
+        }
+
+        for (XtremeTask resolveTask : resolveTasks)
+        {
+            if (resolveTask != null && !collectionLogSequenceSuffix(resolveTask).isEmpty())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int taskResolveTaskIndex(List<XtremeTask> resolveTasks, XtremeTask task)
+    {
+        if (resolveTasks == null || task == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < resolveTasks.size(); i++)
+        {
+            if (sameTask(resolveTasks.get(i), task))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private List<XtremeTask> resolveTasksForTask(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> out = new ArrayList<>();
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group != null)
+        {
+            for (XtremeTask instance : group)
+            {
+                if (instance != null && plugin.isTaskCompleted(instance))
+                {
+                    out.add(instance);
+                }
+            }
+        }
+
+        if (out.isEmpty() && plugin.isTaskCompleted(task))
+        {
+            out.add(task);
+        }
+        return out;
     }
 
     private void clearSyncMismatchReviewBounds()
@@ -2269,6 +3018,12 @@ public class XtremeTaskerOverlay extends Overlay {
         if (progress == null || !progress.isGrouped())
         {
             return task.getName();
+        }
+
+        String sequenceSuffix = collectionLogSequenceSuffix(task);
+        if (!sequenceSuffix.isEmpty())
+        {
+            return task.getName() + " (" + sequenceSuffix + ")";
         }
 
         int instanceOrdinal = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
@@ -3698,7 +4453,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE && taskDetailsPopup.isOpen()) {
-            taskDetailsPopup.close();
+            closeTaskDetailsWithPendingIncompleteCheck();
             return true;
         }
 
@@ -3746,6 +4501,12 @@ public class XtremeTaskerOverlay extends Overlay {
             return false;
         }
 
+        taskResolveSavedIncompleteEdits = false;
+        selectedTaskResolveIncompleteTaskIds.clear();
+        taskResolveOriginalIncompleteTaskIds.clear();
+        closeTaskResolveWithoutRestoring();
+        closeTaskSyncResult();
+        closeTaskDetailsIncompleteConfirm();
         taskDetailsPopup.open(task);
         return true;
     }
@@ -3781,7 +4542,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE && taskDetailsPopup.isOpen()) {
-            taskDetailsPopup.close();
+            closeTaskDetailsWithPendingIncompleteCheck();
             return true;
         }
 
@@ -4328,12 +5089,18 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public void openTaskDetails(XtremeTask task) {
+                taskResolveSavedIncompleteEdits = false;
+                selectedTaskResolveIncompleteTaskIds.clear();
+                taskResolveOriginalIncompleteTaskIds.clear();
+                closeTaskResolveWithoutRestoring();
+                closeTaskSyncResult();
+                closeTaskDetailsIncompleteConfirm();
                 taskDetailsPopup.open(task);
             }
 
             @Override
             public void closeTaskDetails() {
-                taskDetailsPopup.close();
+                closeTaskDetailsWithPendingIncompleteCheck();
             }
 
             @Override
@@ -4377,6 +5144,21 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public Rectangle taskDetailsSyncBounds() {
+                return taskDetailsPopup.syncBounds();
+            }
+
+            @Override
+            public Rectangle taskDetailsIgnoreBounds() {
+                return taskDetailsPopup.ignoreBounds();
+            }
+
+            @Override
+            public Rectangle taskDetailsMarkIncompleteBounds() {
+                return taskDetailsPopup.markIncompleteBounds();
+            }
+
+            @Override
             public Rectangle taskDetailsToggleBounds() {
                 return taskDetailsPopup.toggleBounds();
             }
@@ -4404,6 +5186,21 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds() {
                 return taskDetailsPopup.instanceRemoveBounds();
+            }
+
+            @Override
+            public String taskDetailsSyncButtonLabel(XtremeTask task) {
+                return XtremeTaskerOverlay.this.taskDetailsSyncButtonLabel(task);
+            }
+
+            @Override
+            public void handleTaskDetailsSyncButton(XtremeTask task) {
+                XtremeTaskerOverlay.this.handleTaskDetailsSyncButton(task);
+            }
+
+            @Override
+            public void handleTaskDetailsMarkIncompleteButton(XtremeTask task) {
+                XtremeTaskerOverlay.this.handleTaskDetailsMarkIncompleteButton(task);
             }
 
             @Override
@@ -4649,6 +5446,111 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public boolean isTaskResolveOpen() {
+                return XtremeTaskerOverlay.this.isTaskResolveOpen();
+            }
+
+            @Override
+            public boolean isTaskSyncResultOpen() {
+                return XtremeTaskerOverlay.this.isTaskSyncResultOpen();
+            }
+
+            @Override
+            public Rectangle taskSyncResultBounds() {
+                return taskSyncResultBounds;
+            }
+
+            @Override
+            public Rectangle taskSyncResultCloseBounds() {
+                return taskSyncResultCloseBounds;
+            }
+
+            @Override
+            public void closeTaskSyncResult() {
+                XtremeTaskerOverlay.this.closeTaskSyncResult();
+            }
+
+            @Override
+            public Rectangle taskResolveBounds() {
+                return taskResolveBounds;
+            }
+
+            @Override
+            public Rectangle taskResolveCloseBounds() {
+                return taskResolveCloseBounds;
+            }
+
+            @Override
+            public Rectangle taskResolveSaveBounds() {
+                return taskResolveSaveBounds;
+            }
+
+            @Override
+            public Rectangle taskResolveCancelBounds() {
+                return taskResolveCancelBounds;
+            }
+
+            @Override
+            public Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds() {
+                return taskResolveInstanceToggleBounds;
+            }
+
+            @Override
+            public void closeTaskResolve() {
+                XtremeTaskerOverlay.this.closeTaskResolve();
+            }
+
+            @Override
+            public void saveTaskResolve() {
+                XtremeTaskerOverlay.this.saveTaskResolve();
+            }
+
+            @Override
+            public void toggleTaskResolveTaskIncomplete(XtremeTask task) {
+                XtremeTaskerOverlay.this.toggleTaskResolveTaskIncomplete(task);
+            }
+
+            @Override
+            public boolean canToggleTaskResolveTaskIncomplete(XtremeTask task) {
+                return XtremeTaskerOverlay.this.canToggleTaskResolveTaskIncomplete(task);
+            }
+
+            @Override
+            public boolean hasTaskResolveChanges() {
+                return XtremeTaskerOverlay.this.hasTaskResolveChanges();
+            }
+
+            @Override
+            public boolean isTaskDetailsIncompleteConfirmOpen() {
+                return XtremeTaskerOverlay.this.isTaskDetailsIncompleteConfirmOpen();
+            }
+
+            @Override
+            public Rectangle taskDetailsIncompleteConfirmBounds() {
+                return taskDetailsIncompleteConfirmBounds;
+            }
+
+            @Override
+            public Rectangle taskDetailsIncompleteConfirmYesBounds() {
+                return taskDetailsIncompleteConfirmYesBounds;
+            }
+
+            @Override
+            public Rectangle taskDetailsIncompleteConfirmNoBounds() {
+                return taskDetailsIncompleteConfirmNoBounds;
+            }
+
+            @Override
+            public void confirmTaskDetailsIncompleteSelection() {
+                XtremeTaskerOverlay.this.confirmTaskDetailsIncompleteSelection();
+            }
+
+            @Override
+            public void closeTaskDetailsIncompleteConfirm() {
+                XtremeTaskerOverlay.this.closeTaskDetailsIncompleteConfirm();
+            }
+
+            @Override
             public boolean isKeyboardHintsOpen() {
                 return keyboardHintsOpen;
             }
@@ -4807,6 +5709,15 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(syncMismatchScrollbarThumbBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchDescriptionBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchDescriptionCloseBounds, anchorX, anchorY, scale);
+        scaleRect(taskSyncResultBounds, anchorX, anchorY, scale);
+        scaleRect(taskSyncResultCloseBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveCloseBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveSaveBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveCancelBounds, anchorX, anchorY, scale);
+        scaleRect(taskDetailsIncompleteConfirmBounds, anchorX, anchorY, scale);
+        scaleRect(taskDetailsIncompleteConfirmYesBounds, anchorX, anchorY, scale);
+        scaleRect(taskDetailsIncompleteConfirmNoBounds, anchorX, anchorY, scale);
         scaleRect(keyboardHintsButtonBounds, anchorX, anchorY, scale);
         scaleRect(keyboardHintsPopupBounds, anchorX, anchorY, scale);
         scaleRect(taskViewModeBounds, anchorX, anchorY, scale);
@@ -4818,6 +5729,7 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRectMap(taskCheckboxBounds, anchorX, anchorY, scale);
         scaleRectMap(syncMismatchTaskBounds, anchorX, anchorY, scale);
         scaleRectMap(syncMismatchTaskNameBounds, anchorX, anchorY, scale);
+        scaleRectMap(taskResolveInstanceToggleBounds, anchorX, anchorY, scale);
     }
 
     private void scaleCurrentLayoutBounds(int anchorX, int anchorY, double scale) {
@@ -4886,6 +5798,9 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(taskDetailsPopup.viewportBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.closeBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.wikiBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.syncBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.ignoreBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.markIncompleteBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.toggleBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.scrollbarRailBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.scrollbarThumbBounds(), anchorX, anchorY, scale);

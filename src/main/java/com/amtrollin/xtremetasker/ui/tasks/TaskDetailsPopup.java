@@ -45,6 +45,9 @@ public final class TaskDetailsPopup
     private final Rectangle viewportBounds = new Rectangle();
     private final Rectangle closeBounds = new Rectangle();
     private final Rectangle wikiBounds = new Rectangle();
+    private final Rectangle syncBounds = new Rectangle();
+    private final Rectangle ignoreBounds = new Rectangle();
+    private final Rectangle markIncompleteBounds = new Rectangle();
     private final Rectangle toggleBounds = new Rectangle();
     private final Rectangle scrollbarRailBounds = new Rectangle();
     private final Rectangle scrollbarThumbBounds = new Rectangle();
@@ -90,6 +93,9 @@ public final class TaskDetailsPopup
         viewportBounds.setBounds(0, 0, 0, 0);
         closeBounds.setBounds(0, 0, 0, 0);
         wikiBounds.setBounds(0, 0, 0, 0);
+        syncBounds.setBounds(0, 0, 0, 0);
+        ignoreBounds.setBounds(0, 0, 0, 0);
+        markIncompleteBounds.setBounds(0, 0, 0, 0);
         toggleBounds.setBounds(0, 0, 0, 0);
         scrollbarRailBounds.setBounds(0, 0, 0, 0);
         scrollbarThumbBounds.setBounds(0, 0, 0, 0);
@@ -118,6 +124,21 @@ public final class TaskDetailsPopup
     public Rectangle wikiBounds()
     {
         return wikiBounds;
+    }
+
+    public Rectangle syncBounds()
+    {
+        return syncBounds;
+    }
+
+    public Rectangle ignoreBounds()
+    {
+        return ignoreBounds;
+    }
+
+    public Rectangle markIncompleteBounds()
+    {
+        return markIncompleteBounds;
     }
 
     public Rectangle toggleBounds()
@@ -171,6 +192,10 @@ public final class TaskDetailsPopup
             Function<XtremeTask, List<XtremeTask>> taskGroupProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            Function<XtremeTask, Boolean> collectionLogSyncMismatchProvider,
+            Function<XtremeTask, String> collectionLogSyncButtonLabelProvider,
+            Function<XtremeTask, String> collectionLogMarkIncompleteButtonLabelProvider,
+            Function<XtremeTask, Boolean> collectionLogMarkIncompleteSavedEditProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             net.runelite.api.Point mouse,
             java.awt.image.BufferedImage taskIcon,
@@ -221,6 +246,11 @@ public final class TaskDetailsPopup
         g.setColor(palette.UI_GOLD);
 
         final int wikiW = headerFm.stringWidth(wikiText) + 20;
+        boolean collectionLogMismatch = collectionLogSyncMismatchProvider != null
+                && Boolean.TRUE.equals(collectionLogSyncMismatchProvider.apply(task));
+        String syncButtonLabel = collectionLogSyncButtonLabelProvider == null
+                ? ""
+                : safe(collectionLogSyncButtonLabelProvider.apply(task)).trim();
 
         // Icon in header
         int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - iconReserve);
@@ -287,6 +317,10 @@ public final class TaskDetailsPopup
         g.setColor(palette.UI_TEXT);
         int wikiTextW = fm.stringWidth(wikiText);
         g.drawString(wikiText, wikiBounds.x + (wikiBounds.width - wikiTextW) / 2, centeredTextBaseline(wikiBounds, fm));
+
+        syncBounds.setBounds(0, 0, 0, 0);
+        ignoreBounds.setBounds(0, 0, 0, 0);
+        markIncompleteBounds.setBounds(0, 0, 0, 0);
 
         if (mouse != null && srcBadgeBounds.contains(mouse.getX(), mouse.getY()))
         {
@@ -376,6 +410,12 @@ public final class TaskDetailsPopup
         }
         if (hasRequirementPreview)
         {
+            if (collectionLogMismatch)
+            {
+                totalPx += ROW_HEIGHT;
+                totalPx += ROW_HEIGHT + 8;
+                totalPx += 6 + 12;
+            }
             if (tipInRequirementSection)
             {
                 totalPx += measureTipHeight(taskTip, fm, contentW);
@@ -500,6 +540,55 @@ public final class TaskDetailsPopup
 
         if (hasRequirementPreview)
         {
+            if (collectionLogMismatch)
+            {
+                g.setColor(new Color(245, 92, 82, 245));
+                g.drawString(TextUtils.truncateToWidth(
+                        "Not enough CLOG(s) obtained for current tasks completed",
+                        fm,
+                        contentW),
+                        contentLeft,
+                        y);
+                y += ROW_HEIGHT;
+
+                int actionTop = y - fm.getAscent();
+                int actionH = ROW_HEIGHT + 8;
+                int actionGap = 8;
+                String markIncompleteLabel = collectionLogMarkIncompleteButtonLabelProvider == null
+                        ? "Mark task incomplete"
+                        : safe(collectionLogMarkIncompleteButtonLabelProvider.apply(task));
+                if (markIncompleteLabel.isEmpty())
+                {
+                    markIncompleteLabel = "Mark task incomplete";
+                }
+                boolean hasSavedIncompleteEdit = collectionLogMarkIncompleteSavedEditProvider != null
+                        && Boolean.TRUE.equals(collectionLogMarkIncompleteSavedEditProvider.apply(task));
+                int availableActionW = Math.max(120, contentW - actionGap * 2);
+                int syncActionW = Math.max(58, fm.stringWidth(syncButtonLabel.isEmpty() ? "Sync" : syncButtonLabel) + 18);
+                int ignoreActionW = Math.max(58, fm.stringWidth("Ignore") + 18);
+                int markActionW = Math.max(120, fm.stringWidth(markIncompleteLabel) + 18);
+                int totalActionW = syncActionW + ignoreActionW + markActionW + actionGap * 2;
+                if (totalActionW > availableActionW)
+                {
+                    int overflow = totalActionW - availableActionW;
+                    markActionW = Math.max(104, markActionW - overflow);
+                }
+                syncBounds.setBounds(contentLeft, actionTop, syncActionW, actionH);
+                ignoreBounds.setBounds(syncBounds.x + syncBounds.width + actionGap, actionTop, ignoreActionW, actionH);
+                markIncompleteBounds.setBounds(ignoreBounds.x + ignoreBounds.width + actionGap, actionTop, markActionW, actionH);
+                drawColoredButton(g, fm, syncBounds, syncButtonLabel.isEmpty() ? "Sync" : syncButtonLabel,
+                        new Color(35, 74, 45, 235), palette.UI_TEXT, new Color(105, 190, 118, 200));
+                drawColoredButton(g, fm, ignoreBounds, "Ignore", palette.BTN_DISABLED_BG, palette.UI_TEXT_DIM, null);
+                drawColoredButton(g, fm, markIncompleteBounds, markIncompleteLabel,
+                        hasSavedIncompleteEdit ? palette.BTN_DISABLED_BG : new Color(70, 42, 34, 235),
+                        palette.UI_TEXT,
+                        hasSavedIncompleteEdit ? null : new Color(190, 88, 72, 180));
+                y += actionH + 6;
+
+                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+                g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+                y += 12;
+            }
             if (tipInRequirementSection)
             {
                 y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
@@ -710,6 +799,21 @@ public final class TaskDetailsPopup
 
         g.drawString(drawText,
                 bounds.x + (bounds.width - tw) / 2,
+                centeredTextBaseline(bounds, fm));
+    }
+
+    private void drawColoredButton(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, Color fill, Color textColor, Color border)
+    {
+        drawBevelBox(g, bounds, fill);
+        if (border != null)
+        {
+            g.setColor(border);
+            g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+        g.setColor(textColor);
+        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - 10);
+        g.drawString(drawText,
+                bounds.x + (bounds.width - fm.stringWidth(drawText)) / 2,
                 centeredTextBaseline(bounds, fm));
     }
 

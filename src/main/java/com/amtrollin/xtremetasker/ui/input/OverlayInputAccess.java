@@ -125,12 +125,18 @@ public interface OverlayInputAccess
     Rectangle taskDetailsBounds();
     Rectangle taskDetailsCloseBounds();
     Rectangle taskDetailsWikiBounds();
+    Rectangle taskDetailsSyncBounds();
+    Rectangle taskDetailsIgnoreBounds();
+    Rectangle taskDetailsMarkIncompleteBounds();
     Rectangle taskDetailsToggleBounds();
     Rectangle taskDetailsScrollbarRailBounds();
     Rectangle taskDetailsScrollbarThumbBounds();
     Rectangle taskDetailsDecrementGroupBounds();
     Rectangle taskDetailsIncrementGroupBounds();
     Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds();
+    String taskDetailsSyncButtonLabel(XtremeTask task);
+    void handleTaskDetailsSyncButton(XtremeTask task);
+    void handleTaskDetailsMarkIncompleteButton(XtremeTask task);
 
     boolean isMarkAllIncompleteConfirmOpen();
     void requestMarkAllIncompleteConfirmation(XtremeTask task);
@@ -176,6 +182,29 @@ public interface OverlayInputAccess
     List<XtremeTask> selectedSyncMismatchTasks();
     void requestSyncMismatchApplyConfirm();
     void closeSyncMismatchApplyConfirm();
+
+    boolean isTaskResolveOpen();
+    boolean isTaskSyncResultOpen();
+    Rectangle taskSyncResultBounds();
+    Rectangle taskSyncResultCloseBounds();
+    void closeTaskSyncResult();
+    Rectangle taskResolveBounds();
+    Rectangle taskResolveCloseBounds();
+    Rectangle taskResolveSaveBounds();
+    Rectangle taskResolveCancelBounds();
+    Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds();
+    void closeTaskResolve();
+    void saveTaskResolve();
+    void toggleTaskResolveTaskIncomplete(XtremeTask task);
+    boolean canToggleTaskResolveTaskIncomplete(XtremeTask task);
+    boolean hasTaskResolveChanges();
+
+    boolean isTaskDetailsIncompleteConfirmOpen();
+    Rectangle taskDetailsIncompleteConfirmBounds();
+    Rectangle taskDetailsIncompleteConfirmYesBounds();
+    Rectangle taskDetailsIncompleteConfirmNoBounds();
+    void confirmTaskDetailsIncompleteSelection();
+    void closeTaskDetailsIncompleteConfirm();
 
     boolean isKeyboardHintsOpen();
     void setKeyboardHintsOpen(boolean open);
