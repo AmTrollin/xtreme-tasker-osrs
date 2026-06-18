@@ -613,9 +613,9 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             summaryText = summaryText.isEmpty() ? pendingMedallionFragmentSummary : summaryText + "  " + pendingMedallionFragmentSummary;
         }
-        String titleText = ancientPageRequirement
-                ? "Ancient pages"
-                : hasCompletionItem ? "Fragments needed:" : singleEligibleItem ? "Collection log item needed:" : "";
+        String titleText = requiredCount >= itemIds.length
+                ? "Needed Collection Log items"
+                : "";
         String secondaryTitleText = secondaryItems.isEmpty()
                 ? ""
                 : allRequiredItemsObtained ? "Now assemble:" : "Need all " + requiredCount + " fragments to assemble:";
