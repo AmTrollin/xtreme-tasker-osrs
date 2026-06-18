@@ -99,6 +99,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int PREREQUISITE_STATUS_CACHE_LIMIT = 512;
     private static final int COMPACT_LINES_CACHE_LIMIT = 128;
     private static final int SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT = 8;
+    private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
+    private static final int COMPACT_MEDALLION_ASSEMBLY_TITLE_GAP = 6;
     private static final int TASK_RESOLVE_TOGGLE_SIZE = 18;
     private static final int TASK_RESOLVE_TOGGLE_GAP = 6;
     private static final long SLOW_PREVIEW_LOG_THRESHOLD_NANOS = 8_000_000L;
@@ -3691,7 +3693,7 @@ public class XtremeTaskerOverlay extends Overlay {
                         line.collectionLogPreview.iconColumns());
             } else {
                 drawCompactLine(g, fm, line, textX, textY, textW);
-                textY += ROW_HEIGHT;
+                textY += compactLineHeight(line, textW);
             }
         }
         g.setClip(oldClip);
@@ -3873,6 +3875,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 lines.add(CompactLine.collectionLogIcons(preview));
             }
             if (preview.showSecondaryItemList()) {
+                if (isMedallionAssemblyTitle(preview.secondaryTitleText())) {
+                    lines.add(CompactLine.verticalGap(COMPACT_MEDALLION_ASSEMBLY_TITLE_GAP));
+                }
                 lines.addAll(wrappedCompactLines(preview.secondaryTitleText(), true));
                 lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
                         preview.secondaryItems(),
@@ -3924,6 +3929,12 @@ public class XtremeTaskerOverlay extends Overlay {
         return "Eligible Collection Log items";
     }
 
+    private static boolean isMedallionAssemblyTitle(String title) {
+        String normalized = title == null ? "" : title.trim();
+        return normalized.startsWith(MEDALLION_ASSEMBLY_TITLE_PREFIX)
+                && normalized.toLowerCase().contains("fragments to assemble");
+    }
+
     private static CollectionLogRequirementPreview singleSectionPreview(List<CollectionLogRequirementItem> items, int iconColumns) {
         return new CollectionLogRequirementPreview("", "", false, true, items, iconColumns);
     }
@@ -3938,6 +3949,10 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private void drawCompactLine(Graphics2D g, FontMetrics fm, CompactLine line, int x, int y, int maxWidth) {
+        if (line.fixedHeight >= 0) {
+            return;
+        }
+
         int drawX = x;
         int drawMaxWidth = maxWidth;
         PrerequisiteStatus status = line.prerequisiteStatus;
@@ -4014,6 +4029,9 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int compactLineHeight(CompactLine line, int maxWidth) {
+        if (line != null && line.fixedHeight >= 0) {
+            return line.fixedHeight;
+        }
         if (line != null && line.collectionLogPreview != null) {
             return CollectionLogIconGridRenderer.measureHeight(
                     line.collectionLogPreview.getItems().size(),
@@ -4273,6 +4291,7 @@ public class XtremeTaskerOverlay extends Overlay {
         private final PrerequisiteStatus prerequisiteStatus;
         private final BufferedImage prerequisiteMarkerImage;
         private final boolean firstPrerequisiteLine;
+        private final int fixedHeight;
 
         private CompactLine(String text, boolean heading, boolean dim) {
             this.text = text == null ? "" : text;
@@ -4282,6 +4301,7 @@ public class XtremeTaskerOverlay extends Overlay {
             this.prerequisiteStatus = null;
             this.prerequisiteMarkerImage = null;
             this.firstPrerequisiteLine = false;
+            this.fixedHeight = -1;
         }
 
         private CompactLine(CollectionLogRequirementPreview collectionLogPreview) {
@@ -4292,6 +4312,7 @@ public class XtremeTaskerOverlay extends Overlay {
             this.prerequisiteStatus = null;
             this.prerequisiteMarkerImage = null;
             this.firstPrerequisiteLine = false;
+            this.fixedHeight = -1;
         }
 
         private CompactLine(String text, PrerequisiteStatus prerequisiteStatus, BufferedImage prerequisiteMarkerImage, boolean firstPrerequisiteLine) {
@@ -4302,10 +4323,26 @@ public class XtremeTaskerOverlay extends Overlay {
             this.prerequisiteStatus = prerequisiteStatus;
             this.prerequisiteMarkerImage = prerequisiteMarkerImage;
             this.firstPrerequisiteLine = firstPrerequisiteLine;
+            this.fixedHeight = -1;
+        }
+
+        private CompactLine(int fixedHeight) {
+            this.text = "";
+            this.heading = false;
+            this.dim = true;
+            this.collectionLogPreview = null;
+            this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
+            this.fixedHeight = Math.max(0, fixedHeight);
         }
 
         private static CompactLine spacer() {
             return new CompactLine("", false, true);
+        }
+
+        private static CompactLine verticalGap(int height) {
+            return new CompactLine(height);
         }
 
         private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview) {

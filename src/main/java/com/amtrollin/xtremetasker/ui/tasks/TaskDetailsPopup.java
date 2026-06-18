@@ -37,6 +37,9 @@ public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
     private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
+    private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
+    private static final int SECONDARY_SECTION_GAP = 6;
+    private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
     private static final DateTimeFormatter COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
@@ -521,7 +524,7 @@ public final class TaskDetailsPopup
             }
             if (requirementPreview.showSecondaryItemList())
             {
-                totalPx += 6;
+                totalPx += secondarySectionGap(requirementPreview);
                 totalPx += ROW_HEIGHT;
                 totalPx += CollectionLogIconGridRenderer.measureHeight(
                         requirementPreview.secondaryItems().size(),
@@ -712,7 +715,7 @@ public final class TaskDetailsPopup
 
             if (requirementPreview.showSecondaryItemList())
             {
-                y += 6;
+                y += secondarySectionGap(requirementPreview);
                 g.setColor(palette.UI_GOLD);
                 g.drawString(TextUtils.truncateToWidth(requirementPreview.secondaryTitleText(), fm, contentW), contentLeft, y);
                 y += ROW_HEIGHT;
@@ -1340,6 +1343,15 @@ public final class TaskDetailsPopup
     private static String safe(String s)
     {
         return s == null ? "" : s;
+    }
+
+    private static int secondarySectionGap(CollectionLogRequirementPreview requirementPreview)
+    {
+        String title = requirementPreview == null ? "" : safe(requirementPreview.secondaryTitleText()).trim();
+        return title.startsWith(MEDALLION_ASSEMBLY_TITLE_PREFIX)
+                && title.toLowerCase().contains("fragments to assemble")
+                ? MEDALLION_ASSEMBLY_SECTION_GAP
+                : SECONDARY_SECTION_GAP;
     }
 
     private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
