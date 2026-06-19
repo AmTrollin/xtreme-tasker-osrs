@@ -3449,6 +3449,7 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             String line = lines.isEmpty() ? "" : lines.get(i);
             line = TextUtils.truncateToWidth(line, fm, syncMismatchGuardViewportBounds.width);
+            g.setColor(syncMismatchGuardLineColor(line));
             g.drawString(line, syncMismatchGuardViewportBounds.x, textY);
             textY += lineH;
         }
@@ -3465,6 +3466,19 @@ public class XtremeTaskerOverlay extends Overlay {
         return ROW_HEIGHT;
     }
 
+    private Color syncMismatchGuardLineColor(String line)
+    {
+        if (line != null && line.startsWith("Save blocked:"))
+        {
+            return new Color(245, 92, 82, 245);
+        }
+        if (line != null && line.startsWith("Task:"))
+        {
+            return P.UI_TEXT;
+        }
+        return P.UI_TEXT_DIM;
+    }
+
     private void renderSyncMismatchGuardScrollbar(Graphics2D g, int totalRows, int visibleRows, int offsetRows)
     {
         syncMismatchGuardScrollbarRailBounds.setBounds(0, 0, 0, 0);
@@ -3478,18 +3492,21 @@ public class XtremeTaskerOverlay extends Overlay {
         int sbX = syncMismatchGuardBounds.x + syncMismatchGuardBounds.width - 12 - scrollBarW;
         syncMismatchGuardScrollbarRailBounds.setBounds(sbX, syncMismatchGuardViewportBounds.y,
                 scrollBarW, syncMismatchGuardViewportBounds.height);
-        g.setColor(new Color(18, 14, 9, 200));
+        g.setColor(new Color(0, 0, 0, 60));
         g.fillRect(sbX, syncMismatchGuardViewportBounds.y, scrollBarW, syncMismatchGuardViewportBounds.height);
 
         float thumbRatio = (float) visibleRows / totalRows;
-        int thumbH = Math.max(14, (int) (syncMismatchGuardViewportBounds.height * thumbRatio));
+        int thumbH = Math.min(syncMismatchGuardViewportBounds.height,
+                Math.max(12, Math.round(syncMismatchGuardViewportBounds.height * thumbRatio)));
         int maxOffset = Math.max(1, totalRows - visibleRows);
         float scrollRatio = (float) Math.max(0, Math.min(offsetRows, maxOffset)) / maxOffset;
         int thumbY = syncMismatchGuardViewportBounds.y
                 + (int) ((syncMismatchGuardViewportBounds.height - thumbH) * scrollRatio);
-        syncMismatchGuardScrollbarThumbBounds.setBounds(sbX, thumbY, scrollBarW, thumbH);
-        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 160));
-        g.fillRoundRect(sbX, thumbY, scrollBarW, thumbH, 3, 3);
+        Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+        syncMismatchGuardScrollbarThumbBounds.setBounds(thumb);
+        drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
+        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
     private static int widestLineWidth(List<String> lines, FontMetrics fm)

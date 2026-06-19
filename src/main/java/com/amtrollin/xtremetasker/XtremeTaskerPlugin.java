@@ -4399,9 +4399,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (violations.size() == 1)
         {
             SequenceIncompleteViolation violation = violations.get(0);
-            return "Save blocked: your selection includes a sequential task out of order.\n\nFor "
-                    + violation.seriesName + ", also mark " + joinedTaskNames(violation.missingHigherTasks)
-                    + " incomplete before saving, or unselect " + joinedTaskNames(violation.invalidSelectedTasks) + ".";
+            return "Save blocked: your selection includes a sequential task out of order.\n\n"
+                    + sequenceIncompleteGuardParagraph(violation);
         }
 
         StringBuilder message = new StringBuilder("Save blocked: ");
@@ -4409,14 +4408,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         for (SequenceIncompleteViolation violation : violations)
         {
             message.append("\n\n")
-                    .append(violation.seriesName)
-                    .append(": selected ")
-                    .append(joinedTaskNames(violation.invalidSelectedTasks))
-                    .append("; also mark ")
-                    .append(joinedTaskNames(violation.missingHigherTasks))
-                    .append(" incomplete.");
+                    .append(sequenceIncompleteGuardParagraph(violation));
         }
         return message.toString();
+    }
+
+    private String sequenceIncompleteGuardParagraph(SequenceIncompleteViolation violation)
+    {
+        return "Task:\n"
+                + violation.seriesName + ": selected " + joinedTaskNames(violation.invalidSelectedTasks)
+                + "; also mark " + joinedTaskNames(violation.missingHigherTasks)
+                + " incomplete before saving, or unselect "
+                + joinedTaskNames(violation.invalidSelectedTasks) + ".";
     }
 
     private static String sequenceSeriesName(List<XtremeTask> group)
