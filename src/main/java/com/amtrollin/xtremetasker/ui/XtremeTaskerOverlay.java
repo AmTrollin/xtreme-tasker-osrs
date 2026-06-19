@@ -2822,7 +2822,10 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setColor(new Color(0, 0, 0, 135));
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
-        int w = Math.min(panelBounds.width - 36, 470);
+        boolean collectionLogOnlyReview = syncMismatchReviewSource == TaskSource.COLLECTION_LOG
+                || (!mismatches.isEmpty() && mismatches.stream().allMatch(task -> task != null && isCollectionLogSyncSource(task.getSource())));
+        int maxReviewW = collectionLogOnlyReview ? 494 : 470;
+        int w = Math.min(panelBounds.width - 36, maxReviewW);
         int h = Math.min(panelBounds.height - 56, 390);
         int x = panelBounds.x + (panelBounds.width - w) / 2;
         int y = panelBounds.y + (panelBounds.height - h) / 2;
@@ -3027,16 +3030,19 @@ public class XtremeTaskerOverlay extends Overlay {
             int scrollBarW = 6;
             int sbX = syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW;
             syncMismatchScrollbarRailBounds.setBounds(sbX, syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height);
-            g.setColor(new Color(18, 14, 9, 200));
+            g.setColor(new Color(0, 0, 0, 60));
             g.fillRect(sbX, syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height);
 
             float thumbRatio = (float) visible / mismatches.size();
-            int thumbH = Math.max(14, (int) (syncMismatchViewportBounds.height * thumbRatio));
+            int thumbH = Math.min(syncMismatchViewportBounds.height,
+                    Math.max(12, Math.round(syncMismatchViewportBounds.height * thumbRatio)));
             float scrollRatio = maxOffset > 0 ? (float) syncMismatchScroll.offsetRows / maxOffset : 0f;
             int thumbY = syncMismatchViewportBounds.y + (int) ((syncMismatchViewportBounds.height - thumbH) * scrollRatio);
-            syncMismatchScrollbarThumbBounds.setBounds(sbX, thumbY, scrollBarW, thumbH);
-            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 160));
-            g.fillRoundRect(sbX, thumbY, scrollBarW, thumbH, 3, 3);
+            Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+            syncMismatchScrollbarThumbBounds.setBounds(thumb);
+            drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
+            g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
         }
 
         String scrollHint = "Displaying " + (syncMismatchScroll.offsetRows + 1) + "-"
@@ -3297,6 +3303,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
         String normalized = name.toLowerCase(Locale.ROOT);
         return normalized.contains("next tier")
+                || normalized.contains("first tier")
                 || normalized.contains("next reward")
                 || normalized.contains("mta wand")
                 || normalized.equals("upgrade to apprentice wand")

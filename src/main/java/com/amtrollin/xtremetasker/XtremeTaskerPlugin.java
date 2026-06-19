@@ -4415,11 +4415,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private String sequenceIncompleteGuardParagraph(SequenceIncompleteViolation violation)
     {
-        return "Task:\n"
-                + violation.seriesName + ": selected " + joinedTaskNames(violation.invalidSelectedTasks)
-                + "; also mark " + joinedTaskNames(violation.missingHigherTasks)
+        return "Task: " + violation.seriesName + "\n"
+                + "Selected " + joinedQuotedTaskNames(violation.invalidSelectedTasks)
+                + "; also mark " + joinedQuotedTaskNames(violation.missingHigherTasks)
                 + " incomplete before saving, or unselect "
-                + joinedTaskNames(violation.invalidSelectedTasks) + ".";
+                + joinedQuotedTaskNames(violation.invalidSelectedTasks) + ".";
     }
 
     private static String sequenceSeriesName(List<XtremeTask> group)
@@ -4454,6 +4454,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return names.get(0) + " and " + names.get(1);
         }
         return names.get(0) + ", " + names.get(1) + ", and " + (names.size() - 2) + " more";
+    }
+
+    private static String joinedQuotedTaskNames(List<String> names)
+    {
+        if (names == null || names.isEmpty())
+        {
+            return "";
+        }
+        return joinedTaskNames(names.stream()
+                .filter(Objects::nonNull)
+                .map(name -> "\"" + name + "\"")
+                .collect(Collectors.toList()));
     }
 
     private static final class SequenceIncompleteViolation

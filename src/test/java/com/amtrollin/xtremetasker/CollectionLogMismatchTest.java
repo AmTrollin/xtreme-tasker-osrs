@@ -387,7 +387,7 @@ public class CollectionLogMismatchTest
         assertTrue("Beginner wand should require higher wand steps to be selected too",
                 guardMessage != null && guardMessage.contains("Apprentice MTA wand"));
         assertTrue("Single-sequence message should separate the headline from the fix",
-                guardMessage.contains("out of order.\n\nTask:\nUpgrade the MTA wand once: selected "));
+                guardMessage.contains("out of order.\n\nTask: Upgrade the MTA wand once\nSelected \"Obtain Beginner MTA wand\""));
 
         List<XtremeTask> mixedInvalidSelection = List.of(beginner, apprentice, unrelated, bootsFirst);
         guardMessage = plugin.getSyncMismatchIncompleteGuardMessage(mixedInvalidSelection);
@@ -402,8 +402,8 @@ public class CollectionLogMismatchTest
         assertTrue("A second bad sequence should be named too",
                 guardMessage.contains("metal boots"));
         assertTrue("Multi-sequence message should put each sequence on its own paragraph",
-                guardMessage.contains("out of order.\n\nTask:\nUpgrade the MTA wand once: selected ")
-                        && guardMessage.contains("unselect Obtain Beginner MTA wand and Upgrade to Apprentice MTA wand.\n\nTask:\nGet the next tier of metal boots"));
+                guardMessage.contains("out of order.\n\nTask: Upgrade the MTA wand once\nSelected \"Obtain Beginner MTA wand\"")
+                        && guardMessage.contains("unselect \"Obtain Beginner MTA wand\" and \"Upgrade to Apprentice MTA wand\".\n\nTask: Get the next tier of metal boots"));
 
         plugin.markSyncMismatchTasksIncompleteAndPersist(mixedInvalidSelection);
         assertTrue("Guarded beginner wand should remain complete", plugin.isTaskCompleted(beginner));
