@@ -10,6 +10,7 @@ public final class CurrentTabLayout
     public final Rectangle skipButtonBounds = new Rectangle();
     public final Rectangle undoButtonBounds = new Rectangle();
     public final Rectangle rollSourceIconBounds = new Rectangle(); // "?" icon for hover tooltip
+    public final Rectangle skippedTasksIconBounds = new Rectangle(); // "?" icon for skipped count tooltip
     public final Rectangle viewportBounds = new Rectangle();       // scrollable content area
     public final Rectangle scrollbarRailBounds = new Rectangle();
     public final Rectangle scrollbarThumbBounds = new Rectangle();

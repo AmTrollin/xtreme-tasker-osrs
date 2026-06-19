@@ -131,6 +131,7 @@ public final class CurrentTabRenderer
         layout.skipButtonBounds.setBounds(0, 0, 0, 0);
         layout.undoButtonBounds.setBounds(0, 0, 0, 0);
         layout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
+        layout.skippedTasksIconBounds.setBounds(0, 0, 0, 0);
         layout.viewportBounds.setBounds(0, 0, 0, 0);
         layout.totalContentPx = 0;
 
@@ -150,13 +151,28 @@ public final class CurrentTabRenderer
         String progress = prettyTier(tierForProgress) + " tier progress: " + (tierProgressLabel == null ? "" : tierProgressLabel.apply(tierForProgress));
         String skipped = "Skipped tasks: " + Math.max(0, skippedTaskCount);
         int progressMaxW = panelWidth - 2 * panelPadding;
+        int skippedIconSize = fm.getAscent() + 2;
+        int skippedIconGap = 4;
         int skippedW = fm.stringWidth(skipped);
+        int skippedBlockW = skippedIconSize + skippedIconGap + skippedW;
         int gap = 12;
-        progress = truncateToWidth(progress, fm, Math.max(20, progressMaxW - skippedW - gap));
+        progress = truncateToWidth(progress, fm, Math.max(20, progressMaxW - skippedBlockW - gap));
 
         g.setColor(uiTextDim);
         g.drawString(progress, panelX + panelPadding, cursorYBaseline);
-        g.drawString(skipped, panelX + panelWidth - panelPadding - skippedW, cursorYBaseline);
+        int skippedX = panelX + panelWidth - panelPadding - skippedW;
+        int skippedIconX = skippedX - skippedIconGap - skippedIconSize;
+        int skippedIconY = cursorYBaseline - fm.getAscent();
+        drawQuestionIcon(g, skippedIconX, skippedIconY, skippedIconSize);
+        layout.skippedTasksIconBounds.setBounds(skippedIconX, skippedIconY, skippedIconSize, skippedIconSize);
+        g.setColor(uiTextDim);
+        g.drawString(skipped, skippedX, cursorYBaseline);
+        if (mousePoint != null && layout.skippedTasksIconBounds.contains(mousePoint))
+        {
+            String tip = "Skipping tasks can be " + (skipEnabled ? "disabled" : "enabled") + " in config settings";
+            drawHeaderTooltip(g, fm, tip, skippedIconX, skippedIconY, skippedIconSize,
+                    panelX + panelPadding, panelX + panelWidth - panelPadding);
+        }
         cursorYBaseline += rowHeight + 14;
 
         // ── Current task area starts below progress ────────────────────────────
@@ -966,6 +982,16 @@ public final class CurrentTabRenderer
         g.fillOval(x, y, size, size);
         g.setColor(new Color(20, 15, 10, 220));
         drawCenteredQuestionMark(g, x, y, size);
+    }
+
+    private void drawHeaderTooltip(Graphics2D g, FontMetrics fm, String tip, int iconX, int iconY, int iconSize, int minX, int maxX)
+    {
+        int tipW = fm.stringWidth(tip) + 10;
+        int tipX = iconX + (iconSize - tipW) / 2;
+        if (tipX < minX) tipX = minX;
+        if (tipX + tipW > maxX) tipX = maxX - tipW;
+        g.setColor(uiTextDim);
+        g.drawString(tip, tipX + 5, iconY + iconSize + fm.getAscent() + 2);
     }
 
     private static BufferedImage loadQuestionIconSafe()

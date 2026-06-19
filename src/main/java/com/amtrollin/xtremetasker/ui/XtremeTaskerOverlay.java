@@ -4346,6 +4346,7 @@ public class XtremeTaskerOverlay extends Overlay {
         currentLayout.skipButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.undoButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
+        currentLayout.skippedTasksIconBounds.setBounds(0, 0, 0, 0);
         currentLayout.viewportBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
@@ -6279,6 +6280,7 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(currentLayout.skipButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.undoButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.rollSourceIconBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.skippedTasksIconBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.viewportBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.scrollbarRailBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.scrollbarThumbBounds, anchorX, anchorY, scale);
