@@ -5426,13 +5426,13 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31734,
+          31732,
           31733,
-          31732
+          31734
         ],
         "count": 1
       },
-      "displayItemId": 31734,
+      "displayItemId": 31732,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
@@ -5448,13 +5448,13 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31734,
+          31732,
           31733,
-          31732
+          31734
         ],
         "count": 2
       },
-      "displayItemId": 31734,
+      "displayItemId": 31733,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
@@ -5470,9 +5470,9 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31734,
+          31732,
           31733,
-          31732
+          31734
         ],
         "count": 3
       },
