@@ -6,7 +6,7 @@ Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progr
 
 Xtreme Tasker turns OSRS into a long-term progression challenge by mixing Combat Achievements, Collection Log goals, and Achievement Diaries into one random task journey. The idea was inspired by Tedious' Collection Log Master game mode.
 
-This README covers the basics. For save details, recovery notes, account switching behavior, and deeper explanations, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
+This README covers the basics. For recent changes, see the [Release Notes](docs/RELEASE_NOTES.md). For save details, recovery notes, account switching behavior, and deeper explanations, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
 
 Want to see the plugin in action? Check out [@amtrollin](https://www.youtube.com/@AmTrollin/playlists)'s YouTube series, [Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H).
 

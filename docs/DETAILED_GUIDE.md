@@ -2,7 +2,7 @@
 
 This guide goes deeper than the main README and covers task updates, progress sync, repeated tasks, save backups, and recovery behavior.
 
-For the shorter user guide, see the [main README](../README.md).
+For the shorter user guide, see the [main README](../README.md). For recent changes, see the [Release Notes](RELEASE_NOTES.md).
 
 ## Overview
 
@@ -48,13 +48,7 @@ Source filters are multi-select. Selecting all three source filters normalizes b
 
 Some tasks can appear multiple times because they can be rolled more than once. Each roll still counts as its own task for tier progress and completion percentage.
 
-By default, repeated tasks are condensed into one row with a `#/#` progress indicator. In the task details popup, you can:
-
-- Mark one additional instance complete.
-- Remove completion from a specific completed instance.
-- View each completed instance's completion date and time spent when available.
-- Mark all instances complete.
-- Mark all instances incomplete after confirming the reset.
+By default, repeated tasks are condensed into one row with a `#/#` progress indicator. The task details popup shows completed instance count and completion history when available.
 
 You can switch between condensed and separate repeated-task rows from the Tasks tab with `Condense repeated tasks` / `Separate repeated tasks`. The same preference is also available in plugin config.
 
@@ -80,7 +74,7 @@ Task list updates do not affect account progress.
 
 Xtreme Tasker does not play the game for you or complete actions automatically. Sync buttons only stage plugin task updates when RuneLite can already see the relevant account state. You review and apply those staged updates before tasks are marked complete.
 
-Completions marked by you are shown as marked in task details. Completions applied from sync review are shown as synced.
+Completions marked from the `Current` tab are shown as marked in task details. Completions applied from sync review are shown as synced.
 
 ### Combat Achievements
 
