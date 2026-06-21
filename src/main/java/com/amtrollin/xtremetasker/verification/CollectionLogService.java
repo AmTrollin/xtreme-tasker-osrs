@@ -78,7 +78,10 @@ public class CollectionLogService
             Map.entry(25620, 10879), // Red satchel interface item -> Red satchel
             Map.entry(25621, 10880), // Black satchel interface item -> Black satchel
             Map.entry(25622, 10881), // Gold satchel interface item -> Gold satchel
-            Map.entry(25623, 10882)  // Rune satchel interface item -> Rune satchel
+            Map.entry(25623, 10882), // Rune satchel interface item -> Rune satchel
+
+            Map.entry(27693, 27019), // Ore pack shop/interface item -> Ore pack collection log item
+            Map.entry(27031, 27029)  // Smiths gloves (i) -> Smiths gloves
     );
 
     @Inject
