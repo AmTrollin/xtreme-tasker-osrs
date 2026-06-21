@@ -413,6 +413,10 @@ public class CollectionLogMismatchTest
         assertTrue("Guarded boots task should remain complete", plugin.isTaskCompleted(bootsFirst));
         assertTrue("Guarded higher boots task should remain complete", plugin.isTaskCompleted(bootsSecond));
 
+        assertEquals("Suffix sequence selections should be saveable from the grouped picker",
+                null,
+                plugin.getSyncMismatchIncompleteGuardMessage(List.of(apprentice, teacher)));
+
         plugin.markSyncMismatchTasksIncompleteAndPersist(List.of(beginner, apprentice, teacher));
         assertFalse(plugin.isTaskCompleted(beginner));
         assertFalse(plugin.isTaskCompleted(apprentice));

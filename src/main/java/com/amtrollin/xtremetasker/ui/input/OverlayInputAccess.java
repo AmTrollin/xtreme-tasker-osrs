@@ -191,6 +191,18 @@ public interface OverlayInputAccess
     Rectangle syncMismatchDescriptionCloseBounds();
     void openSyncMismatchDescription(XtremeTask task);
     void closeSyncMismatchDescription();
+    boolean isSyncMismatchGroupResolveOpen();
+    Rectangle syncMismatchGroupResolveBounds();
+    Rectangle syncMismatchGroupResolveSaveBounds();
+    Rectangle syncMismatchGroupResolveCancelBounds();
+    Map<XtremeTask, Rectangle> syncMismatchGroupResolveToggleBounds();
+    void openSyncMismatchGroupResolve(XtremeTask task);
+    void closeSyncMismatchGroupResolve();
+    void saveSyncMismatchGroupResolve();
+    void toggleSyncMismatchGroupResolveTask(XtremeTask task);
+    boolean canToggleSyncMismatchGroupResolveTask(XtremeTask task);
+    boolean hasSyncMismatchGroupResolveChanges();
+    boolean isSyncMismatchGroupActionTask(XtremeTask task);
     boolean isSyncMismatchTaskSelected(XtremeTask task);
     void toggleSyncMismatchTaskSelected(XtremeTask task);
     void selectAllSyncMismatchTasks();
