@@ -53,7 +53,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private int lastTaskRowClickX = Integer.MIN_VALUE;
     private int lastTaskRowClickY = Integer.MIN_VALUE;
     private int lastTaskRowClickButton = MouseEvent.NOBUTTON;
-    private static final int SYNC_MISMATCH_ACTION_COLUMN_W = 112;
     private static final int SYNC_MISMATCH_DUPLICATE_CLICK_TOLERANCE_PX = 6;
     private boolean suppressNextSyncMismatchClicked = false;
     private int suppressSyncMismatchClickX = Integer.MIN_VALUE;
@@ -1145,7 +1144,9 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         if (a.syncMismatchMarkAllBounds().contains(p))
         {
-            if (a.syncMismatchSelectedCount() > 0)
+            int selectedCount = a.syncMismatchSelectedCount();
+            int selectableCount = a.syncMismatchSelectableCount();
+            if (selectableCount > 0 && selectedCount >= selectableCount)
             {
                 a.clearSyncMismatchSelection();
             }
@@ -1311,7 +1312,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
         {
             return false;
         }
-        if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT)
+        if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT
+                || task.getSource() == TaskSource.DIARY_ACHIEVEMENT)
         {
             return true;
         }
@@ -1319,13 +1321,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         return task.getSource() == TaskSource.COLLECTION_LOG
                 && verification != null
                 && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG;
-    }
-
-    private List<XtremeTask> syncReviewTasks()
-    {
-        return a.isSyncCompletionCandidateReviewOpen()
-                ? a.plugin().getSyncCompletionCandidateTasks(a.syncMismatchReviewSource())
-                : a.plugin().getSyncMismatchTasks(a.syncMismatchReviewSource());
     }
 
     private boolean isSyncMismatchInteractivePoint(Point p)
@@ -1928,7 +1923,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return;
         }
 
-        int totalRows = a.plugin().getSyncMismatchTasks(a.syncMismatchReviewSource()).size();
+        int totalRows = a.syncMismatchVisibleTaskCount();
         int rowBlock = a.syncMismatchRowBlock();
         int viewportH = a.syncMismatchViewportBounds().height;
         int visible = a.syncMismatchScroll().visibleRows(viewportH, rowBlock);

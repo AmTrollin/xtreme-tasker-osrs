@@ -186,6 +186,7 @@ public interface OverlayInputAccess
     Map<XtremeTask, Rectangle> syncMismatchTaskNameBounds();
     TaskListScrollController syncMismatchScroll();
     int syncMismatchRowBlock();
+    int syncMismatchVisibleTaskCount();
     boolean isSyncMismatchDescriptionOpen();
     Rectangle syncMismatchDescriptionBounds();
     Rectangle syncMismatchDescriptionCloseBounds();
@@ -208,6 +209,7 @@ public interface OverlayInputAccess
     void selectAllSyncMismatchTasks();
     void clearSyncMismatchSelection();
     int syncMismatchSelectedCount();
+    int syncMismatchSelectableCount();
     List<XtremeTask> selectedSyncMismatchTasks();
     void requestSyncMismatchApplyConfirm();
     void closeSyncMismatchApplyConfirm();

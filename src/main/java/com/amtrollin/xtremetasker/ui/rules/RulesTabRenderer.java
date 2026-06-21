@@ -45,7 +45,7 @@ public final class RulesTabRenderer {
     private static final String SYNC_HELPER_TEXT =
             "Use these buttons to detect tasks you've already completed. Progress sync is separate from task list updates.";
     private static final String CLOG_SYNC_HELPER_TEXT =
-            "\n\nOpen your Collection Log in-game before syncing so RuneLite can update your latest Collection Log progress. \nCombat Achievement and Achievement Diary progress are synced automatically.";
+            "\n\nOpen your Collection Log in game before syncing so RuneLite can update your latest Collection Log progress. \nCombat Achievement and Achievement Diary progress are synced automatically.";
     private static final BufferedImage REVIEW_NEEDED_ICON = loadReviewNeededIconSafe();
 
     public RulesTabRenderer(
@@ -211,7 +211,7 @@ public final class RulesTabRenderer {
                     }
                 }
 
-                drawY += rb;
+                drawY += Math.max(rb, btnH + listRowSpacing);
                 continue;
             }
 
@@ -293,7 +293,7 @@ public final class RulesTabRenderer {
                     }
                 }
 
-                drawY += rb;
+                drawY += Math.max(rb, btnH + listRowSpacing);
                 continue;
             }
 
@@ -667,7 +667,7 @@ public final class RulesTabRenderer {
                     layout.syncClogTestFoundButtonBounds.setBounds(groupX, by, reviewW, btnH);
                     layout.syncClogTestReviewButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
                 }
-                drawY += rb;
+                drawY += Math.max(rb, btnH + listRowSpacing);
                 continue;
             }
 
@@ -887,8 +887,8 @@ public final class RulesTabRenderer {
                 + " tasks found by sync ("
                 + taskNames.size()
                 + ")";
-        lines.add(markerPrefix + " " + toggleLabel);
         lines.add(actionsMarker);
+        lines.add(markerPrefix + " " + toggleLabel);
 
         if (!expanded)
         {

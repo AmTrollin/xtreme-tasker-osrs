@@ -3516,7 +3516,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
         else if (capturedItems == 0)
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! No CLOG items are cached yet this session - open your Collection Log, then sync again. Achievement Diaries were checked from in-game diary progress."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! No CLOG items are cached yet this session - open your Collection Log, then sync again. Achievement Diaries were checked from in game diary progress."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG) + taskDescriptionReviewHint);
         }
         else
@@ -4638,7 +4638,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
             if (capturedItems == 0)
             {
-                chat("CLOG debug: 0 items cached. Open the Collection Log in-game to populate."
+                chat("CLOG debug: 0 items cached. Open the Collection Log in game to populate."
                         + " Tasks with requirements loaded: clog=" + tasksWithClogReq
                         + " diary=" + tasksWithDiaryReq
                         + " skill=" + tasksWithSkillReq + "/" + totalCollectionLogSyncTasks + " total.");
@@ -4718,6 +4718,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
+        if (source == TaskSource.COLLECTION_LOG && debugEnsureTasksCompletedForFakeMismatch(stagedTasks))
+        {
+            rebuildTierCounts();
+        }
         setSyncMismatchTasksForSource(source, stagedTasks);
         syncMismatchTasksCacheValid = false;
         setSyncResultAndChat(source, "Sync test staged: review "
@@ -4749,8 +4753,22 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return matchingTasks.stream().limit(6).collect(Collectors.toList());
         }
 
+        List<XtremeTask> allCollectionLogSyncTasks = tasks.stream()
+                .filter(Objects::nonNull)
+                .filter(task -> task.getId() != null && !task.getId().trim().isEmpty())
+                .filter(task -> matchesSyncMismatchSource(task, source))
+                .collect(Collectors.toList());
         List<XtremeTask> stagedTasks = new ArrayList<>();
-        addDebugSyncTestTasksForSource(stagedTasks, matchingTasks, TaskSource.COLLECTION_LOG, 3);
+        addDebugSequentialCollectionLogTestTasks(
+                stagedTasks,
+                completed ? allCollectionLogSyncTasks : matchingTasks,
+                !completed,
+                3);
+        int stagedCollectionLogCount = (int) stagedTasks.stream()
+                .filter(task -> task != null && task.getSource() == TaskSource.COLLECTION_LOG)
+                .count();
+        addDebugSyncTestTasksForSource(stagedTasks, matchingTasks, TaskSource.COLLECTION_LOG,
+                Math.max(0, 3 - stagedCollectionLogCount));
         addDebugSyncTestTasksForSource(stagedTasks, matchingTasks, TaskSource.DIARY_ACHIEVEMENT, 3);
 
         if (stagedTasks.size() < 6)
@@ -4772,6 +4790,100 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return stagedTasks;
+    }
+
+    private boolean debugEnsureTasksCompletedForFakeMismatch(List<XtremeTask> stagedTasks)
+    {
+        if (stagedTasks == null || stagedTasks.isEmpty())
+        {
+            return false;
+        }
+
+        boolean changed = false;
+        long now = System.currentTimeMillis();
+        for (XtremeTask task : stagedTasks)
+        {
+            String id = task == null ? null : task.getId();
+            if (id == null || id.trim().isEmpty() || isTaskCompleted(task))
+            {
+                continue;
+            }
+
+            syncedCompletedTaskIds.add(id);
+            syncedCompletionTimestamps.putIfAbsent(id, now);
+            snapshotCompletedTaskTime(id);
+            changed = true;
+        }
+        return changed;
+    }
+
+    private void addDebugSequentialCollectionLogTestTasks(
+            List<XtremeTask> out,
+            List<XtremeTask> tasksToSearch,
+            boolean onlyIncomplete,
+            int maxCount)
+    {
+        if (out == null || tasksToSearch == null || maxCount <= 0)
+        {
+            return;
+        }
+
+        Set<String> seen = out.stream()
+                .filter(Objects::nonNull)
+                .map(XtremeTask::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        for (XtremeTask task : tasksToSearch)
+        {
+            if (task == null
+                    || task.getSource() != TaskSource.COLLECTION_LOG
+                    || !isDisplaySequenceTask(task.getName()))
+            {
+                continue;
+            }
+
+            TaskVerification verification = task.getVerification();
+            if (!isCountedCollectionLogSync(verification)
+                    || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+            {
+                continue;
+            }
+
+            List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
+            if (group.size() <= 1)
+            {
+                continue;
+            }
+
+            int added = 0;
+            for (XtremeTask groupedTask : group)
+            {
+                if (added >= maxCount)
+                {
+                    break;
+                }
+                String id = groupedTask == null ? null : groupedTask.getId();
+                if (id == null || id.trim().isEmpty())
+                {
+                    continue;
+                }
+                if (onlyIncomplete && isTaskCompleted(groupedTask))
+                {
+                    continue;
+                }
+                if (seen.add(id))
+                {
+                    out.add(groupedTask);
+                    added++;
+                }
+            }
+
+            if (added > 0)
+            {
+                return;
+            }
+        }
     }
 
     private void addDebugSyncTestTasksForSource(

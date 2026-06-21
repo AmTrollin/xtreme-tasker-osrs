@@ -36,7 +36,7 @@ import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in game diary completion.";
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
