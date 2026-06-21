@@ -1,6 +1,6 @@
 # Xtreme Tasker Detailed Guide
 
-This guide goes deeper than the main README and covers task updates, manual sync, repeated tasks, save backups, and recovery behavior.
+This guide goes deeper than the main README and covers task updates, progress sync, repeated tasks, save backups, and recovery behavior.
 
 For the shorter user guide, see the [main README](../README.md).
 
@@ -8,7 +8,7 @@ For the shorter user guide, see the [main README](../README.md).
 
 Xtreme Tasker is a RuneLite plugin for playing Old School RuneScape with a progressive random task list built from Combat Achievements, Collection Log goals, and Achievement Diaries.
 
-The plugin adds an in-game overlay for rolling tasks, tracking completion, viewing tier progress, filtering the full task list, and syncing progress RuneLite can already see.
+The plugin adds an in game overlay for rolling tasks, tracking completion, viewing tier progress, filtering the full task list, and syncing progress RuneLite can already see.
 
 Want to see the plugin in action? Check out [@amtrollin](https://www.youtube.com/@AmTrollin/playlists)'s YouTube series, [Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H).
 
@@ -16,13 +16,13 @@ Want to see the plugin in action? Check out [@amtrollin](https://www.youtube.com
 
 The overlay has three main tabs:
 
-- `Current` shows your active task, tier progress, task details, prereqs, wiki access, and roll/complete actions.
-- `Tasks` shows the full task list for browsing, filtering, sorting, and manually editing completion.
-- `Help` contains rules, FAQ links, README access, and manual sync actions.
+- `Current` shows your active task, tier progress, task details, prereqs, wiki access, and context actions such as rolling, marking the current task complete, skipping when enabled, and undoing a recent completion.
+- `Tasks` shows the full task list for browsing, filtering, sorting, and reviewing task details.
+- `Help` contains rules, FAQ links, README access, and progress sync actions.
 
 Both the `Current` and `Tasks` tabs include a `[Keyboard hints]` control at the bottom of the panel. Click it to show the available keyboard shortcuts for that tab.
 
-The overlay can switch between full view and compact view from the corner toggle. Compact view keeps the current task, timer, roll/complete action, wiki link, and scrollable task details in a smaller panel. The last selected view is remembered when you reopen the overlay.
+The overlay can switch between full view and compact view from the corner toggle. Compact view keeps the current task, timer, wiki link, and scrollable task details in a smaller panel.
 
 ## Task List
 
@@ -64,45 +64,49 @@ When sorting by completion date or time spent, repeated task instances are shown
 
 Tasks come from the bundled `tasks.json` file and are grouped by tier.
 
-Combat Achievement tasks use OSRS Combat Achievement data. Collection Log tasks use Collection Log entries. Achievement Diary tasks use in-game achievement diary completion state. A few Collection Log-style progression tasks also use related account checks, such as level-99 skill requirements, where a task definition needs them.
+Combat Achievement tasks use OSRS Combat Achievement data. Collection Log tasks use Collection Log entries. Achievement Diary tasks use in game achievement diary completion state. A few Collection Log-style progression tasks also use related account checks, such as level-99 skill requirements, where a task definition needs them.
 
 Grandmaster Combat Achievement tasks are currently grouped into the Master tier for Xtreme Tasker progression.
 
 ## Task Data Updates
 
-Xtreme Tasker's bundled task list is loaded automatically on startup and checked again when account state loads after login. There is no manual task list reload button.
+Xtreme Tasker's bundled task list is loaded automatically on startup and checked again when account state loads after login. There is no task list reload button.
 
-When a task pack update adds tasks, Xtreme Tasker shows an in-game chat message and tracks those task IDs for the current session. Use the Tasks tab's `See New Tasks` control to toggle between newly added tasks and the normal task list.
+When a task pack update adds tasks, Xtreme Tasker shows an in game chat message and tracks those task IDs for the current session. Use the Tasks tab's `See New Tasks` control to toggle between newly added tasks and the normal task list.
 
 Task list updates do not affect account progress.
 
-## Manual Progress Sync
+## Progress Sync
 
-Xtreme Tasker does not play the game for you or complete actions automatically. Sync buttons only mark plugin tasks complete when RuneLite can already see the relevant account state.
+Xtreme Tasker does not play the game for you or complete actions automatically. Sync buttons only stage plugin task updates when RuneLite can already see the relevant account state. You review and apply those staged updates before tasks are marked complete.
 
-Completions marked by you are shown as marked in task details; completions added by `Sync CAs` or `Sync CLOGs+ADs` are shown as synced.
+Completions marked by you are shown as marked in task details. Completions applied from sync review are shown as synced.
 
 ### Combat Achievements
 
-`Sync CAs` checks completed Combat Achievements and marks matching Xtreme Tasker tasks complete.
+`Sync CAs` checks completed Combat Achievements and stages matching Xtreme Tasker tasks for review.
 
 ### Collection Logs and Achievement Diaries
 
-`Sync CLOGs+ADs` checks Collection Log items that RuneLite has cached and Achievement Diaries RuneLite can already see. After earning new Collection Log items, open your Collection Log in-game so RuneLite can refresh them before syncing. Achievement Diaries do not need the Collection Log cache.
+`Sync CLOGs+ADs` checks Collection Log items Xtreme Tasker/RuneLite has cached, Achievement Diaries RuneLite can already see, and supported skill-count requirements such as level-99 skillcape-style tasks. After earning new Collection Log items, open your Collection Log in game so the cache can refresh before syncing. Achievement Diaries do not need the Collection Log cache.
 
-Achievement Diary tasks show their diary region and tier in task details and sync from in-game diary completion state.
+Opening Collection Log pages in game lets Xtreme Tasker cache seen and obtained item slots for sync. The plugin also listens for supported Collection Log chat messages, including new collection-log item messages and relevant received-item messages while the Collection Log is open. Collection Log scans are batched so opening CLOG pages does not repeatedly rebuild sync state for every item slot.
 
-Some Collection Log tasks also use verification data such as level-99 skill counts.
+Achievement Diary tasks show their diary region, task master, and prereqs. They sync from in game diary completion state rather than Collection Log item drops.
+
+Some Collection Log-style tasks also use verification data such as level-99 skill counts.
 
 Repeated counted Collection Log tasks show total obtained progress in task details. When the displayed task is also your current task and needs more than one item, the same line includes current task progress, such as `total obtained: 14 | current task: 2/5`.
 
-For repeated counted Collection Log tasks, obtained items already applied to earlier completions are dimmed and crossed out. Obtained items not yet applied are shown in gold.
+For counted Collection Log tasks, task details show progress against the required count and check off obtained eligible items.
 
 ### Review Notes
 
-If a manual sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the `Help` > `Sync` section shows a review note with a timestamp. This note persists across sessions until you review it, ignore it, or a future sync replaces it.
+If sync finds new completions, the `Help` > `Sync` section shows an update review. Use `Update tasks` to choose which staged completions to apply, or ignore the review if you do not want to change anything.
 
-Use `Review` to open the mismatch list. From there you can select individual tasks, select all tasks, apply the changes, and confirm before anything is marked incomplete. Combat Achievement review rows can be clicked for a compact requirement popup. Repeated Collection Log rows can show the in-game count that sync saw.
+If sync finds tasks that are marked complete in Xtreme Tasker but not detected in game after sync, the `Help` > `Sync` section shows a mismatch review note with a timestamp. This note persists across sessions until you review it, ignore it, or a future sync replaces it.
+
+Use `Review` to open the mismatch list. From there you can select individual tasks, select all tasks, apply the changes, and confirm before anything is marked incomplete. Combat Achievement review rows can be clicked for a compact requirement popup. Repeated Collection Log rows can show the in game count that sync saw. Sequential Collection Log tasks are guarded so an earlier step cannot be marked incomplete while a later completed step remains selected.
 
 Use `Ignore` when you do not want to change anything. Ignoring only clears the current note; if a future sync still finds mismatches, the note will appear again.
 
@@ -110,7 +114,7 @@ For Collection Log reviews, item mismatch checks depend on RuneLite's cached Col
 
 ## Progress Saves and Backups
 
-Progress is saved locally through RuneLite's config system and stored per character. The save key combines RuneLite's account hash with the character's display name, so characters that share a launcher profile or account hash do not overwrite each other.
+Progress is saved locally per character in JSON state files under `~/.runelite/xtreme-tasker-states/` and mirrored into RuneLite config for compatibility. The save key combines RuneLite's account hash with the character's display name, so characters that share a launcher profile or account hash do not overwrite each other.
 
 Saved progress includes:
 
@@ -119,20 +123,30 @@ Saved progress includes:
 - Manually completed task IDs.
 - Synced completed task IDs.
 - Current task ID.
+- Undoable completed task ID and skipped task count.
+- Current task Collection Log baseline when needed for counted CLOG progress.
 - Completion timestamps.
 - Time spent on tasks and repeated task instances.
+- Last sync results, staged sync completion candidates, and sync mismatch review state.
+- Cached Collection Log item IDs and acquisition order.
 - Last seen task pack data.
 - Retired task IDs that no longer exist in the bundled task pack.
 
-The plugin keeps three rolling local backups before overwriting recovery-relevant save data. Backup keys are stored per scoped account key:
+The plugin keeps three rolling local backups before overwriting recovery-relevant save data. Backup files are stored beside the primary JSON state file:
+
+- `<accountKey>.json.backup_1`
+- `<accountKey>.json.backup_2`
+- `<accountKey>.json.backup_3`
+
+Mirrored backup keys are also written to RuneLite config for compatibility:
 
 - `xtremetasker.state_<accountHash>_<characterNameKey>_backup_1`
 - `xtremetasker.state_<accountHash>_<characterNameKey>_backup_2`
 - `xtremetasker.state_<accountHash>_<characterNameKey>_backup_3`
 
-If the primary save is missing or corrupt, Xtreme Tasker tries to restore from the newest valid backup and shows an in-game chat message when recovery happens.
+If the primary save is missing or corrupt, Xtreme Tasker tries to restore from the newest valid backup and shows an in game chat message when recovery happens.
 
-Xtreme Tasker also refuses suspicious saves that look like they would wipe or roll back a large number of completed tasks, while still allowing intentional manual incomplete actions.
+Xtreme Tasker also refuses suspicious saves that look like they would wipe or roll back a large number of completed tasks.
 
 ## Account Switching
 
@@ -142,19 +156,31 @@ This protects account switching, world hopping, and relaunches from accidentally
 
 ## Recovering Progress Manually
 
-RuneLite profile config files usually live under:
+Primary Xtreme Tasker state files usually live under:
+
+```text
+~/.runelite/xtreme-tasker-states/
+```
+
+Mirrored RuneLite profile config files usually live under:
 
 ```text
 ~/.runelite/profiles2/
 ```
 
-Search for Xtreme Tasker saves with:
+Search primary state files with:
+
+```bash
+ls ~/.runelite/xtreme-tasker-states
+```
+
+Search mirrored config saves with:
 
 ```bash
 grep -R "xtremetasker.state_" ~/.runelite/profiles2
 ```
 
-Before editing these files, close RuneLite and make a copy of the profile `.properties` file.
+Before editing these files, close RuneLite and make a copy of the JSON state file or profile `.properties` file.
 
 Useful JSON fields for recovery:
 
@@ -173,6 +199,8 @@ Plugin config includes:
 - `Show task HUD`: show or hide the small current-task HUD.
 - `Roll source`: roll all tasks, only Combat Achievement tasks, or only Collection Log and Achievement Diary tasks.
 - `Condense repeated tasks`: show repeated task rolls as one grouped row with per-instance completion controls.
+- `Enable task skipping`: show a Skip button on the Current tab. Skipping rerolls your current task and increments your skipped task count.
+- `Show sync test tools`: developer/test-only review staging controls.
 
 Compact/full overlay view is controlled from the overlay itself rather than plugin config.
 
@@ -180,7 +208,7 @@ Compact/full overlay view is controlled from the overlay itself rather than plug
 
 Xtreme Tasker follows the official Tasker ruleset and adds Xtreme Tasker-specific guidance for the expanded task list.
 
-The in-game Help tab links to:
+The in game Help tab links to:
 
 - TaskerFAQ for official Tasker rules.
 - The main README for quick Xtreme Tasker notes.
@@ -193,7 +221,7 @@ Training must be done through Slayer, with any Slayer master or masters of your 
 
 ## Privacy
 
-Xtreme Tasker stores progress locally in RuneLite config. It does not send account progress, task progress, or gameplay data to an external service.
+Xtreme Tasker stores progress locally in JSON state files under your RuneLite folder and mirrors progress into RuneLite config for compatibility. It does not send account progress, task progress, or gameplay data to an external service.
 
 Sync features use account state already visible to RuneLite, such as Combat Achievement data, cached Collection Log entries, and Achievement Diary state. They do not upload that data anywhere.
 
