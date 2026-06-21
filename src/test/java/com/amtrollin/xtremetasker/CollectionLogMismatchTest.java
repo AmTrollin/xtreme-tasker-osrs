@@ -42,6 +42,27 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void collectionLogCacheBatchCoalescesNewObtainedItemNotifications()
+    {
+        CollectionLogService collectionLogService = new CollectionLogService();
+        AtomicInteger changes = new AtomicInteger();
+        collectionLogService.setCacheChangeListener(changes::incrementAndGet);
+
+        collectionLogService.beginCacheChangeBatch();
+        collectionLogService.storeItem(10878);
+        collectionLogService.storeItem(10879);
+        collectionLogService.storeItem(10879);
+
+        assertEquals("batched collection-log scans should not notify per item", 0, changes.get());
+
+        collectionLogService.endCacheChangeBatch();
+
+        assertEquals("batched collection-log scans should notify once when changed", 1, changes.get());
+        assertTrue(collectionLogService.isItemObtained(10878));
+        assertTrue(collectionLogService.isItemObtained(10879));
+    }
+
+    @Test
     public void collectionLogRequirementNotFoundBySyncIsMarkedAsMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

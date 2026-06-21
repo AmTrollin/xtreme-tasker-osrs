@@ -4619,7 +4619,7 @@ public class XtremeTaskerOverlay extends Overlay {
             int iconSize)
     {
         Rectangle iconBounds = new Rectangle(x, y + Math.max(0, (fm.getHeight() - iconSize) / 2), iconSize, iconSize);
-        BufferedImage image = item.getItemId() > 0 ? plugin.getItemImage(item.getItemId()) : null;
+        BufferedImage image = item.getItemId() > 0 ? getCachedItemImage(item.getItemId()) : null;
         if (image != null)
         {
             g.drawImage(image, iconBounds.x, iconBounds.y, iconBounds.width, iconBounds.height, null);

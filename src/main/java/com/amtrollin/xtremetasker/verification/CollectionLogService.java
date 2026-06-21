@@ -103,6 +103,8 @@ public class CollectionLogService
     private int pendingAncientPageDropCountSinceLastSync = 0;
     private int pendingMedallionFragmentDropCountSinceLastSync = 0;
     private Runnable cacheChangeListener;
+    private int cacheChangeBatchDepth = 0;
+    private boolean cacheChangePending = false;
 
     public void setCacheChangeListener(Runnable cacheChangeListener)
     {
@@ -265,6 +267,27 @@ public class CollectionLogService
         {
             seenItems.add(itemId);
             seenItems.add(canonicalCollectionLogItemId(itemId));
+        }
+    }
+
+    public void beginCacheChangeBatch()
+    {
+        cacheChangeBatchDepth++;
+    }
+
+    public void endCacheChangeBatch()
+    {
+        if (cacheChangeBatchDepth <= 0)
+        {
+            cacheChangeBatchDepth = 0;
+            return;
+        }
+
+        cacheChangeBatchDepth--;
+        if (cacheChangeBatchDepth == 0 && cacheChangePending)
+        {
+            cacheChangePending = false;
+            notifyCacheChanged();
         }
     }
 
@@ -436,6 +459,8 @@ public class CollectionLogService
         nextObtainedItemOrder = 1L;
         pendingAncientPageDropCountSinceLastSync = 0;
         pendingMedallionFragmentDropCountSinceLastSync = 0;
+        cacheChangeBatchDepth = 0;
+        cacheChangePending = false;
     }
 
     public long getObtainedItemOrder(int itemId)
@@ -490,6 +515,12 @@ public class CollectionLogService
 
     private void notifyCacheChanged()
     {
+        if (cacheChangeBatchDepth > 0)
+        {
+            cacheChangePending = true;
+            return;
+        }
+
         if (cacheChangeListener != null)
         {
             cacheChangeListener.run();

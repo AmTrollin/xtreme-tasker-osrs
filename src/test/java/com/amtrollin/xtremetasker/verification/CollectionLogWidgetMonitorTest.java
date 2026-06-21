@@ -20,7 +20,8 @@ public class CollectionLogWidgetMonitorTest
     {
         FakeClient client = new FakeClient();
         CapturingClientThread clientThread = new CapturingClientThread();
-        CollectionLogWidgetMonitor monitor = newMonitor(client, clientThread);
+        FakeCollectionLogService collectionLogService = new FakeCollectionLogService();
+        CollectionLogWidgetMonitor monitor = newMonitor(client, clientThread, collectionLogService);
 
         monitor.onScriptPostFired(new ScriptPostFired(7797));
         monitor.onScriptPostFired(new ScriptPostFired(7797));
@@ -34,11 +35,31 @@ public class CollectionLogWidgetMonitorTest
         assertEquals(2240, client.lastScriptId);
     }
 
-    private static CollectionLogWidgetMonitor newMonitor(FakeClient client, ClientThread clientThread) throws Exception
+    @Test
+    public void collectionLogAutoScanRunsInsideCacheChangeBatch() throws Exception
+    {
+        FakeCollectionLogService collectionLogService = new FakeCollectionLogService();
+        FakeClient client = new FakeClient(collectionLogService);
+        CapturingClientThread clientThread = new CapturingClientThread();
+        CollectionLogWidgetMonitor monitor = newMonitor(client, clientThread, collectionLogService);
+
+        monitor.onScriptPostFired(new ScriptPostFired(7797));
+        clientThread.runNext();
+
+        assertEquals("auto-scan should start one collection-log cache batch", 1, collectionLogService.beginCount);
+        assertEquals("auto-scan should close the collection-log cache batch", 1, collectionLogService.endCount);
+        assertEquals("runScript should execute while the cache batch is open", 1, client.runScriptInsideBatchCount);
+    }
+
+    private static CollectionLogWidgetMonitor newMonitor(
+            FakeClient client,
+            ClientThread clientThread,
+            CollectionLogService collectionLogService) throws Exception
     {
         CollectionLogWidgetMonitor monitor = new CollectionLogWidgetMonitor();
         setField(monitor, "client", client.proxy());
         setField(monitor, "clientThread", clientThread);
+        setField(monitor, "collectionLogService", collectionLogService);
         return monitor;
     }
 
@@ -72,8 +93,20 @@ public class CollectionLogWidgetMonitorTest
 
     private static final class FakeClient
     {
+        private final FakeCollectionLogService collectionLogService;
         private int runScriptCount;
+        private int runScriptInsideBatchCount;
         private int lastScriptId;
+
+        FakeClient()
+        {
+            this(null);
+        }
+
+        FakeClient(FakeCollectionLogService collectionLogService)
+        {
+            this.collectionLogService = collectionLogService;
+        }
 
         Client proxy()
         {
@@ -91,6 +124,10 @@ public class CollectionLogWidgetMonitorTest
                 runScriptCount++;
                 Object[] scriptArgs = (Object[]) args[0];
                 lastScriptId = (int) scriptArgs[0];
+                if (collectionLogService != null && collectionLogService.batchDepth > 0)
+                {
+                    runScriptInsideBatchCount++;
+                }
                 return null;
             }
 
@@ -137,6 +174,32 @@ public class CollectionLogWidgetMonitorTest
                 return 0d;
             }
             return null;
+        }
+    }
+
+    private static final class FakeCollectionLogService extends CollectionLogService
+    {
+        private int beginCount;
+        private int endCount;
+        private int batchDepth;
+
+        @Override
+        public void beginCacheChangeBatch()
+        {
+            beginCount++;
+            batchDepth++;
+            super.beginCacheChangeBatch();
+        }
+
+        @Override
+        public void endCacheChangeBatch()
+        {
+            if (batchDepth > 0)
+            {
+                endCount++;
+                batchDepth--;
+            }
+            super.endCacheChangeBatch();
         }
     }
 }

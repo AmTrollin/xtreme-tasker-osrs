@@ -79,6 +79,8 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
+        collectionLogService.endCacheChangeBatch();
+
         if (isAutoScanQueued || isAutoScanInProgress)
         {
             return;
@@ -111,12 +113,26 @@ public class CollectionLogWidgetMonitor
 
         isAutoScanInProgress = true;
         tickClogScriptFired = client.getTickCount();
-        client.runScript(CLOG_AUTO_SCAN_SCRIPT);
+        collectionLogService.beginCacheChangeBatch();
+        try
+        {
+            client.runScript(CLOG_AUTO_SCAN_SCRIPT);
+        }
+        finally
+        {
+            collectionLogService.endCacheChangeBatch();
+        }
     }
 
     @Subscribe
     public void onScriptPreFired(ScriptPreFired event)
     {
+        if (event.getScriptId() == CLOG_SETUP_SCRIPT)
+        {
+            collectionLogService.beginCacheChangeBatch();
+            return;
+        }
+
         if (event.getScriptId() != CLOG_ITEM_DRAW_SCRIPT)
         {
             return;
