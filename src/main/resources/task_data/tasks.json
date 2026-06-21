@@ -2248,7 +2248,7 @@
         ],
         "count": 1
       },
-      "displayItemId": 9470,
+      "displayItemId": 6912,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gnome_scarf_detail.png/320px-Gnome_scarf_detail.png",
       "version": 1
@@ -3354,7 +3354,7 @@
         ],
         "count": 2
       },
-      "displayItemId": 4119,
+      "displayItemId": 4121,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -3378,7 +3378,7 @@
         ],
         "count": 3
       },
-      "displayItemId": 4119,
+      "displayItemId": 4123,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -3402,7 +3402,7 @@
         ],
         "count": 4
       },
-      "displayItemId": 4119,
+      "displayItemId": 4125,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -3426,7 +3426,7 @@
         ],
         "count": 5
       },
-      "displayItemId": 4119,
+      "displayItemId": 4127,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -10091,7 +10091,7 @@
         ],
         "count": 2
       },
-      "displayItemId": 4129,
+      "displayItemId": 4131,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Adamant_boots_detail.png/320px-Adamant_boots_detail.png",
       "version": 1
@@ -12264,13 +12264,13 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31746,
+          31744,
           31745,
-          31744
+          31746
         ],
         "count": 1
       },
-      "displayItemId": 31746,
+      "displayItemId": 31744,
       "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
@@ -12286,13 +12286,13 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31746,
+          31744,
           31745,
-          31744
+          31746
         ],
         "count": 2
       },
-      "displayItemId": 31746,
+      "displayItemId": 31745,
       "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement. No toad is needed on the green pillar next to the supply boat, as Jubblys spawn there by default.",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
@@ -12308,9 +12308,9 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31746,
+          31744,
           31745,
-          31744
+          31746
         ],
         "count": 3
       },
@@ -21225,7 +21225,7 @@
     },
     {
       "id": "collection_log_hard_get-the-next-reward-from-the-gwyneth-gli_001_7ed74c6607",
-      "name": "Get the next reward from The Gwyneth Glide",
+      "name": "Get the next reward from The Gwenith Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "72 Sailing; 70 Construction",
@@ -21234,20 +21234,20 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31758,
+          31756,
           31757,
-          31756
+          31758
         ],
         "count": 1
       },
-      "displayItemId": 31758,
+      "displayItemId": 31756,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_hard_get-the-next-reward-from-the-gwyneth-gli_002_5a8bb6db64",
-      "name": "Get the next reward from The Gwyneth Glide",
+      "name": "Get the next reward from The Gwenith Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "72 Sailing; 70 Construction",
@@ -21256,20 +21256,20 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31758,
+          31756,
           31757,
-          31756
+          31758
         ],
         "count": 2
       },
-      "displayItemId": 31758,
+      "displayItemId": 31757,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_hard_get-the-next-reward-from-the-gwyneth-gli_003_1bd0961abd",
-      "name": "Get the next reward from The Gwyneth Glide",
+      "name": "Get the next reward from The Gwenith Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "72 Sailing; 70 Construction",
@@ -21278,9 +21278,9 @@
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          31758,
+          31756,
           31757,
-          31756
+          31758
         ],
         "count": 3
       },
