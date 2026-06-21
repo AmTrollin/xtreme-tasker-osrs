@@ -667,22 +667,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 e.consume();
                 return e;
             }
-            if (a.rulesLayout().syncCaFoundIgnoreButtonBounds.contains(p)) {
-                a.plugin().dismissSyncCompletionCandidateReview(TaskSource.COMBAT_ACHIEVEMENT);
-                a.closeSyncMismatchReview();
-                e.consume();
-                return e;
-            }
             if (a.rulesLayout().syncClogFoundReviewButtonBounds.contains(p)) {
                 a.openSyncCompletionCandidateReview(TaskSource.COLLECTION_LOG);
                 syncMismatchReviewOpenedAt = e.getWhen();
                 rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncClogFoundIgnoreButtonBounds.contains(p)) {
-                a.plugin().dismissSyncCompletionCandidateReview(TaskSource.COLLECTION_LOG);
-                a.closeSyncMismatchReview();
                 e.consume();
                 return e;
             }
@@ -1541,9 +1529,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().syncCaMarkedTasksToggleBounds.contains(p)
                         || a.rulesLayout().syncClogMarkedTasksToggleBounds.contains(p)
                         || a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncCaFoundIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncClogFoundReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncClogFoundIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncCaReviewButtonBounds.contains(p)
                         || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncClogReviewButtonBounds.contains(p)

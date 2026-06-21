@@ -395,6 +395,36 @@ public class CollectionLogService
         reset();
     }
 
+    public void removeCachedItemIds(Set<Integer> itemIds)
+    {
+        if (itemIds == null || itemIds.isEmpty())
+        {
+            return;
+        }
+
+        boolean changed = false;
+        for (Integer itemId : itemIds)
+        {
+            if (itemId == null || itemId <= 0)
+            {
+                continue;
+            }
+
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            changed |= obtainedItems.remove(itemId);
+            changed |= obtainedItems.remove(canonicalItemId);
+            changed |= seenItems.remove(itemId);
+            changed |= seenItems.remove(canonicalItemId);
+            changed |= obtainedItemOrder.remove(itemId) != null;
+            changed |= obtainedItemOrder.remove(canonicalItemId) != null;
+        }
+
+        if (changed)
+        {
+            notifyCacheChanged();
+        }
+    }
+
     private void reset()
     {
         obtainedItems.clear();

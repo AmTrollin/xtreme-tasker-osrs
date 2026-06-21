@@ -8909,7 +8909,7 @@
     },
     {
       "id": "collection_log_medium_upgrade-the-mta-wand-once_001_6f613bc509",
-      "name": "Upgrade to Master MTA wand",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "33 Magic",

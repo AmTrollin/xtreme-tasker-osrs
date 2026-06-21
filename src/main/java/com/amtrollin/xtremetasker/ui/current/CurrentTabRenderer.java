@@ -37,6 +37,10 @@ public final class CurrentTabRenderer
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
+    private static final int TIER_SECTION_ICON_GAP = 5;
+    private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
+    private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
+    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
     private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
@@ -824,7 +828,11 @@ public final class CurrentTabRenderer
             {
                 totalPx += rowHeight;
             }
-            if (requirementPreview.showItemList())
+            if (requirementPreview.showTierSections())
+            {
+                totalPx += measureCollectionLogTierSections(requirementPreview, fm, maxW);
+            }
+            else if (requirementPreview.showItemList())
             {
                 totalPx += CollectionLogIconGridRenderer.measureHeight(
                         requirementPreview.getItems().size(),
@@ -1254,9 +1262,25 @@ public final class CurrentTabRenderer
         {
             drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
             y += rowHeight;
+            if (requirementPreview.showTierSections())
+            {
+                y += TIER_SECTION_ICON_GAP;
+            }
         }
 
-        if (requirementPreview.showItemList())
+        if (requirementPreview.showTierSections())
+        {
+            y = drawCollectionLogTierSections(
+                    g,
+                    fm,
+                    requirementPreview,
+                    x,
+                    y,
+                    maxWidth,
+                    collectionLogItemImageProvider,
+                    mousePoint);
+        }
+        else if (requirementPreview.showItemList())
         {
             y = CollectionLogIconGridRenderer.render(
                     g,
@@ -1308,6 +1332,129 @@ public final class CurrentTabRenderer
                 && title.toLowerCase().contains("fragments to assemble")
                 ? MEDALLION_ASSEMBLY_SECTION_GAP
                 : SECONDARY_SECTION_GAP;
+    }
+
+    private int measureCollectionLogTierSections(CollectionLogRequirementPreview requirementPreview, FontMetrics fm, int maxWidth)
+    {
+        if (requirementPreview == null || !requirementPreview.showTierSections())
+        {
+            return 0;
+        }
+
+        int total = 0;
+        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
+        if (current != null)
+        {
+            total += CollectionLogIconGridRenderer.measureHeight(current.items().size(), maxWidth, current.iconColumns());
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> otherSections = requirementPreview.otherTierSectionsHardestFirst();
+        if (!otherSections.isEmpty())
+        {
+            total += SECONDARY_SECTION_GAP;
+            total += rowHeight;
+            total += rowHeight * wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth).size();
+        }
+        for (int i = 0; i < otherSections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = otherSections.get(i);
+            if (i > 0)
+            {
+                total += SECONDARY_SECTION_GAP;
+            }
+            total += TIER_SECTION_LABEL_TOP_GAP;
+            total += rowHeight;
+            total += TIER_SECTION_ICON_GAP;
+            total += CollectionLogIconGridRenderer.measureHeight(section.items().size(), maxWidth, section.iconColumns());
+        }
+        return total;
+    }
+
+    private int drawCollectionLogTierSections(
+            Graphics2D g,
+            FontMetrics fm,
+            CollectionLogRequirementPreview requirementPreview,
+            int x,
+            int y,
+            int maxWidth,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
+            java.awt.Point mousePoint)
+    {
+        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
+        if (current != null)
+        {
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    current.items(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    g.getClipBounds(),
+                    uiText,
+                    uiTextDim,
+                    edgeLight,
+                    edgeDark,
+                    current.iconColumns());
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> sections = requirementPreview.otherTierSectionsHardestFirst();
+        if (!sections.isEmpty())
+        {
+            y += SECONDARY_SECTION_GAP;
+            g.setColor(uiTextDim);
+            g.drawString(OTHER_SEQUENCE_CLOGS_DIVIDER, x, y);
+            y += rowHeight;
+            for (String line : wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
+            {
+                g.drawString(truncateToWidth(line, fm, maxWidth), x, y);
+                y += rowHeight;
+            }
+        }
+        for (int i = 0; i < sections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = sections.get(i);
+            if (i > 0)
+            {
+                y += SECONDARY_SECTION_GAP;
+            }
+            y += TIER_SECTION_LABEL_TOP_GAP;
+
+            drawCollectionLogTierLabel(g, fm, section, x, y);
+            y += rowHeight;
+            y += TIER_SECTION_ICON_GAP;
+            Composite oldComposite = g.getComposite();
+            if (!section.currentTier())
+            {
+                g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+            }
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    section.items(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    g.getClipBounds(),
+                    uiText,
+                    uiTextDim,
+                    edgeLight,
+                    edgeDark,
+                    section.iconColumns());
+            g.setComposite(oldComposite);
+        }
+        return y;
+    }
+
+    private void drawCollectionLogTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline)
+    {
+        String text = section.tier() == null ? "TIER" : tierLabel(section.tier()).toUpperCase();
+        g.setColor(uiTextDim);
+        g.drawString(truncateToWidth(text, fm, Math.max(0, 160)), x, baseline);
     }
 
     private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)

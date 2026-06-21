@@ -101,6 +101,11 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT = 8;
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int COMPACT_MEDALLION_ASSEMBLY_TITLE_GAP = 6;
+    private static final int COMPACT_SECONDARY_SECTION_GAP = 6;
+    private static final int TIER_SECTION_ICON_GAP = 5;
+    private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
+    private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
+    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final int TASK_RESOLVE_TOGGLE_SIZE = 18;
     private static final int TASK_RESOLVE_TOGGLE_GAP = 6;
     private static final long SLOW_PREVIEW_LOG_THRESHOLD_NANOS = 8_000_000L;
@@ -555,6 +560,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|applyAll=" + completedInstanceCanApplyAll
                 + "|items=" + canonicalItemIds
                 + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|pendingIncomplete=" + pendingTaskResolveIncompleteSignature()
                 + "|clState=" + plugin.getCollectionLogStateVersion()
                 + "|current=" + safeTaskId(current)
                 + "|baseline=" + baselineCount
@@ -579,6 +585,27 @@ public class XtremeTaskerOverlay extends Overlay {
     private static String safeTaskId(XtremeTask task)
     {
         return task == null || task.getId() == null ? "" : task.getId();
+    }
+
+    private String pendingTaskResolveIncompleteSignature()
+    {
+        if (selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            return "";
+        }
+        List<String> ids = new ArrayList<>(selectedTaskResolveIncompleteTaskIds);
+        Collections.sort(ids);
+        return String.join(",", ids);
+    }
+
+    private boolean isTaskCompletedForCollectionLogPreview(XtremeTask task)
+    {
+        if (task == null || !plugin.isTaskCompleted(task))
+        {
+            return false;
+        }
+        String id = task.getId();
+        return id == null || !selectedTaskResolveIncompleteTaskIds.contains(id);
     }
 
     private void logSlowPreviewBuild(long startNanos, XtremeTask task, CollectionLogRequirementPreview preview)
@@ -683,11 +710,17 @@ public class XtremeTaskerOverlay extends Overlay {
         List<CollectionLogRequirementItem> items = hasCompletionItem
                 ? distinctCollectionLogRequirementItems(itemIds, statusByItemId)
                 : coalescedCollectionLogRequirementItems(itemIds, statusByItemId);
+        List<CollectionLogRequirementPreview.TierSection> sequenceTierSections = sequenceTierSections(task);
+        boolean showSequenceTierSections = !sequenceTierSections.isEmpty();
         boolean sameNameFamily = !hasCompletionItem && coalescedItemNameCount(itemIds) == 1;
         boolean allRequiredItemsObtained = totalObtainedCount >= requiredCount;
         List<CollectionLogRequirementItem> secondaryItems = completionRequirementItems(verification, allRequiredItemsObtained);
-        String sequenceSummaryText = sequencePreviewSummaryText(task, itemIds);
-        String summaryText = singleEligibleItem
+        String sequenceSummaryText = showSequenceTierSections
+                ? fullSequencePreviewSummaryText(task)
+                : sequencePreviewSummaryText(task, itemIds);
+        String summaryText = showSequenceTierSections
+            ? sequenceSummaryText
+            : singleEligibleItem
             ? ""
             : !sequenceSummaryText.isEmpty()
             ? sequenceSummaryText
@@ -706,7 +739,9 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             summaryText = summaryText.isEmpty() ? pendingMedallionFragmentSummary : summaryText + "  " + pendingMedallionFragmentSummary;
         }
-        String titleText = requiredCount >= itemIds.length
+        String titleText = showSequenceTierSections
+                ? "Eligible Collection Log items"
+                : requiredCount >= itemIds.length
                 ? "Needed Collection Log items"
                 : "";
         String secondaryTitleText = secondaryItems.isEmpty()
@@ -716,13 +751,14 @@ public class XtremeTaskerOverlay extends Overlay {
                 summaryText,
                 titleText,
                 !summaryText.isEmpty() && (!singleEligibleItem && !hasCompletionItem && (sameNameFamily || repeatedDistinctPool)
-                        || !pendingMedallionFragmentSummary.isEmpty()),
-                true,
+                        || !pendingMedallionFragmentSummary.isEmpty() || showSequenceTierSections),
+                !showSequenceTierSections,
                 items,
                 8,
                 secondaryTitleText,
                 secondaryItems,
-                1);
+                1,
+                sequenceTierSections);
     }
 
     private List<CollectionLogRequirementItem> distinctCollectionLogRequirementItems(
@@ -1000,6 +1036,204 @@ public class XtremeTaskerOverlay extends Overlay {
         return "Next: " + itemName;
     }
 
+    private String fullSequencePreviewSummaryText(XtremeTask task)
+    {
+        Integer itemId = fullSequencePreviewFocusItemId(task);
+        if (itemId == null || itemId <= 0)
+        {
+            return "";
+        }
+
+        String itemName = plugin.getItemName(itemId);
+        if (itemName == null || itemName.trim().isEmpty())
+        {
+            itemName = "item " + itemId;
+        }
+        return "Next: " + itemName;
+    }
+
+    private Integer fullSequencePreviewFocusItemId(XtremeTask task)
+    {
+        List<XtremeTask> sequence = fullDisplaySequenceTasks(task);
+        if (sequence.isEmpty())
+        {
+            return null;
+        }
+
+        for (XtremeTask sequenceTask : sequence)
+        {
+            Integer itemId = sequenceItemId(sequenceTask);
+            if (itemId == null || itemId <= 0)
+            {
+                continue;
+            }
+
+            if (!isTaskCompletedForCollectionLogPreview(sequenceTask) && !plugin.isCollectionLogItemObtained(itemId))
+            {
+                return itemId;
+            }
+        }
+        return null;
+    }
+
+    private List<CollectionLogRequirementPreview.TierSection> sequenceTierSections(XtremeTask task)
+    {
+        List<XtremeTask> sequence = fullDisplaySequenceTasks(task);
+        if (sequence.isEmpty())
+        {
+            return List.of();
+        }
+
+        LinkedHashMap<TaskTier, List<CollectionLogRequirementItem>> itemsByTier = new LinkedHashMap<>();
+        for (XtremeTask sequenceTask : sequence)
+        {
+            Integer itemId = sequenceItemId(sequenceTask);
+            if (itemId == null || itemId <= 0)
+            {
+                continue;
+            }
+
+            CollectionLogRequirementItem.Status status = isTaskCompletedForCollectionLogPreview(sequenceTask)
+                    ? CollectionLogRequirementItem.Status.APPLIED
+                    : plugin.isCollectionLogItemObtained(itemId)
+                    ? CollectionLogRequirementItem.Status.OBTAINED
+                    : CollectionLogRequirementItem.Status.MISSING;
+            itemsByTier.computeIfAbsent(sequenceTask.getTier(), ignored -> new ArrayList<>())
+                    .add(new CollectionLogRequirementItem(
+                            itemId,
+                            collectionLogRequirementItemName(itemId),
+                            status,
+                            collectionLogRequirementBadgeText(itemId)));
+        }
+
+        if (itemsByTier.size() <= 1)
+        {
+            return List.of();
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> sections = new ArrayList<>();
+        TaskTier workingTier = plugin.getCurrentTier();
+        for (Map.Entry<TaskTier, List<CollectionLogRequirementItem>> entry : itemsByTier.entrySet())
+        {
+            if (entry.getValue().isEmpty())
+            {
+                continue;
+            }
+            sections.add(new CollectionLogRequirementPreview.TierSection(
+                    entry.getKey(),
+                    Objects.equals(entry.getKey(), task.getTier()),
+                    Objects.equals(entry.getKey(), workingTier),
+                    entry.getValue(),
+                    8));
+        }
+        return sections;
+    }
+
+    private List<XtremeTask> fullDisplaySequenceTasks(XtremeTask task)
+    {
+        String familyKey = displaySequenceFamilyKey(task);
+        if (familyKey.isEmpty())
+        {
+            return List.of();
+        }
+
+        String cacheKey = plugin.getLoadedPackVersion() + "|full-sequence|" + familyKey;
+        List<XtremeTask> cached = collectionLogSequenceCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        List<XtremeTask> sequence = new ArrayList<>();
+        int sourceIndex = 0;
+        Map<String, Integer> originalIndexById = new HashMap<>();
+        for (XtremeTask candidate : plugin.getDummyTasks())
+        {
+            if (candidate != null && candidate.getId() != null)
+            {
+                originalIndexById.putIfAbsent(candidate.getId(), sourceIndex);
+            }
+            sourceIndex++;
+
+            if (candidate == null
+                    || candidate.getSource() != TaskSource.COLLECTION_LOG
+                    || !familyKey.equals(displaySequenceFamilyKey(candidate))
+                    || sequenceItemId(candidate) == null)
+            {
+                continue;
+            }
+            sequence.add(candidate);
+        }
+
+        sequence.sort(Comparator
+                .comparingInt((XtremeTask candidate) -> sequenceItemSortIndex(sequenceItemId(candidate)))
+                .thenComparingInt(candidate -> originalIndexById.getOrDefault(candidate.getId(), Integer.MAX_VALUE)));
+        List<XtremeTask> immutable = Collections.unmodifiableList(sequence);
+        collectionLogSequenceCache.put(cacheKey, immutable);
+        return immutable;
+    }
+
+    private String displaySequenceFamilyKey(XtremeTask task)
+    {
+        String normalized = task == null || task.getName() == null
+                ? ""
+                : task.getName().trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty() || !isDisplaySequenceTaskName(normalized))
+        {
+            return "";
+        }
+        if (normalized.contains("metal boots"))
+        {
+            return "metal-boots";
+        }
+        if (normalized.contains("mta wand") || normalized.contains("magic training arena wand"))
+        {
+            return "mta-wand";
+        }
+        return normalized;
+    }
+
+    private Integer sequenceItemId(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || verification.getCount() == null
+                || verification.getCount() <= 0)
+        {
+            return null;
+        }
+
+        int[] itemIds = verification.getItemIds();
+        int index = verification.getCount() - 1;
+        if (itemIds == null || index < 0 || index >= itemIds.length)
+        {
+            return null;
+        }
+        return itemIds[index];
+    }
+
+    private int sequenceItemSortIndex(Integer itemId)
+    {
+        if (itemId == null)
+        {
+            return Integer.MAX_VALUE;
+        }
+
+        int[] knownOrder = {
+                4119, 4121, 4123, 4125, 4127, 4129, 4131,
+                6908, 6910, 6912, 6914
+        };
+        for (int i = 0; i < knownOrder.length; i++)
+        {
+            if (knownOrder[i] == itemId)
+            {
+                return i;
+            }
+        }
+        return 1000 + itemId;
+    }
+
     private Integer sequencePreviewFocusItemId(XtremeTask task)
     {
         TaskVerification verification = task == null ? null : task.getVerification();
@@ -1036,7 +1270,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int completed = 0;
         for (int i = 0; i < itemIds.length; i++)
         {
-            boolean taskComplete = i < sequence.size() && plugin.isTaskCompleted(sequence.get(i));
+            boolean taskComplete = i < sequence.size() && isTaskCompletedForCollectionLogPreview(sequence.get(i));
             boolean itemObtained = plugin.isCollectionLogItemObtained(itemIds[i]);
             if (!taskComplete && !itemObtained)
             {
@@ -1064,7 +1298,7 @@ public class XtremeTaskerOverlay extends Overlay {
         for (int i = 0; i < itemIds.length && i < sequence.size(); i++)
         {
             XtremeTask sequenceTask = sequence.get(i);
-            if (sequenceTask != null && plugin.isTaskCompleted(sequenceTask))
+            if (sequenceTask != null && isTaskCompletedForCollectionLogPreview(sequenceTask))
             {
                 statusByItemId.put(itemIds[i], CollectionLogRequirementItem.Status.APPLIED);
             }
@@ -1352,7 +1586,7 @@ public class XtremeTaskerOverlay extends Overlay {
         for (int i = 0; i < sequence.size(); i++)
         {
             XtremeTask groupedTask = sequence.get(i);
-            if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
+            if (groupedTask != null && isTaskCompletedForCollectionLogPreview(groupedTask))
             {
                 completedCount++;
             }
@@ -1364,9 +1598,9 @@ public class XtremeTaskerOverlay extends Overlay {
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
         int availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
 
-        boolean exactInstanceCompleted = plugin.isTaskCompleted(task);
+        boolean exactInstanceCompleted = isTaskCompletedForCollectionLogPreview(task);
         if ((completedInstanceCanApplyAll && exactInstanceCompleted)
-                || (plugin.isTaskCompleted(task) && isTaskGroupFullyCompleted(task)))
+                || (isTaskCompletedForCollectionLogPreview(task) && isTaskGroupFullyCompleted(task)))
         {
             return new RepeatedCollectionLogRequirementState(
                     Math.max(0, totalObtainedCount),
@@ -1410,12 +1644,12 @@ public class XtremeTaskerOverlay extends Overlay {
         List<XtremeTask> group = plugin.getTaskGroupInstances(task);
         if (group == null || group.isEmpty())
         {
-            return plugin.isTaskCompleted(task);
+            return isTaskCompletedForCollectionLogPreview(task);
         }
 
         for (XtremeTask groupedTask : group)
         {
-            if (groupedTask == null || !plugin.isTaskCompleted(groupedTask))
+            if (groupedTask == null || !isTaskCompletedForCollectionLogPreview(groupedTask))
             {
                 return false;
             }
@@ -1431,7 +1665,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 || current == null
                 || current.getId() == null
                 || !Objects.equals(task.getId(), current.getId())
-                || plugin.isTaskCompleted(current))
+                || isTaskCompletedForCollectionLogPreview(current))
         {
             return -1;
         }
@@ -2057,9 +2291,11 @@ public class XtremeTaskerOverlay extends Overlay {
                 this::getCachedSkillImage,
                 this::getCachedPrerequisiteMarkerImage,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
+                plugin::getCollectionLogSequenceStepLabel,
                 plugin::isCollectionLogTaskSyncMismatch,
                 this::taskDetailsSyncButtonLabel,
                 this::taskDetailsMarkIncompleteButtonLabel,
+                this::taskDetailsMarkIncompleteEnabled,
                 task -> taskResolveSavedIncompleteEdits,
                 this::getCachedItemImage,
                 this::taskDetailsWikiLinks,
@@ -2210,10 +2446,7 @@ public class XtremeTaskerOverlay extends Overlay {
                         + " | " + taskResolveTimeSpentText(instance);
                 int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
                 int lineW = w - (pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad);
-                String lineText = taskResolveInstanceLine(task, instance, detailText);
-                String line = TextUtils.truncateToWidth(lineText, fm, lineW);
-                g.setColor(enabled ? P.UI_TEXT : P.UI_TEXT_DIM);
-                g.drawString(line, lineX, cursorY);
+                drawTaskResolveInstanceRow(g, fm, taskResolveInstanceMarker(task, instance), detailText, lineX, cursorY, lineW, enabled);
                 cursorY += rowH;
             }
         }
@@ -2252,15 +2485,19 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int pad = 12;
         int rowGap = 4;
-        boolean showInstanceDetails = syncReviewMode != SyncReviewMode.COMPLETION_CANDIDATES;
-        int rowH = (showInstanceDetails ? fm.getHeight() * 2 : fm.getHeight()) + rowGap + 2;
+        int rowH = fm.getHeight() + rowGap + 2;
         int buttonH = ROW_HEIGHT + 8;
         String title = syncReviewPopupTitle(task);
         List<String> titleLines = TextUtils.wrapText(title, fm, Math.max(120, syncMismatchReviewBounds.width - 80));
         List<String> summaryLines = TextUtils.wrapText(syncMismatchGroupResolveSummary(task), fm, Math.max(120, syncMismatchReviewBounds.width - 80));
+        String sequenceBlockMessage = syncMismatchGroupResolveTierBlockMessage(task);
         int w = syncMismatchGroupResolvePopupWidth(fm, task, resolveTasks, titleLines, summaryLines, pad);
+        List<String> sequenceBlockLines = sequenceBlockMessage.isEmpty()
+                ? List.of()
+                : TextUtils.wrapText(sequenceBlockMessage, fm, Math.max(120, w - pad * 2));
         int h = Math.min(syncMismatchReviewBounds.height - 34,
                 Math.max(126, pad * 2 + (titleLines.size() + summaryLines.size()) * fm.getHeight() + 16
+                        + (sequenceBlockLines.isEmpty() ? 0 : sequenceBlockLines.size() * fm.getHeight() + 8)
                         + Math.max(1, resolveTasks.size()) * rowH + 12 + buttonH));
         int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
         int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
@@ -2282,6 +2519,17 @@ public class XtremeTaskerOverlay extends Overlay {
             textY += fm.getHeight();
         }
 
+        if (!sequenceBlockLines.isEmpty())
+        {
+            textY += 4;
+            g.setColor(P.UI_TEXT_DIM);
+            for (String line : sequenceBlockLines)
+            {
+                g.drawString(TextUtils.truncateToWidth(line, fm, w - pad * 2), x + pad, textY);
+                textY += fm.getHeight();
+            }
+        }
+
         int cursorY = textY + 10;
         syncMismatchGroupResolveToggleBounds.clear();
         for (XtremeTask instance : resolveTasks)
@@ -2292,27 +2540,18 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             boolean selected = selectedSyncMismatchGroupResolveTaskIds.contains(instance.getId());
-            boolean enabled = canToggleSyncMismatchGroupResolveTask(instance);
+            boolean enabled = sequenceBlockLines.isEmpty() && canToggleSyncMismatchGroupResolveTask(instance);
             Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
                     TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
             syncMismatchGroupResolveToggleBounds.put(instance, toggle);
             drawResolveToggleGlyph(g, toggle, selected, enabled);
 
             String marker = taskResolveInstanceMarker(task, instance);
-            String lineText = marker.isEmpty() ? instance.getName() : marker + ": " + instance.getName();
+            String detailText = taskResolveCompletionDateText(instance)
+                    + " | " + taskResolveTimeSpentText(instance);
             int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
             int lineW = w - (pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad);
-            g.setColor(enabled ? P.UI_TEXT : P.UI_TEXT_DIM);
-            g.drawString(TextUtils.truncateToWidth(lineText, fm, lineW), lineX, cursorY);
-            if (showInstanceDetails)
-            {
-                String detailText = taskResolveCompletionDateText(instance)
-                        + " | " + taskResolveTimeSpentText(instance);
-                int detailX = lineX + 8;
-                int detailW = Math.max(0, lineW - 8);
-                g.setColor(P.UI_TEXT_DIM);
-                g.drawString(TextUtils.truncateToWidth(detailText, fm, detailW), detailX, cursorY + fm.getHeight());
-            }
+            drawTaskResolveInstanceRow(g, fm, marker, detailText, lineX, cursorY, lineW, enabled);
             cursorY += rowH;
         }
 
@@ -2320,7 +2559,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int buttonW = 72;
         int gap = 8;
         int buttonsW = buttonW * 2 + gap;
-        boolean saveEnabled = hasSyncMismatchGroupResolveChanges();
+        boolean saveEnabled = sequenceBlockLines.isEmpty() && hasSyncMismatchGroupResolveChanges();
         syncMismatchGroupResolveSaveBounds.setBounds(x + (w - buttonsW) / 2, actionY, buttonW, buttonH);
         syncMismatchGroupResolveCancelBounds.setBounds(syncMismatchGroupResolveSaveBounds.x + buttonW + gap, actionY, buttonW, buttonH);
         buttonRenderer.drawPlainButton(g, syncMismatchGroupResolveSaveBounds, "Save",
@@ -2357,14 +2596,10 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
             String marker = taskResolveInstanceMarker(task, instance);
-            String rowText = marker.isEmpty() ? instance.getName() : marker + ": " + instance.getName();
+            String detailText = taskResolveCompletionDateText(instance)
+                    + " | " + taskResolveTimeSpentText(instance);
+            String rowText = taskResolveInstanceLine(marker, detailText);
             desiredW = Math.max(desiredW, rowReserve + fm.stringWidth(rowText) + fitBuffer);
-            if (syncReviewMode != SyncReviewMode.COMPLETION_CANDIDATES)
-            {
-                String detailText = taskResolveCompletionDateText(instance)
-                        + " | " + taskResolveTimeSpentText(instance);
-                desiredW = Math.max(desiredW, rowReserve + 8 + fm.stringWidth(detailText) + fitBuffer);
-            }
         }
 
         return Math.min(Math.max(190, syncMismatchReviewBounds.width - 36), desiredW);
@@ -2382,11 +2617,11 @@ public class XtremeTaskerOverlay extends Overlay {
             if (sequence)
             {
                 return "Sync found " + joinedSequenceStepLabels(syncFoundTasks)
-                        + " completed in game, only " + joinedSequenceStepLabels(pluginCompletedTasks)
+                        + " completed in game, but " + joinedSequenceStepLabels(pluginCompletedTasks)
                         + " marked completed in plugin";
             }
             return "Sync found " + syncFoundTasks.size() + "/" + total
-                    + " completed in game, only " + pluginCompletedTasks.size()
+                    + " completed in game, but " + pluginCompletedTasks.size()
                     + " marked in plugin";
         }
 
@@ -2397,8 +2632,8 @@ public class XtremeTaskerOverlay extends Overlay {
                     + " completed in game, but " + joinedSequenceStepLabels(pluginCompletedTasks)
                     + " marked completed in plugin";
         }
-        return "Sync only found " + syncFoundTasks.size() + "/" + total
-                + " completed in game, " + pluginCompletedTasks.size()
+        return "Sync found " + syncFoundTasks.size() + "/" + total
+                + " completed in game, but " + pluginCompletedTasks.size()
                 + " marked in plugin";
     }
 
@@ -2508,17 +2743,50 @@ public class XtremeTaskerOverlay extends Overlay {
             }
             String detailText = taskResolveCompletionDateText(instance)
                     + " | " + taskResolveTimeSpentText(instance);
-            String rowText = taskResolveInstanceLine(task, instance, detailText);
+            String rowText = taskResolveInstanceLine(taskResolveInstanceMarker(task, instance), detailText);
             desiredW = Math.max(desiredW, rowReserve + fm.stringWidth(rowText) + fitBuffer);
         }
 
         return Math.min(Math.max(180, panelBounds.width - 50), desiredW);
     }
 
-    private String taskResolveInstanceLine(XtremeTask task, XtremeTask instance, String detailText)
+    private void drawTaskResolveInstanceRow(
+            Graphics2D g,
+            FontMetrics fm,
+            String marker,
+            String detailText,
+            int x,
+            int baseline,
+            int maxW,
+            boolean enabled)
     {
-        String marker = taskResolveInstanceMarker(task, instance);
-        return marker.isEmpty() ? detailText : marker + ": " + detailText;
+        String cleanDetail = detailText == null ? "" : detailText.trim();
+        String prefix = marker == null || marker.trim().isEmpty() ? "" : marker.trim() + ": ";
+        if (prefix.isEmpty())
+        {
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(cleanDetail, fm, maxW), x, baseline);
+            return;
+        }
+
+        String drawPrefix = TextUtils.truncateToWidth(prefix, fm, maxW);
+        g.setColor(enabled ? P.UI_TEXT : P.UI_TEXT_DIM);
+        g.drawString(drawPrefix, x, baseline);
+
+        int detailX = x + fm.stringWidth(drawPrefix);
+        int detailW = Math.max(0, maxW - fm.stringWidth(drawPrefix));
+        if (detailW <= 0)
+        {
+            return;
+        }
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(cleanDetail, fm, detailW), detailX, baseline);
+    }
+
+    private String taskResolveInstanceLine(String marker, String detailText)
+    {
+        String prefix = marker == null || marker.trim().isEmpty() ? "" : marker.trim() + ": ";
+        return prefix + (detailText == null ? "" : detailText.trim());
     }
 
     private String taskResolveInstanceMarker(XtremeTask task, XtremeTask instance)
@@ -2526,7 +2794,7 @@ public class XtremeTaskerOverlay extends Overlay {
         String sequenceSuffix = collectionLogSequenceSuffix(instance);
         if (!sequenceSuffix.isEmpty())
         {
-            return sequenceSuffix;
+            return titleCaseSequenceMarker(sequenceSuffix);
         }
 
         List<XtremeTask> group = plugin.getTaskGroupInstances(task);
@@ -2561,6 +2829,33 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         String suffix = plugin.getCollectionLogSequenceStepLabel(task);
         return suffix == null ? "" : suffix.trim();
+    }
+
+    private static String titleCaseSequenceMarker(String value)
+    {
+        String clean = value == null ? "" : value.trim();
+        if (clean.isEmpty())
+        {
+            return "";
+        }
+
+        StringBuilder out = new StringBuilder(clean.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < clean.length(); i++)
+        {
+            char c = clean.charAt(i);
+            if (Character.isLetter(c))
+            {
+                out.append(capitalizeNext ? Character.toUpperCase(c) : c);
+                capitalizeNext = false;
+            }
+            else
+            {
+                out.append(c);
+                capitalizeNext = Character.isWhitespace(c) || c == '-' || c == '\'';
+            }
+        }
+        return out.toString();
     }
 
     private boolean sameTask(XtremeTask a, XtremeTask b)
@@ -2685,6 +2980,12 @@ public class XtremeTaskerOverlay extends Overlay {
                 : "Mark task incomplete";
     }
 
+    private boolean taskDetailsMarkIncompleteEnabled(XtremeTask task)
+    {
+        String lastSync = plugin.getLastCollectionLogSyncResultAtLocalTime();
+        return lastSync != null && !lastSync.trim().isEmpty();
+    }
+
     private boolean isMultiInstanceTask(XtremeTask task)
     {
         TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
@@ -2713,6 +3014,10 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
     {
+        if (!taskDetailsMarkIncompleteEnabled(task))
+        {
+            return;
+        }
         openTaskResolve(task);
     }
 
@@ -3045,6 +3350,10 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             return false;
         }
+        if (!syncMismatchGroupResolveTierBlockMessage(syncMismatchGroupResolveTask).isEmpty())
+        {
+            return false;
+        }
 
         List<XtremeTask> resolveTasks = syncMismatchGroupResolveTasks(syncMismatchGroupResolveTask);
         if (!isTaskResolveSequence(plugin.getTaskGroupInstances(syncMismatchGroupResolveTask)))
@@ -3098,6 +3407,66 @@ public class XtremeTaskerOverlay extends Overlay {
             return index == firstSelected;
         }
         return index == firstSelected - 1;
+    }
+
+    private String syncMismatchGroupResolveTierBlockMessage(XtremeTask task)
+    {
+        if (task == null || task.getTier() == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return "";
+        }
+
+        String familyKey = displaySequenceFamilyKey(task);
+        if (familyKey.isEmpty())
+        {
+            return "";
+        }
+
+        int currentTierRank = task.getTier().ordinal();
+        List<XtremeTask> reviewTasks = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource)
+                : plugin.getSyncMismatchTasks(syncMismatchReviewSource);
+        if (reviewTasks == null || reviewTasks.isEmpty())
+        {
+            return "";
+        }
+
+        boolean blocked = false;
+        for (XtremeTask reviewTask : reviewTasks)
+        {
+            if (reviewTask == null
+                    || reviewTask.getTier() == null
+                    || reviewTask.getId() == null
+                    || Objects.equals(reviewTask.getId(), task.getId())
+                    || !familyKey.equals(displaySequenceFamilyKey(reviewTask)))
+            {
+                continue;
+            }
+
+            int reviewTierRank = reviewTask.getTier().ordinal();
+            if (syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES)
+            {
+                if (reviewTierRank < currentTierRank)
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+            else if (reviewTierRank > currentTierRank)
+            {
+                blocked = true;
+                break;
+            }
+        }
+
+        if (!blocked)
+        {
+            return "";
+        }
+
+        String action = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES ? "complete" : "incomplete";
+        String direction = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES ? "lower" : "higher";
+        return "This task must be addressed sequentially, mark tasks " + action + " in " + direction + " tiers first.";
     }
 
     private boolean canToggleTaskResolveTaskIncomplete(XtremeTask task)
@@ -3244,9 +3613,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setColor(new Color(0, 0, 0, 135));
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
-        boolean collectionLogOnlyReview = syncMismatchReviewSource == TaskSource.COLLECTION_LOG
-                || (!mismatches.isEmpty() && mismatches.stream().allMatch(task -> task != null && isCollectionLogSyncSource(task.getSource())));
-        int maxReviewW = collectionLogOnlyReview ? 494 : 470;
+        int maxReviewW = 470;
         int w = Math.min(panelBounds.width - 36, maxReviewW);
         int h = Math.min(panelBounds.height - 56, 390);
         int x = panelBounds.x + (panelBounds.width - w) / 2;
@@ -3267,32 +3634,38 @@ public class XtremeTaskerOverlay extends Overlay {
                 .anyMatch(task -> task.getSource() == TaskSource.COMBAT_ACHIEVEMENT);
         g.setColor(P.UI_GOLD);
         String reviewMessage;
+        String reviewHelper = "";
+        String reviewInstruction = "";
         if (reviewingCompletionCandidates)
         {
             if (hasCollectionLogReview && hasCombatAchievementReview)
             {
-                reviewMessage = "Tasks found complete by sync. Choose which ones to mark complete in Xtreme Tasker";
+                reviewMessage = "Tasks found completed in game via sync, but not marked completed in plugin.";
             }
             else if (hasCollectionLogReview)
             {
-                reviewMessage = "CLOG/AD tasks found complete by sync. Choose which ones to mark complete";
+                reviewMessage = "Collection Log + Achievement Diary tasks found completed in game via sync, but not marked completed in plugin.";
             }
             else
             {
-                reviewMessage = "CA tasks found complete by sync. Choose which ones to mark complete";
+                reviewMessage = "Combat Achievement tasks found completed in game via sync, but not marked completed in plugin.";
             }
+            reviewInstruction = "Choose which tasks to mark complete in plugin, then select Apply to save.";
         }
         else if (hasCollectionLogReview && hasCombatAchievementReview)
         {
-            reviewMessage = "Tasks marked complete in Xtreme Tasker but not detected in game after sync";
+            reviewMessage = "Tasks marked completed in plugin, but not found completed in game via sync.";
+            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
         }
         else if (hasCollectionLogReview)
         {
-            reviewMessage = "CLOG/AD tasks marked complete in Xtreme Tasker but not detected in game after sync";
+            reviewMessage = "Collection Log + Achievement Diary tasks marked completed in plugin, but not found completed in game via sync.";
+            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
         }
         else
         {
-            reviewMessage = "CA tasks marked complete in Xtreme Tasker but not detected in game after sync";
+            reviewMessage = "Combat Achievement tasks marked completed in plugin, but not found completed in game via sync.";
+            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
         }
         int reviewMessageMaxW = w - pad * 3 - closeW;
         List<String> reviewMessageLines = TextUtils.wrapText(reviewMessage, fm, reviewMessageMaxW);
@@ -3303,19 +3676,36 @@ public class XtremeTaskerOverlay extends Overlay {
             titleY += fm.getHeight();
         }
 
-        int nextY = titleY + 2;
-        if (hasCollectionLogReview)
+        int nextY = titleY - fm.getAscent() + fm.getHeight();
+        if (!reviewHelper.isEmpty())
         {
             g.setColor(P.UI_TEXT_DIM);
-            String refreshHint = reviewingCompletionCandidates
-                    ? "Nothing will be marked complete unless you choose it."
-                    : "If new CLOG items are missing, open your Collection Log in game, then sync again.";
+            for (String line : TextUtils.wrapText(reviewHelper, fm, w - pad * 2))
+            {
+                g.drawString(line, x + pad, nextY + fm.getAscent());
+                nextY += fm.getHeight();
+            }
+        }
+        boolean showCollectionLogRefreshHint = hasCollectionLogReview && !reviewingCompletionCandidates;
+        if (!reviewInstruction.isEmpty())
+        {
+            g.setColor(P.UI_TEXT_DIM);
+            for (String line : TextUtils.wrapText(reviewInstruction, fm, w - pad * 2))
+            {
+                g.drawString(line, x + pad, nextY + fm.getAscent());
+                nextY += fm.getHeight();
+            }
+        }
+        if (showCollectionLogRefreshHint)
+        {
+            g.setColor(P.UI_TEXT);
+            String refreshHint = "If new CLOG items are missing, open your Collection Log in game, then sync again.";
             g.drawString(TextUtils.truncateToWidth(refreshHint, fm, w - pad * 2),
                     x + pad, nextY + fm.getAscent());
             nextY += fm.getHeight();
         }
 
-        int headerTop = nextY + (hasCollectionLogReview ? fm.getHeight() + 14 : 14);
+        int headerTop = nextY + ((showCollectionLogRefreshHint || !reviewHelper.isEmpty() || !reviewInstruction.isEmpty()) ? fm.getHeight() + 14 : 14);
         int footerH = buttonH + fm.getHeight() + 10;
         int listBottom = y + h - pad - footerH;
         Rectangle listFrame = new Rectangle(x + pad, 0, w - pad * 2, 0);
@@ -3800,7 +4190,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private boolean shouldShowSyncReviewPopupHelper(XtremeTask task)
     {
-        return task != null && task.getSource() != TaskSource.DIARY_ACHIEVEMENT;
+        return false;
     }
 
     private boolean hasCollectionLogReviewItems(XtremeTask task)
@@ -3817,7 +4207,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
-        return !syncReviewCollectionLogItems(preview).isEmpty();
+        return preview != null && preview.hasItems();
     }
 
     private void renderSyncMismatchDescription(Graphics2D g, FontMetrics fm)
@@ -3951,6 +4341,16 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
         List<CollectionLogRequirementItem> items = syncReviewCollectionLogItems(preview);
+        boolean showTierSections = preview != null && preview.showTierSections();
+        if (showTierSections)
+        {
+            CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
+            items = currentSection == null ? List.of() : currentSection.items();
+        }
+        boolean simpleSingleItemTask = !showTierSections
+                && items.size() == 1
+                && !isMultiInstanceTask(task)
+                && (preview == null || !preview.showSecondaryItemList());
         if (items.isEmpty())
         {
             return;
@@ -3964,7 +4364,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int closeW = 28;
         int rowGap = 3;
         int rowH = Math.max(fm.getHeight(), itemIconSize) + rowGap;
-        int w = Math.min(syncMismatchReviewBounds.width - 32, 430);
+        int w = Math.min(syncMismatchReviewBounds.width - 48, 360);
         String tierPillText = task.getTier() == null ? null : tierLabel(task.getTier());
         FontMetrics smallFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
         int tierPillW = tierPillText == null ? 0 : Math.max(24, smallFm.stringWidth(tierPillText) + 14);
@@ -3976,20 +4376,32 @@ public class XtremeTaskerOverlay extends Overlay {
         int columns = items.size() > 1 && listW >= 210 ? 2 : 1;
         int columnW = columns == 1 ? listW : Math.max(90, (listW - columnGap) / 2);
         int rows = (items.size() + columns - 1) / columns;
-        int listH = rows * rowH;
+        int listH = simpleSingleItemTask
+                ? 0
+                : rows * rowH;
         List<String> titleLines = TextUtils.wrapText(syncReviewPopupTitle(task), fm, listW);
-        List<String> helperLines = TextUtils.wrapText(syncReviewPopupHelperText(task), fm, listW);
+        List<String> helperLines = !simpleSingleItemTask && shouldShowSyncReviewPopupHelper(task)
+                ? TextUtils.wrapText(syncReviewPopupHelperText(task), fm, listW)
+                : List.of();
+        List<String> summaryLines = !simpleSingleItemTask && preview.showSummaryText() && !showTierSections
+                ? TextUtils.wrapText(preview.summaryText(), fm, listW)
+                : List.of();
         int titleLineCount = Math.max(1, Math.min(titleLines.size(), 2));
         int helperLineCount = Math.min(helperLines.size(), 2);
-        String listHeader = collectionLogRequirementTitle(preview);
-        int titleGap = helperLineCount > 0 ? 3 : Math.max(9, fm.getHeight() / 2);
-        int sectionGap = Math.max(9, fm.getHeight() / 2);
-        int headerGap = 6;
+        int summaryLineCount = Math.min(summaryLines.size(), 2);
+        String listHeader = simpleSingleItemTask ? "" : collectionLogRequirementTitle(preview);
+        boolean hasListContent = !listHeader.isEmpty() || summaryLineCount > 0 || listH > 0;
+        int titleGap = helperLineCount > 0 ? 3 : hasListContent ? Math.max(9, fm.getHeight() / 2) : 0;
+        int sectionGap = hasListContent ? Math.max(9, fm.getHeight() / 2) : 0;
+        int summaryGap = showTierSections && summaryLineCount > 0 ? TIER_SECTION_ICON_GAP : 0;
+        int headerGap = 0;
         int listBlockH = titleLineCount * fm.getHeight()
                 + titleGap
                 + helperLineCount * fm.getHeight()
                 + sectionGap
-                + fm.getHeight()
+                + (listHeader.isEmpty() ? 0 : fm.getHeight())
+                + summaryLineCount * fm.getHeight()
+                + summaryGap
                 + headerGap
                 + listH;
         int contentH = Math.max(iconStackH, listBlockH);
@@ -4053,28 +4465,118 @@ public class XtremeTaskerOverlay extends Overlay {
             textY += fm.getHeight();
         }
         textY += sectionGap;
-        g.setColor(P.UI_TEXT);
-        g.drawString(TextUtils.truncateToWidth(listHeader, fm, listBounds.width), listBounds.x, textY);
-        int listTop = textY + headerGap;
-        for (int i = 0; i < items.size(); i++)
+        if (!listHeader.isEmpty())
         {
-            CollectionLogRequirementItem item = items.get(i);
-            if (item == null)
+            g.setColor(P.UI_TEXT);
+            g.drawString(TextUtils.truncateToWidth(listHeader, fm, listBounds.width), listBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        g.setColor(P.UI_TEXT_DIM);
+        for (int i = 0; i < summaryLineCount; i++)
+        {
+            g.drawString(TextUtils.truncateToWidth(summaryLines.get(i), fm, listBounds.width), listBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        textY += summaryGap;
+        int listTop = textY + headerGap;
+        if (simpleSingleItemTask)
+        {
+            // The single required CLOG item is already represented by the icon column.
+        }
+        else
+        {
+            for (int i = 0; i < items.size(); i++)
+            {
+                CollectionLogRequirementItem item = items.get(i);
+                if (item == null)
+                {
+                    continue;
+                }
+
+                int col = i / rows;
+                int row = i % rows;
+                int itemX = listBounds.x + col * (columnW + columnGap);
+                int itemY = listTop + row * rowH;
+                if (itemY > listBounds.y + listBounds.height)
+                {
+                    break;
+                }
+                drawSyncReviewCollectionLogItem(g, fm, item, itemX, itemY, columnW, itemIconSize);
+            }
+        }
+        g.setClip(oldClip);
+    }
+
+    private int syncReviewTierSectionsHeight(CollectionLogRequirementPreview preview, int rowH, int listW, int columnGap)
+    {
+        int total = 0;
+        List<CollectionLogRequirementPreview.TierSection> sections = preview == null ? List.of() : preview.tierSections();
+        for (int i = 0; i < sections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = sections.get(i);
+            if (section == null || section.items().isEmpty())
             {
                 continue;
             }
-
-            int col = i / rows;
-            int row = i % rows;
-            int itemX = listBounds.x + col * (columnW + columnGap);
-            int itemY = listTop + row * rowH;
-            if (itemY > listBounds.y + listBounds.height)
+            if (i > 0)
             {
-                break;
+                total += 8;
             }
-            drawSyncReviewCollectionLogItem(g, fm, item, itemX, itemY, columnW, itemIconSize);
+            int columns = section.items().size() > 1 && listW >= 210 ? 2 : 1;
+            int rows = (section.items().size() + columns - 1) / columns;
+            total += rows * rowH;
         }
-        g.setClip(oldClip);
+        return total;
+    }
+
+    private void drawSyncReviewTierSections(
+            Graphics2D g,
+            FontMetrics fm,
+            CollectionLogRequirementPreview preview,
+            int x,
+            int y,
+            int listW,
+            int rowH,
+            int columnGap,
+            int itemIconSize,
+            Rectangle clipBounds)
+    {
+        List<CollectionLogRequirementPreview.TierSection> sections = preview == null ? List.of() : preview.tierSections();
+        for (int i = 0; i < sections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = sections.get(i);
+            if (section == null || section.items().isEmpty())
+            {
+                continue;
+            }
+            if (i > 0)
+            {
+                y += 8;
+            }
+            int columns = section.items().size() > 1 && listW >= 210 ? 2 : 1;
+            int columnW = columns == 1 ? listW : Math.max(90, (listW - columnGap) / 2);
+            int rows = (section.items().size() + columns - 1) / columns;
+            for (int itemIndex = 0; itemIndex < section.items().size(); itemIndex++)
+            {
+                int col = itemIndex / rows;
+                int row = itemIndex % rows;
+                int itemX = x + col * (columnW + columnGap);
+                int itemY = y + row * rowH;
+                if (itemY > clipBounds.y + clipBounds.height)
+                {
+                    return;
+                }
+                drawSyncReviewCollectionLogItem(g, fm, section.items().get(itemIndex), itemX, itemY, columnW, itemIconSize);
+            }
+            y += rows * rowH;
+        }
+    }
+
+    private void drawSyncReviewTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline)
+    {
+        String text = section.tier() == null ? "TIER" : tierLabel(section.tier()).toUpperCase();
+        g.setColor(P.UI_GOLD);
+        g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 180)), x, baseline);
     }
 
     private static String collectionLogRequirementTitle(CollectionLogRequirementPreview preview)
@@ -4743,6 +5245,10 @@ public class XtremeTaskerOverlay extends Overlay {
         int textX = textClip.x + 4;
         for (CompactLine line : lines) {
             if (line.collectionLogPreview != null) {
+                Composite oldComposite = g.getComposite();
+                if (line.dimCollectionLogIcons) {
+                    g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+                }
                 textY = CollectionLogIconGridRenderer.render(
                         g,
                         fm,
@@ -4758,6 +5264,10 @@ public class XtremeTaskerOverlay extends Overlay {
                         P.UI_EDGE_LIGHT,
                         P.UI_EDGE_DARK,
                         line.collectionLogPreview.iconColumns());
+                g.setComposite(oldComposite);
+            } else if (line.tierSection != null) {
+                drawCompactTierLabel(g, fm, line.tierSection, textX, textY);
+                textY += compactLineHeight(line, textW);
             } else {
                 drawCompactLine(g, fm, line, textX, textY, textW);
                 textY += compactLineHeight(line, textW);
@@ -4937,8 +5447,36 @@ public class XtremeTaskerOverlay extends Overlay {
             lines.add(new CompactLine(compactCollectionLogRequirementTitle(preview), true, false));
             if (preview.showSummaryText()) {
                 lines.addAll(wrappedCompactLines(preview.summaryText(), true));
+                if (preview.showTierSections()) {
+                    lines.add(CompactLine.verticalGap(TIER_SECTION_ICON_GAP));
+                }
             }
-            if (preview.showItemList()) {
+            if (preview.showTierSections()) {
+                CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
+                if (currentSection != null) {
+                    lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
+                            currentSection.items(),
+                            currentSection.iconColumns())));
+                }
+                List<CollectionLogRequirementPreview.TierSection> otherSections = preview.otherTierSectionsHardestFirst();
+                if (!otherSections.isEmpty()) {
+                    lines.add(CompactLine.verticalGap(COMPACT_SECONDARY_SECTION_GAP));
+                    lines.addAll(wrappedCompactLines(OTHER_SEQUENCE_CLOGS_DIVIDER, true));
+                    lines.addAll(wrappedCompactLines(OTHER_SEQUENCE_CLOGS_LABEL, true));
+                }
+                for (int i = 0; i < otherSections.size(); i++) {
+                    CollectionLogRequirementPreview.TierSection section = otherSections.get(i);
+                    if (i > 0) {
+                        lines.add(CompactLine.verticalGap(6));
+                    }
+                    lines.add(CompactLine.verticalGap(TIER_SECTION_LABEL_TOP_GAP));
+                    lines.add(CompactLine.tierLabel(section));
+                    lines.add(CompactLine.verticalGap(TIER_SECTION_ICON_GAP));
+                    lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
+                            section.items(),
+                            section.iconColumns()), true));
+                }
+            } else if (preview.showItemList()) {
                 lines.add(CompactLine.collectionLogIcons(preview));
             }
             if (preview.showSecondaryItemList()) {
@@ -5105,6 +5643,9 @@ public class XtremeTaskerOverlay extends Overlay {
                     maxWidth,
                     line.collectionLogPreview.iconColumns());
         }
+        if (line != null && line.tierSection != null) {
+            return ROW_HEIGHT;
+        }
         if (line != null && line.prerequisiteStatus != null) {
             return PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, line.prerequisiteStatus);
         }
@@ -5113,6 +5654,12 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private FontMetrics fontMetrics() {
         return client.getCanvas().getFontMetrics(FontManager.getRunescapeSmallFont());
+    }
+
+    private void drawCompactTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline) {
+        String text = section.tier() == null ? "TIER" : tierLabel(section.tier()).toUpperCase();
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 160)), x, baseline);
     }
 
     private void drawCompactScrollbar(Graphics2D g, Rectangle viewport, int totalPx, int visiblePx, int scrollPx) {
@@ -5356,6 +5903,8 @@ public class XtremeTaskerOverlay extends Overlay {
         private final boolean heading;
         private final boolean dim;
         private final CollectionLogRequirementPreview collectionLogPreview;
+        private final boolean dimCollectionLogIcons;
+        private final CollectionLogRequirementPreview.TierSection tierSection;
         private final PrerequisiteStatus prerequisiteStatus;
         private final BufferedImage prerequisiteMarkerImage;
         private final boolean firstPrerequisiteLine;
@@ -5366,17 +5915,21 @@ public class XtremeTaskerOverlay extends Overlay {
             this.heading = heading;
             this.dim = dim;
             this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = null;
             this.prerequisiteStatus = null;
             this.prerequisiteMarkerImage = null;
             this.firstPrerequisiteLine = false;
             this.fixedHeight = -1;
         }
 
-        private CompactLine(CollectionLogRequirementPreview collectionLogPreview) {
+        private CompactLine(CollectionLogRequirementPreview collectionLogPreview, boolean dimCollectionLogIcons) {
             this.text = "";
             this.heading = false;
             this.dim = false;
             this.collectionLogPreview = collectionLogPreview;
+            this.dimCollectionLogIcons = dimCollectionLogIcons;
+            this.tierSection = null;
             this.prerequisiteStatus = null;
             this.prerequisiteMarkerImage = null;
             this.firstPrerequisiteLine = false;
@@ -5388,6 +5941,8 @@ public class XtremeTaskerOverlay extends Overlay {
             this.heading = false;
             this.dim = false;
             this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = null;
             this.prerequisiteStatus = prerequisiteStatus;
             this.prerequisiteMarkerImage = prerequisiteMarkerImage;
             this.firstPrerequisiteLine = firstPrerequisiteLine;
@@ -5399,10 +5954,25 @@ public class XtremeTaskerOverlay extends Overlay {
             this.heading = false;
             this.dim = true;
             this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = null;
             this.prerequisiteStatus = null;
             this.prerequisiteMarkerImage = null;
             this.firstPrerequisiteLine = false;
             this.fixedHeight = Math.max(0, fixedHeight);
+        }
+
+        private CompactLine(CollectionLogRequirementPreview.TierSection tierSection) {
+            this.text = "";
+            this.heading = false;
+            this.dim = false;
+            this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = tierSection;
+            this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
+            this.fixedHeight = -1;
         }
 
         private static CompactLine spacer() {
@@ -5414,7 +5984,15 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview) {
-            return new CompactLine(collectionLogPreview);
+            return new CompactLine(collectionLogPreview, false);
+        }
+
+        private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview, boolean dimCollectionLogIcons) {
+            return new CompactLine(collectionLogPreview, dimCollectionLogIcons);
+        }
+
+        private static CompactLine tierLabel(CollectionLogRequirementPreview.TierSection tierSection) {
+            return new CompactLine(tierSection);
         }
 
         private static CompactLine prerequisite(String text, PrerequisiteStatus status, BufferedImage markerImage, boolean firstLine) {
@@ -5547,16 +6125,10 @@ public class XtremeTaskerOverlay extends Overlay {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "SYNC CAs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        }
-        if (rulesLayout.syncCaFoundIgnoreButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Update tasks", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
         }
         if (rulesLayout.syncClogFoundReviewButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogFoundReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        }
-        if (rulesLayout.syncClogFoundIgnoreButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogFoundIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogFoundReviewButtonBounds, "Update tasks", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
         }
         if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);

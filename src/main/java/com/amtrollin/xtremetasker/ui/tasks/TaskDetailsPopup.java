@@ -40,9 +40,15 @@ public final class TaskDetailsPopup
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
+    private static final int TIER_SECTION_ICON_GAP = 5;
+    private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
+    private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
+    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
     private static final DateTimeFormatter COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a").withZone(ZoneId.systemDefault());
 
     private final UiPalette palette;
     private final TaskListScrollController scroll;
@@ -250,9 +256,11 @@ public final class TaskDetailsPopup
             Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
             Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            Function<XtremeTask, String> collectionLogSequenceLabelProvider,
             Function<XtremeTask, Boolean> collectionLogSyncMismatchProvider,
             Function<XtremeTask, String> collectionLogSyncButtonLabelProvider,
             Function<XtremeTask, String> collectionLogMarkIncompleteButtonLabelProvider,
+            Function<XtremeTask, Boolean> collectionLogMarkIncompleteEnabledProvider,
             Function<XtremeTask, Boolean> collectionLogMarkIncompleteSavedEditProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             Function<XtremeTask, List<WikiLink>> wikiLinksProvider,
@@ -317,6 +325,8 @@ public final class TaskDetailsPopup
         final int wikiW = Math.max(headerFm.stringWidth(wikiOpenText), headerFm.stringWidth(wikiCloseText)) + 20;
         boolean collectionLogMismatch = collectionLogSyncMismatchProvider != null
                 && Boolean.TRUE.equals(collectionLogSyncMismatchProvider.apply(task));
+        boolean collectionLogMarkIncompleteEnabled = collectionLogMarkIncompleteEnabledProvider == null
+                || Boolean.TRUE.equals(collectionLogMarkIncompleteEnabledProvider.apply(task));
         String syncButtonLabel = collectionLogSyncButtonLabelProvider == null
                 ? ""
                 : safe(collectionLogSyncButtonLabelProvider.apply(task)).trim();
@@ -425,7 +435,7 @@ public final class TaskDetailsPopup
                 ? null
                 : collectionLogRequirementPreviewProvider.apply(task);
         List<InstanceHistoryLine> instanceHistoryLines = grouped
-                ? buildInstanceHistoryLines(groupInstances, isCompleted, completionInfoProvider, taskTicksProvider)
+                ? buildInstanceHistoryLines(groupInstances, isCompleted, completionInfoProvider, taskTicksProvider, collectionLogSequenceLabelProvider)
                 : List.of();
         int footerPad = 12;
         int footerY = bounds.y + bounds.height - footerPad;
@@ -472,6 +482,10 @@ public final class TaskDetailsPopup
                 totalPx += ROW_HEIGHT; // blank line before warning
                 totalPx += ROW_HEIGHT; // warning text
                 totalPx += ROW_HEIGHT + 8; // action buttons
+                if (!collectionLogMarkIncompleteEnabled)
+                {
+                    totalPx += ROW_HEIGHT; // disabled action hover hint
+                }
                 totalPx += 6; // button bottom gap
             }
             totalPx += 6 + 12; // divider gap before next section
@@ -503,6 +517,10 @@ public final class TaskDetailsPopup
             {
                 totalPx += ROW_HEIGHT;
                 totalPx += ROW_HEIGHT + 8;
+                if (!collectionLogMarkIncompleteEnabled)
+                {
+                    totalPx += ROW_HEIGHT;
+                }
                 totalPx += 6 + 12;
             }
             if (tipInRequirementSection)
@@ -515,7 +533,11 @@ public final class TaskDetailsPopup
             {
                 totalPx += ROW_HEIGHT; // counter summary
             }
-            if (requirementPreview.showItemList())
+            if (requirementPreview.showTierSections())
+            {
+                totalPx += measureCollectionLogTierSections(requirementPreview, fm, contentW);
+            }
+            else if (requirementPreview.showItemList())
             {
                 totalPx += CollectionLogIconGridRenderer.measureHeight(
                         requirementPreview.getItems().size(),
@@ -610,10 +632,12 @@ public final class TaskDetailsPopup
                         task,
                         syncButtonLabel,
                         collectionLogMarkIncompleteButtonLabelProvider,
+                        collectionLogMarkIncompleteEnabled,
                         collectionLogMarkIncompleteSavedEditProvider,
                         contentLeft,
                         y,
-                        contentW);
+                        contentW,
+                        mouse);
             }
 
             y += 6;
@@ -669,10 +693,12 @@ public final class TaskDetailsPopup
                         task,
                         syncButtonLabel,
                         collectionLogMarkIncompleteButtonLabelProvider,
+                        collectionLogMarkIncompleteEnabled,
                         collectionLogMarkIncompleteSavedEditProvider,
                         contentLeft,
                         y,
-                        contentW);
+                        contentW,
+                        mouse);
 
                 g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
                 g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
@@ -692,9 +718,26 @@ public final class TaskDetailsPopup
             {
                 drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
                 y += ROW_HEIGHT;
+                if (requirementPreview.showTierSections())
+                {
+                    y += TIER_SECTION_ICON_GAP;
+                }
             }
 
-            if (requirementPreview.showItemList())
+            if (requirementPreview.showTierSections())
+            {
+                y = drawCollectionLogTierSections(
+                        g,
+                        fm,
+                        requirementPreview,
+                        contentLeft,
+                        y,
+                        contentW,
+                        collectionLogItemImageProvider,
+                        mousePoint,
+                        viewportBounds);
+            }
+            else if (requirementPreview.showItemList())
             {
                 y = CollectionLogIconGridRenderer.render(
                         g,
@@ -1008,10 +1051,12 @@ public final class TaskDetailsPopup
             XtremeTask task,
             String syncButtonLabel,
             Function<XtremeTask, String> collectionLogMarkIncompleteButtonLabelProvider,
+            boolean markIncompleteEnabled,
             Function<XtremeTask, Boolean> collectionLogMarkIncompleteSavedEditProvider,
             int contentLeft,
             int y,
-            int contentW
+            int contentW,
+            net.runelite.api.Point mouse
     )
     {
         g.setColor(new Color(245, 92, 82, 245));
@@ -1052,9 +1097,22 @@ public final class TaskDetailsPopup
                 new Color(35, 74, 45, 235), palette.UI_TEXT, new Color(105, 190, 118, 200));
         drawColoredButton(g, fm, ignoreBounds, "Ignore", palette.BTN_DISABLED_BG, palette.UI_TEXT_DIM, null);
         drawColoredButton(g, fm, markIncompleteBounds, markIncompleteLabel,
-                hasSavedIncompleteEdit ? palette.BTN_DISABLED_BG : new Color(70, 42, 34, 235),
-                palette.UI_TEXT,
-                hasSavedIncompleteEdit ? null : new Color(190, 88, 72, 180));
+                !markIncompleteEnabled || hasSavedIncompleteEdit ? palette.BTN_DISABLED_BG : new Color(70, 42, 34, 235),
+                markIncompleteEnabled ? palette.UI_TEXT : palette.UI_TEXT_DIM,
+                !markIncompleteEnabled || hasSavedIncompleteEdit ? null : new Color(190, 88, 72, 180));
+        int buttonBottom = actionTop + actionH;
+        if (!markIncompleteEnabled)
+        {
+            if (mouse != null && markIncompleteBounds.contains(mouse.getX(), mouse.getY()))
+            {
+                g.setColor(palette.UI_TEXT_DIM);
+                g.drawString(
+                        TextUtils.truncateToWidth("Complete a sync first", fm, contentW),
+                        markIncompleteBounds.x,
+                        buttonBottom + fm.getAscent() + 3);
+            }
+            return buttonBottom + ROW_HEIGHT + 6;
+        }
         return y + actionH + 6;
     }
 
@@ -1354,6 +1412,132 @@ public final class TaskDetailsPopup
                 : SECONDARY_SECTION_GAP;
     }
 
+    private int measureCollectionLogTierSections(CollectionLogRequirementPreview requirementPreview, FontMetrics fm, int maxWidth)
+    {
+        if (requirementPreview == null || !requirementPreview.showTierSections())
+        {
+            return 0;
+        }
+
+        int total = 0;
+        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
+        if (current != null)
+        {
+            total += CollectionLogIconGridRenderer.measureHeight(current.items().size(), maxWidth, current.iconColumns());
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> otherSections = requirementPreview.otherTierSectionsHardestFirst();
+        if (!otherSections.isEmpty())
+        {
+            total += SECONDARY_SECTION_GAP;
+            total += ROW_HEIGHT;
+            total += ROW_HEIGHT * TextUtils.wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth).size();
+        }
+        for (int i = 0; i < otherSections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = otherSections.get(i);
+            if (i > 0)
+            {
+                total += SECONDARY_SECTION_GAP;
+            }
+            total += TIER_SECTION_LABEL_TOP_GAP;
+            total += ROW_HEIGHT;
+            total += TIER_SECTION_ICON_GAP;
+            total += CollectionLogIconGridRenderer.measureHeight(section.items().size(), maxWidth, section.iconColumns());
+        }
+        return total;
+    }
+
+    private int drawCollectionLogTierSections(
+            Graphics2D g,
+            FontMetrics fm,
+            CollectionLogRequirementPreview requirementPreview,
+            int x,
+            int y,
+            int maxWidth,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
+            java.awt.Point mousePoint,
+            Rectangle viewportBounds)
+    {
+        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
+        if (current != null)
+        {
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    current.items(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    viewportBounds,
+                    palette.UI_TEXT,
+                    palette.UI_TEXT_DIM,
+                    palette.UI_EDGE_LIGHT,
+                    palette.UI_EDGE_DARK,
+                    current.iconColumns());
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> sections = requirementPreview.otherTierSectionsHardestFirst();
+        if (!sections.isEmpty())
+        {
+            y += SECONDARY_SECTION_GAP;
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(OTHER_SEQUENCE_CLOGS_DIVIDER, x, y);
+            y += ROW_HEIGHT;
+            for (String line : TextUtils.wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
+            {
+                g.drawString(TextUtils.truncateToWidth(line, fm, maxWidth), x, y);
+                y += ROW_HEIGHT;
+            }
+        }
+        for (int i = 0; i < sections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = sections.get(i);
+            if (i > 0)
+            {
+                y += SECONDARY_SECTION_GAP;
+            }
+            y += TIER_SECTION_LABEL_TOP_GAP;
+
+            drawCollectionLogTierLabel(g, fm, section, x, y);
+            y += ROW_HEIGHT;
+            y += TIER_SECTION_ICON_GAP;
+            Composite oldComposite = g.getComposite();
+            if (!section.currentTier())
+            {
+                g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+            }
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    section.items(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    viewportBounds,
+                    palette.UI_TEXT,
+                    palette.UI_TEXT_DIM,
+                    palette.UI_EDGE_LIGHT,
+                    palette.UI_EDGE_DARK,
+                    section.iconColumns());
+            g.setComposite(oldComposite);
+        }
+        return y;
+    }
+
+    private void drawCollectionLogTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline)
+    {
+        String text = section.tier() == null
+                ? "TIER"
+                : TaskLabelFormatter.tierLabel(section.tier()).toUpperCase();
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 180)), x, baseline);
+    }
+
     private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
     {
         String text = safe(summaryText);
@@ -1507,16 +1691,16 @@ public final class TaskDetailsPopup
     private static String buildCompletionLine(CompletionInfo info, Long ticks)
     {
         if (info == null) return null;
-        if (info.timestamp <= 0) return "Completed: date unknown";
-        String date = COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
-        return "Completed: " + date + completionSourceSuffix(info, ticks);
+        if (info.timestamp <= 0) return "Date unknown";
+        return COMPLETION_DATE_TIME_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
     private static List<InstanceHistoryLine> buildInstanceHistoryLines(
             List<XtremeTask> instances,
             Function<XtremeTask, Boolean> isCompleted,
             Function<XtremeTask, CompletionInfo> completionInfoProvider,
-            Function<XtremeTask, Long> taskTicksProvider
+            Function<XtremeTask, Long> taskTicksProvider,
+            Function<XtremeTask, String> collectionLogSequenceLabelProvider
     )
     {
         if (instances == null || instances.isEmpty())
@@ -1549,7 +1733,7 @@ public final class TaskDetailsPopup
         for (int i = 0; i < completedInstances.size(); i++)
         {
             CompletedInstance completed = completedInstances.get(i);
-            String prefix = (i + 1) + ". ";
+            String prefix = instanceHistoryPrefix(completed.task, i, collectionLogSequenceLabelProvider);
             String dateText = instanceCompletionDateText(completed.info, completed.ticks);
 
             lines.add(new InstanceHistoryLine(
@@ -1558,6 +1742,19 @@ public final class TaskDetailsPopup
                     buildInstanceTimeSpentLine(completed.info, completed.ticks)));
         }
         return lines;
+    }
+
+    private static String instanceHistoryPrefix(
+            XtremeTask task,
+            int index,
+            Function<XtremeTask, String> collectionLogSequenceLabelProvider)
+    {
+        String sequenceLabel = collectionLogSequenceLabelProvider == null ? "" : safe(collectionLogSequenceLabelProvider.apply(task)).trim();
+        if (!sequenceLabel.isEmpty())
+        {
+            return sequenceLabel + ": ";
+        }
+        return (index + 1) + ". ";
     }
 
     private static long instanceSortTimestamp(CompletionInfo info)
