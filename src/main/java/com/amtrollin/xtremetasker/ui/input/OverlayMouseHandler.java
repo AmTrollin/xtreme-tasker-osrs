@@ -1057,8 +1057,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         if (a.syncMismatchMarkAllBounds().contains(p))
         {
-            int mismatchCount = a.plugin().getSyncMismatchTasks(a.syncMismatchReviewSource()).size();
-            if (mismatchCount > 0 && a.syncMismatchSelectedCount() >= mismatchCount)
+            int reviewTaskCount = syncReviewTasks().size();
+            if (reviewTaskCount > 0 && a.syncMismatchSelectedCount() >= reviewTaskCount)
             {
                 a.clearSyncMismatchSelection();
             }
@@ -1222,7 +1222,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return null;
         }
 
-        List<XtremeTask> tasks = a.plugin().getSyncMismatchTasks(a.syncMismatchReviewSource());
+        List<XtremeTask> tasks = syncReviewTasks();
         int index = a.syncMismatchScroll().offsetRows + rowOffset;
         if (index < 0 || index >= tasks.size())
         {
@@ -1235,6 +1235,13 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return null;
         }
         return task;
+    }
+
+    private List<XtremeTask> syncReviewTasks()
+    {
+        return a.isSyncCompletionCandidateReviewOpen()
+                ? a.plugin().getSyncCompletionCandidateTasks(a.syncMismatchReviewSource())
+                : a.plugin().getSyncMismatchTasks(a.syncMismatchReviewSource());
     }
 
     private boolean isSyncMismatchInteractivePoint(Point p)
