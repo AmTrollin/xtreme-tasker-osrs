@@ -358,12 +358,25 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         collectionLogStateVersion++;
         syncMismatchTasksCacheValid = false;
+        refreshCollectionLogCompletionCandidatesFromCache();
         dirty = true;
 
         if (activeAccountKey != null)
         {
             persistIfPossible();
         }
+    }
+
+    private void refreshCollectionLogCompletionCandidatesFromCache()
+    {
+        if (tasks.isEmpty() || collectionLogService == null)
+        {
+            return;
+        }
+
+        List<String> completionCandidateTaskIds = new ArrayList<>();
+        findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds);
+        setSyncCompletionCandidatesForSource(TaskSource.COLLECTION_LOG, completionCandidateTaskIds);
     }
 
     private synchronized void saveActiveState(String reason) {

@@ -116,6 +116,46 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void collectionLogCacheChangeRefreshesCountedGroupCandidates() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        int[] giantsFoundryItemIds = new int[]{27012, 27014, 27017, 27019, 27021, 27023, 27025, 27027, 27029};
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        for (int i = 1; i <= 4; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-1-unique-from-giants-foundry_00" + i + "_test",
+                    "Get 1 unique from Giants' Foundry",
+                    TaskTier.EASY,
+                    giantsFoundryItemIds,
+                    i
+            ));
+        }
+
+        Set<String> syncedCompletedTaskIds = plugin.syncedCompletedTaskIdsForTesting();
+        syncedCompletedTaskIds.clear();
+        syncedCompletedTaskIds.add(tasks.get(0).getId());
+        syncedCompletedTaskIds.add(tasks.get(1).getId());
+
+        collectionLogService.storeItem(27012);
+        collectionLogService.storeItem(27014);
+        collectionLogService.storeItem(27017);
+        collectionLogService.storeItem(27019);
+
+        List<XtremeTask> candidates = plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG);
+        assertEquals("Four cached Giants' Foundry uniques should stage the third and fourth easy tasks",
+                2, candidates.size());
+        assertEquals(tasks.get(2).getId(), candidates.get(0).getId());
+        assertEquals(tasks.get(3).getId(), candidates.get(1).getId());
+        assertFalse("Cache refresh must not auto-mark the staged task complete", plugin.isTaskCompleted(tasks.get(2)));
+        assertFalse("Cache refresh must not auto-mark the staged task complete", plugin.isTaskCompleted(tasks.get(3)));
+    }
+
+    @Test
     public void applyingSyncCandidatesMarksTasksCompleteAsSynced() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

@@ -20365,18 +20365,26 @@
     },
     {
       "id": "collection_log_hard_get-a-colossal-blade_001_71dc9faeec",
-      "name": "Get a Colossal blade",
+      "name": "Get last unique from Giants' Foundry",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "Sleeping Giants quest; 15 Smithing",
-      "wikiTitle": "Colossal blade",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Colossal_blade",
+      "wikiTitle": "Giants' Foundry",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Giants%27_Foundry",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          27021
+          27012,
+          27014,
+          27017,
+          27019,
+          27021,
+          27023,
+          27025,
+          27027,
+          27029
         ],
-        "count": 1
+        "count": 9
       },
       "displayItemId": 27021,
       "tip": "None",

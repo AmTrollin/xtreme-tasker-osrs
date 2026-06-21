@@ -179,6 +179,40 @@ public class TaskDataTest
     }
 
     @Test
+    public void giantsFoundryHardTaskRequiresNinthUnique()
+    {
+        JsonObject pack = loadTaskPack();
+        JsonArray tasks = pack.getAsJsonArray("tasks");
+
+        JsonObject foundryTask = null;
+        for (JsonElement taskElement : tasks)
+        {
+            JsonObject task = taskElement.getAsJsonObject();
+            if ("collection_log_hard_get-a-colossal-blade_001_71dc9faeec".equals(optionalString(task, "id")))
+            {
+                foundryTask = task;
+                break;
+            }
+        }
+
+        assertNotNull("Hard Giants' Foundry task must exist", foundryTask);
+        assertEquals("Get last unique from Giants' Foundry", optionalString(foundryTask, "name"));
+        assertEquals("Giants' Foundry", optionalString(foundryTask, "wikiTitle"));
+        assertEquals("https://oldschool.runescape.wiki/w/Giants%27_Foundry", optionalString(foundryTask, "wikiUrl"));
+
+        JsonObject verification = foundryTask.getAsJsonObject("verification");
+        assertEquals("collection-log", optionalString(verification, "method"));
+        assertEquals(9, verification.get("count").getAsInt());
+
+        List<Integer> itemIds = new ArrayList<>();
+        for (JsonElement itemId : verification.getAsJsonArray("itemIds"))
+        {
+            itemIds.add(itemId.getAsInt());
+        }
+        assertEquals(Arrays.asList(27012, 27014, 27017, 27019, 27021, 27023, 27025, 27027, 27029), itemIds);
+    }
+
+    @Test
     public void taskPackTextHasNoObviousReleaseArtifacts()
     {
         JsonObject pack = loadTaskPack();
