@@ -3,6 +3,7 @@ package com.amtrollin.xtremetasker.ui.input;
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.rules.RulesTabLayout;
 import com.amtrollin.xtremetasker.ui.rules.RulesTabRenderer;
@@ -1230,11 +1231,27 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
 
         XtremeTask task = tasks.get(index);
-        if (nameColumn && (task == null || task.getSource() != TaskSource.COMBAT_ACHIEVEMENT))
+        if (nameColumn && !hasSyncReviewPopup(task))
         {
             return null;
         }
         return task;
+    }
+
+    private boolean hasSyncReviewPopup(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return false;
+        }
+        if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT)
+        {
+            return true;
+        }
+        TaskVerification verification = task.getVerification();
+        return task.getSource() == TaskSource.COLLECTION_LOG
+                && verification != null
+                && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG;
     }
 
     private List<XtremeTask> syncReviewTasks()

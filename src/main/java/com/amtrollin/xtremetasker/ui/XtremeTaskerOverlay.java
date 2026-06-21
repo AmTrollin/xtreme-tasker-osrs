@@ -2974,7 +2974,7 @@ public class XtremeTaskerOverlay extends Overlay {
             Rectangle taskNameArea = new Rectangle(row.x, row.y, Math.max(0, actionColumnX - row.x), row.height);
             boolean hoverRow = row.contains(mouseX, mouseY);
             boolean hoverTaskName = taskNameArea.contains(mouseX, mouseY);
-            boolean clickableTaskName = task.getSource() == TaskSource.COMBAT_ACHIEVEMENT;
+            boolean clickableTaskName = hasSyncReviewPopup(task);
             g.setColor(clickableTaskName && hoverTaskName ? P.UI_GOLD : P.UI_TEXT);
             g.drawString(label, row.x + 8, row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent());
             if (hoverTaskName)
@@ -3125,11 +3125,43 @@ public class XtremeTaskerOverlay extends Overlay {
         return count;
     }
 
+    private boolean hasSyncReviewPopup(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return false;
+        }
+        return task.getSource() == TaskSource.COMBAT_ACHIEVEMENT || hasCollectionLogReviewItems(task);
+    }
+
+    private boolean hasCollectionLogReviewItems(XtremeTask task)
+    {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return false;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return false;
+        }
+
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
+        return !syncReviewCollectionLogItems(preview).isEmpty();
+    }
+
     private void renderSyncMismatchDescription(Graphics2D g, FontMetrics fm)
     {
         XtremeTask task = syncMismatchDescriptionTask;
         if (task == null)
         {
+            return;
+        }
+
+        if (hasCollectionLogReviewItems(task))
+        {
+            renderSyncMismatchCollectionLogDescription(g, fm, task);
             return;
         }
 
@@ -3213,6 +3245,157 @@ public class XtremeTaskerOverlay extends Overlay {
             textY += fm.getHeight();
         }
         g.setClip(oldClip);
+    }
+
+    private void renderSyncMismatchCollectionLogDescription(Graphics2D g, FontMetrics fm, XtremeTask task)
+    {
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
+        List<CollectionLogRequirementItem> items = syncReviewCollectionLogItems(preview);
+        if (items.isEmpty())
+        {
+            return;
+        }
+
+        int pad = 12;
+        int iconSize = 32;
+        int itemIconSize = 18;
+        int tierPillGap = 4;
+        int tierPillH = 18;
+        int closeW = 28;
+        int rowGap = 3;
+        int rowH = Math.max(fm.getHeight(), itemIconSize) + rowGap;
+        int w = Math.min(syncMismatchReviewBounds.width - 32, 430);
+        String tierPillText = task.getTier() == null ? null : tierLabel(task.getTier());
+        FontMetrics smallFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
+        int tierPillW = tierPillText == null ? 0 : Math.max(24, smallFm.stringWidth(tierPillText) + 14);
+        int iconColumnW = Math.max(iconSize, tierPillW);
+        int iconStackH = iconSize + (tierPillText == null ? 0 : tierPillGap + tierPillH);
+        int listXOffset = pad + iconColumnW + pad;
+        int listW = w - listXOffset - closeW - pad;
+        int columnGap = 12;
+        int columns = items.size() > 8 && listW >= 260 ? 2 : 1;
+        int columnW = columns == 1 ? listW : Math.max(90, (listW - columnGap) / 2);
+        int rows = (items.size() + columns - 1) / columns;
+        int listH = rows * rowH;
+        int contentH = Math.max(iconStackH, listH);
+        int h = Math.max(86, Math.min(syncMismatchReviewBounds.height - 34, pad * 2 + contentH));
+        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
+        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
+        syncMismatchDescriptionBounds.setBounds(x, y, w, h);
+
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
+                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
+        drawBevelBox(g, syncMismatchDescriptionBounds, new Color(45, 36, 24, 252));
+
+        syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
+        drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
+
+        int availableContentH = Math.max(0, h - pad * 2);
+        int contentY = y + pad + Math.max(0, (availableContentH - Math.min(contentH, availableContentH)) / 2);
+        int iconStackY = contentY + Math.max(0, (Math.min(contentH, availableContentH) - iconStackH) / 2);
+        int iconX = x + pad + Math.max(0, (iconColumnW - iconSize) / 2);
+        int iconY = iconStackY;
+        BufferedImage icon = resolveTaskIcon(task);
+        if (icon != null)
+        {
+            g.drawImage(icon, iconX, iconY, iconSize, iconSize, null);
+        }
+        else
+        {
+            drawBevelBox(g, new Rectangle(iconX, iconY, iconSize, iconSize), P.INPUT_BG);
+        }
+        if (tierPillText != null)
+        {
+            TaskRowsRenderer.drawSourceBadge(
+                    g,
+                    x + pad + Math.max(0, (iconColumnW - tierPillW) / 2),
+                    iconY + iconSize + tierPillGap,
+                    tierPillText,
+                    P.UI_EDGE_DARK,
+                    P.UI_EDGE_LIGHT,
+                    P.UI_GOLD,
+                    P.UI_TEXT);
+        }
+
+        Shape oldClip = g.getClip();
+        Rectangle listBounds = new Rectangle(x + listXOffset, y + pad, listW, availableContentH);
+        g.setClip(listBounds);
+        int listTop = contentY + Math.max(0, (Math.min(contentH, availableContentH) - Math.min(listH, availableContentH)) / 2);
+        for (int i = 0; i < items.size(); i++)
+        {
+            CollectionLogRequirementItem item = items.get(i);
+            if (item == null)
+            {
+                continue;
+            }
+
+            int col = i / rows;
+            int row = i % rows;
+            int itemX = listBounds.x + col * (columnW + columnGap);
+            int itemY = listTop + row * rowH;
+            if (itemY > listBounds.y + listBounds.height)
+            {
+                break;
+            }
+            drawSyncReviewCollectionLogItem(g, fm, item, itemX, itemY, columnW, itemIconSize);
+        }
+        g.setClip(oldClip);
+    }
+
+    private List<CollectionLogRequirementItem> syncReviewCollectionLogItems(CollectionLogRequirementPreview preview)
+    {
+        if (preview == null)
+        {
+            return List.of();
+        }
+
+        List<CollectionLogRequirementItem> out = new ArrayList<>();
+        if (preview.showItemList())
+        {
+            out.addAll(preview.getItems());
+        }
+        if (preview.showSecondaryItemList())
+        {
+            out.addAll(preview.secondaryItems());
+        }
+        return out;
+    }
+
+    private void drawSyncReviewCollectionLogItem(
+            Graphics2D g,
+            FontMetrics fm,
+            CollectionLogRequirementItem item,
+            int x,
+            int y,
+            int maxW,
+            int iconSize)
+    {
+        Rectangle iconBounds = new Rectangle(x, y + Math.max(0, (fm.getHeight() - iconSize) / 2), iconSize, iconSize);
+        BufferedImage image = item.getItemId() > 0 ? plugin.getItemImage(item.getItemId()) : null;
+        if (image != null)
+        {
+            g.drawImage(image, iconBounds.x, iconBounds.y, iconBounds.width, iconBounds.height, null);
+        }
+        else
+        {
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString("?", iconBounds.x + 5, iconBounds.y + iconBounds.height - 4);
+        }
+
+        String name = item.getName() == null ? "" : item.getName();
+        int textX = iconBounds.x + iconSize + 5;
+        int textW = Math.max(0, maxW - iconSize - 5);
+        String text = TextUtils.truncateToWidth(name, fm, textW);
+        int textY = y + fm.getAscent();
+        boolean obtained = item.isObtained();
+        g.setColor(obtained ? P.UI_TEXT_DIM : P.UI_TEXT);
+        g.drawString(text, textX, textY);
+        if (obtained)
+        {
+            int strikeY = textY - Math.max(2, fm.getAscent() / 3);
+            g.drawLine(textX, strikeY, textX + fm.stringWidth(text), strikeY);
+        }
     }
 
     private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked)
