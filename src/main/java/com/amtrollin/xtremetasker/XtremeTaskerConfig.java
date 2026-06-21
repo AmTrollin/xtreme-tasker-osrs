@@ -54,6 +54,15 @@ public interface XtremeTaskerConfig extends Config {
         return false;
     }
 
+    @ConfigItem(
+            keyName = "showSyncTestTools",
+            name = "Show sync test tools",
+            description = "Show dev-only buttons on the Sync tab for staging fake CA, Collection Log, and Achievement Diary sync reviews."
+    )
+    default boolean showSyncTestTools() {
+        return false;
+    }
+
     // Tips config temporarily disabled — always off for now
     // @ConfigItem(
     //         keyName = "showTips",

@@ -4654,6 +4654,171 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     @Override
+    public boolean showSyncTestTools()
+    {
+        return config != null && config.showSyncTestTools();
+    }
+
+    @Override
+    public void debugStageSyncCompletionCandidateReview(TaskSource source)
+    {
+        if (!showSyncTestTools())
+        {
+            chat("Enable Show sync test tools in Xtreme Tasker config first.");
+            return;
+        }
+
+        if (!hasTaskPackLoaded())
+        {
+            chat("Sync test: no tasks loaded. Load tasks first.");
+            return;
+        }
+
+        List<XtremeTask> stagedTasks = debugSyncTestTasks(source, false);
+        if (stagedTasks.isEmpty())
+        {
+            chat("Sync test: no incomplete " + debugSyncSourceLabel(source) + " tasks available to fake as found.");
+            return;
+        }
+
+        List<String> ids = stagedTasks.stream()
+                .map(XtremeTask::getId)
+                .filter(id -> id != null && !id.trim().isEmpty())
+                .collect(Collectors.toList());
+        setLastSyncedTaskNames(source, ids);
+        setSyncCompletionCandidatesForSource(source, ids);
+        setSyncResultAndChat(source, "Sync test staged: " + ids.size() + " "
+                + debugSyncSourceLabel(source)
+                + " completed task(s) found. No tasks were marked complete automatically.");
+
+        dirty = true;
+        persistIfPossible();
+    }
+
+    @Override
+    public void debugStageSyncMismatchReview(TaskSource source)
+    {
+        if (!showSyncTestTools())
+        {
+            chat("Enable Show sync test tools in Xtreme Tasker config first.");
+            return;
+        }
+
+        if (!hasTaskPackLoaded())
+        {
+            chat("Sync test: no tasks loaded. Load tasks first.");
+            return;
+        }
+
+        List<XtremeTask> stagedTasks = debugSyncTestTasks(source, true);
+        if (stagedTasks.isEmpty())
+        {
+            chat("Sync test: no completed " + debugSyncSourceLabel(source)
+                    + " tasks available to fake review. Mark one complete in XT first, or use Fake found then Apply.");
+            return;
+        }
+
+        setSyncMismatchTasksForSource(source, stagedTasks);
+        syncMismatchTasksCacheValid = false;
+        setSyncResultAndChat(source, "Sync test staged: review "
+                + stagedTasks.size()
+                + " "
+                + debugSyncSourceLabel(source)
+                + " plugin completion(s) not found in game data.");
+
+        dirty = true;
+        persistIfPossible();
+    }
+
+    private List<XtremeTask> debugSyncTestTasks(TaskSource source, boolean completed)
+    {
+        if (source == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> matchingTasks = tasks.stream()
+                .filter(Objects::nonNull)
+                .filter(task -> task.getId() != null && !task.getId().trim().isEmpty())
+                .filter(task -> matchesSyncMismatchSource(task, source))
+                .filter(task -> isTaskCompleted(task) == completed)
+                .collect(Collectors.toList());
+
+        if (source != TaskSource.COLLECTION_LOG)
+        {
+            return matchingTasks.stream().limit(6).collect(Collectors.toList());
+        }
+
+        List<XtremeTask> stagedTasks = new ArrayList<>();
+        addDebugSyncTestTasksForSource(stagedTasks, matchingTasks, TaskSource.COLLECTION_LOG, 3);
+        addDebugSyncTestTasksForSource(stagedTasks, matchingTasks, TaskSource.DIARY_ACHIEVEMENT, 3);
+
+        if (stagedTasks.size() < 6)
+        {
+            Set<String> stagedIds = stagedTasks.stream()
+                    .map(XtremeTask::getId)
+                    .collect(Collectors.toSet());
+            for (XtremeTask task : matchingTasks)
+            {
+                if (stagedTasks.size() >= 6)
+                {
+                    break;
+                }
+                if (task != null && stagedIds.add(task.getId()))
+                {
+                    stagedTasks.add(task);
+                }
+            }
+        }
+
+        return stagedTasks;
+    }
+
+    private void addDebugSyncTestTasksForSource(
+            List<XtremeTask> out,
+            List<XtremeTask> tasksToSearch,
+            TaskSource source,
+            int maxCount)
+    {
+        if (out == null || tasksToSearch == null || maxCount <= 0)
+        {
+            return;
+        }
+
+        int added = 0;
+        Set<String> seen = out.stream()
+                .filter(Objects::nonNull)
+                .map(XtremeTask::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        for (XtremeTask task : tasksToSearch)
+        {
+            if (added >= maxCount)
+            {
+                return;
+            }
+            if (task != null && task.getSource() == source && seen.add(task.getId()))
+            {
+                out.add(task);
+                added++;
+            }
+        }
+    }
+
+    private static String debugSyncSourceLabel(TaskSource source)
+    {
+        if (source == TaskSource.COMBAT_ACHIEVEMENT)
+        {
+            return "CA";
+        }
+        if (source == TaskSource.COLLECTION_LOG)
+        {
+            return "CLOG/AD";
+        }
+        return "sync";
+    }
+
+    @Override
     public List<PrerequisiteStatus> getPrerequisiteStatuses(XtremeTask task)
     {
         if (task == null || task.getPrereqs() == null)

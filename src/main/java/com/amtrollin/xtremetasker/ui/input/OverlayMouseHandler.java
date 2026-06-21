@@ -712,6 +712,38 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 e.consume();
                 return e;
             }
+            if (a.rulesLayout().syncCaTestFoundButtonBounds.contains(p)) {
+                a.plugin().debugStageSyncCompletionCandidateReview(TaskSource.COMBAT_ACHIEVEMENT);
+                a.openSyncCompletionCandidateReview(TaskSource.COMBAT_ACHIEVEMENT);
+                syncMismatchReviewOpenedAt = e.getWhen();
+                rememberSyncMismatchClick(e, p, button);
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncCaTestReviewButtonBounds.contains(p)) {
+                a.plugin().debugStageSyncMismatchReview(TaskSource.COMBAT_ACHIEVEMENT);
+                a.openSyncMismatchReview(TaskSource.COMBAT_ACHIEVEMENT);
+                syncMismatchReviewOpenedAt = e.getWhen();
+                rememberSyncMismatchClick(e, p, button);
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncClogTestFoundButtonBounds.contains(p)) {
+                a.plugin().debugStageSyncCompletionCandidateReview(TaskSource.COLLECTION_LOG);
+                a.openSyncCompletionCandidateReview(TaskSource.COLLECTION_LOG);
+                syncMismatchReviewOpenedAt = e.getWhen();
+                rememberSyncMismatchClick(e, p, button);
+                e.consume();
+                return e;
+            }
+            if (a.rulesLayout().syncClogTestReviewButtonBounds.contains(p)) {
+                a.plugin().debugStageSyncMismatchReview(TaskSource.COLLECTION_LOG);
+                a.openSyncMismatchReview(TaskSource.COLLECTION_LOG);
+                syncMismatchReviewOpenedAt = e.getWhen();
+                rememberSyncMismatchClick(e, p, button);
+                e.consume();
+                return e;
+            }
             if (a.rulesLayout().taskerFaqLinkBounds.contains(p)) {
                 LinkBrowser.browse(RulesTabRenderer.taskerFaqUrl());
                 e.consume();
@@ -1462,6 +1494,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
                         || a.rulesLayout().syncClogReviewButtonBounds.contains(p)
                         || a.rulesLayout().syncClogReviewIgnoreButtonBounds.contains(p)
+                        || a.rulesLayout().syncCaTestFoundButtonBounds.contains(p)
+                        || a.rulesLayout().syncCaTestReviewButtonBounds.contains(p)
+                        || a.rulesLayout().syncClogTestFoundButtonBounds.contains(p)
+                        || a.rulesLayout().syncClogTestReviewButtonBounds.contains(p)
                         || a.rulesLayout().scrollbarThumbBounds.contains(p)
                         || a.rulesLayout().scrollbarRailBounds.contains(p)
                 ))

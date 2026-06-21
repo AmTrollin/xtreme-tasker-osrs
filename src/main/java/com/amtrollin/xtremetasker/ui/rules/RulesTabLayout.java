@@ -22,6 +22,10 @@ public final class RulesTabLayout
     public final Rectangle syncCaReviewIgnoreButtonBounds = new Rectangle();
     public final Rectangle syncClogReviewButtonBounds = new Rectangle();
     public final Rectangle syncClogReviewIgnoreButtonBounds = new Rectangle();
+    public final Rectangle syncCaTestFoundButtonBounds = new Rectangle();
+    public final Rectangle syncCaTestReviewButtonBounds = new Rectangle();
+    public final Rectangle syncClogTestFoundButtonBounds = new Rectangle();
+    public final Rectangle syncClogTestReviewButtonBounds = new Rectangle();
     public final Rectangle syncCaMarkedTasksToggleBounds = new Rectangle();
     public final Rectangle syncClogMarkedTasksToggleBounds = new Rectangle();
     public final Rectangle scrollbarRailBounds = new Rectangle();

@@ -4580,7 +4580,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size(),
                 plugin.getSyncMismatchTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
-                plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).size()
+                plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).size(),
+                plugin.showSyncTestTools()
         );
 
         rulesLayout.viewportBounds.setBounds(layout.viewportBounds);
@@ -4598,6 +4599,10 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesLayout.syncCaReviewIgnoreButtonBounds.setBounds(layout.syncCaReviewIgnoreButtonBounds);
         rulesLayout.syncClogReviewButtonBounds.setBounds(layout.syncClogReviewButtonBounds);
         rulesLayout.syncClogReviewIgnoreButtonBounds.setBounds(layout.syncClogReviewIgnoreButtonBounds);
+        rulesLayout.syncCaTestFoundButtonBounds.setBounds(layout.syncCaTestFoundButtonBounds);
+        rulesLayout.syncCaTestReviewButtonBounds.setBounds(layout.syncCaTestReviewButtonBounds);
+        rulesLayout.syncClogTestFoundButtonBounds.setBounds(layout.syncClogTestFoundButtonBounds);
+        rulesLayout.syncClogTestReviewButtonBounds.setBounds(layout.syncClogTestReviewButtonBounds);
         rulesLayout.syncCaMarkedTasksToggleBounds.setBounds(layout.syncCaMarkedTasksToggleBounds);
         rulesLayout.syncClogMarkedTasksToggleBounds.setBounds(layout.syncClogMarkedTasksToggleBounds);
         rulesLayout.scrollbarRailBounds.setBounds(layout.scrollbarRailBounds);
@@ -4636,6 +4641,18 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         if (rulesLayout.syncClogReviewIgnoreButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncClogReviewIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
+        }
+        if (rulesLayout.syncCaTestFoundButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaTestFoundButtonBounds, "Fake found", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+        }
+        if (rulesLayout.syncCaTestReviewButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaTestReviewButtonBounds, "Fake review", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
+        }
+        if (rulesLayout.syncClogTestFoundButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogTestFoundButtonBounds, "Fake found", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+        }
+        if (rulesLayout.syncClogTestReviewButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogTestReviewButtonBounds, "Fake review", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
         }
         if (rulesLayout.taskerFaqLinkBounds.width > 0) {
             Rectangle lb = rulesLayout.taskerFaqLinkBounds;
@@ -6301,10 +6318,18 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(rulesLayout.githubReadmeLinkBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncClogsButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCAsButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaFoundReviewButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaFoundIgnoreButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogFoundReviewButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogFoundIgnoreButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaReviewButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaReviewIgnoreButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncClogReviewButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncClogReviewIgnoreButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaTestFoundButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaTestReviewButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogTestFoundButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogTestReviewButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaMarkedTasksToggleBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncClogMarkedTasksToggleBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.scrollbarRailBounds, anchorX, anchorY, scale);
