@@ -1,7 +1,10 @@
 package com.amtrollin.xtremetasker.verification;
 
 import net.runelite.api.Client;
+import net.runelite.api.ScriptEvent;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.ScriptPreFired;
 import net.runelite.client.callback.ClientThread;
 import org.junit.Test;
 
@@ -51,6 +54,69 @@ public class CollectionLogWidgetMonitorTest
         assertEquals("runScript should execute while the cache batch is open", 1, client.runScriptInsideBatchCount);
     }
 
+    @Test
+    public void collectionLogSetupBatchClosesOnMatchingPost() throws Exception
+    {
+        FakeCollectionLogService collectionLogService = new FakeCollectionLogService();
+        FakeClient client = new FakeClient(collectionLogService);
+        CollectionLogWidgetMonitor monitor = newMonitor(client, new CapturingClientThread(), collectionLogService);
+
+        monitor.onScriptPreFired(new ScriptPreFired(7797));
+        monitor.onScriptPostFired(new ScriptPostFired(7797));
+
+        assertEquals(1, collectionLogService.beginCount);
+        assertEquals(1, collectionLogService.endCount);
+        assertEquals(0, collectionLogService.batchDepth);
+    }
+
+    @Test
+    public void collectionLogSetupBatchForceClosesAfterTimeout() throws Exception
+    {
+        FakeCollectionLogService collectionLogService = new FakeCollectionLogService();
+        FakeClient client = new FakeClient(collectionLogService);
+        CollectionLogWidgetMonitor monitor = newMonitor(client, new CapturingClientThread(), collectionLogService);
+
+        client.tickCount = 10;
+        monitor.onScriptPreFired(new ScriptPreFired(7797));
+
+        client.tickCount = 13;
+        monitor.onGameTick(new GameTick());
+
+        assertEquals(1, collectionLogService.beginCount);
+        assertEquals(1, collectionLogService.endCount);
+        assertEquals(0, collectionLogService.batchDepth);
+    }
+
+    @Test
+    public void collectionLogItemScriptIgnoresMalformedArgs() throws Exception
+    {
+        FakeCollectionLogService collectionLogService = new FakeCollectionLogService();
+        CollectionLogWidgetMonitor monitor = newMonitor(new FakeClient(), new CapturingClientThread(), collectionLogService);
+
+        ScriptPreFired event = new ScriptPreFired(4100);
+        event.setScriptEvent(scriptEventWithArgs(null, "not an item id", 1));
+
+        monitor.onScriptPreFired(event);
+
+        assertEquals("malformed script args should not store seen items", 0, collectionLogService.seenItemCount);
+        assertEquals("malformed script args should not store obtained items", 0, collectionLogService.storedItemCount);
+    }
+
+    @Test
+    public void collectionLogItemScriptAcceptsNumericArgs() throws Exception
+    {
+        FakeCollectionLogService collectionLogService = new FakeCollectionLogService();
+        CollectionLogWidgetMonitor monitor = newMonitor(new FakeClient(), new CapturingClientThread(), collectionLogService);
+
+        ScriptPreFired event = new ScriptPreFired(4100);
+        event.setScriptEvent(scriptEventWithArgs(null, Long.valueOf(10878), Short.valueOf((short) 1)));
+
+        monitor.onScriptPreFired(event);
+
+        assertEquals(1, collectionLogService.seenItemCount);
+        assertEquals(1, collectionLogService.storedItemCount);
+    }
+
     private static CollectionLogWidgetMonitor newMonitor(
             FakeClient client,
             ClientThread clientThread,
@@ -68,6 +134,21 @@ public class CollectionLogWidgetMonitorTest
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(target, value);
+    }
+
+    private static ScriptEvent scriptEventWithArgs(Object... scriptArgs)
+    {
+        return (ScriptEvent) Proxy.newProxyInstance(
+                ScriptEvent.class.getClassLoader(),
+                new Class<?>[]{ScriptEvent.class},
+                (proxy, method, args) -> {
+                    if ("getArguments".equals(method.getName()))
+                    {
+                        return scriptArgs;
+                    }
+                    return FakeClient.defaultValue(method.getReturnType());
+                }
+        );
     }
 
     private static final class CapturingClientThread extends ClientThread
@@ -97,6 +178,7 @@ public class CollectionLogWidgetMonitorTest
         private int runScriptCount;
         private int runScriptInsideBatchCount;
         private int lastScriptId;
+        private int tickCount;
 
         FakeClient()
         {
@@ -129,6 +211,11 @@ public class CollectionLogWidgetMonitorTest
                     runScriptInsideBatchCount++;
                 }
                 return null;
+            }
+
+            if ("getTickCount".equals(method.getName()))
+            {
+                return tickCount;
             }
 
             return defaultValue(method.getReturnType());
@@ -182,6 +269,8 @@ public class CollectionLogWidgetMonitorTest
         private int beginCount;
         private int endCount;
         private int batchDepth;
+        private int seenItemCount;
+        private int storedItemCount;
 
         @Override
         public void beginCacheChangeBatch()
@@ -200,6 +289,20 @@ public class CollectionLogWidgetMonitorTest
                 batchDepth--;
             }
             super.endCacheChangeBatch();
+        }
+
+        @Override
+        public void storeSeenItem(int itemId)
+        {
+            seenItemCount++;
+            super.storeSeenItem(itemId);
+        }
+
+        @Override
+        public void storeItem(int itemId)
+        {
+            storedItemCount++;
+            super.storeItem(itemId);
         }
     }
 }

@@ -39,6 +39,7 @@ public final class CurrentTabRenderer
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
     private static final int TIER_SECTION_ICON_GAP = 5;
     private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
+    private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
     private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
     private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final int DETAILS_INSET_X = 10;
@@ -932,12 +933,12 @@ public final class CurrentTabRenderer
             {
                 g.setColor(uiTextDim);
                 String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
-                y = drawWrapped(g, fm, formatted, x, y, maxW, 6);
+                y = drawWrapped(g, fm, formatted, x, y, maxW, Integer.MAX_VALUE);
             }
             else
             {
                 g.setColor(uiTextDim);
-                y = drawPrerequisites(g, fm, x, y, maxW, statuses, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider, 6);
+                y = drawPrerequisites(g, fm, x, y, maxW, statuses, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider, Integer.MAX_VALUE);
             }
         }
         else
@@ -1353,6 +1354,7 @@ public final class CurrentTabRenderer
         {
             total += SECONDARY_SECTION_GAP;
             total += rowHeight;
+            total += OTHER_SEQUENCE_LABEL_TOP_GAP;
             total += rowHeight * wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth).size();
         }
         for (int i = 0; i < otherSections.size(); i++)
@@ -1407,6 +1409,7 @@ public final class CurrentTabRenderer
             g.setColor(uiTextDim);
             g.drawString(OTHER_SEQUENCE_CLOGS_DIVIDER, x, y);
             y += rowHeight;
+            y += OTHER_SEQUENCE_LABEL_TOP_GAP;
             for (String line : wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
             {
                 g.drawString(truncateToWidth(line, fm, maxWidth), x, y);

@@ -154,7 +154,13 @@ public interface TaskerService
 
     long getCollectionLogItemObtainedOrder(int itemId);
 
+    void refreshTaskSyncMismatchForTask(XtremeTask task);
+
+    boolean isTaskSyncMismatch(XtremeTask task);
+
     boolean isCollectionLogTaskSyncMismatch(XtremeTask task);
+
+    void dismissTaskSyncMismatchAndPersist(XtremeTask task);
 
     void dismissCollectionLogTaskSyncMismatchAndPersist(XtremeTask task);
 

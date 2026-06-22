@@ -169,6 +169,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private int syncMismatchTasksCacheSyncedHash = 0;
     private int syncMismatchTasksCacheTaskCount = 0;
     private int syncMismatchTasksCacheCapturedItemCount = -1;
+    private boolean collectionLogCompletionCandidateRefreshQueued = false;
     private final EnumMap<TaskSource, List<String>> lastSyncedTaskNames = new EnumMap<>(TaskSource.class);
     private String syncMismatchTitle = "";
 
@@ -358,13 +359,29 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         collectionLogStateVersion++;
         syncMismatchTasksCacheValid = false;
-        refreshCollectionLogCompletionCandidatesFromCache();
         dirty = true;
+        queueCollectionLogCompletionCandidateRefresh();
+    }
 
-        if (activeAccountKey != null)
+    private void queueCollectionLogCompletionCandidateRefresh()
+    {
+        if (clientThread == null)
         {
-            persistIfPossible();
+            refreshCollectionLogCompletionCandidatesFromCache();
+            return;
         }
+
+        if (collectionLogCompletionCandidateRefreshQueued)
+        {
+            return;
+        }
+
+        collectionLogCompletionCandidateRefreshQueued = true;
+        clientThread.invokeLater(() ->
+        {
+            collectionLogCompletionCandidateRefreshQueued = false;
+            refreshCollectionLogCompletionCandidatesFromCache();
+        });
     }
 
     private void refreshCollectionLogCompletionCandidatesFromCache()
@@ -4192,15 +4209,136 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     @Override
-    public boolean isCollectionLogTaskSyncMismatch(XtremeTask task)
+    public void refreshTaskSyncMismatchForTask(XtremeTask task)
     {
-        if (task == null || task.getId() == null || !isCollectionLogSyncSource(task.getSource()))
+        if (task == null)
+        {
+            return;
+        }
+
+        Runnable refresh = () -> refreshTaskSyncMismatchForTaskOnClientThread(task);
+        if (clientThread == null)
+        {
+            refresh.run();
+            return;
+        }
+        clientThread.invokeLater(refresh);
+    }
+
+    private void refreshTaskSyncMismatchForTaskOnClientThread(XtremeTask task)
+    {
+        if (task == null || !hasTaskPackLoaded())
+        {
+            return;
+        }
+        if (client != null && client.getGameState() != GameState.LOGGED_IN)
+        {
+            return;
+        }
+
+        List<XtremeTask> candidates = getTaskGroupInstances(task);
+        if (candidates == null || candidates.isEmpty())
+        {
+            candidates = Collections.singletonList(task);
+        }
+
+        boolean changed = false;
+        for (XtremeTask candidate : candidates)
+        {
+            if (candidate == null
+                    || candidate.getId() == null
+                    || !isTaskCompleted(candidate)
+                    || !isPassiveSyncMismatchSource(candidate))
+            {
+                continue;
+            }
+
+            Boolean completeInGame = passiveSyncGameCompletion(candidate);
+            if (completeInGame == null)
+            {
+                continue;
+            }
+
+            if (completeInGame)
+            {
+                changed |= syncMismatchTaskIds.remove(candidate.getId());
+            }
+            else if (!syncMismatchTaskIds.contains(candidate.getId()))
+            {
+                syncMismatchTaskIds.add(candidate.getId());
+                changed = true;
+            }
+        }
+
+        if (!changed)
+        {
+            return;
+        }
+
+        syncMismatchTitle = syncMismatchTaskIds.isEmpty()
+                ? ""
+                : "Review completed tasks";
+        syncMismatchTasksCacheValid = false;
+        dirty = true;
+        persistIfPossible();
+    }
+
+    private static boolean isPassiveSyncMismatchSource(XtremeTask task)
+    {
+        TaskSource source = task == null ? null : task.getSource();
+        return source == TaskSource.DIARY_ACHIEVEMENT
+                || source == TaskSource.COMBAT_ACHIEVEMENT;
+    }
+
+    private Boolean passiveSyncGameCompletion(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return null;
+        }
+
+        TaskSource source = task.getSource();
+        TaskVerification verification = task.getVerification();
+        if (source == TaskSource.DIARY_ACHIEVEMENT)
+        {
+            if (verification == null
+                    || verification.getRegion() == null
+                    || verification.getDifficulty() == null)
+            {
+                return null;
+            }
+            return prerequisiteTrackerService.isDiaryComplete(verification.getRegion(), verification.getDifficulty());
+        }
+
+        if (source == TaskSource.COMBAT_ACHIEVEMENT)
+        {
+            if (caTaskIdsByName.isEmpty())
+            {
+                loadCombatAchievementMappings();
+            }
+
+            Integer taskId = resolveCombatAchievementTaskId(task);
+            if (taskId == null)
+            {
+                return null;
+            }
+            return combatAchievementService.isTaskComplete(taskId);
+        }
+
+        return null;
+    }
+
+    @Override
+    public boolean isTaskSyncMismatch(XtremeTask task)
+    {
+        TaskSource source = syncMismatchSourceForTask(task);
+        if (task == null || task.getId() == null || source == null)
         {
             return false;
         }
 
         Set<String> relevantIds = taskAndGroupIds(task);
-        for (XtremeTask mismatch : getSyncMismatchTasks(TaskSource.COLLECTION_LOG))
+        for (XtremeTask mismatch : getSyncMismatchTasks(source))
         {
             if (mismatch != null && relevantIds.contains(mismatch.getId()))
             {
@@ -4211,7 +4349,15 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     @Override
-    public void dismissCollectionLogTaskSyncMismatchAndPersist(XtremeTask task)
+    public boolean isCollectionLogTaskSyncMismatch(XtremeTask task)
+    {
+        return task != null
+                && isCollectionLogSyncSource(task.getSource())
+                && isTaskSyncMismatch(task);
+    }
+
+    @Override
+    public void dismissTaskSyncMismatchAndPersist(XtremeTask task)
     {
         if (task == null)
         {
@@ -4237,6 +4383,34 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         syncMismatchTasksCacheValid = false;
         dirty = true;
         persistIfPossible();
+    }
+
+    @Override
+    public void dismissCollectionLogTaskSyncMismatchAndPersist(XtremeTask task)
+    {
+        if (task != null && isCollectionLogSyncSource(task.getSource()))
+        {
+            dismissTaskSyncMismatchAndPersist(task);
+        }
+    }
+
+    private static TaskSource syncMismatchSourceForTask(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return null;
+        }
+
+        TaskSource source = task.getSource();
+        if (isCollectionLogSyncSource(source))
+        {
+            return TaskSource.COLLECTION_LOG;
+        }
+        if (source == TaskSource.COMBAT_ACHIEVEMENT)
+        {
+            return TaskSource.COMBAT_ACHIEVEMENT;
+        }
+        return null;
     }
 
     private Set<String> taskAndGroupIds(XtremeTask task)

@@ -608,6 +608,46 @@ public class XtremeTaskerOverlay extends Overlay {
         return id == null || !selectedTaskResolveIncompleteTaskIds.contains(id);
     }
 
+    private boolean isTaskCompletedForTaskDetails(XtremeTask task)
+    {
+        return isTaskCompletedForCollectionLogPreview(task);
+    }
+
+    private TaskGroupProgress taskDetailsGroupProgress(XtremeTask task)
+    {
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (progress == null || !progress.isGrouped() || selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            return progress;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.isEmpty())
+        {
+            return progress;
+        }
+
+        int stagedIncompleteCompletedCount = 0;
+        for (XtremeTask groupedTask : group)
+        {
+            String id = groupedTask == null ? null : groupedTask.getId();
+            if (id != null
+                    && selectedTaskResolveIncompleteTaskIds.contains(id)
+                    && plugin.isTaskCompleted(groupedTask))
+            {
+                stagedIncompleteCompletedCount++;
+            }
+        }
+        if (stagedIncompleteCompletedCount <= 0)
+        {
+            return progress;
+        }
+
+        return new TaskGroupProgress(
+                Math.max(0, progress.getCompleted() - stagedIncompleteCompletedCount),
+                progress.getTotal());
+    }
+
     private void logSlowPreviewBuild(long startNanos, XtremeTask task, CollectionLogRequirementPreview preview)
     {
         long elapsedNanos = System.nanoTime() - startNanos;
@@ -2282,17 +2322,17 @@ public class XtremeTaskerOverlay extends Overlay {
                 g,
                 fm,
                 panelBounds,
-                plugin::isTaskCompleted,
+                this::isTaskCompletedForTaskDetails,
                 plugin::getCompletionInfo,
                 plugin::getTaskTimeTicks,
-                useCondensedTaskRows() ? plugin::getTaskGroupProgress : null,
+                useCondensedTaskRows() ? this::taskDetailsGroupProgress : null,
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
                 this::getCachedPrerequisiteStatuses,
                 this::getCachedSkillImage,
                 this::getCachedPrerequisiteMarkerImage,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
                 plugin::getCollectionLogSequenceStepLabel,
-                plugin::isCollectionLogTaskSyncMismatch,
+                plugin::isTaskSyncMismatch,
                 this::taskDetailsSyncButtonLabel,
                 this::taskDetailsMarkIncompleteButtonLabel,
                 this::taskDetailsMarkIncompleteEnabled,
@@ -2436,12 +2476,12 @@ public class XtremeTaskerOverlay extends Overlay {
                 {
                     continue;
                 }
-                boolean checked = instance.getId() != null && !selectedTaskResolveIncompleteTaskIds.contains(instance.getId());
+                boolean selectedIncomplete = instance.getId() != null && selectedTaskResolveIncompleteTaskIds.contains(instance.getId());
                 boolean enabled = canToggleTaskResolveTaskIncomplete(instance);
                 Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
                         TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
                 taskResolveInstanceToggleBounds.put(instance, toggle);
-                drawResolveToggleGlyph(g, toggle, checked, enabled);
+                drawResolveIncompleteToggleGlyph(g, toggle, selectedIncomplete, enabled);
                 String detailText = taskResolveCompletionDateText(instance)
                         + " | " + taskResolveTimeSpentText(instance);
                 int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
@@ -2544,7 +2584,14 @@ public class XtremeTaskerOverlay extends Overlay {
             Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
                     TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
             syncMismatchGroupResolveToggleBounds.put(instance, toggle);
-            drawResolveToggleGlyph(g, toggle, selected, enabled);
+            if (syncReviewMode == SyncReviewMode.MISMATCH)
+            {
+                drawResolveIncompleteToggleGlyph(g, toggle, selected, enabled);
+            }
+            else
+            {
+                drawResolveToggleGlyph(g, toggle, selected, enabled);
+            }
 
             String marker = taskResolveInstanceMarker(task, instance);
             String detailText = taskResolveCompletionDateText(instance)
@@ -2937,6 +2984,36 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setStroke(oldStroke);
     }
 
+    private void drawResolveIncompleteToggleGlyph(Graphics2D g, Rectangle bounds, boolean selectedIncomplete, boolean enabled)
+    {
+        Color bg;
+        Color strokeColor;
+        if (!enabled)
+        {
+            bg = selectedIncomplete ? new Color(48, 34, 32, 210) : new Color(28, 28, 28, 185);
+            strokeColor = new Color(135, 135, 135, selectedIncomplete ? 185 : 95);
+        }
+        else
+        {
+            bg = selectedIncomplete ? new Color(82, 36, 30, 230) : P.INPUT_BG;
+            strokeColor = selectedIncomplete ? new Color(245, 92, 82, 245) : new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 185);
+        }
+
+        drawBevelBox(g, bounds, bg);
+        g.setColor(strokeColor);
+        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
+        if (!selectedIncomplete)
+        {
+            return;
+        }
+
+        Stroke oldStroke = g.getStroke();
+        g.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.drawLine(bounds.x + 5, bounds.y + 5, bounds.x + bounds.width - 5, bounds.y + bounds.height - 5);
+        g.drawLine(bounds.x + bounds.width - 5, bounds.y + 5, bounds.x + 5, bounds.y + bounds.height - 5);
+        g.setStroke(oldStroke);
+    }
+
     private String taskResolveCompletionDateText(XtremeTask task)
     {
         CompletionInfo info = plugin.getCompletionInfo(task);
@@ -2982,8 +3059,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private boolean taskDetailsMarkIncompleteEnabled(XtremeTask task)
     {
-        String lastSync = plugin.getLastCollectionLogSyncResultAtLocalTime();
-        return lastSync != null && !lastSync.trim().isEmpty();
+        return task != null && plugin.isTaskSyncMismatch(task);
     }
 
     private boolean isMultiInstanceTask(XtremeTask task)
@@ -7058,6 +7134,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 closeTaskSyncResult();
                 closeTaskDetailsIncompleteConfirm();
                 taskDetailsPopup.open(task);
+                plugin.refreshTaskSyncMismatchForTask(task);
             }
 
             @Override

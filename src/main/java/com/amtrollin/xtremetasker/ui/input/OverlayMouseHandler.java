@@ -232,7 +232,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 }
 
                 if (a.taskDetailsIgnoreBounds().contains(p)) {
-                    a.plugin().dismissCollectionLogTaskSyncMismatchAndPersist(a.taskDetailsTask());
+                    a.plugin().dismissTaskSyncMismatchAndPersist(a.taskDetailsTask());
                     e.consume();
                     return e;
                 }

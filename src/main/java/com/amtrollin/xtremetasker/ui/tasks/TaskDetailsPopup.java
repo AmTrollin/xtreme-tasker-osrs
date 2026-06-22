@@ -42,6 +42,7 @@ public final class TaskDetailsPopup
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
     private static final int TIER_SECTION_ICON_GAP = 5;
     private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
+    private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
     private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
     private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
@@ -470,8 +471,8 @@ public final class TaskDetailsPopup
         boolean tipInDescriptionSection = hasTaskTip && showDescriptionSection && !hasRequirementPreview;
         boolean tipInRequirementSection = hasTaskTip && hasRequirementPreview;
         boolean showGroupedProgressSection = groupProgress != null && groupProgress.isGrouped();
-        boolean showGroupedCollectionLogMismatch = showGroupedProgressSection && hasRequirementPreview && collectionLogMismatch;
-        boolean showRequirementCollectionLogMismatch = hasRequirementPreview && collectionLogMismatch && !showGroupedProgressSection;
+        boolean showGroupedCollectionLogMismatch = showGroupedProgressSection && collectionLogMismatch;
+        boolean showStandaloneSyncMismatch = collectionLogMismatch && !showGroupedProgressSection;
         int totalPx = 0;
         if (showGroupedProgressSection)
         {
@@ -511,18 +512,18 @@ public final class TaskDetailsPopup
         {
             totalPx += 6 + 12; // divider gap before next section
         }
-        if (hasRequirementPreview)
+        if (showStandaloneSyncMismatch)
         {
-            if (showRequirementCollectionLogMismatch)
+            totalPx += ROW_HEIGHT;
+            totalPx += ROW_HEIGHT + 8;
+            if (!collectionLogMarkIncompleteEnabled)
             {
                 totalPx += ROW_HEIGHT;
-                totalPx += ROW_HEIGHT + 8;
-                if (!collectionLogMarkIncompleteEnabled)
-                {
-                    totalPx += ROW_HEIGHT;
-                }
-                totalPx += 6 + 12;
             }
+            totalPx += 6 + 12;
+        }
+        if (hasRequirementPreview)
+        {
             if (tipInRequirementSection)
             {
                 totalPx += measureTipHeight(taskTip, fm, contentW);
@@ -683,27 +684,28 @@ public final class TaskDetailsPopup
             y += 12;
         }
 
+        if (showStandaloneSyncMismatch)
+        {
+            y = drawCollectionLogMismatchActions(
+                    g,
+                    fm,
+                    task,
+                    syncButtonLabel,
+                    collectionLogMarkIncompleteButtonLabelProvider,
+                    collectionLogMarkIncompleteEnabled,
+                    collectionLogMarkIncompleteSavedEditProvider,
+                    contentLeft,
+                    y,
+                    contentW,
+                    mouse);
+
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
+        }
+
         if (hasRequirementPreview)
         {
-            if (showRequirementCollectionLogMismatch)
-            {
-                y = drawCollectionLogMismatchActions(
-                        g,
-                        fm,
-                        task,
-                        syncButtonLabel,
-                        collectionLogMarkIncompleteButtonLabelProvider,
-                        collectionLogMarkIncompleteEnabled,
-                        collectionLogMarkIncompleteSavedEditProvider,
-                        contentLeft,
-                        y,
-                        contentW,
-                        mouse);
-
-                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-                g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-                y += 12;
-            }
             if (tipInRequirementSection)
             {
                 y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
@@ -1059,9 +1061,12 @@ public final class TaskDetailsPopup
             net.runelite.api.Point mouse
     )
     {
+        boolean showSyncAction = syncButtonLabel != null && !syncButtonLabel.trim().isEmpty();
         g.setColor(new Color(245, 92, 82, 245));
         g.drawString(TextUtils.truncateToWidth(
-                "Not enough CLOG(s) obtained for current tasks completed",
+                showSyncAction
+                        ? "Not enough CLOG(s) obtained for current tasks completed"
+                        : "Completion marked in plugin, not found in game data",
                 fm,
                 contentW),
                 contentLeft,
@@ -1080,21 +1085,32 @@ public final class TaskDetailsPopup
         }
         boolean hasSavedIncompleteEdit = collectionLogMarkIncompleteSavedEditProvider != null
                 && Boolean.TRUE.equals(collectionLogMarkIncompleteSavedEditProvider.apply(task));
-        int availableActionW = Math.max(120, contentW - actionGap * 2);
-        int syncActionW = Math.max(58, fm.stringWidth(syncButtonLabel.isEmpty() ? "Sync" : syncButtonLabel) + 18);
+        int availableActionW = Math.max(120, contentW - (showSyncAction ? actionGap * 2 : actionGap));
+        int syncActionW = showSyncAction ? Math.max(58, fm.stringWidth(syncButtonLabel) + 18) : 0;
         int ignoreActionW = Math.max(58, fm.stringWidth("Ignore") + 18);
         int markActionW = Math.max(120, fm.stringWidth(markIncompleteLabel) + 18);
-        int totalActionW = syncActionW + ignoreActionW + markActionW + actionGap * 2;
+        int totalActionW = ignoreActionW + markActionW + actionGap + (showSyncAction ? syncActionW + actionGap : 0);
         if (totalActionW > availableActionW)
         {
             int overflow = totalActionW - availableActionW;
             markActionW = Math.max(104, markActionW - overflow);
         }
-        syncBounds.setBounds(contentLeft, actionTop, syncActionW, actionH);
-        ignoreBounds.setBounds(syncBounds.x + syncBounds.width + actionGap, actionTop, ignoreActionW, actionH);
+        if (showSyncAction)
+        {
+            syncBounds.setBounds(contentLeft, actionTop, syncActionW, actionH);
+            ignoreBounds.setBounds(syncBounds.x + syncBounds.width + actionGap, actionTop, ignoreActionW, actionH);
+        }
+        else
+        {
+            syncBounds.setBounds(0, 0, 0, 0);
+            ignoreBounds.setBounds(contentLeft, actionTop, ignoreActionW, actionH);
+        }
         markIncompleteBounds.setBounds(ignoreBounds.x + ignoreBounds.width + actionGap, actionTop, markActionW, actionH);
-        drawColoredButton(g, fm, syncBounds, syncButtonLabel.isEmpty() ? "Sync" : syncButtonLabel,
-                new Color(35, 74, 45, 235), palette.UI_TEXT, new Color(105, 190, 118, 200));
+        if (showSyncAction)
+        {
+            drawColoredButton(g, fm, syncBounds, syncButtonLabel,
+                    new Color(35, 74, 45, 235), palette.UI_TEXT, new Color(105, 190, 118, 200));
+        }
         drawColoredButton(g, fm, ignoreBounds, "Ignore", palette.BTN_DISABLED_BG, palette.UI_TEXT_DIM, null);
         drawColoredButton(g, fm, markIncompleteBounds, markIncompleteLabel,
                 !markIncompleteEnabled || hasSavedIncompleteEdit ? palette.BTN_DISABLED_BG : new Color(70, 42, 34, 235),
@@ -1431,6 +1447,7 @@ public final class TaskDetailsPopup
         {
             total += SECONDARY_SECTION_GAP;
             total += ROW_HEIGHT;
+            total += OTHER_SEQUENCE_LABEL_TOP_GAP;
             total += ROW_HEIGHT * TextUtils.wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth).size();
         }
         for (int i = 0; i < otherSections.size(); i++)
@@ -1486,6 +1503,7 @@ public final class TaskDetailsPopup
             g.setColor(palette.UI_TEXT_DIM);
             g.drawString(OTHER_SEQUENCE_CLOGS_DIVIDER, x, y);
             y += ROW_HEIGHT;
+            y += OTHER_SEQUENCE_LABEL_TOP_GAP;
             for (String line : TextUtils.wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
             {
                 g.drawString(TextUtils.truncateToWidth(line, fm, maxWidth), x, y);

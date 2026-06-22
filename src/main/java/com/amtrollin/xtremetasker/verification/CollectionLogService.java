@@ -105,6 +105,7 @@ public class CollectionLogService
     private Runnable cacheChangeListener;
     private int cacheChangeBatchDepth = 0;
     private boolean cacheChangePending = false;
+    private final Map<String, Integer> resolvedChatItemIdsByName = new HashMap<>();
 
     public void setCacheChangeListener(Runnable cacheChangeListener)
     {
@@ -174,6 +175,14 @@ public class CollectionLogService
 
     private void resolveAndStoreByName(String itemName)
     {
+        String cacheKey = chatItemNameCacheKey(itemName);
+        Integer cachedItemId = resolvedChatItemIdsByName.get(cacheKey);
+        if (cachedItemId != null)
+        {
+            storeItem(cachedItemId);
+            return;
+        }
+
         if (ANCIENT_PAGE_ITEM_NAME.equalsIgnoreCase(itemName))
         {
             pendingAncientPageDropCountSinceLastSync++;
@@ -202,6 +211,7 @@ public class CollectionLogService
             if (itemName.equalsIgnoreCase(result.getName()))
             {
                 log.debug("Collection log chat capture: '{}' -> item ID {}", itemName, result.getId());
+                resolvedChatItemIdsByName.put(cacheKey, result.getId());
                 storeItem(result.getId());
                 return;
             }
@@ -221,11 +231,17 @@ public class CollectionLogService
         {
             ItemPrice resolved = normalizedMatches.get(0);
             log.debug("Collection log chat capture (normalized): '{}' -> item ID {}", itemName, resolved.getId());
+            resolvedChatItemIdsByName.put(cacheKey, resolved.getId());
             storeItem(resolved.getId());
             return;
         }
 
         log.debug("Collection log chat capture ignored ambiguous match for '{}' ({} candidates)", itemName, results.size());
+    }
+
+    private static String chatItemNameCacheKey(String value)
+    {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private static String normalizeItemName(String value)
@@ -461,6 +477,7 @@ public class CollectionLogService
         pendingMedallionFragmentDropCountSinceLastSync = 0;
         cacheChangeBatchDepth = 0;
         cacheChangePending = false;
+        resolvedChatItemIdsByName.clear();
     }
 
     public long getObtainedItemOrder(int itemId)
