@@ -1,8 +1,7 @@
 # Xtreme Tasker Release Notes
 
-## June 2026 Update
+## 06.21.2026 - v2.0
 
-These notes summarize the main user-facing changes from the June 2026 v3 work.
 
 ### Progress and Sync
 

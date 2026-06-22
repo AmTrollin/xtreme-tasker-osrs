@@ -28,7 +28,7 @@ Want to see the plugin in action? Check out [@amtrollin](https://www.youtube.com
 
 Your current task and completion progress are saved locally per character.
 
-<img src="docs/gifs/OpenCompleteRollTask_Current.gif" alt="Open overlay, complete task, and roll a new task" width="560">
+<img src="docs/gifs/OpenCompleteRollTask_Current.gif" alt="Open overlay, complete task, and roll a new task" width="420">
 
 ## Overlay Tabs
 
@@ -43,13 +43,13 @@ Both `Current` and `Tasks` include a `Keyboard hints` control at the bottom of t
 Use the view toggle in the overlay corner to switch between full view and compact view. Compact view keeps the current task, timer, wiki link, and scrollable details visible in a smaller panel for tighter screens or less intrusive play.
 
 
-<img src="docs/images/CondensedTaskView.png" alt="Compact task view" width="360">
+<img src="docs/images/CondensedTaskView.png" alt="Compact task view" width="280">
 
 ## Tasks Tab
 
 Use the Tasks tab to search the full task list, filter by source/status/tier, sort rows, and open task details. If a plugin update adds tasks, `See New Tasks` lets you review just the new rows.
 
-<img src="docs/images/TasksTab.png" alt="Tasks tab" width="560">
+<img src="docs/images/TasksTab.png" alt="Tasks tab" width="420">
 
 ## Repeated Tasks
 
@@ -57,7 +57,7 @@ Some tasks can appear more than once because they can be rolled multiple times.
 
 By default, repeated tasks are condensed into one row with a `#/#` progress indicator. You can expand repeated tasks to inspect each roll individually.
 
-<img src="docs/images/MultitaskPrereqStrike.png" alt="Repeated task prereq and progress detail" width="460">
+<img src="docs/images/MultitaskPrereqStrike.png" alt="Repeated task prereq and progress detail" width="360">
 
 ## Collection Log Details
 
@@ -87,9 +87,9 @@ Progress sync is for your account state, not task list updates.
 
 Collection Log sync can only use items Xtreme Tasker has seen through RuneLite. After earning new Collection Log items, open your Collection Log in game and sync again.
 
-<img src="docs/images/CAlistreview_help_datasync.png" alt="Help Sync review note" width="560">
+<img src="docs/images/CAlistreview_help_datasync.png" alt="Help Sync review note" width="380">
 
-<img src="docs/gifs/SyncCAs_Help_Datasyncs.gif" alt="Sync Combat Achievements and review mismatches" width="560">
+<img src="docs/gifs/SyncCAs_Help_Datasyncs.gif" alt="Sync Combat Achievements and review mismatches" width="420">
 
 ## Rules
 
