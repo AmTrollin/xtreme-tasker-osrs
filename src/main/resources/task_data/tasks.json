@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "tasks": [
     {
       "id": "collection_log_easy_get-bolt-racks-from-barrows_001_0c221876a7",
@@ -2076,7 +2076,7 @@
       "tier": "EASY",
       "prereqs": "None",
       "wikiTitle": "Castle Wars",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Castle_Wars",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Red_decorative_armour",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -2098,7 +2098,7 @@
     },
     {
       "id": "collection_log_easy_get-the-zamorak-hood-cloak_001_53931281fb",
-      "name": "Get the Zamorak hood & cloak",
+      "name": "Get the Castle Wars Zamorak hood & cloak",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
       "prereqs": "None",
@@ -2248,26 +2248,25 @@
         ],
         "count": 1
       },
-      "displayItemId": 9470,
+      "displayItemId": 6912,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gnome_scarf_detail.png/320px-Gnome_scarf_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_easy_upgrade-the-mta-wand-once_001_c0ffabb7fb",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
       "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Beginner wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Beginner_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
           6908,
           6910,
-          6912,
-          6914
+          6912
         ],
         "count": 1
       },
@@ -2792,7 +2791,7 @@
       "name": "Get a Rune defender",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "A combined Attack and Strength level of at least 130 (or level 99 in either skill)",
+      "prereqs": "Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Rune defender",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Rune_defender",
       "verification": {
@@ -3058,7 +3057,7 @@
       "name": "Get Revenant ether",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenant ether",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenant_ether",
       "verification": {
@@ -3317,7 +3316,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3327,9 +3326,7 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 1
       },
@@ -3343,7 +3340,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3353,13 +3350,11 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 2
       },
-      "displayItemId": 4119,
+      "displayItemId": 4121,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -3369,7 +3364,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3379,13 +3374,11 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 3
       },
-      "displayItemId": 4119,
+      "displayItemId": 4123,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -3395,7 +3388,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3405,13 +3398,11 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 4
       },
-      "displayItemId": 4119,
+      "displayItemId": 4125,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -3421,7 +3412,7 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "10+ Slayer",
+      "prereqs": "Bronze: 10 Slayer; Iron: 17 Slayer; Steel: 30 Slayer; Black: 50 Slayer; Mithril: 52 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
@@ -3431,13 +3422,11 @@
           4121,
           4123,
           4125,
-          4127,
-          4129,
-          4131
+          4127
         ],
         "count": 5
       },
-      "displayItemId": 4119,
+      "displayItemId": 4127,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
       "version": 1
@@ -4544,6 +4533,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -4571,6 +4561,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -4598,6 +4589,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -4625,6 +4617,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -4951,46 +4944,44 @@
     },
     {
       "id": "collection_log_easy_upgrade-the-mta-wand-once_002_ad191602f6",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
       "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Apprentice wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Apprentice_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
           6908,
           6910,
-          6912,
-          6914
+          6912
         ],
         "count": 2
       },
-      "displayItemId": 6908,
+      "displayItemId": 6910,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Teacher_wand_detail.png/320px-Teacher_wand_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Apprentice_wand_detail.png/320px-Apprentice_wand_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_easy_upgrade-the-mta-wand-once_003_9e8d477596",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
       "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Teacher wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Teacher_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
           6908,
           6910,
-          6912,
-          6914
+          6912
         ],
         "count": 3
       },
-      "displayItemId": 6908,
+      "displayItemId": 6912,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Teacher_wand_detail.png/320px-Teacher_wand_detail.png",
       "version": 1
@@ -5429,7 +5420,7 @@
       "name": "Get the next reward from The Tempor Tantrum",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Pandemonium quest; 30 Sailing",
+      "prereqs": "30 Sailing; 14 Construction",
       "wikiTitle": "The Tempor Tantrum",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Tempor_Tantrum",
       "verification": {
@@ -5443,7 +5434,7 @@
       },
       "displayItemId": 31732,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Stormy_key_detail.png/320px-Stormy_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -5451,7 +5442,7 @@
       "name": "Get the next reward from The Tempor Tantrum",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Pandemonium quest; 30 Sailing",
+      "prereqs": "30 Sailing; 14 Construction",
       "wikiTitle": "The Tempor Tantrum",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Tempor_Tantrum",
       "verification": {
@@ -5463,9 +5454,9 @@
         ],
         "count": 2
       },
-      "displayItemId": 31732,
+      "displayItemId": 31733,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Stormy_key_detail.png/320px-Stormy_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -5473,7 +5464,7 @@
       "name": "Get the next reward from The Tempor Tantrum",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Pandemonium quest; 30 Sailing",
+      "prereqs": "30 Sailing; 14 Construction",
       "wikiTitle": "The Tempor Tantrum",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Tempor_Tantrum",
       "verification": {
@@ -5485,9 +5476,9 @@
         ],
         "count": 3
       },
-      "displayItemId": 31732,
+      "displayItemId": 31734,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Stormy_key_detail.png/320px-Stormy_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Ralph%27s_fabric_roll_detail.png/320px-Ralph%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -5739,7 +5730,7 @@
     },
     {
       "id": "combat_achievement_easy_preparation-is-key_001_c1ba794eac",
-      "name": "Preparation Is Key",
+      "name": "Preparation is Key",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "EASY",
       "prereqs": "None",
@@ -8922,25 +8913,22 @@
     },
     {
       "id": "collection_log_medium_upgrade-the-mta-wand-once_001_6f613bc509",
-      "name": "Upgrade the MTA wand once",
+      "name": "Get next tier of Magic Training Arena wand",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "33 Magic",
-      "wikiTitle": "Mage Training Arena",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Mage_Training_Arena",
+      "wikiTitle": "Master wand",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Master_wand",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          6908,
-          6910,
-          6912,
           6914
         ],
-        "count": 4
+        "count": 1
       },
       "displayItemId": 6914,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Teacher_wand_detail.png/320px-Teacher_wand_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Master_wand_detail.png/320px-Master_wand_detail.png",
       "version": 1
     },
     {
@@ -9549,7 +9537,7 @@
       "name": "Get a Dragon defender",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "A combined Attack and Strength level of at least 130 (or level 99 in either skill)",
+      "prereqs": "Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Dragon defender",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Dragon_defender",
       "verification": {
@@ -10071,25 +10059,20 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "75 Slayer (Adamant); 80 Slayer (Rune)",
+      "prereqs": "Adamant: 75 Slayer; Rune: 80 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          4119,
-          4121,
-          4123,
-          4125,
-          4127,
           4129,
           4131
         ],
-        "count": 6
+        "count": 1
       },
-      "displayItemId": 4119,
+      "displayItemId": 4129,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Adamant_boots_detail.png/320px-Adamant_boots_detail.png",
       "version": 1
     },
     {
@@ -10097,25 +10080,20 @@
       "name": "Get the next tier of metal boots",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "75 Slayer (Adamant); 80 Slayer (Rune)",
+      "prereqs": "Adamant: 75 Slayer; Rune: 80 Slayer",
       "wikiTitle": "Metal boots",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Metal_boots",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          4119,
-          4121,
-          4123,
-          4125,
-          4127,
           4129,
           4131
         ],
-        "count": 7
+        "count": 2
       },
-      "displayItemId": 4119,
+      "displayItemId": 4131,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Bronze_boots_detail.png/320px-Bronze_boots_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Adamant_boots_detail.png/320px-Adamant_boots_detail.png",
       "version": 1
     },
     {
@@ -10323,7 +10301,7 @@
       "name": "Get a Bracelet of ethereum or Rev cave teleport",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenant Caves",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenant_Caves",
       "verification": {
@@ -10344,7 +10322,7 @@
       "name": "Get a Bracelet of ethereum or Rev cave teleport",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenant Caves",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenant_Caves",
       "verification": {
@@ -10460,7 +10438,7 @@
       "name": "Karamja Medium Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "MEDIUM",
-      "prereqs": "32 Agility; 3 Herblore; 20 Crafting; 41 Hunter; 40 Mining; 65 Fishing; 16 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Shilo Village quest; Start Dragon Slayer 1 quest; Start Tai Bwo Wannai Trio quest; Reach 100% Tai Bwo Wannai Cleanup favour",
+      "prereqs": "32 Agility; 3 Herblore; 20 Crafting; 41 Hunter; 40 Mining; 65 Fishing; 16 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Shilo Village quest; Start Dragon Slayer 1 quest; Start Tai Bwo Wannai Trio quest; Tai Bwo Wannai Cleanup favour",
       "wikiTitle": "Karamja Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Karamja_Diary",
       "verification": {
@@ -11294,6 +11272,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -11321,6 +11300,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -11348,6 +11328,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -11375,6 +11356,7 @@
           27014,
           27017,
           27019,
+          27021,
           27023,
           27025,
           27027,
@@ -12091,7 +12073,7 @@
     },
     {
       "id": "collection_log_medium_1-graceful-recolor_001_34396fc6b4",
-      "name": "1 Graceful Recolor",
+      "name": "Recolour Graceful Outfit",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "None",
@@ -12276,7 +12258,7 @@
       "name": "Get the next reward from The Jubbly Jive",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 55 Sailing",
+      "prereqs": "55 Sailing; 47 Construction",
       "wikiTitle": "The Jubbly Jive",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Jubbly_Jive",
       "verification": {
@@ -12289,8 +12271,8 @@
         "count": 1
       },
       "displayItemId": 31744,
-      "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Fetid_key_detail.png/320px-Fetid_key_detail.png",
+      "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement.",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -12298,7 +12280,7 @@
       "name": "Get the next reward from The Jubbly Jive",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 55 Sailing",
+      "prereqs": "55 Sailing; 47 Construction",
       "wikiTitle": "The Jubbly Jive",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Jubbly_Jive",
       "verification": {
@@ -12310,9 +12292,9 @@
         ],
         "count": 2
       },
-      "displayItemId": 31744,
-      "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Fetid_key_detail.png/320px-Fetid_key_detail.png",
+      "displayItemId": 31745,
+      "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement. No toad is needed on the green pillar next to the supply boat, as Jubblys spawn there by default.",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -12320,7 +12302,7 @@
       "name": "Get the next reward from The Jubbly Jive",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 55 Sailing",
+      "prereqs": "55 Sailing; 47 Construction",
       "wikiTitle": "The Jubbly Jive",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Jubbly_Jive",
       "verification": {
@@ -12332,9 +12314,9 @@
         ],
         "count": 3
       },
-      "displayItemId": 31744,
-      "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Fetid_key_detail.png/320px-Fetid_key_detail.png",
+      "displayItemId": 31746,
+      "tip": "Throw bloated toads immediately when a pillar is in range. Delays may slow Jubbly movement. No toad is needed on the green pillar next to the supply boat, as Jubblys spawn there by default.",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gurtob%27s_fabric_roll_detail.png/320px-Gurtob%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -12522,7 +12504,7 @@
       "name": "Assemble the Medallion of the deep",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "Pandemonium quest; 33 Thieving OR 35 Woodcutting",
+      "prereqs": "63 Sailing; 50 Thieving; 35 Woodcutting",
       "wikiTitle": "Medallion fragment",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Medallion_fragment",
       "verification": {
@@ -12537,7 +12519,8 @@
           32394,
           32395
         ],
-        "count": 8
+        "count": 8,
+        "completionItemId": 32386
       },
       "displayItemId": 32386,
       "tip": "None",
@@ -12546,12 +12529,12 @@
     },
     {
       "id": "collection_log_medium_get-a-sea-treasure_001_89606e7d40",
-      "name": "Get a Sea Treasure",
+      "name": "Get a Sea Treasure (excluding Medallion fragments)",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "Pandemonium quest; 15 Sailing",
       "wikiTitle": "Shipwreck salvaging",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Shipwreck_salvaging",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Collection_Log/Sailing#Sea_Treasures",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -19047,7 +19030,7 @@
       "name": "Karamja Hard Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 44 Runecrafting; 53 Agility; 25 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave; Reach 100% Tai Bwo Wannai Cleanup favour",
+      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 44 Runecrafting; 53 Agility; 25 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 27 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave; Tai Bwo Wannai Cleanup favour",
       "wikiTitle": "Karamja Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Karamja_Diary",
       "verification": {
@@ -20092,10 +20075,10 @@
     },
     {
       "id": "collection_log_hard_get-1-unique-nihil-shard-ceremonial-robe_001_60e35bf02f",
-      "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
+      "name": "Get 1 unique Nihil shard or Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20120,7 +20103,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20145,7 +20128,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20170,7 +20153,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20195,7 +20178,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20220,7 +20203,7 @@
       "name": "Get 1 unique Nihil shard / Ceremonial robe piece",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Ancient Prison",
       "wikiUrl": "https://oldschool.runescape.wiki/w/God_Wars_Dungeon#Ancient_Prison",
       "verification": {
@@ -20382,18 +20365,26 @@
     },
     {
       "id": "collection_log_hard_get-a-colossal-blade_001_71dc9faeec",
-      "name": "Get a Colossal blade",
+      "name": "Get last unique from Giants' Foundry",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "Sleeping Giants quest; 15 Smithing",
-      "wikiTitle": "Colossal blade",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Colossal_blade",
+      "wikiTitle": "Giants' Foundry",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Giants%27_Foundry",
       "verification": {
         "method": "collection-log",
         "itemIds": [
-          27021
+          27012,
+          27014,
+          27017,
+          27019,
+          27021,
+          27023,
+          27025,
+          27027,
+          27029
         ],
-        "count": 1
+        "count": 9
       },
       "displayItemId": 27021,
       "tip": "None",
@@ -20889,7 +20880,7 @@
       "name": "Get 1 unique from Tormented Demons",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Tormented Demon",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Tormented_Demon",
       "verification": {
@@ -20911,7 +20902,7 @@
       "name": "Get 1 unique from Tormented Demons",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Tormented Demon",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Tormented_Demon",
       "verification": {
@@ -21223,7 +21214,7 @@
       "name": "Get 1 unique from Tormented Demons",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Tormented Demon",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Tormented_Demon",
       "verification": {
@@ -21242,10 +21233,10 @@
     },
     {
       "id": "collection_log_hard_get-the-next-reward-from-the-gwyneth-gli_001_7ed74c6607",
-      "name": "Get the next reward from The Gwyneth Glide",
+      "name": "Get the next reward from The Gwenith Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "Pandemonium quest; 72 Sailing",
+      "prereqs": "72 Sailing; 70 Construction",
       "wikiTitle": "The Gwenith Glide",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Gwenith_Glide",
       "verification": {
@@ -21259,15 +21250,15 @@
       },
       "displayItemId": 31756,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Serrated_key_detail.png/320px-Serrated_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_hard_get-the-next-reward-from-the-gwyneth-gli_002_5a8bb6db64",
-      "name": "Get the next reward from The Gwyneth Glide",
+      "name": "Get the next reward from The Gwenith Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "Pandemonium quest; 72 Sailing",
+      "prereqs": "72 Sailing; 70 Construction",
       "wikiTitle": "The Gwenith Glide",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Gwenith_Glide",
       "verification": {
@@ -21279,17 +21270,17 @@
         ],
         "count": 2
       },
-      "displayItemId": 31756,
+      "displayItemId": 31757,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Serrated_key_detail.png/320px-Serrated_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_hard_get-the-next-reward-from-the-gwyneth-gli_003_1bd0961abd",
-      "name": "Get the next reward from The Gwyneth Glide",
+      "name": "Get the next reward from The Gwenith Glide",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "Pandemonium quest; 72 Sailing",
+      "prereqs": "72 Sailing; 70 Construction",
       "wikiTitle": "The Gwenith Glide",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Gwenith_Glide",
       "verification": {
@@ -21301,9 +21292,9 @@
         ],
         "count": 3
       },
-      "displayItemId": 31756,
+      "displayItemId": 31758,
       "tip": "None",
-      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Serrated_key_detail.png/320px-Serrated_key_detail.png",
+      "imageLink": "https://oldschool.runescape.wiki/images/thumb/Gwyna%27s_fabric_roll_detail.png/320px-Gwyna%27s_fabric_roll_detail.png",
       "version": 1
     },
     {
@@ -22326,7 +22317,7 @@
       "prereqs": "35 Fishing",
       "wikiTitle": "Dress Like You Mean It",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Dress_Like_You_Mean_It",
-      "description": "Subdue Tempoross while wearing all four pieces of the angler's outfit. Players may mix and match regular angler's outfit pieces with spirit angler's outfit pieces. The outfit can either be obtained from the Fishing Trawler (15 Fishing minimum) or aerial fishing (43 Fishing and 35 Hunter). However, 34 Fishing is required in order to wear it.",
+      "description": "Subdue Tempoross while wearing all four pieces of the angler's outfit. Players may mix and match regular angler's outfit pieces with spirit angler's outfit pieces. The outfit can either be obtained from the Fishing Trawler (15 Fishing minimum) or aerial fishing (43 Fishing + 35 Hunter). However, 34 Fishing is required in order to wear it.",
       "version": 1
     },
     {
@@ -29788,7 +29779,7 @@
       "name": "Karamja Elite Diary",
       "source": "DIARY_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 91 Runecrafting; 53 Agility; 87 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 72 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; TzHaar Fight Cave; Reach 100% Tai Bwo Wannai Cleanup favour",
+      "prereqs": "50 Strength; 42 Ranged; 59 Magic; 91 Runecrafting; 53 Agility; 87 Herblore; 50 Thieving; 50 Crafting; 50 Slayer; 41 Hunter; 52 Mining; 40 Smithing; 65 Fishing; 53 Cooking; 50 Woodcutting; 72 Farming; The Grand Tree quest; Tai Bwo Wannai Trio quest; Start Legends' Quest; TzHaar Fight Cave; Tai Bwo Wannai Cleanup favour",
       "wikiTitle": "Karamja Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Karamja_Diary",
       "verification": {
@@ -30493,7 +30484,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -30523,7 +30514,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -30553,7 +30544,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -30583,7 +30574,7 @@
       "name": "Get 1 unique from Revenants",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "100k Coins",
+      "prereqs": "None",
       "wikiTitle": "Revenants",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
       "verification": {
@@ -33213,7 +33204,7 @@
       "name": "Nex Veteran",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Veteran",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Veteran",
       "description": "Kill Nex once.",
@@ -33224,7 +33215,7 @@
       "name": "Nex Survivors",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Survivors",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Survivors",
       "description": "Kill Nex without having anyone die during the fight.",
@@ -33730,7 +33721,7 @@
       "name": "Unending Torment",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Unending Torment",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Unending_Torment",
       "description": "Kill a Tormented Demon. Only Tormented Demons killed after the completion of While Guthix Sleeps count. The two Tormented Demons killed during the quest while your stats are temporarily increased due to touching the Stone of Jas do not count.",
@@ -33741,7 +33732,7 @@
       "name": "Two Times the Torment",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Two Times the Torment",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Two_Times_the_Torment",
       "description": "Kill two Tormented Demons within two seconds.",
@@ -33752,7 +33743,7 @@
       "name": "Through Fire and Flames",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Through Fire and Flames",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Through_Fire_and_Flames",
       "description": "Kill a Tormented Demon while their fire shield is inactive, which is the duration they throw out the fireballs and stun.",
@@ -33763,7 +33754,7 @@
       "name": "Rapid Reload",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Rapid Reload",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Rapid_Reload",
       "description": "Hit three tormented demons within three seconds using a ballista or crossbow.",
@@ -37155,8 +37146,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37181,8 +37172,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37207,8 +37198,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37233,8 +37224,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37259,8 +37250,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37285,8 +37276,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37311,8 +37302,8 @@
           22327,
           22328,
           22477,
-          22323,
-          22325
+          22481,
+          22486
         ],
         "count": 1
       },
@@ -37338,7 +37329,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37370,7 +37361,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37402,7 +37393,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37434,7 +37425,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37466,7 +37457,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37498,7 +37489,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37530,7 +37521,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37562,7 +37553,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -37594,7 +37585,7 @@
           27226,
           27232,
           27229,
-          28547,
+          28549,
           27279,
           27283,
           27285,
@@ -39828,7 +39819,7 @@
       "name": "1 Nex unique",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex",
       "verification": {
@@ -39853,7 +39844,7 @@
       "name": "1 Nex unique",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex",
       "verification": {
@@ -39878,7 +39869,7 @@
       "name": "1 Nex unique",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex",
       "verification": {
@@ -39900,7 +39891,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_001_f9cfae45f2",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -39936,14 +39927,14 @@
         },
         "count": 1
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_002_5747724ab3",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -39979,14 +39970,14 @@
         },
         "count": 2
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_003_8e55c27f35",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40022,14 +40013,14 @@
         },
         "count": 3
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_004_81b32250c4",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40065,14 +40056,14 @@
         },
         "count": 4
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_005_8b7660b7c6",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40108,14 +40099,14 @@
         },
         "count": 5
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_006_85ca28e345",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40151,14 +40142,14 @@
         },
         "count": 6
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_007_48c6fdc929",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40194,14 +40185,14 @@
         },
         "count": 7
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_008_2291dce7b5",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40237,14 +40228,14 @@
         },
         "count": 8
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_009_d2abd834cc",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40280,14 +40271,14 @@
         },
         "count": 9
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_010_1eff74a166",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40323,14 +40314,14 @@
         },
         "count": 10
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_011_9685ff0fd1",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40366,14 +40357,14 @@
         },
         "count": 11
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_012_dfcb530a94",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40409,14 +40400,14 @@
         },
         "count": 12
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_013_8791b07bbf",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40452,14 +40443,14 @@
         },
         "count": 13
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_014_44aa58843f",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40495,14 +40486,14 @@
         },
         "count": 14
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_015_4b4c046d9b",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40538,14 +40529,14 @@
         },
         "count": 15
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_016_785f508860",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40581,14 +40572,14 @@
         },
         "count": 16
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_017_018c7822f8",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40624,14 +40615,14 @@
         },
         "count": 1
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_018_22d1ddafbb",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40667,14 +40658,14 @@
         },
         "count": 2
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_019_af1c5a6724",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40710,14 +40701,14 @@
         },
         "count": 3
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_020_e25cf83ba4",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40753,14 +40744,14 @@
         },
         "count": 4
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_021_860f0e48b0",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40796,14 +40787,14 @@
         },
         "count": 5
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_022_50240c1d01",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40839,14 +40830,14 @@
         },
         "count": 6
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_023_f8e315d1c7",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40882,14 +40873,14 @@
         },
         "count": 7
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-level-99-cape_024_fb7eb92b12",
-      "name": "1 level 99 cape",
+      "name": "Obtain any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40925,14 +40916,14 @@
         },
         "count": 8
       },
-      "displayItemId": 13280,
+      "displayItemId": 13342,
       "tip": "None",
       "imageLink": "https://oldschool.runescape.wiki/images/thumb/Max_cape_detail.png/320px-Max_cape_detail.png",
       "version": 1
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_001_aa081ebb86",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -40972,7 +40963,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_002_3d4fb0bb3a",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41012,7 +41003,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_003_80028c57b9",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41052,7 +41043,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_004_2ba234e84a",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41092,7 +41083,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_005_f4ff84c454",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41132,7 +41123,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_006_b59a51619d",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41172,7 +41163,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_007_62a0d5f485",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41212,7 +41203,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_008_6721dc7fcb",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41252,7 +41243,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_009_9f7e2089e4",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -41292,7 +41283,7 @@
     },
     {
       "id": "collection_log_master_1-unique-from-dt2-bosses_010_a1c5555067",
-      "name": "1 unique from DT2 bosses",
+      "name": "Get 1 unique from DT2 bosses",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -42364,7 +42355,7 @@
       "name": "A siphon will solve this",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "A siphon will solve this",
       "wikiUrl": "https://oldschool.runescape.wiki/w/A_siphon_will_solve_this",
       "description": "Kill Nex without letting her heal from her Blood Siphon special attack.",
@@ -42375,7 +42366,7 @@
       "name": "There is no escape!",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "There is no escape!",
       "wikiUrl": "https://oldschool.runescape.wiki/w/There_is_no_escape%21",
       "description": "Kill Nex without having anyone take damage from her Smoke Dash attack.",
@@ -42386,7 +42377,7 @@
       "name": "Contain this!",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Contain this!",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Contain_this%21",
       "description": "Kill Nex without having anyone take damage from her Containment and Ice Prison attacks.",
@@ -42397,7 +42388,7 @@
       "name": "Nex Master",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Master",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Master",
       "description": "Kill Nex 25 times.",
@@ -42408,7 +42399,7 @@
       "name": "Nex Trio",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Trio",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Trio",
       "description": "Kill Nex with three or less players inside the arena at the start of the fight.",
@@ -42419,7 +42410,7 @@
       "name": "Shadows Move...",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Shadows Move...",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Shadows_Move...",
       "description": "Kill Nex without anyone being hit by her Shadow Smash attack. Upon the shadows appearing beneath you, they will have three ticks (1.8 seconds) to move out of it before they erupt and damage you.",
@@ -43068,7 +43059,7 @@
       "name": "Three Times the Thrashing",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; A Combined Strength and Attack Level of 130 (or 99 in one)",
+      "prereqs": "While Guthix Sleeps quest; 180 Quest Points; 72 Thieving; 67 Magic; 66 Agility; 65 Farming; 65 Herblore; 62 Hunter; Combined Strength and Attack level of 130, or 99 in either",
       "wikiTitle": "Three Times the Thrashing",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Three_Times_the_Thrashing",
       "description": "Kill three Tormented Demons within three seconds.",
@@ -43915,7 +43906,7 @@
       "name": "Nex Duo",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Nex Duo",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nex_Duo",
       "description": "Kill Nex with only two or less players.",
@@ -43926,7 +43917,7 @@
       "name": "Perfect Nex",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "Perfect Nex",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Perfect_Nex",
       "description": "Kill Nex while qualifying for the completion of the following tasks: There is no escape!, Shadows Move..., A siphon will solve this, and Contain this!.",
@@ -43937,7 +43928,7 @@
       "name": "I should see a doctor",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MASTER",
-      "prereqs": "All GWD Frozen Key Pieces",
+      "prereqs": "None",
       "wikiTitle": "I should see a doctor",
       "wikiUrl": "https://oldschool.runescape.wiki/w/I_should_see_a_doctor",
       "description": "Get kill credit for Nex while a player is infected with Nex's Choke attack.",
@@ -44890,6 +44881,7 @@
       "wikiTitle": "Pet List",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Pet#Boss_pets",
       "displayItemId": 20851,
+      "tip": "Beef is the easiest boss to beat to complete this task.",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -44989,6 +44981,111 @@
       "wikiTitle": "Brutus Speed-Trialist",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Brutus_Speed-Trialist",
       "description": "Kill Brutus in under 2 seconds."
+    },
+    {
+      "id": "combat_achievement_easy_shellbane-adept_52f9f85535",
+      "name": "Shellbane Adept",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "EASY",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Adept",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Adept",
+      "description": "Kill the Shellbane Gryphon 25 times.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 625
+      }
+    },
+    {
+      "id": "combat_achievement_easy_dry-cleaning_ed232c8698",
+      "name": "Dry Cleaning",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "EASY",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Dry Cleaning",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Dry_Cleaning",
+      "description": "Kill the Shellbane Gryphon after clearing its corrosive spit from your armour.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 630
+      }
+    },
+    {
+      "id": "combat_achievement_medium_perfect-shellbane_0d9a85d14e",
+      "name": "Perfect Shellbane",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Perfect Shellbane",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Perfect_Shellbane",
+      "description": "Kill the Shellbane Gryphon without taking damage.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 627
+      }
+    },
+    {
+      "id": "combat_achievement_medium_shellbane-veteran_5143dfe455",
+      "name": "Shellbane Veteran",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Veteran",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Veteran",
+      "description": "Kill the Shellbane Gryphon 50 times.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 626
+      }
+    },
+    {
+      "id": "combat_achievement_medium_shellbane-speedrunner_c072760611",
+      "name": "Shellbane Speedrunner",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Speedrunner",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Speedrunner",
+      "description": "Kill the Shellbane Gryphon 10 times within 12:30 minutes of entering the cave.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 628
+      }
+    },
+    {
+      "id": "combat_achievement_hard_shellbane-survivor_ccc64afd86",
+      "name": "Shellbane Survivor",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Shellbane Survivor",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Shellbane_Survivor",
+      "description": "Kill the Shellbane Gryphon 25 times without leaving the cave.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 629
+      }
+    },
+    {
+      "id": "combat_achievement_hard_featherweight-fighter_fc68951ec6",
+      "name": "Featherweight Fighter",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "version": 1,
+      "prereqs": "None",
+      "wikiTitle": "Featherweight Fighter",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Featherweight_Fighter",
+      "description": "Kill the Shellbane Gryphon 5 times without leaving the cave, while wearing gear weighing less than 40kg.",
+      "verification": {
+        "method": "COMBAT_ACHIEVEMENT",
+        "taskId": 631
+      }
     }
   ]
 }

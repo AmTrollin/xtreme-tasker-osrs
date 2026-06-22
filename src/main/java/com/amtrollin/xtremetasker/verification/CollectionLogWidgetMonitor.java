@@ -4,6 +4,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
@@ -22,9 +23,14 @@ public class CollectionLogWidgetMonitor
     private static final int CLOG_ITEM_DRAW_SCRIPT = 4100;
     // Script fired when the collection log interface is set up / a page is loaded.
     private static final int CLOG_SETUP_SCRIPT = 7797;
+    // Script that refreshes collection log item slots for the current page.
+    private static final int CLOG_AUTO_SCAN_SCRIPT = 2240;
 
     @Inject
     private Client client;
+
+    @Inject
+    private ClientThread clientThread;
 
     @Inject
     private EventBus eventBus;
@@ -33,7 +39,10 @@ public class CollectionLogWidgetMonitor
     private CollectionLogService collectionLogService;
 
     private int tickClogScriptFired = -1;
+    private boolean isAutoScanQueued = false;
     private boolean isAutoScanInProgress = false;
+    private int openSetupCacheBatches = 0;
+    private int setupCacheBatchOpenedTick = -1;
 
     public void startUp()
     {
@@ -44,18 +53,29 @@ public class CollectionLogWidgetMonitor
     public void shutDown()
     {
         eventBus.unregister(this);
+        forceCloseSetupCacheBatches();
+        reset();
     }
 
     private void reset()
     {
         tickClogScriptFired = -1;
+        isAutoScanQueued = false;
         isAutoScanInProgress = false;
+        openSetupCacheBatches = 0;
+        setupCacheBatchOpenedTick = -1;
     }
 
     @Subscribe
     public void onGameTick(GameTick event)
     {
-        if (tickClogScriptFired != -1 && tickClogScriptFired + 2 < client.getTickCount())
+        int currentTick = client.getTickCount();
+        if (openSetupCacheBatches > 0 && setupCacheBatchOpenedTick + 2 < currentTick)
+        {
+            forceCloseSetupCacheBatches();
+        }
+
+        if (tickClogScriptFired != -1 && tickClogScriptFired + 2 < currentTick)
         {
             tickClogScriptFired = -1;
             isAutoScanInProgress = false;
@@ -70,7 +90,9 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
-        if (isAutoScanInProgress)
+        endSetupCacheBatch();
+
+        if (isAutoScanQueued || isAutoScanInProgress)
         {
             return;
         }
@@ -81,13 +103,47 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
+        isAutoScanQueued = true;
+        clientThread.invokeAtTickEnd(this::runCollectionLogAutoScan);
+    }
+
+    private void runCollectionLogAutoScan()
+    {
+        if (!isAutoScanQueued)
+        {
+            return;
+        }
+
+        isAutoScanQueued = false;
+
+        // Re-check after deferring because the visible log can change during the current script chain.
+        if (client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
+        {
+            return;
+        }
+
         isAutoScanInProgress = true;
-        client.runScript(2240);
+        tickClogScriptFired = client.getTickCount();
+        collectionLogService.beginCacheChangeBatch();
+        try
+        {
+            client.runScript(CLOG_AUTO_SCAN_SCRIPT);
+        }
+        finally
+        {
+            collectionLogService.endCacheChangeBatch();
+        }
     }
 
     @Subscribe
     public void onScriptPreFired(ScriptPreFired event)
     {
+        if (event.getScriptId() == CLOG_SETUP_SCRIPT)
+        {
+            beginSetupCacheBatch();
+            return;
+        }
+
         if (event.getScriptId() != CLOG_ITEM_DRAW_SCRIPT)
         {
             return;
@@ -101,8 +157,12 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
-        int itemId = (int) args[1];
-        int quantity = (int) args[2];
+        Integer itemId = scriptIntArg(args, 1);
+        Integer quantity = scriptIntArg(args, 2);
+        if (itemId == null || quantity == null)
+        {
+            return;
+        }
 
         if (itemId > 0)
         {
@@ -114,5 +174,53 @@ public class CollectionLogWidgetMonitor
         {
             collectionLogService.storeItem(itemId);
         }
+    }
+
+    private static Integer scriptIntArg(Object[] args, int index)
+    {
+        if (args == null || index < 0 || index >= args.length || !(args[index] instanceof Number))
+        {
+            return null;
+        }
+
+        return ((Number) args[index]).intValue();
+    }
+
+    private void beginSetupCacheBatch()
+    {
+        if (openSetupCacheBatches == 0)
+        {
+            setupCacheBatchOpenedTick = client.getTickCount();
+        }
+
+        openSetupCacheBatches++;
+        collectionLogService.beginCacheChangeBatch();
+    }
+
+    private void endSetupCacheBatch()
+    {
+        if (openSetupCacheBatches <= 0)
+        {
+            openSetupCacheBatches = 0;
+            setupCacheBatchOpenedTick = -1;
+            return;
+        }
+
+        openSetupCacheBatches--;
+        collectionLogService.endCacheChangeBatch();
+        if (openSetupCacheBatches == 0)
+        {
+            setupCacheBatchOpenedTick = -1;
+        }
+    }
+
+    private void forceCloseSetupCacheBatches()
+    {
+        while (openSetupCacheBatches > 0)
+        {
+            openSetupCacheBatches--;
+            collectionLogService.endCacheChangeBatch();
+        }
+        setupCacheBatchOpenedTick = -1;
     }
 }

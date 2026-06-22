@@ -4,23 +4,28 @@ import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
+import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
-import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
+import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
+import net.runelite.api.Skill;
 import net.runelite.client.ui.FontManager;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,8 +36,20 @@ import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in game diary completion.";
+    private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
+    private static final int SECONDARY_SECTION_GAP = 6;
+    private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
+    private static final int TIER_SECTION_ICON_GAP = 5;
+    private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
+    private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
+    private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
+    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
+    private static final DateTimeFormatter COMPLETION_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy 'at' h:mm a").withZone(ZoneId.systemDefault());
 
     private final UiPalette palette;
     private final TaskListScrollController scroll;
@@ -43,6 +60,10 @@ public final class TaskDetailsPopup
     private final Rectangle viewportBounds = new Rectangle();
     private final Rectangle closeBounds = new Rectangle();
     private final Rectangle wikiBounds = new Rectangle();
+    private final Rectangle wikiMenuBounds = new Rectangle();
+    private final Rectangle syncBounds = new Rectangle();
+    private final Rectangle ignoreBounds = new Rectangle();
+    private final Rectangle markIncompleteBounds = new Rectangle();
     private final Rectangle toggleBounds = new Rectangle();
     private final Rectangle scrollbarRailBounds = new Rectangle();
     private final Rectangle scrollbarThumbBounds = new Rectangle();
@@ -50,8 +71,11 @@ public final class TaskDetailsPopup
     private final Rectangle incrementGroupBounds = new Rectangle();
     private final Rectangle groupProgressHelpBounds = new Rectangle();
     private final Map<XtremeTask, Rectangle> instanceRemoveBounds = new LinkedHashMap<>();
+    private final List<WikiLink> wikiLinks = new ArrayList<>();
+    private final List<Rectangle> wikiLinkBounds = new ArrayList<>();
 
     private int totalContentRows = 0;
+    private boolean wikiMenuOpen = false;
 
     public TaskDetailsPopup(UiPalette palette, TaskListScrollController scroll)
     {
@@ -78,6 +102,7 @@ public final class TaskDetailsPopup
 
         this.task = task;
         scroll.reset();
+        closeWikiMenu();
     }
 
     public void close()
@@ -88,6 +113,10 @@ public final class TaskDetailsPopup
         viewportBounds.setBounds(0, 0, 0, 0);
         closeBounds.setBounds(0, 0, 0, 0);
         wikiBounds.setBounds(0, 0, 0, 0);
+        wikiMenuBounds.setBounds(0, 0, 0, 0);
+        syncBounds.setBounds(0, 0, 0, 0);
+        ignoreBounds.setBounds(0, 0, 0, 0);
+        markIncompleteBounds.setBounds(0, 0, 0, 0);
         toggleBounds.setBounds(0, 0, 0, 0);
         scrollbarRailBounds.setBounds(0, 0, 0, 0);
         scrollbarThumbBounds.setBounds(0, 0, 0, 0);
@@ -95,7 +124,10 @@ public final class TaskDetailsPopup
         incrementGroupBounds.setBounds(0, 0, 0, 0);
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
+        wikiLinks.clear();
+        wikiLinkBounds.clear();
         totalContentRows = 0;
+        wikiMenuOpen = false;
     }
 
     public Rectangle bounds()
@@ -116,6 +148,60 @@ public final class TaskDetailsPopup
     public Rectangle wikiBounds()
     {
         return wikiBounds;
+    }
+
+    public Rectangle wikiMenuBounds()
+    {
+        return wikiMenuBounds;
+    }
+
+    public boolean isWikiMenuOpen()
+    {
+        return wikiMenuOpen;
+    }
+
+    public void openWikiMenu()
+    {
+        wikiMenuOpen = wikiLinks.size() > 1;
+    }
+
+    public void closeWikiMenu()
+    {
+        wikiMenuOpen = false;
+        wikiMenuBounds.setBounds(0, 0, 0, 0);
+        wikiLinkBounds.clear();
+    }
+
+    public WikiLink wikiLinkAt(java.awt.Point p)
+    {
+        if (p == null || !wikiMenuOpen)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < wikiLinkBounds.size() && i < wikiLinks.size(); i++)
+        {
+            if (wikiLinkBounds.get(i).contains(p))
+            {
+                return wikiLinks.get(i);
+            }
+        }
+        return null;
+    }
+
+    public Rectangle syncBounds()
+    {
+        return syncBounds;
+    }
+
+    public Rectangle ignoreBounds()
+    {
+        return ignoreBounds;
+    }
+
+    public Rectangle markIncompleteBounds()
+    {
+        return markIncompleteBounds;
     }
 
     public Rectangle toggleBounds()
@@ -168,7 +254,17 @@ public final class TaskDetailsPopup
             Function<XtremeTask, TaskGroupProgress> groupProgressProvider,
             Function<XtremeTask, List<XtremeTask>> taskGroupProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
+            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
+            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
+            Function<XtremeTask, String> collectionLogSequenceLabelProvider,
+            Function<XtremeTask, Boolean> collectionLogSyncMismatchProvider,
+            Function<XtremeTask, String> collectionLogSyncButtonLabelProvider,
+            Function<XtremeTask, String> collectionLogMarkIncompleteButtonLabelProvider,
+            Function<XtremeTask, Boolean> collectionLogMarkIncompleteEnabledProvider,
+            Function<XtremeTask, Boolean> collectionLogMarkIncompleteSavedEditProvider,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
+            Function<XtremeTask, List<WikiLink>> wikiLinksProvider,
             net.runelite.api.Point mouse,
             java.awt.image.BufferedImage taskIcon,
             boolean showTips
@@ -185,17 +281,27 @@ public final class TaskDetailsPopup
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
         String title = safe(task.getName());
+        boolean done = isCompleted.apply(task);
+        TaskGroupProgress groupProgress = groupProgressProvider == null ? null : groupProgressProvider.apply(task);
+        boolean grouped = groupProgress != null && groupProgress.isGrouped();
+        boolean headerComplete = grouped ? groupProgress.isComplete() : done;
+        refreshWikiLinks(task, wikiLinksProvider);
         final int pad = 12;
         final int closeW = 28;
-        final String wikiText = "Open wiki";
+        final String wikiOpenText = "Open wiki";
+        final String wikiCloseText = "Close";
+        final String wikiText = wikiMenuOpen ? wikiCloseText : wikiOpenText;
         final int gap = 8;
         final int iconSize = 24;
         final int iconGap = 4;
+        final int checkSize = 12;
+        final int checkGap = 6;
         boolean hasIcon = taskIcon != null;
         int iconReserve = hasIcon ? iconSize + iconGap : 0;
+        int completeReserve = headerComplete ? checkSize + checkGap : 0;
         final int rightReserve = closeW + gap;
         FontMetrics titleFm = g.getFontMetrics(FontManager.getRunescapeFont());
-        int titleDesiredW = titleFm.stringWidth(title) + (pad * 2) + rightReserve + iconReserve + 8;
+        int titleDesiredW = titleFm.stringWidth(title) + (pad * 2) + rightReserve + iconReserve + completeReserve + 8;
 
         // Recompute logical bounds every frame. The overlay may scale input bounds
         // after rendering, so carrying them back into layout would compound scale.
@@ -217,10 +323,17 @@ public final class TaskDetailsPopup
         FontMetrics headerFm = g.getFontMetrics();
         g.setColor(palette.UI_GOLD);
 
-        final int wikiW = headerFm.stringWidth(wikiText) + 20;
+        final int wikiW = Math.max(headerFm.stringWidth(wikiOpenText), headerFm.stringWidth(wikiCloseText)) + 20;
+        boolean collectionLogMismatch = collectionLogSyncMismatchProvider != null
+                && Boolean.TRUE.equals(collectionLogSyncMismatchProvider.apply(task));
+        boolean collectionLogMarkIncompleteEnabled = collectionLogMarkIncompleteEnabledProvider == null
+                || Boolean.TRUE.equals(collectionLogMarkIncompleteEnabledProvider.apply(task));
+        String syncButtonLabel = collectionLogSyncButtonLabelProvider == null
+                ? ""
+                : safe(collectionLogSyncButtonLabelProvider.apply(task)).trim();
 
         // Icon in header
-        int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - iconReserve);
+        int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - iconReserve - completeReserve);
 
         int btnH = ROW_HEIGHT + 8;
         int btnY = yTop - 2;
@@ -235,9 +348,16 @@ public final class TaskDetailsPopup
             titleX = x + iconSize + iconGap;
         }
 
-        g.setColor(palette.UI_GOLD);
+        g.setColor(headerComplete ? UiPalette.TIER_COMPLETE_GLOW : palette.UI_GOLD);
         g.setFont(FontManager.getRunescapeFont());
-        g.drawString(TextUtils.truncateToWidth(title, titleFm, titleMaxW), titleX, titleBaseline);
+        String drawTitle = TextUtils.truncateToWidth(title, titleFm, titleMaxW);
+        g.drawString(drawTitle, titleX, titleBaseline);
+        if (headerComplete)
+        {
+            int checkX = titleX + titleFm.stringWidth(drawTitle) + checkGap;
+            int checkY = titleBaseline - titleFm.getAscent() + (titleFm.getHeight() - checkSize) / 2;
+            drawHeaderCheckMark(g, checkX, checkY, checkSize);
+        }
         g.setFont(FontManager.getRunescapeSmallFont());
 
         int closeX = bounds.x + bounds.width - pad - closeW;
@@ -285,6 +405,10 @@ public final class TaskDetailsPopup
         int wikiTextW = fm.stringWidth(wikiText);
         g.drawString(wikiText, wikiBounds.x + (wikiBounds.width - wikiTextW) / 2, centeredTextBaseline(wikiBounds, fm));
 
+        syncBounds.setBounds(0, 0, 0, 0);
+        ignoreBounds.setBounds(0, 0, 0, 0);
+        markIncompleteBounds.setBounds(0, 0, 0, 0);
+
         if (mouse != null && srcBadgeBounds.contains(mouse.getX(), mouse.getY()))
         {
             drawBadgeHoverText(g, fm, TaskLabelFormatter.sourceLabel(task.getSource()), srcBadgeBounds);
@@ -298,12 +422,11 @@ public final class TaskDetailsPopup
         decrementGroupBounds.setBounds(0, 0, 0, 0);
         incrementGroupBounds.setBounds(0, 0, 0, 0);
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
+        toggleBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
+        java.awt.Point mousePoint = mouse == null ? null : new java.awt.Point(mouse.getX(), mouse.getY());
 
         // Footer geometry (computed early to size the viewport)
-        boolean done = isCompleted.apply(task);
-        TaskGroupProgress groupProgress = groupProgressProvider == null ? null : groupProgressProvider.apply(task);
-        boolean grouped = groupProgress != null && groupProgress.isGrouped();
         List<XtremeTask> groupInstances = (grouped && taskGroupProvider != null) ? taskGroupProvider.apply(task) : List.of();
         CompletionInfo completionInfo = (completionInfoProvider != null) ? completionInfoProvider.apply(task) : null;
         Long ticks = (taskTicksProvider != null) ? taskTicksProvider.apply(task) : null;
@@ -313,11 +436,10 @@ public final class TaskDetailsPopup
                 ? null
                 : collectionLogRequirementPreviewProvider.apply(task);
         List<InstanceHistoryLine> instanceHistoryLines = grouped
-                ? buildInstanceHistoryLines(groupInstances, isCompleted, completionInfoProvider, taskTicksProvider)
+                ? buildInstanceHistoryLines(groupInstances, isCompleted, completionInfoProvider, taskTicksProvider, collectionLogSequenceLabelProvider)
                 : List.of();
         int footerPad = 12;
-        int footerH = ROW_HEIGHT + 10;
-        int footerY = bounds.y + bounds.height - footerH - footerPad;
+        int footerY = bounds.y + bounds.height - footerPad;
 
         // Scrollable viewport between content top and footer divider
         final int scrollBarW = 5;
@@ -345,7 +467,30 @@ public final class TaskDetailsPopup
                 ? diaryTaskDescription(task)
                 : (hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim());
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
+        boolean hasTaskTip = !taskTip.isEmpty();
+        boolean tipInDescriptionSection = hasTaskTip && showDescriptionSection && !hasRequirementPreview;
+        boolean tipInRequirementSection = hasTaskTip && hasRequirementPreview;
+        boolean showGroupedProgressSection = groupProgress != null && groupProgress.isGrouped();
+        boolean showGroupedCollectionLogMismatch = showGroupedProgressSection && collectionLogMismatch;
+        boolean showStandaloneSyncMismatch = collectionLogMismatch && !showGroupedProgressSection;
         int totalPx = 0;
+        if (showGroupedProgressSection)
+        {
+            totalPx += ROW_HEIGHT; // "Progress" header
+            totalPx += ROW_HEIGHT + 8; // progress editor
+            if (showGroupedCollectionLogMismatch)
+            {
+                totalPx += ROW_HEIGHT; // blank line before warning
+                totalPx += ROW_HEIGHT; // warning text
+                totalPx += ROW_HEIGHT + 8; // action buttons
+                if (!collectionLogMarkIncompleteEnabled)
+                {
+                    totalPx += ROW_HEIGHT; // disabled action hover hint
+                }
+                totalPx += 6; // button bottom gap
+            }
+            totalPx += 6 + 12; // divider gap before next section
+        }
         if (showDescriptionSection)
         {
             totalPx += ROW_HEIGHT; // "Description" header
@@ -357,9 +502,58 @@ public final class TaskDetailsPopup
             {
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(desc, fm, contentW).size();
             }
+            if (tipInDescriptionSection)
+            {
+                totalPx += ROW_HEIGHT; // blank line before tip
+                totalPx += measureTipHeight(taskTip, fm, contentW);
+            }
         }
         if (showDescriptionSection)
         {
+            totalPx += 6 + 12; // divider gap before next section
+        }
+        if (showStandaloneSyncMismatch)
+        {
+            totalPx += ROW_HEIGHT;
+            totalPx += ROW_HEIGHT + 8;
+            if (!collectionLogMarkIncompleteEnabled)
+            {
+                totalPx += ROW_HEIGHT;
+            }
+            totalPx += 6 + 12;
+        }
+        if (hasRequirementPreview)
+        {
+            if (tipInRequirementSection)
+            {
+                totalPx += measureTipHeight(taskTip, fm, contentW);
+                totalPx += 6;
+            }
+            totalPx += ROW_HEIGHT; // collection log requirement header
+            if (requirementPreview.showSummaryText())
+            {
+                totalPx += ROW_HEIGHT; // counter summary
+            }
+            if (requirementPreview.showTierSections())
+            {
+                totalPx += measureCollectionLogTierSections(requirementPreview, fm, contentW);
+            }
+            else if (requirementPreview.showItemList())
+            {
+                totalPx += CollectionLogIconGridRenderer.measureHeight(
+                        requirementPreview.getItems().size(),
+                        contentW,
+                        requirementPreview.iconColumns());
+            }
+            if (requirementPreview.showSecondaryItemList())
+            {
+                totalPx += secondarySectionGap(requirementPreview);
+                totalPx += ROW_HEIGHT;
+                totalPx += CollectionLogIconGridRenderer.measureHeight(
+                        requirementPreview.secondaryItems().size(),
+                        contentW,
+                        requirementPreview.secondaryIconColumns());
+            }
             totalPx += 6 + 12; // divider gap before "Prereqs"
         }
         totalPx += ROW_HEIGHT; // "Prereqs" header
@@ -371,7 +565,10 @@ public final class TaskDetailsPopup
         {
             for (PrerequisiteStatus status : prerequisiteStatuses)
             {
-                totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + status.getText(), fm, contentW).size();
+                BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
+                int lineHeight = PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, status);
+                totalPx += lineHeight * TextUtils.wrapText(status.getText(), fm,
+                        PrerequisiteIconRenderer.textWidth(fm, contentW, markerImage)).size();
             }
         }
         else
@@ -383,46 +580,11 @@ public final class TaskDetailsPopup
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(p, fm, contentW).size();
             }
         }
-        if (hasRequirementPreview)
-        {
-            totalPx += 6 + 12; // divider gap before eligible CLog items
-            totalPx += ROW_HEIGHT; // "Eligible Collection Log Items" header
-            if (requirementPreview.showSummaryText())
-            {
-                totalPx += ROW_HEIGHT; // counter summary
-            }
-            if (requirementPreview.showItemList())
-            {
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    totalPx += ROW_HEIGHT * TextUtils.wrapText("- " + collectionLogRequirementItemText(item), fm, contentW).size();
-                }
-            }
-        }
-        if (!taskTip.isEmpty())
-        {
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW, 40));
-            if (showDescriptionSection)
-            {
-                totalPx += ROW_HEIGHT; // blank line before tip
-            }
-            totalPx += ROW_HEIGHT * tipLines.size();
-            totalPx += 6;
-        }
         if (!instanceHistoryLines.isEmpty())
         {
-            totalPx += 6 + 12; // divider gap before repeated-task progress
-            totalPx += ROW_HEIGHT; // "Progress" header
-            totalPx += ROW_HEIGHT + 8; // progress editor
-            totalPx += 10; // spacer before completed instance history
+            totalPx += 6 + 12; // divider gap before completed instance history
             totalPx += ROW_HEIGHT; // "Completed Instances" header
             totalPx += (ROW_HEIGHT * 2 + INSTANCE_BLOCK_PAD_BOTTOM) * instanceHistoryLines.size();
-        }
-        else if (groupProgress != null && groupProgress.isGrouped())
-        {
-            totalPx += 6 + 12; // divider gap before repeated-task progress
-            totalPx += ROW_HEIGHT; // "Progress" header
-            totalPx += ROW_HEIGHT + 8; // progress editor
         }
         else if (completionLine != null || timeTakenLine != null)
         {
@@ -454,6 +616,37 @@ public final class TaskDetailsPopup
 
         int y = contentTop + fm.getAscent() - scrollPx;
 
+        if (showGroupedProgressSection)
+        {
+            g.setColor(palette.UI_GOLD);
+            g.drawString("Progress", contentLeft, y);
+            y += ROW_HEIGHT;
+            drawGroupProgressEditor(g, fm, contentLeft, y - fm.getAscent() + 1, contentW, groupProgress, mouse);
+            y += ROW_HEIGHT + 8;
+
+            if (showGroupedCollectionLogMismatch)
+            {
+                y += ROW_HEIGHT;
+                y = drawCollectionLogMismatchActions(
+                        g,
+                        fm,
+                        task,
+                        syncButtonLabel,
+                        collectionLogMarkIncompleteButtonLabelProvider,
+                        collectionLogMarkIncompleteEnabled,
+                        collectionLogMarkIncompleteSavedEditProvider,
+                        contentLeft,
+                        y,
+                        contentW,
+                        mouse);
+            }
+
+            y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
+        }
+
         if (showDescriptionSection)
         {
             g.setColor(palette.UI_GOLD);
@@ -475,10 +668,119 @@ public final class TaskDetailsPopup
                     y += ROW_HEIGHT;
                 }
             }
+
+            if (tipInDescriptionSection)
+            {
+                y += ROW_HEIGHT;
+                y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
+            }
         }
 
         if (showDescriptionSection)
         {
+            y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
+        }
+
+        if (showStandaloneSyncMismatch)
+        {
+            y = drawCollectionLogMismatchActions(
+                    g,
+                    fm,
+                    task,
+                    syncButtonLabel,
+                    collectionLogMarkIncompleteButtonLabelProvider,
+                    collectionLogMarkIncompleteEnabled,
+                    collectionLogMarkIncompleteSavedEditProvider,
+                    contentLeft,
+                    y,
+                    contentW,
+                    mouse);
+
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
+        }
+
+        if (hasRequirementPreview)
+        {
+            if (tipInRequirementSection)
+            {
+                y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
+                y += 6;
+            }
+
+            g.setColor(palette.UI_GOLD);
+            g.drawString(collectionLogRequirementTitle(requirementPreview), contentLeft, y);
+            y += ROW_HEIGHT;
+
+            if (requirementPreview.showSummaryText())
+            {
+                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
+                y += ROW_HEIGHT;
+                if (requirementPreview.showTierSections())
+                {
+                    y += TIER_SECTION_ICON_GAP;
+                }
+            }
+
+            if (requirementPreview.showTierSections())
+            {
+                y = drawCollectionLogTierSections(
+                        g,
+                        fm,
+                        requirementPreview,
+                        contentLeft,
+                        y,
+                        contentW,
+                        collectionLogItemImageProvider,
+                        mousePoint,
+                        viewportBounds);
+            }
+            else if (requirementPreview.showItemList())
+            {
+                y = CollectionLogIconGridRenderer.render(
+                        g,
+                        fm,
+                        contentLeft,
+                        y,
+                        contentW,
+                        requirementPreview.getItems(),
+                        collectionLogItemImageProvider,
+                        mousePoint,
+                        viewportBounds,
+                        palette.UI_TEXT,
+                        palette.UI_TEXT_DIM,
+                        palette.UI_EDGE_LIGHT,
+                        palette.UI_EDGE_DARK,
+                        requirementPreview.iconColumns());
+            }
+
+            if (requirementPreview.showSecondaryItemList())
+            {
+                y += secondarySectionGap(requirementPreview);
+                g.setColor(palette.UI_GOLD);
+                g.drawString(TextUtils.truncateToWidth(requirementPreview.secondaryTitleText(), fm, contentW), contentLeft, y);
+                y += ROW_HEIGHT;
+                y = CollectionLogIconGridRenderer.render(
+                        g,
+                        fm,
+                        contentLeft,
+                        y,
+                        contentW,
+                        requirementPreview.secondaryItems(),
+                        collectionLogItemImageProvider,
+                        mousePoint,
+                        viewportBounds,
+                        palette.UI_TEXT,
+                        palette.UI_TEXT_DIM,
+                        palette.UI_EDGE_LIGHT,
+                        palette.UI_EDGE_DARK,
+                        requirementPreview.secondaryIconColumns());
+            }
+
             y += 6;
             g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
             g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
@@ -499,19 +801,22 @@ public final class TaskDetailsPopup
         {
             for (PrerequisiteStatus status : prerequisiteStatuses)
             {
-                String lineText = "- " + status.getText();
-                for (String line : TextUtils.wrapText(lineText, fm, contentW))
+                BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
+                int textX = PrerequisiteIconRenderer.textX(fm, contentLeft, markerImage);
+                int textW = PrerequisiteIconRenderer.textWidth(fm, contentW, markerImage);
+                int lineHeight = PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, status);
+                boolean firstLine = true;
+                for (String line : TextUtils.wrapText(status.getText(), fm, textW))
                 {
-                    String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                    g.setColor(status.isCompleted() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
-                    g.drawString(drawLine, contentLeft, y);
-
-                    if (status.isCompleted())
+                    if (firstLine)
                     {
-                        drawStrikeThrough(g, fm, drawLine, contentLeft, y);
+                        PrerequisiteIconRenderer.drawMarker(g, fm, markerImage, contentLeft, y);
                     }
+                    String drawLine = TextUtils.truncateToWidth(line, fm, textW);
+                    drawPrerequisiteStatusLine(g, fm, status, drawLine, textX, y);
 
-                    y += ROW_HEIGHT;
+                    y += lineHeight;
+                    firstLine = false;
                 }
             }
         }
@@ -531,83 +836,12 @@ public final class TaskDetailsPopup
             }
         }
 
-        if (hasRequirementPreview)
-        {
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
-
-            g.setColor(palette.UI_GOLD);
-            g.drawString(collectionLogRequirementTitle(requirementPreview), contentLeft, y);
-            y += ROW_HEIGHT;
-
-            if (requirementPreview.showSummaryText())
-            {
-                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
-                y += ROW_HEIGHT;
-            }
-
-            if (requirementPreview.showItemList())
-            {
-                for (CollectionLogRequirementItem item : requirementPreview.getItems())
-                {
-                    String lineText = "- " + collectionLogRequirementItemText(item);
-                    for (String line : TextUtils.wrapText(lineText, fm, contentW))
-                    {
-                        String drawLine = TextUtils.truncateToWidth(line, fm, contentW);
-                        g.setColor(item.isApplied() ? palette.UI_TEXT_DIM : item.isAvailable() ? palette.UI_GOLD : palette.UI_TEXT);
-                        g.drawString(drawLine, contentLeft, y);
-
-                        if (item.isApplied())
-                        {
-                            drawStrikeThrough(g, fm, drawLine, contentLeft, y);
-                        }
-
-                        y += ROW_HEIGHT;
-                    }
-                }
-            }
-        }
-
-        if (!taskTip.isEmpty())
-        {
-            if (showDescriptionSection)
-            {
-                y += ROW_HEIGHT; // blank line before tip
-            }
-            List<String> tipLines = TextUtils.wrapText(taskTip, fm, Math.max(contentW - 8, 40));
-            g.setColor(palette.UI_TEXT_DIM);
-            if (!tipLines.isEmpty())
-            {
-                g.drawString(TextUtils.truncateToWidth("Tip: " + tipLines.get(0), fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
-                for (int i = 1; i < tipLines.size(); i++)
-                {
-                    g.drawString(TextUtils.truncateToWidth(tipLines.get(i), fm, contentW), contentLeft, y);
-                    y += ROW_HEIGHT;
-                }
-            }
-            y += 6;
-        }
-
-        if (groupProgress != null && groupProgress.isGrouped())
-        {
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
-
-            g.setColor(palette.UI_GOLD);
-            g.drawString("Progress", contentLeft, y);
-            y += ROW_HEIGHT;
-            drawGroupProgressEditor(g, fm, contentLeft, y - fm.getAscent() + 1, contentW, groupProgress, mouse);
-            y += ROW_HEIGHT + 8;
-        }
-
         if (!instanceHistoryLines.isEmpty())
         {
-            y += 10;
+            y += 6;
+            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
+            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
+            y += 12;
 
             g.setColor(palette.UI_GOLD);
             g.drawString("Completed Instances", contentLeft, y);
@@ -653,16 +887,19 @@ public final class TaskDetailsPopup
         {
             int sbX = bounds.x + bounds.width - pad / 2 - scrollBarW;
             scrollbarRailBounds.setBounds(sbX, viewportTop, scrollBarW, viewportH);
-            g.setColor(new Color(18, 14, 9, 200));
+            g.setColor(new Color(0, 0, 0, 60));
             g.fillRect(sbX, viewportTop, scrollBarW, viewportH);
             float thumbRatio = (float) visibleRows / totalContentRows;
-            int thumbH = Math.max(14, (int) (viewportH * thumbRatio));
+            int thumbH = Math.max(12, (int) (viewportH * thumbRatio));
             float scrollRatio = maxScrollOffset > 0 ? (float) scroll.offsetRows / maxScrollOffset : 0f;
             int thumbY = viewportTop + (int) ((viewportH - thumbH) * scrollRatio);
-            scrollbarThumbBounds.setBounds(sbX, thumbY, scrollBarW, thumbH);
+            Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+            scrollbarThumbBounds.setBounds(thumb);
+            drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+
             g.setColor(new Color(
-                    palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 160));
-            g.fillRoundRect(sbX, thumbY, scrollBarW, thumbH, 3, 3);
+                    palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 140));
+            g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
         }
         int footerX = bounds.x + footerPad;
         int footerW = bounds.width - (footerPad * 2);
@@ -680,23 +917,98 @@ public final class TaskDetailsPopup
                 footerY - 6
         );
 
-        boolean footerDone = grouped ? groupProgress.isComplete() : done;
-        String toggleText = grouped
-                ? (footerDone ? "Mark all incomplete" : "Mark all complete")
-                : (footerDone ? "Mark incomplete" : "Mark complete");
-        int btnW = grouped ? 160 : 140;
+        if (wikiMenuOpen)
+        {
+            drawWikiMenu(g, fm, mouse);
+        }
 
-        int btnX = bounds.x + (bounds.width - btnW) / 2;
+    }
 
-        toggleBounds.setBounds(btnX, footerY, btnW, footerH);
+    private void refreshWikiLinks(XtremeTask task, Function<XtremeTask, List<WikiLink>> wikiLinksProvider)
+    {
+        wikiLinks.clear();
+        if (wikiLinksProvider != null)
+        {
+            List<WikiLink> provided = wikiLinksProvider.apply(task);
+            if (provided != null)
+            {
+                for (WikiLink link : provided)
+                {
+                    if (link != null && link.isValid())
+                    {
+                        wikiLinks.add(link);
+                    }
+                }
+            }
+        }
 
-        drawPopupButton(
-                g,
-                fm,
-                toggleBounds,
-                toggleText,
-                !footerDone
-        );
+        if (wikiLinks.size() <= 1)
+        {
+            closeWikiMenu();
+        }
+    }
+
+    private void drawWikiMenu(Graphics2D g, FontMetrics fm, net.runelite.api.Point mouse)
+    {
+        wikiLinkBounds.clear();
+        if (wikiLinks.size() <= 1 || wikiBounds.width <= 0 || wikiBounds.height <= 0)
+        {
+            closeWikiMenu();
+            return;
+        }
+
+        final int rowH = ROW_HEIGHT + 4;
+        final int padX = 8;
+        int menuW = wikiBounds.width;
+        for (WikiLink link : wikiLinks)
+        {
+            menuW = Math.max(menuW, fm.stringWidth(link.label()) + padX * 2);
+        }
+        int menuH = rowH * wikiLinks.size();
+        int menuX = Math.max(bounds.x + 6, Math.min(wikiBounds.x + wikiBounds.width - menuW, bounds.x + bounds.width - menuW - 6));
+        int menuY = wikiBounds.y - menuH - 2;
+        if (menuY < bounds.y + 6)
+        {
+            menuY = wikiBounds.y + wikiBounds.height + 2;
+        }
+
+        wikiMenuBounds.setBounds(menuX, menuY, menuW, menuH);
+        g.setColor(new Color(24, 19, 13, 245));
+        g.fillRect(wikiMenuBounds.x, wikiMenuBounds.y, wikiMenuBounds.width, wikiMenuBounds.height);
+
+        int mouseX = mouse == null ? Integer.MIN_VALUE : mouse.getX();
+        int mouseY = mouse == null ? Integer.MIN_VALUE : mouse.getY();
+        for (int i = 0; i < wikiLinks.size(); i++)
+        {
+            Rectangle row = new Rectangle(menuX, menuY + i * rowH, menuW, rowH);
+            wikiLinkBounds.add(row);
+            if (row.contains(mouseX, mouseY))
+            {
+                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 45));
+                g.fillRect(row.x, row.y, row.width, row.height);
+            }
+
+            g.setColor(palette.UI_TEXT);
+            String label = TextUtils.truncateToWidth(wikiLinks.get(i).label(), fm, row.width - padX * 2);
+            g.drawString(label, row.x + padX, centeredTextBaseline(row, fm));
+        }
+    }
+
+    private int measureTipHeight(String tip, FontMetrics fm, int maxWidth)
+    {
+        return ROW_HEIGHT * TextUtils.wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40)).size();
+    }
+
+    private int drawTaskTip(Graphics2D g, FontMetrics fm, String tip, int x, int y, int maxWidth)
+    {
+        List<String> tipLines = TextUtils.wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40));
+        g.setColor(palette.UI_TEXT_DIM);
+        for (String line : tipLines)
+        {
+            g.drawString(TextUtils.truncateToWidth(line, fm, maxWidth), x, y);
+            y += ROW_HEIGHT;
+        }
+        return y;
     }
 
     private void drawPopupButton(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean enabled)
@@ -720,6 +1032,106 @@ public final class TaskDetailsPopup
                 centeredTextBaseline(bounds, fm));
     }
 
+    private void drawColoredButton(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, Color fill, Color textColor, Color border)
+    {
+        drawBevelBox(g, bounds, fill);
+        if (border != null)
+        {
+            g.setColor(border);
+            g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+        g.setColor(textColor);
+        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - 10);
+        g.drawString(drawText,
+                bounds.x + (bounds.width - fm.stringWidth(drawText)) / 2,
+                centeredTextBaseline(bounds, fm));
+    }
+
+    private int drawCollectionLogMismatchActions(
+            Graphics2D g,
+            FontMetrics fm,
+            XtremeTask task,
+            String syncButtonLabel,
+            Function<XtremeTask, String> collectionLogMarkIncompleteButtonLabelProvider,
+            boolean markIncompleteEnabled,
+            Function<XtremeTask, Boolean> collectionLogMarkIncompleteSavedEditProvider,
+            int contentLeft,
+            int y,
+            int contentW,
+            net.runelite.api.Point mouse
+    )
+    {
+        boolean showSyncAction = syncButtonLabel != null && !syncButtonLabel.trim().isEmpty();
+        g.setColor(new Color(245, 92, 82, 245));
+        g.drawString(TextUtils.truncateToWidth(
+                showSyncAction
+                        ? "Not enough CLOG(s) obtained for current tasks completed"
+                        : "Completion marked in plugin, not found in game data",
+                fm,
+                contentW),
+                contentLeft,
+                y);
+        y += ROW_HEIGHT;
+
+        int actionTop = y - fm.getAscent();
+        int actionH = ROW_HEIGHT + 8;
+        int actionGap = 8;
+        String markIncompleteLabel = collectionLogMarkIncompleteButtonLabelProvider == null
+                ? "Mark task incomplete"
+                : safe(collectionLogMarkIncompleteButtonLabelProvider.apply(task));
+        if (markIncompleteLabel.isEmpty())
+        {
+            markIncompleteLabel = "Mark task incomplete";
+        }
+        boolean hasSavedIncompleteEdit = collectionLogMarkIncompleteSavedEditProvider != null
+                && Boolean.TRUE.equals(collectionLogMarkIncompleteSavedEditProvider.apply(task));
+        int availableActionW = Math.max(120, contentW - (showSyncAction ? actionGap * 2 : actionGap));
+        int syncActionW = showSyncAction ? Math.max(58, fm.stringWidth(syncButtonLabel) + 18) : 0;
+        int ignoreActionW = Math.max(58, fm.stringWidth("Ignore") + 18);
+        int markActionW = Math.max(120, fm.stringWidth(markIncompleteLabel) + 18);
+        int totalActionW = ignoreActionW + markActionW + actionGap + (showSyncAction ? syncActionW + actionGap : 0);
+        if (totalActionW > availableActionW)
+        {
+            int overflow = totalActionW - availableActionW;
+            markActionW = Math.max(104, markActionW - overflow);
+        }
+        if (showSyncAction)
+        {
+            syncBounds.setBounds(contentLeft, actionTop, syncActionW, actionH);
+            ignoreBounds.setBounds(syncBounds.x + syncBounds.width + actionGap, actionTop, ignoreActionW, actionH);
+        }
+        else
+        {
+            syncBounds.setBounds(0, 0, 0, 0);
+            ignoreBounds.setBounds(contentLeft, actionTop, ignoreActionW, actionH);
+        }
+        markIncompleteBounds.setBounds(ignoreBounds.x + ignoreBounds.width + actionGap, actionTop, markActionW, actionH);
+        if (showSyncAction)
+        {
+            drawColoredButton(g, fm, syncBounds, syncButtonLabel,
+                    new Color(35, 74, 45, 235), palette.UI_TEXT, new Color(105, 190, 118, 200));
+        }
+        drawColoredButton(g, fm, ignoreBounds, "Ignore", palette.BTN_DISABLED_BG, palette.UI_TEXT_DIM, null);
+        drawColoredButton(g, fm, markIncompleteBounds, markIncompleteLabel,
+                !markIncompleteEnabled || hasSavedIncompleteEdit ? palette.BTN_DISABLED_BG : new Color(70, 42, 34, 235),
+                markIncompleteEnabled ? palette.UI_TEXT : palette.UI_TEXT_DIM,
+                !markIncompleteEnabled || hasSavedIncompleteEdit ? null : new Color(190, 88, 72, 180));
+        int buttonBottom = actionTop + actionH;
+        if (!markIncompleteEnabled)
+        {
+            if (mouse != null && markIncompleteBounds.contains(mouse.getX(), mouse.getY()))
+            {
+                g.setColor(palette.UI_TEXT_DIM);
+                g.drawString(
+                        TextUtils.truncateToWidth("Complete a sync first", fm, contentW),
+                        markIncompleteBounds.x,
+                        buttonBottom + fm.getAscent() + 3);
+            }
+            return buttonBottom + ROW_HEIGHT + 6;
+        }
+        return y + actionH + 6;
+    }
+
     private void drawGroupProgressEditor(
             Graphics2D g,
             FontMetrics fm,
@@ -731,9 +1143,9 @@ public final class TaskDetailsPopup
     )
     {
         final int rowH = 18;
-        final int btn = 18;
         final int gap = 6;
         decrementGroupBounds.setBounds(0, 0, 0, 0);
+        incrementGroupBounds.setBounds(0, 0, 0, 0);
 
         String text = "Completed: " + progress.getCompleted() + "/" + progress.getTotal();
         int textX = x;
@@ -745,11 +1157,8 @@ public final class TaskDetailsPopup
                 textX,
                 textBaseline);
 
-        int plusX = textX + fm.stringWidth(drawText) + gap;
-        incrementGroupBounds.setBounds(plusX, rowTop, btn, btn);
-        drawTinyButton(g, fm, incrementGroupBounds, "+", progress.getCompleted() < progress.getTotal());
-
-        drawGroupProgressHelpIcon(g, fm, plusX + btn + gap, rowTop, rowH, x + contentW, mouse);
+        int helpX = textX + fm.stringWidth(drawText) + gap;
+        drawGroupProgressHelpIcon(g, fm, helpX, rowTop, rowH, x + contentW, mouse);
     }
 
     private void drawBadgeHoverText(Graphics2D g, FontMetrics fm, String text, Rectangle badgeBounds)
@@ -758,6 +1167,49 @@ public final class TaskDetailsPopup
         int x = badgeBounds.x;
         int y = badgeBounds.y - 4;
         g.drawString(text, x, y);
+    }
+
+    private void drawPrerequisiteStatusLine(
+            Graphics2D g,
+            FontMetrics fm,
+            PrerequisiteStatus status,
+            String drawLine,
+            int x,
+            int baselineY
+    )
+    {
+        boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
+        g.setColor(!hasCheckSpans && status.isCompleted() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
+        g.drawString(drawLine, x, baselineY);
+
+        if (!hasCheckSpans)
+        {
+            if (status.isCompleted())
+            {
+                drawStrikeThrough(g, fm, drawLine, x, baselineY);
+            }
+            return;
+        }
+
+        for (PrerequisiteStatus.CheckSpan span : status.getCheckSpans())
+        {
+            if (!span.isCompleted() || span.getStart() < 0 || span.getEnd() > status.getText().length() || span.getStart() >= span.getEnd())
+            {
+                continue;
+            }
+
+            String spanText = status.getText().substring(span.getStart(), span.getEnd());
+            int lineIndex = drawLine.indexOf(spanText);
+            if (lineIndex < 0)
+            {
+                continue;
+            }
+
+            int spanX = x + fm.stringWidth(drawLine.substring(0, lineIndex));
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(spanText, spanX, baselineY);
+            drawStrikeThrough(g, fm, spanText, spanX, baselineY);
+        }
     }
 
     private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)
@@ -773,16 +1225,31 @@ public final class TaskDetailsPopup
         g.drawLine(x, strikeY, x + lineW, strikeY);
     }
 
+    private void drawHeaderCheckMark(Graphics2D g, int x, int y, int size)
+    {
+        Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        Stroke oldStroke = g.getStroke();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+
+        int x1 = x + Math.max(1, size / 8);
+        int y1 = y + (size / 2) + Math.max(1, size / 8);
+        int x2 = x + (size / 2) - 1;
+        int y2 = y + size - Math.max(2, size / 4);
+        int x3 = x + size - Math.max(1, size / 8);
+        int y3 = y + Math.max(1, size / 5);
+
+        g.drawLine(x1, y1, x2, y2);
+        g.drawLine(x2, y2, x3, y3);
+
+        g.setStroke(oldStroke);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
+    }
+
     private void drawInstanceHistoryLine(Graphics2D g, FontMetrics fm, int x, int baselineY, int contentW, InstanceHistoryLine line)
     {
-        final int btn = 18;
-        int blockTop = baselineY - fm.getAscent();
-        int buttonTop = blockTop + 1;
-        Rectangle removeBounds = new Rectangle(x, buttonTop, btn, btn);
-        instanceRemoveBounds.put(line.task, removeBounds);
-        drawTinyButton(g, fm, removeBounds, "-", true);
-
-        int textX = x + btn + 8;
+        int textX = x;
         int textW = Math.max(0, contentW - (textX - x));
         g.setColor(palette.UI_TEXT_DIM);
         int textYOffset = 2;
@@ -952,13 +1419,141 @@ public final class TaskDetailsPopup
         return s == null ? "" : s;
     }
 
-    private static String collectionLogRequirementItemText(CollectionLogRequirementItem item)
+    private static int secondarySectionGap(CollectionLogRequirementPreview requirementPreview)
     {
-        if (item == null)
+        String title = requirementPreview == null ? "" : safe(requirementPreview.secondaryTitleText()).trim();
+        return title.startsWith(MEDALLION_ASSEMBLY_TITLE_PREFIX)
+                && title.toLowerCase().contains("fragments to assemble")
+                ? MEDALLION_ASSEMBLY_SECTION_GAP
+                : SECONDARY_SECTION_GAP;
+    }
+
+    private int measureCollectionLogTierSections(CollectionLogRequirementPreview requirementPreview, FontMetrics fm, int maxWidth)
+    {
+        if (requirementPreview == null || !requirementPreview.showTierSections())
         {
-            return "";
+            return 0;
         }
-        return safe(item.getName()) + (item.isAvailable() ? " (not yet applied)" : "");
+
+        int total = 0;
+        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
+        if (current != null)
+        {
+            total += CollectionLogIconGridRenderer.measureHeight(current.items().size(), maxWidth, current.iconColumns());
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> otherSections = requirementPreview.otherTierSectionsHardestFirst();
+        if (!otherSections.isEmpty())
+        {
+            total += SECONDARY_SECTION_GAP;
+            total += ROW_HEIGHT;
+            total += OTHER_SEQUENCE_LABEL_TOP_GAP;
+            total += ROW_HEIGHT * TextUtils.wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth).size();
+        }
+        for (int i = 0; i < otherSections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = otherSections.get(i);
+            if (i > 0)
+            {
+                total += SECONDARY_SECTION_GAP;
+            }
+            total += TIER_SECTION_LABEL_TOP_GAP;
+            total += ROW_HEIGHT;
+            total += TIER_SECTION_ICON_GAP;
+            total += CollectionLogIconGridRenderer.measureHeight(section.items().size(), maxWidth, section.iconColumns());
+        }
+        return total;
+    }
+
+    private int drawCollectionLogTierSections(
+            Graphics2D g,
+            FontMetrics fm,
+            CollectionLogRequirementPreview requirementPreview,
+            int x,
+            int y,
+            int maxWidth,
+            Function<Integer, BufferedImage> collectionLogItemImageProvider,
+            java.awt.Point mousePoint,
+            Rectangle viewportBounds)
+    {
+        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
+        if (current != null)
+        {
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    current.items(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    viewportBounds,
+                    palette.UI_TEXT,
+                    palette.UI_TEXT_DIM,
+                    palette.UI_EDGE_LIGHT,
+                    palette.UI_EDGE_DARK,
+                    current.iconColumns());
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> sections = requirementPreview.otherTierSectionsHardestFirst();
+        if (!sections.isEmpty())
+        {
+            y += SECONDARY_SECTION_GAP;
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(OTHER_SEQUENCE_CLOGS_DIVIDER, x, y);
+            y += ROW_HEIGHT;
+            y += OTHER_SEQUENCE_LABEL_TOP_GAP;
+            for (String line : TextUtils.wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
+            {
+                g.drawString(TextUtils.truncateToWidth(line, fm, maxWidth), x, y);
+                y += ROW_HEIGHT;
+            }
+        }
+        for (int i = 0; i < sections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = sections.get(i);
+            if (i > 0)
+            {
+                y += SECONDARY_SECTION_GAP;
+            }
+            y += TIER_SECTION_LABEL_TOP_GAP;
+
+            drawCollectionLogTierLabel(g, fm, section, x, y);
+            y += ROW_HEIGHT;
+            y += TIER_SECTION_ICON_GAP;
+            Composite oldComposite = g.getComposite();
+            if (!section.currentTier())
+            {
+                g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+            }
+            y = CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxWidth,
+                    section.items(),
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    viewportBounds,
+                    palette.UI_TEXT,
+                    palette.UI_TEXT_DIM,
+                    palette.UI_EDGE_LIGHT,
+                    palette.UI_EDGE_DARK,
+                    section.iconColumns());
+            g.setComposite(oldComposite);
+        }
+        return y;
+    }
+
+    private void drawCollectionLogTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline)
+    {
+        String text = section.tier() == null
+                ? "TIER"
+                : TaskLabelFormatter.tierLabel(section.tier()).toUpperCase();
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 180)), x, baseline);
     }
 
     private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
@@ -985,8 +1580,57 @@ public final class TaskDetailsPopup
 
         g.setColor(palette.UI_TEXT_DIM);
         g.drawString(prefix, x, y);
-        g.setColor(palette.UI_GOLD);
-        g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth - prefixWidth), x + prefixWidth, y);
+        drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
+    }
+
+    private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)
+    {
+        String currentTaskPrefix = "current task: ";
+        if (!suffix.startsWith(currentTaskPrefix))
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth), x, y);
+            return;
+        }
+
+        int prefixWidth = fm.stringWidth(currentTaskPrefix);
+        if (prefixWidth >= maxWidth)
+        {
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(suffix, fm, maxWidth), x, y);
+            return;
+        }
+
+        String progress = suffix.substring(currentTaskPrefix.length());
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(currentTaskPrefix, x, y);
+        g.setColor(isCollectionLogProgressComplete(progress) ? UiPalette.TIER_COMPLETE_GLOW : palette.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(progress, fm, maxWidth - prefixWidth), x + prefixWidth, y);
+    }
+
+    private static boolean isCollectionLogProgressComplete(String progress)
+    {
+        if (progress == null)
+        {
+            return false;
+        }
+
+        String[] parts = progress.trim().split("/");
+        if (parts.length != 2)
+        {
+            return false;
+        }
+
+        try
+        {
+            int current = Integer.parseInt(parts[0].trim());
+            int required = Integer.parseInt(parts[1].trim());
+            return required > 0 && current >= required;
+        }
+        catch (NumberFormatException e)
+        {
+            return false;
+        }
     }
 
     private static boolean isAchievementDiaryTask(XtremeTask task)
@@ -1053,24 +1697,28 @@ public final class TaskDetailsPopup
 
     private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
     {
+        if (requirementPreview != null && requirementPreview.titleText() != null && !requirementPreview.titleText().trim().isEmpty())
+        {
+            return requirementPreview.titleText();
+        }
         return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
                 ? "Collection Log Progress"
-                : "Eligible Collection Log Items";
+                : "Eligible Collection Log items";
     }
 
     private static String buildCompletionLine(CompletionInfo info, Long ticks)
     {
         if (info == null) return null;
-        if (info.timestamp <= 0) return "Completed: date unknown";
-        String date = new SimpleDateFormat("MMM d, yyyy").format(new Date(info.timestamp));
-        return "Completed: " + date + completionSourceSuffix(info, ticks);
+        if (info.timestamp <= 0) return "Date unknown";
+        return COMPLETION_DATE_TIME_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
     private static List<InstanceHistoryLine> buildInstanceHistoryLines(
             List<XtremeTask> instances,
             Function<XtremeTask, Boolean> isCompleted,
             Function<XtremeTask, CompletionInfo> completionInfoProvider,
-            Function<XtremeTask, Long> taskTicksProvider
+            Function<XtremeTask, Long> taskTicksProvider,
+            Function<XtremeTask, String> collectionLogSequenceLabelProvider
     )
     {
         if (instances == null || instances.isEmpty())
@@ -1103,7 +1751,7 @@ public final class TaskDetailsPopup
         for (int i = 0; i < completedInstances.size(); i++)
         {
             CompletedInstance completed = completedInstances.get(i);
-            String prefix = (i + 1) + ". ";
+            String prefix = instanceHistoryPrefix(completed.task, i, collectionLogSequenceLabelProvider);
             String dateText = instanceCompletionDateText(completed.info, completed.ticks);
 
             lines.add(new InstanceHistoryLine(
@@ -1112,6 +1760,19 @@ public final class TaskDetailsPopup
                     buildInstanceTimeSpentLine(completed.info, completed.ticks)));
         }
         return lines;
+    }
+
+    private static String instanceHistoryPrefix(
+            XtremeTask task,
+            int index,
+            Function<XtremeTask, String> collectionLogSequenceLabelProvider)
+    {
+        String sequenceLabel = collectionLogSequenceLabelProvider == null ? "" : safe(collectionLogSequenceLabelProvider.apply(task)).trim();
+        if (!sequenceLabel.isEmpty())
+        {
+            return sequenceLabel + ": ";
+        }
+        return (index + 1) + ". ";
     }
 
     private static long instanceSortTimestamp(CompletionInfo info)
@@ -1196,7 +1857,7 @@ public final class TaskDetailsPopup
         {
             return "Date unknown";
         }
-        return new SimpleDateFormat("MMM d, yyyy").format(new Date(info.timestamp)) + completionSourceSuffix(info, ticks);
+        return COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp)) + completionSourceSuffix(info, ticks);
     }
 
     private static String completionSourceSuffix(CompletionInfo info, Long ticks)

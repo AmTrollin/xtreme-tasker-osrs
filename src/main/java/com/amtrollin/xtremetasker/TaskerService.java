@@ -46,13 +46,21 @@ public interface TaskerService
 
     void completeCurrentTaskAndPersist();
 
+    boolean canUndoRecentTaskCompletion();
+
+    void undoCurrentTaskCompletionAndPersist();
+
     void rollRandomTaskAndPersist();
+
+    void skipCurrentTaskAndPersist();
 
     void reloadTaskPack();
 
     void syncCombatAchievementsAndPersist();
 
     void syncCollectionLogsAndPersist();
+
+    void syncCollectionLogTaskAndPersist(XtremeTask task);
 
     String getLastSyncResult();
 
@@ -76,6 +84,12 @@ public interface TaskerService
 
     boolean isCollectionLogSyncPending();
 
+    List<XtremeTask> getSyncCompletionCandidateTasks(TaskSource source);
+
+    void dismissSyncCompletionCandidateReview(TaskSource source);
+
+    void markSyncCompletionCandidateTasksCompleteAndPersist(List<XtremeTask> tasks);
+
     List<XtremeTask> getSyncMismatchTasks();
 
     List<XtremeTask> getSyncMismatchTasks(TaskSource source);
@@ -83,6 +97,8 @@ public interface TaskerService
     String getSyncMismatchTitle();
 
     String getSyncMismatchGameProgressLabel(XtremeTask task);
+
+    String getSyncMismatchIncompleteGuardMessage(List<XtremeTask> tasks);
 
     void dismissSyncMismatchReview();
 
@@ -93,8 +109,6 @@ public interface TaskerService
     void markSyncMismatchTasksIncompleteAndPersist(List<XtremeTask> tasks);
 
     void markAllSyncMismatchTasksIncompleteAndPersist();
-
-    void debugCollectionLogCacheAndReport();
 
     List<PrerequisiteStatus> getPrerequisiteStatuses(XtremeTask task);
 
@@ -116,13 +130,31 @@ public interface TaskerService
 
     XtremeTaskerConfig.RollSourceFilter getRollSourceFilter();
 
+    boolean isTaskSkippingEnabled();
+
+    int getSkippedTaskCount();
+
     String getRollSkipNotice();
 
     boolean showTips();
 
     String getItemName(int itemId);
 
+    String getCollectionLogSequenceStepLabel(XtremeTask task);
+
     boolean isCollectionLogItemObtained(int itemId);
+
+    long getCollectionLogItemObtainedOrder(int itemId);
+
+    void refreshTaskSyncMismatchForTask(XtremeTask task);
+
+    boolean isTaskSyncMismatch(XtremeTask task);
+
+    boolean isCollectionLogTaskSyncMismatch(XtremeTask task);
+
+    void dismissTaskSyncMismatchAndPersist(XtremeTask task);
+
+    void dismissCollectionLogTaskSyncMismatchAndPersist(XtremeTask task);
 
     BufferedImage getItemImage(int itemId);
 }

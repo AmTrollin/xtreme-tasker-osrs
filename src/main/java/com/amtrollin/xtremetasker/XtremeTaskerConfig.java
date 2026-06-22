@@ -9,8 +9,8 @@ public interface XtremeTaskerConfig extends Config {
 
     enum RollSourceFilter {
         ALL("All tasks"),
-        CA_ONLY("Roll only CA tasks"),
-        CLOG_ONLY("Roll CLOGS and ADs only");
+        CA_ONLY("CAs only"),
+        CLOG_ONLY("CLOGS + ADs only");
 
         private final String label;
         RollSourceFilter(String label) { this.label = label; }
@@ -43,6 +43,15 @@ public interface XtremeTaskerConfig extends Config {
     )
     default boolean condenseRepeatedTasks() {
         return true;
+    }
+
+    @ConfigItem(
+            keyName = "enableTaskSkipping",
+            name = "Enable task skipping",
+            description = "Show a Skip button on the Current task page. Skipping rerolls your current task and increments your skipped task count."
+    )
+    default boolean enableTaskSkipping() {
+        return false;
     }
 
     // Tips config temporarily disabled — always off for now

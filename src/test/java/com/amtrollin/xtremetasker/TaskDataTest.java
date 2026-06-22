@@ -74,7 +74,7 @@ public class TaskDataTest
     public void taskSearchMatchesTwoCharacterTermsInAnyOrder()
     {
         List<XtremeTask> tasks = Arrays.asList(
-                new XtremeTask("cape", "1 level 99 cape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
+                new XtremeTask("cape", "Obtain any level 99 skillcape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
                 new XtremeTask("other", "Get bolt racks from Barrows", TaskSource.COLLECTION_LOG, TaskTier.EASY)
         );
 
@@ -176,6 +176,40 @@ public class TaskDataTest
         assertTrue(
                 "KNOWN_CLOG_VERIFICATION_GAPS has stale IDs (remove these): " + staleAllowlist,
                 staleAllowlist.isEmpty());
+    }
+
+    @Test
+    public void giantsFoundryHardTaskRequiresNinthUnique()
+    {
+        JsonObject pack = loadTaskPack();
+        JsonArray tasks = pack.getAsJsonArray("tasks");
+
+        JsonObject foundryTask = null;
+        for (JsonElement taskElement : tasks)
+        {
+            JsonObject task = taskElement.getAsJsonObject();
+            if ("collection_log_hard_get-a-colossal-blade_001_71dc9faeec".equals(optionalString(task, "id")))
+            {
+                foundryTask = task;
+                break;
+            }
+        }
+
+        assertNotNull("Hard Giants' Foundry task must exist", foundryTask);
+        assertEquals("Get last unique from Giants' Foundry", optionalString(foundryTask, "name"));
+        assertEquals("Giants' Foundry", optionalString(foundryTask, "wikiTitle"));
+        assertEquals("https://oldschool.runescape.wiki/w/Giants%27_Foundry", optionalString(foundryTask, "wikiUrl"));
+
+        JsonObject verification = foundryTask.getAsJsonObject("verification");
+        assertEquals("collection-log", optionalString(verification, "method"));
+        assertEquals(9, verification.get("count").getAsInt());
+
+        List<Integer> itemIds = new ArrayList<>();
+        for (JsonElement itemId : verification.getAsJsonArray("itemIds"))
+        {
+            itemIds.add(itemId.getAsInt());
+        }
+        assertEquals(Arrays.asList(27012, 27014, 27017, 27019, 27021, 27023, 27025, 27027, 27029), itemIds);
     }
 
     @Test

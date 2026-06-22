@@ -9,6 +9,7 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
@@ -18,11 +19,13 @@ import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.anim.OverlayAnimations;
 import com.amtrollin.xtremetasker.ui.tasks.TaskControlsRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.TaskDetailsPopup;
+import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.tasks.TasksTabRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
 import com.amtrollin.xtremetasker.ui.tasks.models.TasksTabState;
+import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
 import com.amtrollin.xtremetasker.ui.current.CurrentTabLayout;
 import com.amtrollin.xtremetasker.ui.current.CurrentTabRenderer;
 import com.amtrollin.xtremetasker.ui.current.CurrentTabViewRenderer;
@@ -42,8 +45,10 @@ import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import lombok.Getter;
 import net.runelite.api.Client;
+import net.runelite.api.Skill;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.input.MouseWheelListener;
@@ -54,6 +59,8 @@ import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.util.LinkBrowser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.imageio.ImageIO;
@@ -62,6 +69,9 @@ import java.awt.event.KeyEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -74,9 +84,46 @@ import static com.amtrollin.xtremetasker.ui.style.UiStrings.*;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
 
 public class XtremeTaskerOverlay extends Overlay {
+    private static final Logger log = LoggerFactory.getLogger(XtremeTaskerOverlay.class);
     private static final BufferedImage PLUGIN_ICON = loadPluginIconSafe();
     private static final BufferedImage HEADER_ICON = loadHeaderIconSafe();
     private static final UiPalette P = UiPalette.DEFAULT;
+    private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
+    private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
+    private static final int COLLECTION_LOG_PREVIEW_CACHE_LIMIT = 256;
+    private static final int COLLECTION_LOG_SEQUENCE_CACHE_LIMIT = 256;
+    private static final int ITEM_IMAGE_CACHE_LIMIT = 512;
+    private static final int SKILL_IMAGE_CACHE_LIMIT = 32;
+    private static final int SPRITE_CACHE_LIMIT = 32;
+    private static final int SORTED_TASK_LIST_CACHE_LIMIT = 48;
+    private static final int PREREQUISITE_STATUS_CACHE_LIMIT = 512;
+    private static final int COMPACT_LINES_CACHE_LIMIT = 128;
+    private static final int SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT = 8;
+    private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
+    private static final int COMPACT_MEDALLION_ASSEMBLY_TITLE_GAP = 6;
+    private static final int COMPACT_SECONDARY_SECTION_GAP = 6;
+    private static final int TIER_SECTION_ICON_GAP = 5;
+    private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
+    private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
+    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
+    private static final int TASK_RESOLVE_TOGGLE_SIZE = 18;
+    private static final int TASK_RESOLVE_TOGGLE_GAP = 6;
+    private static final long SLOW_PREVIEW_LOG_THRESHOLD_NANOS = 8_000_000L;
+    private static final long SLOW_PREVIEW_LOG_INTERVAL_MS = 2_000L;
+    private static final long SLOW_TASK_LIST_LOG_THRESHOLD_NANOS = 8_000_000L;
+    private static final long SLOW_TASK_LIST_LOG_INTERVAL_MS = 2_000L;
+    private static final long SLOW_PANEL_RENDER_LOG_THRESHOLD_NANOS = 12_000_000L;
+    private static final long SLOW_PANEL_RENDER_LOG_INTERVAL_MS = 2_000L;
+    private static final List<WikiLink> ZAMORAK_HOOD_CLOAK_WIKI_LINKS = List.of(
+            new WikiLink("Zamorak hood", "https://oldschool.runescape.wiki/w/Castlewars_hood_(Zamorak)"),
+            new WikiLink("Zamorak cloak", "https://oldschool.runescape.wiki/w/Castlewars_cloak_(Zamorak)")
+    );
+    private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_ID = createTaskDetailsWikiLinksById();
+    private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_NAME = createTaskDetailsWikiLinksByName();
+    private static final DateTimeFormatter COMPACT_COMPLETION_DATE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter TASK_RESOLVE_COMPLETION_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
 
     private static BufferedImage loadPluginIconSafe() {
         try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_icon.png")) {
@@ -86,12 +133,43 @@ public class XtremeTaskerOverlay extends Overlay {
         }
     }
 
+    private static Map<String, List<WikiLink>> createTaskDetailsWikiLinksByName()
+    {
+        Map<String, List<WikiLink>> links = new HashMap<>();
+        links.put(normalizeWikiTaskName("Get the Zamorak hood & cloak"), ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        return Collections.unmodifiableMap(links);
+    }
+
+    private static Map<String, List<WikiLink>> createTaskDetailsWikiLinksById()
+    {
+        Map<String, List<WikiLink>> links = new HashMap<>();
+        links.put("collection_log_easy_get-the-zamorak-hood-cloak_001_53931281fb", ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        return Collections.unmodifiableMap(links);
+    }
+
+    private static String normalizeWikiTaskName(String value)
+    {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
     private static BufferedImage loadHeaderIconSafe() {
         try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_header.png")) {
             return in == null ? null : ImageIO.read(in);
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private static <K, V> Map<K, V> lruCache(int maxEntries)
+    {
+        return Collections.synchronizedMap(new LinkedHashMap<K, V>(maxEntries + 1, 0.75f, true)
+        {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<K, V> eldest)
+            {
+                return size() > maxEntries;
+            }
+        });
     }
 
     // ---- bounds / layout ----
@@ -122,10 +200,27 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle syncMismatchConfirmBounds = new Rectangle();
     private final Rectangle syncMismatchConfirmYesBounds = new Rectangle();
     private final Rectangle syncMismatchConfirmNoBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardOkBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardViewportBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardScrollbarRailBounds = new Rectangle();
+    private final Rectangle syncMismatchGuardScrollbarThumbBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarRailBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarThumbBounds = new Rectangle();
     private final Rectangle syncMismatchDescriptionBounds = new Rectangle();
     private final Rectangle syncMismatchDescriptionCloseBounds = new Rectangle();
+    private final Rectangle syncMismatchGroupResolveBounds = new Rectangle();
+    private final Rectangle syncMismatchGroupResolveSaveBounds = new Rectangle();
+    private final Rectangle syncMismatchGroupResolveCancelBounds = new Rectangle();
+    private final Rectangle taskResolveBounds = new Rectangle();
+    private final Rectangle taskResolveCloseBounds = new Rectangle();
+    private final Rectangle taskResolveSaveBounds = new Rectangle();
+    private final Rectangle taskResolveCancelBounds = new Rectangle();
+    private final Rectangle taskSyncResultBounds = new Rectangle();
+    private final Rectangle taskSyncResultCloseBounds = new Rectangle();
+    private final Rectangle taskDetailsIncompleteConfirmBounds = new Rectangle();
+    private final Rectangle taskDetailsIncompleteConfirmYesBounds = new Rectangle();
+    private final Rectangle taskDetailsIncompleteConfirmNoBounds = new Rectangle();
     private final Rectangle keyboardHintsButtonBounds = new Rectangle();
     private final Rectangle keyboardHintsPopupBounds = new Rectangle();
     private final Rectangle taskViewModeBounds = new Rectangle();
@@ -134,7 +229,13 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Map<XtremeTask, Rectangle> taskRowBounds = Collections.synchronizedMap(new HashMap<>());
     private final Map<XtremeTask, Rectangle> syncMismatchTaskBounds = Collections.synchronizedMap(new HashMap<>());
     private final Map<XtremeTask, Rectangle> syncMismatchTaskNameBounds = Collections.synchronizedMap(new HashMap<>());
+    private final Map<XtremeTask, Rectangle> syncMismatchGroupResolveToggleBounds = Collections.synchronizedMap(new HashMap<>());
+    private final Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds = Collections.synchronizedMap(new HashMap<>());
     private final Set<String> selectedSyncMismatchTaskIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> selectedSyncMismatchGroupResolveTaskIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> originalSyncMismatchGroupResolveTaskIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> selectedTaskResolveIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> taskResolveOriginalIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
 
     // Current tab bounds (now come from CurrentTabLayout)
     private final CurrentTabLayout currentLayout = new CurrentTabLayout();
@@ -146,15 +247,33 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
     private boolean keyboardHintsOpen = false;
+    private static final long KEYBOARD_TRIGGERED_TOOLTIP_MS = 3000L;
+    private String keyboardTriggeredTaskTooltipText = null;
+    private final Rectangle keyboardTriggeredTaskTooltipAnchor = new Rectangle();
+    private long keyboardTriggeredTaskTooltipUntilMs = 0L;
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
+    private String syncMismatchGuardMessage = null;
     private boolean syncMismatchReviewOpen = false;
+    private enum SyncReviewMode { MISMATCH, COMPLETION_CANDIDATES }
+    private SyncReviewMode syncReviewMode = SyncReviewMode.MISMATCH;
     private TaskSource syncMismatchReviewSource = null;
     private XtremeTask syncMismatchDescriptionTask = null;
+    private XtremeTask syncMismatchGroupResolveTask = null;
     private int dragOffsetX = 0;
     private int dragOffsetY = 0;
     private XtremeTask pendingMarkAllIncompleteTask = null;
     private boolean pendingMarkAllIncompleteGroupMode = false;
+    private XtremeTask taskResolveTask = null;
+    private boolean taskResolveSavedIncompleteEdits = false;
+    private String taskDetailsSyncPendingTaskId = null;
+    private String taskDetailsSyncStartedAt = null;
+    private int taskDetailsSyncStartedObservedCount = -1;
+    private XtremeTask taskSyncResultTask = null;
+    private String taskSyncResultText = "";
+    private boolean taskSyncResultResolvable = false;
+    private boolean taskSyncResultShowFreshnessHint = false;
+    private boolean taskDetailsIncompleteConfirmOpen = false;
 
     private Integer panelXOverride = null;
     private Integer panelYOverride = null;
@@ -200,6 +319,19 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Client client;
     private final XtremeTaskerPlugin plugin;
     private final SpriteManager spriteManager;
+    private final SkillIconManager skillIconManager;
+    private final Map<String, CollectionLogRequirementPreview> collectionLogPreviewCache = lruCache(COLLECTION_LOG_PREVIEW_CACHE_LIMIT);
+    private final Map<String, List<XtremeTask>> collectionLogSequenceCache = lruCache(COLLECTION_LOG_SEQUENCE_CACHE_LIMIT);
+    private final Map<Integer, BufferedImage> itemImageCache = lruCache(ITEM_IMAGE_CACHE_LIMIT);
+    private final Map<Skill, BufferedImage> skillImageCache = lruCache(SKILL_IMAGE_CACHE_LIMIT);
+    private final Map<Integer, BufferedImage> spriteCache = lruCache(SPRITE_CACHE_LIMIT);
+    private final Map<String, List<XtremeTask>> sortedTaskListCache = lruCache(SORTED_TASK_LIST_CACHE_LIMIT);
+    private final Map<String, List<PrerequisiteStatus>> prerequisiteStatusCache = lruCache(PREREQUISITE_STATUS_CACHE_LIMIT);
+    private final Map<String, List<CompactLine>> compactLinesCache = lruCache(COMPACT_LINES_CACHE_LIMIT);
+    private final Map<String, List<XtremeTask>> syncReviewVisibleTasksCache = lruCache(SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT);
+    private long lastSlowPreviewLogMs = 0L;
+    private long lastSlowTaskListLogMs = 0L;
+    private long lastSlowPanelRenderLogMs = 0L;
 
     @Getter
     private final MouseAdapter mouseAdapter;
@@ -227,19 +359,313 @@ public class XtremeTaskerOverlay extends Overlay {
         CA_TIER_SPRITE_IDS.put(TaskTier.GRANDMASTER, 3398);
     }
 
+    private static final Map<String, SkillcapeDisplay> SKILLCAPE_DISPLAYS = skillcapeDisplays();
+
+    private static Map<String, SkillcapeDisplay> skillcapeDisplays()
+    {
+        Map<String, SkillcapeDisplay> displays = new LinkedHashMap<>();
+        addSkillcapeDisplay(displays, "fishing", "Fishing skillcape", 9799, 9798);
+        addSkillcapeDisplay(displays, "fletching", "Fletching skillcape", 9784, 9783);
+        addSkillcapeDisplay(displays, "herblore", "Herblore skillcape", 9775, 9774);
+        addSkillcapeDisplay(displays, "hunter", "Hunter skillcape", 9949, 9948);
+        addSkillcapeDisplay(displays, "magic", "Magic skillcape", 9763, 9762);
+        addSkillcapeDisplay(displays, "mining", "Mining skillcape", 9793, 9792);
+        addSkillcapeDisplay(displays, "prayer", "Prayer skillcape", 9760, 9759);
+        addSkillcapeDisplay(displays, "ranged", "Ranging skillcape", 9757, 9756);
+        addSkillcapeDisplay(displays, "runecraft", "Runecraft skillcape", 9766, 9765);
+        addSkillcapeDisplay(displays, "sailing", "Sailing skillcape", 31290, 31289);
+        addSkillcapeDisplay(displays, "slayer", "Slayer skillcape", 9787, 9786);
+        addSkillcapeDisplay(displays, "smithing", "Smithing skillcape", 9796, 9795);
+        addSkillcapeDisplay(displays, "strength", "Strength skillcape", 9751, 9750);
+        addSkillcapeDisplay(displays, "thieving", "Thieving skillcape", 9778, 9777);
+        addSkillcapeDisplay(displays, "woodcutting", "Woodcutting skillcape", 9808, 9807);
+        addSkillcapeDisplay(displays, "agility", "Agility skillcape", 9772, 9771, 13341, 13340);
+        addSkillcapeDisplay(displays, "attack", "Attack skillcape", 9748, 9747);
+        addSkillcapeDisplay(displays, "construction", "Construction skillcape", 9790, 9789);
+        addSkillcapeDisplay(displays, "cooking", "Cooking skillcape", 9802, 9801);
+        addSkillcapeDisplay(displays, "crafting", "Crafting skillcape", 9781, 9780);
+        addSkillcapeDisplay(displays, "defence", "Defence skillcape", 9754, 9753);
+        addSkillcapeDisplay(displays, "farming", "Farming skillcape", 9811, 9810);
+        addSkillcapeDisplay(displays, "firemaking", "Firemaking skillcape", 9805, 9804);
+        addSkillcapeDisplay(displays, "hitpoints", "Hitpoints skillcape", 9769, 9768);
+        return Collections.unmodifiableMap(displays);
+    }
+
+    private static void addSkillcapeDisplay(Map<String, SkillcapeDisplay> displays, String skillKey, String name, int... itemIds)
+    {
+        displays.put(skillKey, new SkillcapeDisplay(name, itemIds));
+    }
+
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
+        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return PrerequisiteIconRenderer.achievementDiaryIconImage();
+        Integer sequenceItemId = sequencePreviewFocusItemId(task);
+        if (sequenceItemId != null && sequenceItemId > 0) return getCachedItemImage(sequenceItemId);
         Integer id = task.getIconItemId();
-        if (id != null && id > 0) return plugin.getItemImage(id);
+        if (id != null && id > 0) return getCachedItemImage(id);
+        Integer singleCollectionLogItemId = singleCollectionLogPreviewItemId(task);
+        if (singleCollectionLogItemId != null && singleCollectionLogItemId > 0) return getCachedItemImage(singleCollectionLogItemId);
         if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT && task.getTier() != null) {
             Integer spriteId = CA_TIER_SPRITE_IDS.get(task.getTier());
-            if (spriteId != null) return spriteManager.getSprite(spriteId, 0);
+            if (spriteId != null) return getCachedSprite(spriteId);
         }
         return null;
     }
 
+    private Integer singleCollectionLogPreviewItemId(XtremeTask task)
+    {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return null;
+        }
+
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
+        if (preview == null || !preview.showItemList() || preview.getItems().size() != 1)
+        {
+            return null;
+        }
+
+        CollectionLogRequirementItem item = preview.getItems().get(0);
+        return item == null || item.getItemId() <= 0 ? null : item.getItemId();
+    }
+
+    private BufferedImage getCachedItemImage(int itemId)
+    {
+        if (itemId <= 0)
+        {
+            return null;
+        }
+
+        BufferedImage cached = itemImageCache.get(itemId);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        BufferedImage image = plugin.getItemImage(itemId);
+        if (image != null)
+        {
+            itemImageCache.put(itemId, image);
+        }
+        return image;
+    }
+
+    private BufferedImage getCachedSkillImage(Skill skill)
+    {
+        if (skill == null)
+        {
+            return null;
+        }
+
+        BufferedImage cached = skillImageCache.get(skill);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        BufferedImage image = skillIconManager == null ? null : skillIconManager.getSkillImage(skill, true);
+        if (image != null)
+        {
+            skillImageCache.put(skill, image);
+        }
+        return image;
+    }
+
+    private BufferedImage getCachedPrerequisiteMarkerImage(MarkerIcon markerIcon)
+    {
+        return null;
+    }
+
+    private BufferedImage getCachedSprite(int spriteId)
+    {
+        BufferedImage cached = spriteCache.get(spriteId);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        BufferedImage image = spriteManager.getSprite(spriteId, 0);
+        if (image != null)
+        {
+            spriteCache.put(spriteId, image);
+        }
+        return image;
+    }
+
+    private List<PrerequisiteStatus> getCachedPrerequisiteStatuses(XtremeTask task)
+    {
+        if (task == null || task.getPrereqs() == null)
+        {
+            return List.of();
+        }
+
+        String cacheKey = safeTaskId(task)
+                + "|tick=" + client.getTickCount()
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|prereqs=" + task.getPrereqs();
+        List<PrerequisiteStatus> cached = prerequisiteStatusCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        List<PrerequisiteStatus> statuses = plugin.getPrerequisiteStatuses(task);
+        List<PrerequisiteStatus> safeStatuses = statuses == null ? List.of() : Collections.unmodifiableList(new ArrayList<>(statuses));
+        prerequisiteStatusCache.put(cacheKey, safeStatuses);
+        return safeStatuses;
+    }
+
     private CollectionLogRequirementPreview buildCollectionLogRequirementPreview(XtremeTask task) {
         return buildCollectionLogRequirementPreview(task, true);
+    }
+
+    private String collectionLogRequirementPreviewCacheKey(XtremeTask task, boolean completedInstanceCanApplyAll)
+    {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return null;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null)
+        {
+            return null;
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.SKILL)
+        {
+            return skillcapePreviewCacheKey(task, verification, completedInstanceCanApplyAll);
+        }
+
+        if (verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return null;
+        }
+
+        int[] itemIds = verification.getItemIds();
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return null;
+        }
+
+        String canonicalItemIds = canonicalItemIds(itemIds);
+        XtremeTask current = plugin.getCurrentTask();
+        Integer baselineCount = plugin.getCurrentTaskCollectionLogBaselineCount(canonicalItemIds);
+
+        return "cl|pack=" + plugin.getLoadedPackVersion()
+                + "|task=" + safeTaskId(task)
+                + "|count=" + verification.getCount()
+                + "|completion=" + verification.getCompletionItemId()
+                + "|applyAll=" + completedInstanceCanApplyAll
+                + "|items=" + canonicalItemIds
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|pendingIncomplete=" + pendingTaskResolveIncompleteSignature()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|current=" + safeTaskId(current)
+                + "|baseline=" + baselineCount
+                + "|pendingPages=" + plugin.getPendingAncientPageDropCountSinceLastSync()
+                + "|pendingMedallionFragments=" + plugin.getPendingMedallionFragmentDropCountSinceLastSync();
+    }
+
+    private String skillcapePreviewCacheKey(XtremeTask task, TaskVerification verification, boolean completedInstanceCanApplyAll)
+    {
+        if (verification.getExperience() == null || verification.getExperience().isEmpty())
+        {
+            return null;
+        }
+
+        return "skillcape|pack=" + plugin.getLoadedPackVersion()
+                + "|task=" + safeTaskId(task)
+                + "|applyAll=" + completedInstanceCanApplyAll
+                + "|xp=" + verification.getExperience().keySet()
+                + "|clState=" + plugin.getCollectionLogStateVersion();
+    }
+
+    private static String safeTaskId(XtremeTask task)
+    {
+        return task == null || task.getId() == null ? "" : task.getId();
+    }
+
+    private String pendingTaskResolveIncompleteSignature()
+    {
+        if (selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            return "";
+        }
+        List<String> ids = new ArrayList<>(selectedTaskResolveIncompleteTaskIds);
+        Collections.sort(ids);
+        return String.join(",", ids);
+    }
+
+    private boolean isTaskCompletedForCollectionLogPreview(XtremeTask task)
+    {
+        if (task == null || !plugin.isTaskCompleted(task))
+        {
+            return false;
+        }
+        String id = task.getId();
+        return id == null || !selectedTaskResolveIncompleteTaskIds.contains(id);
+    }
+
+    private boolean isTaskCompletedForTaskDetails(XtremeTask task)
+    {
+        return isTaskCompletedForCollectionLogPreview(task);
+    }
+
+    private TaskGroupProgress taskDetailsGroupProgress(XtremeTask task)
+    {
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (progress == null || !progress.isGrouped() || selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            return progress;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.isEmpty())
+        {
+            return progress;
+        }
+
+        int stagedIncompleteCompletedCount = 0;
+        for (XtremeTask groupedTask : group)
+        {
+            String id = groupedTask == null ? null : groupedTask.getId();
+            if (id != null
+                    && selectedTaskResolveIncompleteTaskIds.contains(id)
+                    && plugin.isTaskCompleted(groupedTask))
+            {
+                stagedIncompleteCompletedCount++;
+            }
+        }
+        if (stagedIncompleteCompletedCount <= 0)
+        {
+            return progress;
+        }
+
+        return new TaskGroupProgress(
+                Math.max(0, progress.getCompleted() - stagedIncompleteCompletedCount),
+                progress.getTotal());
+    }
+
+    private void logSlowPreviewBuild(long startNanos, XtremeTask task, CollectionLogRequirementPreview preview)
+    {
+        long elapsedNanos = System.nanoTime() - startNanos;
+        if (elapsedNanos < SLOW_PREVIEW_LOG_THRESHOLD_NANOS)
+        {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastSlowPreviewLogMs < SLOW_PREVIEW_LOG_INTERVAL_MS)
+        {
+            return;
+        }
+
+        lastSlowPreviewLogMs = nowMs;
+        int itemCount = preview == null ? 0 : preview.getItems().size();
+        log.debug("Slow collection-log preview build: taskId={}, items={}, elapsed={}ms",
+                safeTaskId(task), itemCount, elapsedNanos / 1_000_000L);
     }
 
     private static boolean isCollectionLogSyncSource(TaskSource source)
@@ -251,18 +677,52 @@ public class XtremeTaskerOverlay extends Overlay {
             XtremeTask task,
             boolean completedInstanceCanApplyAll)
     {
+        String cacheKey = collectionLogRequirementPreviewCacheKey(task, completedInstanceCanApplyAll);
+        if (cacheKey == null)
+        {
+            return null;
+        }
+
+        CollectionLogRequirementPreview cached = collectionLogPreviewCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        long startNanos = System.nanoTime();
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreviewUncached(task, completedInstanceCanApplyAll);
+        if (preview != null)
+        {
+            collectionLogPreviewCache.put(cacheKey, preview);
+        }
+        logSlowPreviewBuild(startNanos, task, preview);
+        return preview;
+    }
+
+    private CollectionLogRequirementPreview buildCollectionLogRequirementPreviewUncached(
+            XtremeTask task,
+            boolean completedInstanceCanApplyAll)
+    {
         if (task == null || task.getSource() != TaskSource.COLLECTION_LOG) return null;
 
         TaskVerification verification = task.getVerification();
-        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG) return null;
+        if (verification == null) return null;
+
+        if (verification.getType() == TaskVerification.VerificationType.SKILL)
+        {
+            return buildSkillcapeRequirementPreview(task, verification);
+        }
+
+        if (verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG) return null;
 
         int[] itemIds = verification.getItemIds();
         if (itemIds == null || itemIds.length == 0) return null;
-        if (itemIds.length == 1) return null;
 
         List<XtremeTask> requirementSequence = collectionLogRequirementSequence(task, itemIds);
         boolean isCountedSequence = requirementSequence.size() > 1;
         boolean repeatedDistinctPool = isCountedSequence && itemIds.length > 1;
+        boolean singleEligibleItem = itemIds.length == 1;
+        boolean hasCompletionItem = verification.getCompletionItemId() != null && verification.getCompletionItemId() > 0;
 
         int requiredCount = collectionLogPreviewRequiredCount(task, verification, itemIds);
         requiredCount = Math.max(1, Math.min(requiredCount, itemIds.length));
@@ -275,6 +735,7 @@ public class XtremeTaskerOverlay extends Overlay {
                         task,
                         requirementSequence,
                         countedRequirementThresholds(requirementSequence),
+                        itemIds,
                         totalObtainedCount,
                         completedInstanceCanApplyAll)
                 : null;
@@ -283,28 +744,605 @@ public class XtremeTaskerOverlay extends Overlay {
                 itemIds,
                 repeatedDistinctPool,
                 repeatedRequirementState);
+        applySequenceTaskCompletionStatuses(task, itemIds, statusByItemId);
+        boolean ancientPageRequirement = isAncientPageRequirement(itemIds);
+        boolean medallionFragmentRequirement = isMedallionFragmentRequirement(itemIds);
+        List<CollectionLogRequirementItem> items = hasCompletionItem
+                ? distinctCollectionLogRequirementItems(itemIds, statusByItemId)
+                : coalescedCollectionLogRequirementItems(itemIds, statusByItemId);
+        List<CollectionLogRequirementPreview.TierSection> sequenceTierSections = sequenceTierSections(task);
+        boolean showSequenceTierSections = !sequenceTierSections.isEmpty();
+        boolean sameNameFamily = !hasCompletionItem && coalescedItemNameCount(itemIds) == 1;
+        boolean allRequiredItemsObtained = totalObtainedCount >= requiredCount;
+        List<CollectionLogRequirementItem> secondaryItems = completionRequirementItems(verification, allRequiredItemsObtained);
+        String sequenceSummaryText = showSequenceTierSections
+                ? fullSequencePreviewSummaryText(task)
+                : sequencePreviewSummaryText(task, itemIds);
+        String summaryText = showSequenceTierSections
+            ? sequenceSummaryText
+            : singleEligibleItem
+            ? ""
+            : !sequenceSummaryText.isEmpty()
+            ? sequenceSummaryText
+            : repeatedDistinctPool
+                ? repeatedRequirementState.summaryText
+            : sameNameFamily
+                ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
+            : "";
+        String pendingAncientPageSummary = ancientPageRequirement ? pendingAncientPageSummary() : "";
+        if (!pendingAncientPageSummary.isEmpty())
+        {
+            summaryText = summaryText.isEmpty() ? pendingAncientPageSummary : summaryText + "  " + pendingAncientPageSummary;
+        }
+        String pendingMedallionFragmentSummary = medallionFragmentRequirement ? pendingMedallionFragmentSummary() : "";
+        if (!pendingMedallionFragmentSummary.isEmpty())
+        {
+            summaryText = summaryText.isEmpty() ? pendingMedallionFragmentSummary : summaryText + "  " + pendingMedallionFragmentSummary;
+        }
+        String titleText = showSequenceTierSections
+                ? "Eligible Collection Log items"
+                : requiredCount >= itemIds.length
+                ? "Needed Collection Log items"
+                : "";
+        String secondaryTitleText = secondaryItems.isEmpty()
+                ? ""
+                : allRequiredItemsObtained ? "Now assemble:" : "Need all " + requiredCount + " fragments to assemble:";
+        return new CollectionLogRequirementPreview(
+                summaryText,
+                titleText,
+                !summaryText.isEmpty() && (!singleEligibleItem && !hasCompletionItem && (sameNameFamily || repeatedDistinctPool)
+                        || !pendingMedallionFragmentSummary.isEmpty() || showSequenceTierSections),
+                !showSequenceTierSections,
+                items,
+                8,
+                secondaryTitleText,
+                secondaryItems,
+                1,
+                sequenceTierSections);
+    }
+
+    private List<CollectionLogRequirementItem> distinctCollectionLogRequirementItems(
+            int[] itemIds,
+            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
+    {
+        List<CollectionLogRequirementItem> items = new ArrayList<>();
+        for (int itemId : itemIds)
+        {
+            items.add(new CollectionLogRequirementItem(
+                    itemId,
+                    collectionLogRequirementItemName(itemId),
+                    statusByItemId.getOrDefault(itemId, CollectionLogRequirementItem.Status.MISSING),
+                    collectionLogRequirementBadgeText(itemId)));
+        }
+        return items;
+    }
+
+    private List<CollectionLogRequirementItem> coalescedCollectionLogRequirementItems(
+            int[] itemIds,
+            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
+    {
         Map<String, CollectionLogRequirementItem.Status> statusByItemName = new LinkedHashMap<>();
+        Map<String, Integer> itemIdByItemName = new LinkedHashMap<>();
         for (int itemId : itemIds) {
-            String itemName = plugin.getItemName(itemId);
+            String itemName = collectionLogRequirementItemName(itemId);
             CollectionLogRequirementItem.Status status = statusByItemId.getOrDefault(
                     itemId,
                     CollectionLogRequirementItem.Status.MISSING);
 
-            statusByItemName.merge(itemName, status, XtremeTaskerOverlay::higherPriorityRequirementStatus);
+            CollectionLogRequirementItem.Status existingStatus = statusByItemName.get(itemName);
+            if (existingStatus == null || requirementStatusPriority(status) > requirementStatusPriority(existingStatus)) {
+                statusByItemName.put(itemName, status);
+                itemIdByItemName.put(itemName, itemId);
+            }
         }
 
         List<CollectionLogRequirementItem> items = new ArrayList<>(statusByItemName.size());
         for (Map.Entry<String, CollectionLogRequirementItem.Status> entry : statusByItemName.entrySet()) {
-            items.add(new CollectionLogRequirementItem(entry.getKey(), entry.getValue()));
+            int itemId = itemIdByItemName.getOrDefault(entry.getKey(), -1);
+            items.add(new CollectionLogRequirementItem(itemId, entry.getKey(), entry.getValue(), collectionLogRequirementBadgeText(itemId)));
+        }
+        return items;
+    }
+
+    private int coalescedItemNameCount(int[] itemIds)
+    {
+        Set<String> names = new HashSet<>();
+        for (int itemId : itemIds)
+        {
+            names.add(collectionLogRequirementItemName(itemId));
+        }
+        return names.size();
+    }
+
+    private List<CollectionLogRequirementItem> completionRequirementItems(
+            TaskVerification verification,
+            boolean allRequiredItemsObtained)
+    {
+        Integer completionItemId = verification == null ? null : verification.getCompletionItemId();
+        if (completionItemId == null || completionItemId <= 0)
+        {
+            return List.of();
         }
 
-        boolean sameNameFamily = statusByItemName.size() == 1;
-        String summaryText = repeatedDistinctPool
-            ? repeatedRequirementState.summaryText
-            : sameNameFamily
-                ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
-            : "";
-        return new CollectionLogRequirementPreview(summaryText, sameNameFamily || repeatedDistinctPool, !sameNameFamily, items);
+        CollectionLogRequirementItem.Status status = plugin.isCollectionLogItemObtained(completionItemId)
+                ? CollectionLogRequirementItem.Status.OBTAINED
+                : allRequiredItemsObtained
+                ? CollectionLogRequirementItem.Status.READY
+                : CollectionLogRequirementItem.Status.MISSING;
+        return List.of(new CollectionLogRequirementItem(completionItemId, plugin.getItemName(completionItemId), status, "", true));
+    }
+
+    private String collectionLogRequirementItemName(int itemId)
+    {
+        int medallionFragmentNumber = medallionFragmentNumber(itemId);
+        if (medallionFragmentNumber > 0)
+        {
+            return "Medallion fragment #" + medallionFragmentNumber;
+        }
+
+        int ancientPageNumber = ancientPageNumber(itemId);
+        if (ancientPageNumber > 0)
+        {
+            return "Page " + ancientPageNumber;
+        }
+        return plugin.getItemName(itemId);
+    }
+
+    private String collectionLogRequirementBadgeText(int itemId)
+    {
+        int ancientPageNumber = ancientPageNumber(itemId);
+        if (ancientPageNumber > 0)
+        {
+            return String.valueOf(ancientPageNumber);
+        }
+        return "";
+    }
+
+    private String pendingMedallionFragmentSummary()
+    {
+        int pendingDrops = plugin.getPendingMedallionFragmentDropCountSinceLastSync();
+        if (pendingDrops <= 0)
+        {
+            return "";
+        }
+
+        return pendingDrops + " Medallion fragment " + (pendingDrops == 1 ? "drop needs" : "drops need")
+                + " CLOG sync to identify fragment number.";
+    }
+
+    private String pendingAncientPageSummary()
+    {
+        int pendingDrops = plugin.getPendingAncientPageDropCountSinceLastSync();
+        if (pendingDrops <= 0)
+        {
+            return "";
+        }
+
+        return pendingDrops + " Ancient page " + (pendingDrops == 1 ? "drop needs" : "drops need")
+                + " CLOG sync to identify page number.";
+    }
+
+    private static int ancientPageNumber(int itemId)
+    {
+        if (itemId < ANCIENT_PAGE_FIRST_ITEM_ID || itemId > ANCIENT_PAGE_LAST_ITEM_ID)
+        {
+            return -1;
+        }
+        return itemId - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
+    }
+
+    private static int medallionFragmentNumber(int itemId)
+    {
+        if (itemId < 32388 || itemId > 32395)
+        {
+            return -1;
+        }
+        return itemId - 32388 + 1;
+    }
+
+    private static boolean isMedallionFragmentRequirement(int[] itemIds)
+    {
+        if (itemIds == null || itemIds.length != 8)
+        {
+            return false;
+        }
+
+        int[] sorted = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .toArray();
+        if (sorted.length != 8)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < sorted.length; i++)
+        {
+            if (sorted[i] != 32388 + i)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isAncientPageRequirement(int[] itemIds)
+    {
+        int expectedCount = ANCIENT_PAGE_LAST_ITEM_ID - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
+        if (itemIds == null || itemIds.length != expectedCount)
+        {
+            return false;
+        }
+
+        int[] sorted = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .toArray();
+        if (sorted.length != expectedCount)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < sorted.length; i++)
+        {
+            if (sorted[i] != ANCIENT_PAGE_FIRST_ITEM_ID + i)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private CollectionLogRequirementPreview buildSkillcapeRequirementPreview(XtremeTask task, TaskVerification verification)
+    {
+        if (task == null
+                || task.getName() == null
+                || !task.getName().toLowerCase(Locale.ROOT).contains("level 99 skillcape")
+                || verification == null
+                || verification.getExperience() == null
+                || verification.getExperience().isEmpty())
+        {
+            return null;
+        }
+
+        List<CollectionLogRequirementItem> items = new ArrayList<>();
+        for (String skillKey : SKILLCAPE_DISPLAYS.keySet())
+        {
+            if (!verification.getExperience().containsKey(skillKey))
+            {
+                continue;
+            }
+
+            SkillcapeDisplay display = SKILLCAPE_DISPLAYS.get(skillKey);
+            items.add(new CollectionLogRequirementItem(
+                    display.displayItemId(),
+                    display.name,
+                    isAnyCollectionLogItemObtained(display.itemIds)
+                            ? CollectionLogRequirementItem.Status.OBTAINED
+                            : CollectionLogRequirementItem.Status.MISSING));
+        }
+
+        if (items.isEmpty())
+        {
+            return null;
+        }
+
+        return new CollectionLogRequirementPreview("", "Eligible Skillcapes", false, true, items);
+    }
+
+    private boolean isAnyCollectionLogItemObtained(int[] itemIds)
+    {
+        if (itemIds == null)
+        {
+            return false;
+        }
+
+        for (int itemId : itemIds)
+        {
+            if (plugin.isCollectionLogItemObtained(itemId))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String sequencePreviewSummaryText(XtremeTask task, int[] itemIds)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName()))
+        {
+            return "";
+        }
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (progress != null && progress.isComplete())
+        {
+            return "";
+        }
+
+        Integer itemId = sequencePreviewFocusItemId(task, itemIds);
+        if (itemId == null || itemId <= 0)
+        {
+            return "";
+        }
+
+        String itemName = plugin.getItemName(itemId);
+        if (itemName == null || itemName.trim().isEmpty())
+        {
+            itemName = "item " + itemId;
+        }
+
+        return "Next: " + itemName;
+    }
+
+    private String fullSequencePreviewSummaryText(XtremeTask task)
+    {
+        Integer itemId = fullSequencePreviewFocusItemId(task);
+        if (itemId == null || itemId <= 0)
+        {
+            return "";
+        }
+
+        String itemName = plugin.getItemName(itemId);
+        if (itemName == null || itemName.trim().isEmpty())
+        {
+            itemName = "item " + itemId;
+        }
+        return "Next: " + itemName;
+    }
+
+    private Integer fullSequencePreviewFocusItemId(XtremeTask task)
+    {
+        List<XtremeTask> sequence = fullDisplaySequenceTasks(task);
+        if (sequence.isEmpty())
+        {
+            return null;
+        }
+
+        for (XtremeTask sequenceTask : sequence)
+        {
+            Integer itemId = sequenceItemId(sequenceTask);
+            if (itemId == null || itemId <= 0)
+            {
+                continue;
+            }
+
+            if (!isTaskCompletedForCollectionLogPreview(sequenceTask) && !plugin.isCollectionLogItemObtained(itemId))
+            {
+                return itemId;
+            }
+        }
+        return null;
+    }
+
+    private List<CollectionLogRequirementPreview.TierSection> sequenceTierSections(XtremeTask task)
+    {
+        List<XtremeTask> sequence = fullDisplaySequenceTasks(task);
+        if (sequence.isEmpty())
+        {
+            return List.of();
+        }
+
+        LinkedHashMap<TaskTier, List<CollectionLogRequirementItem>> itemsByTier = new LinkedHashMap<>();
+        for (XtremeTask sequenceTask : sequence)
+        {
+            Integer itemId = sequenceItemId(sequenceTask);
+            if (itemId == null || itemId <= 0)
+            {
+                continue;
+            }
+
+            CollectionLogRequirementItem.Status status = isTaskCompletedForCollectionLogPreview(sequenceTask)
+                    ? CollectionLogRequirementItem.Status.APPLIED
+                    : plugin.isCollectionLogItemObtained(itemId)
+                    ? CollectionLogRequirementItem.Status.OBTAINED
+                    : CollectionLogRequirementItem.Status.MISSING;
+            itemsByTier.computeIfAbsent(sequenceTask.getTier(), ignored -> new ArrayList<>())
+                    .add(new CollectionLogRequirementItem(
+                            itemId,
+                            collectionLogRequirementItemName(itemId),
+                            status,
+                            collectionLogRequirementBadgeText(itemId)));
+        }
+
+        if (itemsByTier.size() <= 1)
+        {
+            return List.of();
+        }
+
+        List<CollectionLogRequirementPreview.TierSection> sections = new ArrayList<>();
+        TaskTier workingTier = plugin.getCurrentTier();
+        for (Map.Entry<TaskTier, List<CollectionLogRequirementItem>> entry : itemsByTier.entrySet())
+        {
+            if (entry.getValue().isEmpty())
+            {
+                continue;
+            }
+            sections.add(new CollectionLogRequirementPreview.TierSection(
+                    entry.getKey(),
+                    Objects.equals(entry.getKey(), task.getTier()),
+                    Objects.equals(entry.getKey(), workingTier),
+                    entry.getValue(),
+                    8));
+        }
+        return sections;
+    }
+
+    private List<XtremeTask> fullDisplaySequenceTasks(XtremeTask task)
+    {
+        String familyKey = displaySequenceFamilyKey(task);
+        if (familyKey.isEmpty())
+        {
+            return List.of();
+        }
+
+        String cacheKey = plugin.getLoadedPackVersion() + "|full-sequence|" + familyKey;
+        List<XtremeTask> cached = collectionLogSequenceCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        List<XtremeTask> sequence = new ArrayList<>();
+        int sourceIndex = 0;
+        Map<String, Integer> originalIndexById = new HashMap<>();
+        for (XtremeTask candidate : plugin.getDummyTasks())
+        {
+            if (candidate != null && candidate.getId() != null)
+            {
+                originalIndexById.putIfAbsent(candidate.getId(), sourceIndex);
+            }
+            sourceIndex++;
+
+            if (candidate == null
+                    || candidate.getSource() != TaskSource.COLLECTION_LOG
+                    || !familyKey.equals(displaySequenceFamilyKey(candidate))
+                    || sequenceItemId(candidate) == null)
+            {
+                continue;
+            }
+            sequence.add(candidate);
+        }
+
+        sequence.sort(Comparator
+                .comparingInt((XtremeTask candidate) -> sequenceItemSortIndex(sequenceItemId(candidate)))
+                .thenComparingInt(candidate -> originalIndexById.getOrDefault(candidate.getId(), Integer.MAX_VALUE)));
+        List<XtremeTask> immutable = Collections.unmodifiableList(sequence);
+        collectionLogSequenceCache.put(cacheKey, immutable);
+        return immutable;
+    }
+
+    private String displaySequenceFamilyKey(XtremeTask task)
+    {
+        String normalized = task == null || task.getName() == null
+                ? ""
+                : task.getName().trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+        if (normalized.isEmpty() || !isDisplaySequenceTaskName(normalized))
+        {
+            return "";
+        }
+        if (normalized.contains("metal boots"))
+        {
+            return "metal-boots";
+        }
+        if (normalized.contains("mta wand") || normalized.contains("magic training arena wand"))
+        {
+            return "mta-wand";
+        }
+        return normalized;
+    }
+
+    private Integer sequenceItemId(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || verification.getCount() == null
+                || verification.getCount() <= 0)
+        {
+            return null;
+        }
+
+        int[] itemIds = verification.getItemIds();
+        int index = verification.getCount() - 1;
+        if (itemIds == null || index < 0 || index >= itemIds.length)
+        {
+            return null;
+        }
+        return itemIds[index];
+    }
+
+    private int sequenceItemSortIndex(Integer itemId)
+    {
+        if (itemId == null)
+        {
+            return Integer.MAX_VALUE;
+        }
+
+        int[] knownOrder = {
+                4119, 4121, 4123, 4125, 4127, 4129, 4131,
+                6908, 6910, 6912, 6914
+        };
+        for (int i = 0; i < knownOrder.length; i++)
+        {
+            if (knownOrder[i] == itemId)
+            {
+                return i;
+            }
+        }
+        return 1000 + itemId;
+    }
+
+    private Integer sequencePreviewFocusItemId(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return null;
+        }
+        return sequencePreviewFocusItemId(task, verification.getItemIds());
+    }
+
+    private Integer sequencePreviewFocusItemId(XtremeTask task, int[] itemIds)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName()) || itemIds == null || itemIds.length == 0)
+        {
+            return null;
+        }
+
+        int completedPrefix = sequencePreviewCompletedPrefixCount(task, itemIds);
+        if (completedPrefix >= itemIds.length)
+        {
+            return itemIds[itemIds.length - 1];
+        }
+        return itemIds[completedPrefix];
+    }
+
+    private int sequencePreviewCompletedPrefixCount(XtremeTask task, int[] itemIds)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName()) || itemIds == null || itemIds.length == 0)
+        {
+            return 0;
+        }
+
+        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
+        int completed = 0;
+        for (int i = 0; i < itemIds.length; i++)
+        {
+            boolean taskComplete = i < sequence.size() && isTaskCompletedForCollectionLogPreview(sequence.get(i));
+            boolean itemObtained = plugin.isCollectionLogItemObtained(itemIds[i]);
+            if (!taskComplete && !itemObtained)
+            {
+                break;
+            }
+            completed++;
+        }
+        return completed;
+    }
+
+    private void applySequenceTaskCompletionStatuses(
+            XtremeTask task,
+            int[] itemIds,
+            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
+    {
+        if (!isDisplaySequenceTaskName(task == null ? null : task.getName())
+                || itemIds == null
+                || itemIds.length == 0
+                || statusByItemId == null)
+        {
+            return;
+        }
+
+        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
+        for (int i = 0; i < itemIds.length && i < sequence.size(); i++)
+        {
+            XtremeTask sequenceTask = sequence.get(i);
+            if (sequenceTask != null && isTaskCompletedForCollectionLogPreview(sequenceTask))
+            {
+                statusByItemId.put(itemIds[i], CollectionLogRequirementItem.Status.APPLIED);
+            }
+        }
     }
 
     private Map<Integer, CollectionLogRequirementItem.Status> collectionLogRequirementStatuses(
@@ -373,18 +1411,15 @@ public class XtremeTaskerOverlay extends Overlay {
         return statusByItemId;
     }
 
-    private static CollectionLogRequirementItem.Status higherPriorityRequirementStatus(
-            CollectionLogRequirementItem.Status first,
-            CollectionLogRequirementItem.Status second)
-    {
-        return requirementStatusPriority(second) > requirementStatusPriority(first) ? second : first;
-    }
-
     private static int requirementStatusPriority(CollectionLogRequirementItem.Status status)
     {
         if (status == CollectionLogRequirementItem.Status.OBTAINED)
         {
             return 2;
+        }
+        if (status == CollectionLogRequirementItem.Status.READY)
+        {
+            return 1;
         }
         if (status == CollectionLogRequirementItem.Status.APPLIED)
         {
@@ -461,6 +1496,13 @@ public class XtremeTaskerOverlay extends Overlay {
             return Collections.emptyList();
         }
 
+        String cacheKey = plugin.getLoadedPackVersion() + "|" + normalizeRequirementSequenceName(task.getName()) + "|" + canonicalItemIds(itemIds);
+        List<XtremeTask> cached = collectionLogSequenceCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
         List<XtremeTask> sequence = new ArrayList<>();
         for (XtremeTask candidate : plugin.getDummyTasks())
         {
@@ -469,7 +1511,14 @@ public class XtremeTaskerOverlay extends Overlay {
                 sequence.add(candidate);
             }
         }
-        return sequence;
+        sequence.sort(Comparator.comparingInt(candidate -> {
+            TaskVerification verification = candidate == null ? null : candidate.getVerification();
+            Integer count = verification == null ? null : verification.getCount();
+            return count == null ? Integer.MAX_VALUE : count;
+        }));
+        List<XtremeTask> immutableSequence = Collections.unmodifiableList(sequence);
+        collectionLogSequenceCache.put(cacheKey, immutableSequence);
+        return immutableSequence;
     }
 
     private boolean sameCollectionLogRequirementSignature(XtremeTask target, XtremeTask candidate, int[] targetItemIds) {
@@ -564,6 +1613,7 @@ public class XtremeTaskerOverlay extends Overlay {
             XtremeTask task,
             List<XtremeTask> sequence,
             List<Integer> thresholds,
+            int[] itemIds,
             int totalObtainedCount,
             boolean completedInstanceCanApplyAll)
     {
@@ -576,7 +1626,7 @@ public class XtremeTaskerOverlay extends Overlay {
         for (int i = 0; i < sequence.size(); i++)
         {
             XtremeTask groupedTask = sequence.get(i);
-            if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
+            if (groupedTask != null && isTaskCompletedForCollectionLogPreview(groupedTask))
             {
                 completedCount++;
             }
@@ -588,14 +1638,14 @@ public class XtremeTaskerOverlay extends Overlay {
         int appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, completedThreshold));
         int availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
 
-        boolean exactInstanceCompleted = plugin.isTaskCompleted(task);
+        boolean exactInstanceCompleted = isTaskCompletedForCollectionLogPreview(task);
         if ((completedInstanceCanApplyAll && exactInstanceCompleted)
-                || (plugin.isTaskCompleted(task) && isTaskGroupFullyCompleted(task)))
+                || (isTaskCompletedForCollectionLogPreview(task) && isTaskGroupFullyCompleted(task)))
         {
             return new RepeatedCollectionLogRequirementState(
                     Math.max(0, totalObtainedCount),
                     0,
-                    repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
+                    repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired, 0)
             );
         }
 
@@ -603,18 +1653,29 @@ public class XtremeTaskerOverlay extends Overlay {
         if (currentIndex >= 0)
         {
             int previousThreshold = currentIndex <= 0 ? 0 : thresholdAt(thresholds, currentIndex - 1);
-            previousThreshold = Math.max(previousThreshold, completedThreshold);
             int currentThreshold = Math.max(thresholdAt(thresholds, currentIndex), previousThreshold);
             currentRequired = Math.max(1, currentThreshold - previousThreshold);
-            currentDone = Math.min(Math.max(0, totalObtainedCount - previousThreshold), currentRequired);
-            appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, previousThreshold + currentDone));
+
+            Integer baselineCount = plugin.getCurrentTaskCollectionLogBaselineCount(canonicalItemIds(itemIds));
+            if (baselineCount != null)
+            {
+                int baseline = Math.min(Math.max(0, baselineCount), Math.max(0, completedThreshold));
+                currentDone = Math.max(0, totalObtainedCount - baseline);
+                appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, baseline));
+            }
+            else
+            {
+                previousThreshold = Math.max(previousThreshold, completedThreshold);
+                currentDone = Math.max(0, totalObtainedCount - previousThreshold);
+                appliedObtainedCount = Math.max(0, Math.min(totalObtainedCount, previousThreshold + currentDone));
+            }
             availableObtainedCount = Math.max(0, totalObtainedCount - appliedObtainedCount);
         }
 
         return new RepeatedCollectionLogRequirementState(
                 appliedObtainedCount,
                 availableObtainedCount,
-                repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired)
+                repeatedCollectionLogRequirementSummary(totalObtainedCount, currentDone, currentRequired, availableObtainedCount)
         );
     }
 
@@ -623,12 +1684,12 @@ public class XtremeTaskerOverlay extends Overlay {
         List<XtremeTask> group = plugin.getTaskGroupInstances(task);
         if (group == null || group.isEmpty())
         {
-            return plugin.isTaskCompleted(task);
+            return isTaskCompletedForCollectionLogPreview(task);
         }
 
         for (XtremeTask groupedTask : group)
         {
-            if (groupedTask == null || !plugin.isTaskCompleted(groupedTask))
+            if (groupedTask == null || !isTaskCompletedForCollectionLogPreview(groupedTask))
             {
                 return false;
             }
@@ -644,7 +1705,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 || current == null
                 || current.getId() == null
                 || !Objects.equals(task.getId(), current.getId())
-                || plugin.isTaskCompleted(current))
+                || isTaskCompletedForCollectionLogPreview(current))
         {
             return -1;
         }
@@ -679,10 +1740,18 @@ public class XtremeTaskerOverlay extends Overlay {
         return Math.max(0, thresholds.get(Math.min(index, thresholds.size() - 1)));
     }
 
-    private static String repeatedCollectionLogRequirementSummary(int totalObtainedCount, int currentDone, int currentRequired)
+    private static String repeatedCollectionLogRequirementSummary(
+            int totalObtainedCount,
+            int currentDone,
+            int currentRequired,
+            int notYetAppliedCount)
     {
         String summary = "total obtained: " + totalObtainedCount;
-        return currentRequired > 1 ? summary + " | current task: " + currentDone + "/" + currentRequired : summary;
+        if (currentRequired > 0)
+        {
+            return summary + " | current task: " + currentDone + "/" + currentRequired;
+        }
+        return notYetAppliedCount > 0 ? summary + " | not yet applied: " + notYetAppliedCount : summary;
     }
 
     private static final class RepeatedCollectionLogRequirementState {
@@ -757,6 +1826,12 @@ public class XtremeTaskerOverlay extends Overlay {
     private final TaskListScrollController rulesScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController currentScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController syncMismatchScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
+    private final TaskListScrollController syncMismatchGuardScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
+    private int syncMismatchGuardTotalRows = 0;
+    private int compactCurrentScrollPx = 0;
+    private int compactCurrentMaxOffsetPx = 0;
+    private double compactCurrentWheelRemainderPx = 0.0;
+    private double compactCurrentPendingWheelRotation = 0.0;
 
     private final TaskRowsRenderer taskRowsRenderer = new TaskRowsRenderer(PANEL_W_TASKS, PANEL_PADDING, ROW_HEIGHT, LIST_ROW_SPACING, STATUS_PIP_SIZE, STATUS_PIP_PAD_LEFT, TASK_TEXT_PAD_LEFT, P.ROW_HOVER_BG, P.ROW_SELECTED_BG, P.ROW_SELECTED_OUTLINE, P.ROW_DONE_BG, P.ROW_LINE, P.STRIKE_COLOR, P.UI_TEXT, P.UI_TEXT_DIM, P.PIP_RING, P.PIP_DONE_FILL, P.PIP_DONE_RING, P.UI_GOLD, P.UI_EDGE_LIGHT, P.UI_EDGE_DARK);
 
@@ -791,10 +1866,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
 
     @Inject
-    public XtremeTaskerOverlay(Client client, XtremeTaskerPlugin plugin, SpriteManager spriteManager) {
+    public XtremeTaskerOverlay(Client client, XtremeTaskerPlugin plugin, SpriteManager spriteManager, SkillIconManager skillIconManager) {
         this.client = client;
         this.plugin = plugin;
         this.spriteManager = spriteManager;
+        this.skillIconManager = skillIconManager;
 
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.UNDER_WIDGETS);
@@ -1012,6 +2088,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return null;
         }
 
+        long panelRenderStartNanos = System.nanoTime();
         g.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics fm = g.getFontMetrics();
         int canvasW = client.getCanvasWidth();
@@ -1166,6 +2243,7 @@ public class XtremeTaskerOverlay extends Overlay {
             scalePanelInputBounds(panelX, panelY, panelScale);
             panelBoundsScaledForInput = true;
             panelRenderMouse = null;
+            logSlowPanelRender(panelRenderStartNanos);
             return new Dimension(physicalPanelW, physicalPanelH);
         }
 
@@ -1219,9 +2297,19 @@ public class XtremeTaskerOverlay extends Overlay {
         panelBoundsScaledForInput = true;
         panelRenderMouse = null;
         renderTaskDetailsPopupUnscaled(g, fm);
+        if (isTaskSyncResultOpen()) {
+            renderTaskSyncResultPopup(g, fm);
+        }
+        if (isTaskResolveOpen()) {
+            renderTaskResolvePopup(g, fm);
+        }
+        if (isTaskDetailsIncompleteConfirmOpen()) {
+            renderTaskDetailsIncompleteConfirm(g, fm);
+        }
         if (taskDetailsPopup.isOpen() && pendingMarkAllIncompleteTask != null) {
             renderMarkAllIncompleteConfirm(g, fm);
         }
+        logSlowPanelRender(panelRenderStartNanos);
         return new Dimension(physicalPanelW, physicalPanelH);
     }
 
@@ -1234,17 +2322,1328 @@ public class XtremeTaskerOverlay extends Overlay {
                 g,
                 fm,
                 panelBounds,
-                plugin::isTaskCompleted,
+                this::isTaskCompletedForTaskDetails,
                 plugin::getCompletionInfo,
                 plugin::getTaskTimeTicks,
-                useCondensedTaskRows() ? plugin::getTaskGroupProgress : null,
+                useCondensedTaskRows() ? this::taskDetailsGroupProgress : null,
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
-                plugin::getPrerequisiteStatuses,
+                this::getCachedPrerequisiteStatuses,
+                this::getCachedSkillImage,
+                this::getCachedPrerequisiteMarkerImage,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
+                plugin::getCollectionLogSequenceStepLabel,
+                plugin::isTaskSyncMismatch,
+                this::taskDetailsSyncButtonLabel,
+                this::taskDetailsMarkIncompleteButtonLabel,
+                this::taskDetailsMarkIncompleteEnabled,
+                task -> taskResolveSavedIncompleteEdits,
+                this::getCachedItemImage,
+                this::taskDetailsWikiLinks,
                 client.getMouseCanvasPosition(),
                 resolveTaskIcon(taskDetailsPopup.task()),
                 plugin.showTips()
         );
+    }
+
+    private List<WikiLink> taskDetailsWikiLinks(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return List.of();
+        }
+
+        List<WikiLink> links = TASK_DETAILS_WIKI_LINKS_BY_ID.get(task.getId());
+        if (links != null)
+        {
+            return links;
+        }
+
+        links = TASK_DETAILS_WIKI_LINKS_BY_NAME.get(normalizeWikiTaskName(task.getName()));
+        if (links != null)
+        {
+            return links;
+        }
+
+        String url = task.getWikiUrl();
+        if (url == null || url.trim().isEmpty())
+        {
+            return List.of();
+        }
+        return List.of(new WikiLink("Wiki", url));
+    }
+
+    private void renderTaskSyncResultPopup(Graphics2D g, FontMetrics fm)
+    {
+        if (taskSyncResultTask == null || taskSyncResultText == null || taskSyncResultText.isEmpty())
+        {
+            return;
+        }
+
+        g.setColor(new Color(0, 0, 0, 130));
+        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+
+        int pad = 14;
+        int buttonH = ROW_HEIGHT + 8;
+        int buttonW = 78;
+        int textW = Math.min(300, panelBounds.width - 90);
+        List<String> lines = TextUtils.wrapText(taskSyncResultText, fm, textW);
+        String freshnessHint = "Open your Collection Log first, then sync again for the freshest data.";
+        List<String> hintLines = taskSyncResultShowFreshnessHint
+                ? TextUtils.wrapText(freshnessHint, fm, textW)
+                : Collections.emptyList();
+        int w = Math.min(panelBounds.width - 54, Math.max(240, textW + pad * 2));
+        int h = Math.max(96, pad * 2 + (lines.size() + hintLines.size()) * fm.getHeight() + 18 + buttonH);
+        int x = panelBounds.x + (panelBounds.width - w) / 2;
+        int y = panelBounds.y + (panelBounds.height - h) / 2;
+        taskSyncResultBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, taskSyncResultBounds, new Color(45, 36, 24, 252));
+
+        Color resultColor = taskSyncResultResolvable
+                ? new Color(245, 92, 82, 245)
+                : new Color(105, 220, 125, 245);
+        g.setColor(resultColor);
+        int textY = y + pad + fm.getAscent();
+        for (String line : lines)
+        {
+            String drawLine = TextUtils.truncateToWidth(line, fm, w - pad * 2);
+            g.drawString(drawLine, x + (w - fm.stringWidth(drawLine)) / 2, textY);
+            textY += fm.getHeight();
+        }
+        if (!hintLines.isEmpty())
+        {
+            textY += 2;
+            g.setColor(P.UI_TEXT_DIM);
+            for (String line : hintLines)
+            {
+                String drawLine = TextUtils.truncateToWidth(line, fm, w - pad * 2);
+                g.drawString(drawLine, x + (w - fm.stringWidth(drawLine)) / 2, textY);
+                textY += fm.getHeight();
+            }
+        }
+
+        int buttonY = y + h - pad - buttonH;
+        taskSyncResultCloseBounds.setBounds(x + w - pad - buttonW, buttonY, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, taskSyncResultCloseBounds, "Close", P.BTN_DISABLED_BG);
+    }
+
+    private void renderTaskResolvePopup(Graphics2D g, FontMetrics fm)
+    {
+        XtremeTask task = taskResolveTask;
+        if (task == null)
+        {
+            return;
+        }
+
+        g.setColor(new Color(0, 0, 0, 135));
+        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+
+        List<XtremeTask> resolveTasks = resolveTasksForTask(task);
+        boolean sequenceResolve = isTaskResolveSequence(resolveTasks);
+        int pad = 12;
+        int rowGap = 4;
+        int rowH = ROW_HEIGHT + rowGap;
+        int buttonH = ROW_HEIGHT + 8;
+        int listRows = Math.max(1, resolveTasks.size());
+        String title = "Mark instance(s) incomplete";
+        String taskLine = "Task: " + task.getName();
+        int w = taskResolvePopupWidth(fm, task, resolveTasks, title, taskLine, pad);
+        int h = Math.min(panelBounds.height - 48,
+                Math.max(132, pad * 2 + fm.getHeight() * (sequenceResolve ? 3 : 2) + 14 + listRows * rowH + 12 + buttonH));
+        int x = panelBounds.x + (panelBounds.width - w) / 2;
+        int y = panelBounds.y + (panelBounds.height - h) / 2;
+        taskResolveBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, taskResolveBounds, new Color(45, 36, 24, 252));
+        taskResolveCloseBounds.setBounds(0, 0, 0, 0);
+
+        g.setColor(P.UI_GOLD);
+        g.drawString(title, x + pad, y + pad + fm.getAscent());
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(taskLine, fm, w - pad * 2),
+                x + pad, y + pad + fm.getAscent() + fm.getHeight());
+        if (sequenceResolve)
+        {
+            g.drawString(TextUtils.truncateToWidth("Completion must be edited in sequence.", fm, w - pad * 2),
+                    x + pad, y + pad + fm.getAscent() + fm.getHeight() * 2);
+        }
+
+        int cursorY = y + pad + fm.getAscent() + fm.getHeight() * (sequenceResolve ? 4 : 3);
+        taskResolveInstanceToggleBounds.clear();
+        if (!resolveTasks.isEmpty())
+        {
+            for (XtremeTask instance : resolveTasks)
+            {
+                if (instance == null)
+                {
+                    continue;
+                }
+                boolean selectedIncomplete = instance.getId() != null && selectedTaskResolveIncompleteTaskIds.contains(instance.getId());
+                boolean enabled = canToggleTaskResolveTaskIncomplete(instance);
+                Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
+                        TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
+                taskResolveInstanceToggleBounds.put(instance, toggle);
+                drawResolveIncompleteToggleGlyph(g, toggle, selectedIncomplete, enabled);
+                String detailText = taskResolveCompletionDateText(instance)
+                        + " | " + taskResolveTimeSpentText(instance);
+                int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
+                int lineW = w - (pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad);
+                drawTaskResolveInstanceRow(g, fm, taskResolveInstanceMarker(task, instance), detailText, lineX, cursorY, lineW, enabled);
+                cursorY += rowH;
+            }
+        }
+
+        int actionY = y + h - pad - buttonH;
+        int buttonW = 72;
+        int gap = 8;
+        int buttonsW = buttonW * 2 + gap;
+        taskResolveSaveBounds.setBounds(x + (w - buttonsW) / 2, actionY, buttonW, buttonH);
+        taskResolveCancelBounds.setBounds(taskResolveSaveBounds.x + buttonW + gap, actionY, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, taskResolveSaveBounds, "Save",
+                hasTaskResolveChanges() ? P.BTN_ENABLED_BG : P.BTN_DISABLED_BG,
+                hasTaskResolveChanges() ? P.UI_TEXT : P.UI_TEXT_DIM,
+                hasTaskResolveChanges() ? P.UI_GOLD : null);
+        buttonRenderer.drawPlainButton(g, taskResolveCancelBounds, "Cancel", P.BTN_DISABLED_BG);
+    }
+
+    private void renderSyncMismatchGroupResolve(Graphics2D g, FontMetrics fm)
+    {
+        XtremeTask task = syncMismatchGroupResolveTask;
+        if (task == null)
+        {
+            return;
+        }
+
+        List<XtremeTask> resolveTasks = syncMismatchGroupResolveTasks(task);
+        if (resolveTasks.isEmpty())
+        {
+            closeSyncMismatchGroupResolve();
+            return;
+        }
+
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
+                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
+
+        int pad = 12;
+        int rowGap = 4;
+        int rowH = fm.getHeight() + rowGap + 2;
+        int buttonH = ROW_HEIGHT + 8;
+        String title = syncReviewPopupTitle(task);
+        List<String> titleLines = TextUtils.wrapText(title, fm, Math.max(120, syncMismatchReviewBounds.width - 80));
+        List<String> summaryLines = TextUtils.wrapText(syncMismatchGroupResolveSummary(task), fm, Math.max(120, syncMismatchReviewBounds.width - 80));
+        String sequenceBlockMessage = syncMismatchGroupResolveTierBlockMessage(task);
+        int w = syncMismatchGroupResolvePopupWidth(fm, task, resolveTasks, titleLines, summaryLines, pad);
+        List<String> sequenceBlockLines = sequenceBlockMessage.isEmpty()
+                ? List.of()
+                : TextUtils.wrapText(sequenceBlockMessage, fm, Math.max(120, w - pad * 2));
+        int h = Math.min(syncMismatchReviewBounds.height - 34,
+                Math.max(126, pad * 2 + (titleLines.size() + summaryLines.size()) * fm.getHeight() + 16
+                        + (sequenceBlockLines.isEmpty() ? 0 : sequenceBlockLines.size() * fm.getHeight() + 8)
+                        + Math.max(1, resolveTasks.size()) * rowH + 12 + buttonH));
+        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
+        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
+        syncMismatchGroupResolveBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, syncMismatchGroupResolveBounds, new Color(45, 36, 24, 252));
+
+        int textY = y + pad + fm.getAscent();
+        g.setColor(P.UI_GOLD);
+        for (String line : titleLines)
+        {
+            g.drawString(TextUtils.truncateToWidth(line, fm, w - pad * 2), x + pad, textY);
+            textY += fm.getHeight();
+        }
+
+        g.setColor(P.UI_TEXT_DIM);
+        for (String line : summaryLines)
+        {
+            g.drawString(TextUtils.truncateToWidth(line, fm, w - pad * 2), x + pad, textY);
+            textY += fm.getHeight();
+        }
+
+        if (!sequenceBlockLines.isEmpty())
+        {
+            textY += 4;
+            g.setColor(P.UI_TEXT_DIM);
+            for (String line : sequenceBlockLines)
+            {
+                g.drawString(TextUtils.truncateToWidth(line, fm, w - pad * 2), x + pad, textY);
+                textY += fm.getHeight();
+            }
+        }
+
+        int cursorY = textY + 10;
+        syncMismatchGroupResolveToggleBounds.clear();
+        for (XtremeTask instance : resolveTasks)
+        {
+            if (instance == null || instance.getId() == null)
+            {
+                continue;
+            }
+
+            boolean selected = selectedSyncMismatchGroupResolveTaskIds.contains(instance.getId());
+            boolean enabled = sequenceBlockLines.isEmpty() && canToggleSyncMismatchGroupResolveTask(instance);
+            Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
+                    TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
+            syncMismatchGroupResolveToggleBounds.put(instance, toggle);
+            if (syncReviewMode == SyncReviewMode.MISMATCH)
+            {
+                drawResolveIncompleteToggleGlyph(g, toggle, selected, enabled);
+            }
+            else
+            {
+                drawResolveToggleGlyph(g, toggle, selected, enabled);
+            }
+
+            String marker = taskResolveInstanceMarker(task, instance);
+            String detailText = taskResolveCompletionDateText(instance)
+                    + " | " + taskResolveTimeSpentText(instance);
+            int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
+            int lineW = w - (pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad);
+            drawTaskResolveInstanceRow(g, fm, marker, detailText, lineX, cursorY, lineW, enabled);
+            cursorY += rowH;
+        }
+
+        int actionY = y + h - pad - buttonH;
+        int buttonW = 72;
+        int gap = 8;
+        int buttonsW = buttonW * 2 + gap;
+        boolean saveEnabled = sequenceBlockLines.isEmpty() && hasSyncMismatchGroupResolveChanges();
+        syncMismatchGroupResolveSaveBounds.setBounds(x + (w - buttonsW) / 2, actionY, buttonW, buttonH);
+        syncMismatchGroupResolveCancelBounds.setBounds(syncMismatchGroupResolveSaveBounds.x + buttonW + gap, actionY, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, syncMismatchGroupResolveSaveBounds, "Save",
+                saveEnabled ? P.BTN_ENABLED_BG : P.BTN_DISABLED_BG,
+                saveEnabled ? P.UI_TEXT : P.UI_TEXT_DIM,
+                saveEnabled ? P.UI_GOLD : null);
+        buttonRenderer.drawPlainButton(g, syncMismatchGroupResolveCancelBounds, "Cancel", P.BTN_DISABLED_BG);
+    }
+
+    private int syncMismatchGroupResolvePopupWidth(
+            FontMetrics fm,
+            XtremeTask task,
+            List<XtremeTask> resolveTasks,
+            List<String> titleLines,
+            List<String> summaryLines,
+            int pad)
+    {
+        int desiredW = 270;
+        for (String line : titleLines)
+        {
+            desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(line));
+        }
+        for (String line : summaryLines)
+        {
+            desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(line));
+        }
+
+        int rowReserve = pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad;
+        int fitBuffer = fm.charWidth('W');
+        for (XtremeTask instance : resolveTasks)
+        {
+            if (instance == null)
+            {
+                continue;
+            }
+            String marker = taskResolveInstanceMarker(task, instance);
+            String detailText = taskResolveCompletionDateText(instance)
+                    + " | " + taskResolveTimeSpentText(instance);
+            String rowText = taskResolveInstanceLine(marker, detailText);
+            desiredW = Math.max(desiredW, rowReserve + fm.stringWidth(rowText) + fitBuffer);
+        }
+
+        return Math.min(Math.max(190, syncMismatchReviewBounds.width - 36), desiredW);
+    }
+
+    private String syncMismatchGroupResolveSummary(XtremeTask task)
+    {
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        int total = group == null || group.isEmpty() ? 1 : group.size();
+        List<XtremeTask> pluginCompletedTasks = syncMismatchGroupCompletedTasks(group, task);
+        boolean sequence = isTaskResolveSequence(group);
+        if (syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES)
+        {
+            List<XtremeTask> syncFoundTasks = syncMismatchGroupFoundInGameTasks(task);
+            if (sequence)
+            {
+                return "Sync found " + joinedSequenceStepLabels(syncFoundTasks)
+                        + " completed in game, but " + joinedSequenceStepLabels(pluginCompletedTasks)
+                        + " marked completed in plugin";
+            }
+            return "Sync found " + syncFoundTasks.size() + "/" + total
+                    + " completed in game, but " + pluginCompletedTasks.size()
+                    + " marked in plugin";
+        }
+
+        List<XtremeTask> syncFoundTasks = syncMismatchGroupFoundTasks(task);
+        if (sequence)
+        {
+            return "Sync found " + joinedSequenceStepLabels(syncFoundTasks)
+                    + " completed in game, but " + joinedSequenceStepLabels(pluginCompletedTasks)
+                    + " marked completed in plugin";
+        }
+        return "Sync found " + syncFoundTasks.size() + "/" + total
+                + " completed in game, but " + pluginCompletedTasks.size()
+                + " marked in plugin";
+    }
+
+    private List<XtremeTask> syncMismatchGroupCompletedTasks(List<XtremeTask> group, XtremeTask fallbackTask)
+    {
+        if (group == null || group.isEmpty())
+        {
+            return fallbackTask != null && plugin.isTaskCompleted(fallbackTask)
+                    ? List.of(fallbackTask)
+                    : List.of();
+        }
+
+        List<XtremeTask> completed = new ArrayList<>();
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
+            {
+                completed.add(groupedTask);
+            }
+        }
+        return completed;
+    }
+
+    private List<XtremeTask> syncMismatchGroupFoundInGameTasks(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.isEmpty())
+        {
+            return syncMismatchGroupActionTasks(task);
+        }
+
+        Set<String> actionIds = syncMismatchGroupActionTasks(task).stream()
+                .filter(Objects::nonNull)
+                .map(XtremeTask::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<XtremeTask> found = new ArrayList<>();
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null
+                    && groupedTask.getId() != null
+                    && (plugin.isTaskCompleted(groupedTask) || actionIds.contains(groupedTask.getId())))
+            {
+                found.add(groupedTask);
+            }
+        }
+        return found;
+    }
+
+    private String joinedSequenceStepLabels(List<XtremeTask> tasks)
+    {
+        List<String> labels = tasks == null
+                ? List.of()
+                : tasks.stream()
+                .map(this::collectionLogSequenceSuffix)
+                .filter(label -> label != null && !label.trim().isEmpty())
+                .map(label -> label.trim().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toList());
+        if (labels.isEmpty())
+        {
+            return "none";
+        }
+        return joinedPlainLabels(labels);
+    }
+
+    private static String joinedPlainLabels(List<String> labels)
+    {
+        if (labels == null || labels.isEmpty())
+        {
+            return "";
+        }
+        if (labels.size() == 1)
+        {
+            return labels.get(0);
+        }
+        if (labels.size() == 2)
+        {
+            return labels.get(0) + " and " + labels.get(1);
+        }
+        return String.join(", ", labels.subList(0, labels.size() - 1))
+                + " and " + labels.get(labels.size() - 1);
+    }
+
+    private int taskResolvePopupWidth(FontMetrics fm, XtremeTask task, List<XtremeTask> resolveTasks,
+                                      String title, String taskLine, int pad)
+    {
+        int desiredW = 255;
+        desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(title));
+        desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(taskLine));
+        if (isTaskResolveSequence(resolveTasks))
+        {
+            desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth("Completion must be edited in sequence."));
+        }
+
+        int rowReserve = pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad;
+        int fitBuffer = fm.charWidth('W');
+        for (XtremeTask instance : resolveTasks)
+        {
+            if (instance == null)
+            {
+                continue;
+            }
+            String detailText = taskResolveCompletionDateText(instance)
+                    + " | " + taskResolveTimeSpentText(instance);
+            String rowText = taskResolveInstanceLine(taskResolveInstanceMarker(task, instance), detailText);
+            desiredW = Math.max(desiredW, rowReserve + fm.stringWidth(rowText) + fitBuffer);
+        }
+
+        return Math.min(Math.max(180, panelBounds.width - 50), desiredW);
+    }
+
+    private void drawTaskResolveInstanceRow(
+            Graphics2D g,
+            FontMetrics fm,
+            String marker,
+            String detailText,
+            int x,
+            int baseline,
+            int maxW,
+            boolean enabled)
+    {
+        String cleanDetail = detailText == null ? "" : detailText.trim();
+        String prefix = marker == null || marker.trim().isEmpty() ? "" : marker.trim() + ": ";
+        if (prefix.isEmpty())
+        {
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString(TextUtils.truncateToWidth(cleanDetail, fm, maxW), x, baseline);
+            return;
+        }
+
+        String drawPrefix = TextUtils.truncateToWidth(prefix, fm, maxW);
+        g.setColor(enabled ? P.UI_TEXT : P.UI_TEXT_DIM);
+        g.drawString(drawPrefix, x, baseline);
+
+        int detailX = x + fm.stringWidth(drawPrefix);
+        int detailW = Math.max(0, maxW - fm.stringWidth(drawPrefix));
+        if (detailW <= 0)
+        {
+            return;
+        }
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(cleanDetail, fm, detailW), detailX, baseline);
+    }
+
+    private String taskResolveInstanceLine(String marker, String detailText)
+    {
+        String prefix = marker == null || marker.trim().isEmpty() ? "" : marker.trim() + ": ";
+        return prefix + (detailText == null ? "" : detailText.trim());
+    }
+
+    private String taskResolveInstanceMarker(XtremeTask task, XtremeTask instance)
+    {
+        String sequenceSuffix = collectionLogSequenceSuffix(instance);
+        if (!sequenceSuffix.isEmpty())
+        {
+            return titleCaseSequenceMarker(sequenceSuffix);
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        int total = Math.max(1, group == null || group.isEmpty() ? 1 : group.size());
+        int index = -1;
+        if (group != null)
+        {
+            for (int i = 0; i < group.size(); i++)
+            {
+                XtremeTask groupedTask = group.get(i);
+                if (sameTask(groupedTask, instance))
+                {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        if (index < 0)
+        {
+            index = 0;
+            total = 1;
+        }
+        if (index == 0 && total == 1)
+        {
+            return "";
+        }
+        return (index + 1) + "/" + total;
+    }
+
+    private String collectionLogSequenceSuffix(XtremeTask task)
+    {
+        String suffix = plugin.getCollectionLogSequenceStepLabel(task);
+        return suffix == null ? "" : suffix.trim();
+    }
+
+    private static String titleCaseSequenceMarker(String value)
+    {
+        String clean = value == null ? "" : value.trim();
+        if (clean.isEmpty())
+        {
+            return "";
+        }
+
+        StringBuilder out = new StringBuilder(clean.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < clean.length(); i++)
+        {
+            char c = clean.charAt(i);
+            if (Character.isLetter(c))
+            {
+                out.append(capitalizeNext ? Character.toUpperCase(c) : c);
+                capitalizeNext = false;
+            }
+            else
+            {
+                out.append(c);
+                capitalizeNext = Character.isWhitespace(c) || c == '-' || c == '\'';
+            }
+        }
+        return out.toString();
+    }
+
+    private boolean sameTask(XtremeTask a, XtremeTask b)
+    {
+        if (a == b)
+        {
+            return true;
+        }
+        if (a == null || b == null)
+        {
+            return false;
+        }
+        String aId = a.getId();
+        String bId = b.getId();
+        return aId != null && aId.equals(bId);
+    }
+
+    private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
+    {
+        g.setColor(new Color(0, 0, 0, 135));
+        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+
+        String message = "Mark selected task(s) incomplete?";
+        String warning = "This cannot be undone.";
+        int pad = 14;
+        int buttonH = ROW_HEIGHT + 8;
+        int buttonW = 78;
+        int gap = 8;
+        int textW = Math.max(fm.stringWidth(message), fm.stringWidth(warning));
+        int w = Math.min(panelBounds.width - 48, Math.max(240, textW + pad * 2));
+        int h = 112;
+        int x = panelBounds.x + (panelBounds.width - w) / 2;
+        int y = panelBounds.y + (panelBounds.height - h) / 2;
+        taskDetailsIncompleteConfirmBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, taskDetailsIncompleteConfirmBounds, new Color(45, 36, 24, 252));
+
+        int textY = y + pad + fm.getAscent() + 4;
+        g.setColor(P.UI_TEXT);
+        g.drawString(message, x + (w - fm.stringWidth(message)) / 2, textY);
+        g.setColor(new Color(245, 92, 82, 245));
+        g.drawString(warning, x + (w - fm.stringWidth(warning)) / 2, textY + fm.getHeight() + 3);
+
+        int buttonsW = buttonW * 2 + gap;
+        int buttonY = y + h - pad - buttonH;
+        taskDetailsIncompleteConfirmYesBounds.setBounds(x + (w - buttonsW) / 2, buttonY, buttonW, buttonH);
+        taskDetailsIncompleteConfirmNoBounds.setBounds(taskDetailsIncompleteConfirmYesBounds.x + buttonW + gap, buttonY, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmYesBounds, "Confirm",
+                new Color(86, 31, 24, 235), P.UI_TEXT, new Color(245, 92, 82, 220));
+        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
+    }
+
+    private void drawResolveToggleGlyph(Graphics2D g, Rectangle bounds, boolean selected, boolean enabled)
+    {
+        Color bg;
+        Color strokeColor;
+        if (!enabled)
+        {
+            bg = selected ? new Color(43, 45, 43, 210) : new Color(28, 28, 28, 185);
+            strokeColor = new Color(135, 135, 135, selected ? 185 : 95);
+        }
+        else
+        {
+            bg = selected ? new Color(45, 68, 38, 230) : P.INPUT_BG;
+            strokeColor = selected ? new Color(105, 220, 125, 245) : new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 185);
+        }
+
+        drawBevelBox(g, bounds, bg);
+        g.setColor(strokeColor);
+        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
+        if (!selected)
+        {
+            return;
+        }
+
+        Stroke oldStroke = g.getStroke();
+        g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.drawLine(bounds.x + 4, bounds.y + bounds.height / 2, bounds.x + bounds.width / 2 - 1, bounds.y + bounds.height - 5);
+        g.drawLine(bounds.x + bounds.width / 2 - 1, bounds.y + bounds.height - 5, bounds.x + bounds.width - 4, bounds.y + 4);
+        g.setStroke(oldStroke);
+    }
+
+    private void drawResolveIncompleteToggleGlyph(Graphics2D g, Rectangle bounds, boolean selectedIncomplete, boolean enabled)
+    {
+        Color bg;
+        Color strokeColor;
+        if (!enabled)
+        {
+            bg = selectedIncomplete ? new Color(48, 34, 32, 210) : new Color(28, 28, 28, 185);
+            strokeColor = new Color(135, 135, 135, selectedIncomplete ? 185 : 95);
+        }
+        else
+        {
+            bg = selectedIncomplete ? new Color(82, 36, 30, 230) : P.INPUT_BG;
+            strokeColor = selectedIncomplete ? new Color(245, 92, 82, 245) : new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 185);
+        }
+
+        drawBevelBox(g, bounds, bg);
+        g.setColor(strokeColor);
+        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
+        if (!selectedIncomplete)
+        {
+            return;
+        }
+
+        Stroke oldStroke = g.getStroke();
+        g.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.drawLine(bounds.x + 5, bounds.y + 5, bounds.x + bounds.width - 5, bounds.y + bounds.height - 5);
+        g.drawLine(bounds.x + bounds.width - 5, bounds.y + 5, bounds.x + 5, bounds.y + bounds.height - 5);
+        g.setStroke(oldStroke);
+    }
+
+    private String taskResolveCompletionDateText(XtremeTask task)
+    {
+        CompletionInfo info = plugin.getCompletionInfo(task);
+        if (info == null || info.timestamp <= 0)
+        {
+            return "date unknown";
+        }
+        return TASK_RESOLVE_COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
+    }
+
+    private String taskResolveTimeSpentText(XtremeTask task)
+    {
+        Long ticks = plugin.getTaskTimeTicks(task);
+        if (ticks == null || ticks <= 0)
+        {
+            return "time unknown";
+        }
+        return compactFormatTicks(Math.round(ticks * 0.6));
+    }
+
+    private String taskDetailsSyncButtonLabel(XtremeTask task)
+    {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return "";
+        }
+        updateTaskDetailsSyncResultIfReady(task);
+        return "Sync";
+    }
+
+    private String taskDetailsMarkIncompleteButtonLabel(XtremeTask task)
+    {
+        if (taskResolveSavedIncompleteEdits)
+        {
+            return isMultiInstanceTask(task)
+                    ? "Edit task(s) completion"
+                    : "Edit task completion";
+        }
+        return isMultiInstanceTask(task)
+                ? "Mark task(s) incomplete"
+                : "Mark task incomplete";
+    }
+
+    private boolean taskDetailsMarkIncompleteEnabled(XtremeTask task)
+    {
+        return task != null && plugin.isTaskSyncMismatch(task);
+    }
+
+    private boolean isMultiInstanceTask(XtremeTask task)
+    {
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (progress != null && progress.getTotal() > 1)
+        {
+            return true;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group != null && group.size() > 1)
+        {
+            return true;
+        }
+
+        TaskVerification verification = task == null ? null : task.getVerification();
+        Integer count = verification == null ? null : verification.getCount();
+        if (count != null && count > 1)
+        {
+            return true;
+        }
+
+        String name = task == null ? "" : String.valueOf(task.getName());
+        return name.matches(".*\\b\\d+\\s*/\\s*\\d+\\b.*")
+                || name.matches(".*\\b\\d+\\s*/\\s*#.*");
+    }
+
+    private void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
+    {
+        if (!taskDetailsMarkIncompleteEnabled(task))
+        {
+            return;
+        }
+        openTaskResolve(task);
+    }
+
+    private void handleTaskDetailsSyncButton(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return;
+        }
+
+        closeTaskSyncResult();
+        taskDetailsSyncPendingTaskId = task.getId();
+        taskDetailsSyncStartedAt = plugin.getLastCollectionLogSyncResultAtLocalTime();
+        taskDetailsSyncStartedObservedCount = syncedCollectionLogCountForTask(task);
+        plugin.syncCollectionLogTaskAndPersist(task);
+    }
+
+    private void updateTaskDetailsSyncResultIfReady(XtremeTask task)
+    {
+        if (task == null
+                || task.getId() == null
+                || !task.getId().equals(taskDetailsSyncPendingTaskId))
+        {
+            return;
+        }
+
+        String currentSyncAt = plugin.getLastCollectionLogSyncResultAtLocalTime();
+        if (currentSyncAt == null || Objects.equals(currentSyncAt, taskDetailsSyncStartedAt))
+        {
+            return;
+        }
+
+        boolean stillMismatch = plugin.isCollectionLogTaskSyncMismatch(task);
+        boolean foundRelevantCandidate = hasRelevantCompletionCandidate(task)
+                || syncedCollectionLogCountForTask(task) > taskDetailsSyncStartedObservedCount;
+        taskDetailsSyncPendingTaskId = null;
+        taskDetailsSyncStartedObservedCount = -1;
+        taskSyncResultTask = task;
+        taskSyncResultResolvable = stillMismatch;
+        taskSyncResultShowFreshnessHint = false;
+        if (!stillMismatch)
+        {
+            taskSyncResultText = "Found CLOG(s) to complete task(s).";
+        }
+        else if (foundRelevantCandidate)
+        {
+            taskSyncResultText = "Found some CLOG(s) to complete task(s), still not enough.";
+        }
+        else
+        {
+            taskSyncResultText = "Did not find any new CLOG for this task.";
+            taskSyncResultShowFreshnessHint = true;
+        }
+    }
+
+    private int syncedCollectionLogCountForTask(XtremeTask task)
+    {
+        TaskVerification verification = task == null ? null : task.getVerification();
+        if (verification == null || verification.getItemIds() == null || verification.getItemIds().length == 0)
+        {
+            return 0;
+        }
+        return plugin.countSyncedCollectionLogItems(verification.getItemIds());
+    }
+
+    private boolean hasRelevantCompletionCandidate(XtremeTask task)
+    {
+        Set<String> relevantIds = taskAndGroupIds(task);
+        if (relevantIds.isEmpty())
+        {
+            return false;
+        }
+
+        for (XtremeTask candidate : plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG))
+        {
+            if (candidate != null && relevantIds.contains(candidate.getId()))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isTaskSyncResultOpen()
+    {
+        return taskSyncResultTask != null && taskSyncResultText != null && !taskSyncResultText.isEmpty();
+    }
+
+    private void closeTaskSyncResult()
+    {
+        taskSyncResultTask = null;
+        taskSyncResultText = "";
+        taskSyncResultResolvable = false;
+        taskSyncResultShowFreshnessHint = false;
+        taskDetailsSyncStartedObservedCount = -1;
+        taskSyncResultBounds.setBounds(0, 0, 0, 0);
+        taskSyncResultCloseBounds.setBounds(0, 0, 0, 0);
+    }
+
+    private void closeTaskDetailsWithPendingIncompleteCheck()
+    {
+        if (!selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            taskDetailsIncompleteConfirmOpen = true;
+            closeTaskResolveWithoutRestoring();
+            closeTaskSyncResult();
+            return;
+        }
+
+        closeTaskDetailsNow();
+    }
+
+    private void closeTaskDetailsNow()
+    {
+        taskDetailsPopup.close();
+        taskResolveSavedIncompleteEdits = false;
+        selectedTaskResolveIncompleteTaskIds.clear();
+        taskResolveOriginalIncompleteTaskIds.clear();
+        closeTaskResolveWithoutRestoring();
+        closeTaskSyncResult();
+        closeTaskDetailsIncompleteConfirm();
+    }
+
+    private void confirmTaskDetailsIncompleteSelection()
+    {
+        List<XtremeTask> tasksToMarkIncomplete = selectedIncompleteTasksForDetails();
+        if (!tasksToMarkIncomplete.isEmpty())
+        {
+            plugin.markSyncMismatchTasksIncompleteAndPersist(tasksToMarkIncomplete);
+        }
+        closeTaskDetailsNow();
+    }
+
+    private List<XtremeTask> selectedIncompleteTasksForDetails()
+    {
+        XtremeTask task = taskDetailsPopup.task();
+        if (task == null || selectedTaskResolveIncompleteTaskIds.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        return resolveTasksForTask(task).stream()
+                .filter(candidate -> candidate != null
+                        && candidate.getId() != null
+                        && selectedTaskResolveIncompleteTaskIds.contains(candidate.getId()))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isTaskDetailsIncompleteConfirmOpen()
+    {
+        return taskDetailsIncompleteConfirmOpen;
+    }
+
+    private void closeTaskDetailsIncompleteConfirm()
+    {
+        taskDetailsIncompleteConfirmOpen = false;
+        taskDetailsIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
+        taskDetailsIncompleteConfirmYesBounds.setBounds(0, 0, 0, 0);
+        taskDetailsIncompleteConfirmNoBounds.setBounds(0, 0, 0, 0);
+    }
+
+    private Set<String> taskAndGroupIds(XtremeTask task)
+    {
+        if (task == null || task.getId() == null)
+        {
+            return Collections.emptySet();
+        }
+
+        Set<String> ids = new HashSet<>();
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group != null)
+        {
+            for (XtremeTask groupedTask : group)
+            {
+                if (groupedTask != null && groupedTask.getId() != null)
+                {
+                    ids.add(groupedTask.getId());
+                }
+            }
+        }
+        ids.add(task.getId());
+        return ids;
+    }
+
+    private void openTaskResolve(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return;
+        }
+        taskResolveTask = task;
+        taskResolveOriginalIncompleteTaskIds.clear();
+        taskResolveOriginalIncompleteTaskIds.addAll(selectedTaskResolveIncompleteTaskIds);
+        selectedTaskResolveIncompleteTaskIds.clear();
+        selectedTaskResolveIncompleteTaskIds.addAll(taskResolveOriginalIncompleteTaskIds);
+    }
+
+    private void closeTaskResolve()
+    {
+        selectedTaskResolveIncompleteTaskIds.clear();
+        selectedTaskResolveIncompleteTaskIds.addAll(taskResolveOriginalIncompleteTaskIds);
+        closeTaskResolveWithoutRestoring();
+    }
+
+    private void closeTaskResolveWithoutRestoring()
+    {
+        taskResolveTask = null;
+        taskResolveOriginalIncompleteTaskIds.clear();
+        taskResolveBounds.setBounds(0, 0, 0, 0);
+        taskResolveCloseBounds.setBounds(0, 0, 0, 0);
+        taskResolveSaveBounds.setBounds(0, 0, 0, 0);
+        taskResolveCancelBounds.setBounds(0, 0, 0, 0);
+        taskResolveInstanceToggleBounds.clear();
+    }
+
+    private boolean isTaskResolveOpen()
+    {
+        return taskResolveTask != null;
+    }
+
+    private void toggleTaskResolveTaskIncomplete(XtremeTask task)
+    {
+        if (task == null || task.getId() == null)
+        {
+            return;
+        }
+        if (!canToggleTaskResolveTaskIncomplete(task))
+        {
+            return;
+        }
+        if (!selectedTaskResolveIncompleteTaskIds.remove(task.getId()))
+        {
+            selectedTaskResolveIncompleteTaskIds.add(task.getId());
+        }
+    }
+
+    private void saveTaskResolve()
+    {
+        taskResolveSavedIncompleteEdits = !selectedTaskResolveIncompleteTaskIds.isEmpty();
+        closeTaskResolveWithoutRestoring();
+        closeTaskSyncResult();
+    }
+
+    private boolean hasTaskResolveChanges()
+    {
+        return !selectedTaskResolveIncompleteTaskIds.equals(taskResolveOriginalIncompleteTaskIds);
+    }
+
+    private void openSyncMismatchGroupResolve(XtremeTask task)
+    {
+        if (!syncMismatchUsesGroupResolver(task))
+        {
+            return;
+        }
+
+        syncMismatchGroupResolveTask = task;
+        syncMismatchDescriptionTask = null;
+        syncMismatchApplyConfirmOpen = false;
+        syncMismatchGuardMessage = null;
+        selectedSyncMismatchGroupResolveTaskIds.clear();
+        for (XtremeTask resolveTask : syncMismatchGroupResolveTasks(task))
+        {
+            if (resolveTask != null && resolveTask.getId() != null)
+            {
+                if (selectedSyncMismatchTaskIds.contains(resolveTask.getId()))
+                {
+                    selectedSyncMismatchGroupResolveTaskIds.add(resolveTask.getId());
+                }
+            }
+        }
+        originalSyncMismatchGroupResolveTaskIds.clear();
+        originalSyncMismatchGroupResolveTaskIds.addAll(selectedSyncMismatchGroupResolveTaskIds);
+    }
+
+    private void closeSyncMismatchGroupResolve()
+    {
+        syncMismatchGroupResolveTask = null;
+        selectedSyncMismatchGroupResolveTaskIds.clear();
+        originalSyncMismatchGroupResolveTaskIds.clear();
+        syncMismatchGroupResolveBounds.setBounds(0, 0, 0, 0);
+        syncMismatchGroupResolveSaveBounds.setBounds(0, 0, 0, 0);
+        syncMismatchGroupResolveCancelBounds.setBounds(0, 0, 0, 0);
+        syncMismatchGroupResolveToggleBounds.clear();
+    }
+
+    private void saveSyncMismatchGroupResolve()
+    {
+        XtremeTask task = syncMismatchGroupResolveTask;
+        if (task == null)
+        {
+            closeSyncMismatchGroupResolve();
+            return;
+        }
+
+        for (XtremeTask selectableTask : syncMismatchGroupSelectableTasks(task))
+        {
+            if (selectableTask != null && selectableTask.getId() != null)
+            {
+                selectedSyncMismatchTaskIds.remove(selectableTask.getId());
+            }
+        }
+
+        selectedSyncMismatchTaskIds.addAll(selectedSyncMismatchGroupResolveTaskIds);
+        syncMismatchApplyConfirmOpen = false;
+        syncMismatchGuardMessage = null;
+        closeSyncMismatchGroupResolve();
+    }
+
+    private boolean hasSyncMismatchGroupResolveChanges()
+    {
+        return !selectedSyncMismatchGroupResolveTaskIds.equals(originalSyncMismatchGroupResolveTaskIds);
+    }
+
+    private void toggleSyncMismatchGroupResolveTask(XtremeTask task)
+    {
+        if (task == null || task.getId() == null || !canToggleSyncMismatchGroupResolveTask(task))
+        {
+            return;
+        }
+
+        if (!selectedSyncMismatchGroupResolveTaskIds.remove(task.getId()))
+        {
+            selectedSyncMismatchGroupResolveTaskIds.add(task.getId());
+        }
+    }
+
+    private boolean canToggleSyncMismatchGroupResolveTask(XtremeTask task)
+    {
+        if (syncMismatchGroupResolveTask == null || task == null || task.getId() == null)
+        {
+            return false;
+        }
+        if (!syncMismatchGroupResolveTierBlockMessage(syncMismatchGroupResolveTask).isEmpty())
+        {
+            return false;
+        }
+
+        List<XtremeTask> resolveTasks = syncMismatchGroupResolveTasks(syncMismatchGroupResolveTask);
+        if (!isTaskResolveSequence(plugin.getTaskGroupInstances(syncMismatchGroupResolveTask)))
+        {
+            return true;
+        }
+
+        int index = taskResolveTaskIndex(resolveTasks, task);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        int firstSelected = resolveTasks.size();
+        for (int i = 0; i < resolveTasks.size(); i++)
+        {
+            XtremeTask candidate = resolveTasks.get(i);
+            if (candidate != null
+                    && candidate.getId() != null
+                    && selectedSyncMismatchGroupResolveTaskIds.contains(candidate.getId()))
+            {
+                firstSelected = i;
+                break;
+            }
+        }
+
+        boolean selected = selectedSyncMismatchGroupResolveTaskIds.contains(task.getId());
+        if (syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES)
+        {
+            int lastSelected = -1;
+            for (int i = 0; i < resolveTasks.size(); i++)
+            {
+                XtremeTask candidate = resolveTasks.get(i);
+                if (candidate != null
+                        && candidate.getId() != null
+                        && selectedSyncMismatchGroupResolveTaskIds.contains(candidate.getId()))
+                {
+                    lastSelected = i;
+                }
+            }
+
+            if (selected)
+            {
+                return index == lastSelected;
+            }
+            return index == lastSelected + 1;
+        }
+
+        if (selected)
+        {
+            return index == firstSelected;
+        }
+        return index == firstSelected - 1;
+    }
+
+    private String syncMismatchGroupResolveTierBlockMessage(XtremeTask task)
+    {
+        if (task == null || task.getTier() == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return "";
+        }
+
+        String familyKey = displaySequenceFamilyKey(task);
+        if (familyKey.isEmpty())
+        {
+            return "";
+        }
+
+        int currentTierRank = task.getTier().ordinal();
+        List<XtremeTask> reviewTasks = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource)
+                : plugin.getSyncMismatchTasks(syncMismatchReviewSource);
+        if (reviewTasks == null || reviewTasks.isEmpty())
+        {
+            return "";
+        }
+
+        boolean blocked = false;
+        for (XtremeTask reviewTask : reviewTasks)
+        {
+            if (reviewTask == null
+                    || reviewTask.getTier() == null
+                    || reviewTask.getId() == null
+                    || Objects.equals(reviewTask.getId(), task.getId())
+                    || !familyKey.equals(displaySequenceFamilyKey(reviewTask)))
+            {
+                continue;
+            }
+
+            int reviewTierRank = reviewTask.getTier().ordinal();
+            if (syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES)
+            {
+                if (reviewTierRank < currentTierRank)
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+            else if (reviewTierRank > currentTierRank)
+            {
+                blocked = true;
+                break;
+            }
+        }
+
+        if (!blocked)
+        {
+            return "";
+        }
+
+        String action = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES ? "complete" : "incomplete";
+        String direction = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES ? "lower" : "higher";
+        return "This task must be addressed sequentially, mark tasks " + action + " in " + direction + " tiers first.";
+    }
+
+    private boolean canToggleTaskResolveTaskIncomplete(XtremeTask task)
+    {
+        if (taskResolveTask == null || task == null || task.getId() == null)
+        {
+            return false;
+        }
+
+        List<XtremeTask> resolveTasks = resolveTasksForTask(taskResolveTask);
+        if (!isTaskResolveSequence(resolveTasks))
+        {
+            return true;
+        }
+
+        int index = taskResolveTaskIndex(resolveTasks, task);
+        if (index < 0)
+        {
+            return false;
+        }
+
+        int firstIncomplete = resolveTasks.size();
+        for (int i = 0; i < resolveTasks.size(); i++)
+        {
+            XtremeTask candidate = resolveTasks.get(i);
+            if (candidate != null
+                    && candidate.getId() != null
+                    && selectedTaskResolveIncompleteTaskIds.contains(candidate.getId()))
+            {
+                firstIncomplete = i;
+                break;
+            }
+        }
+
+        boolean checked = !selectedTaskResolveIncompleteTaskIds.contains(task.getId());
+        if (checked)
+        {
+            return index == firstIncomplete - 1;
+        }
+        return index == firstIncomplete;
+    }
+
+    private boolean isTaskResolveSequence(List<XtremeTask> resolveTasks)
+    {
+        if (resolveTasks == null || resolveTasks.size() <= 1)
+        {
+            return false;
+        }
+
+        for (XtremeTask resolveTask : resolveTasks)
+        {
+            if (resolveTask != null && !collectionLogSequenceSuffix(resolveTask).isEmpty())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int taskResolveTaskIndex(List<XtremeTask> resolveTasks, XtremeTask task)
+    {
+        if (resolveTasks == null || task == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < resolveTasks.size(); i++)
+        {
+            if (sameTask(resolveTasks.get(i), task))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private List<XtremeTask> resolveTasksForTask(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> out = new ArrayList<>();
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group != null)
+        {
+            for (XtremeTask instance : group)
+            {
+                if (instance != null && plugin.isTaskCompleted(instance))
+                {
+                    out.add(instance);
+                }
+            }
+        }
+
+        if (out.isEmpty() && plugin.isTaskCompleted(task))
+        {
+            out.add(task);
+        }
+        return out;
     }
 
     private void clearSyncMismatchReviewBounds()
@@ -1262,11 +3661,14 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchScrollbarThumbBounds.setBounds(0, 0, 0, 0);
         syncMismatchDescriptionBounds.setBounds(0, 0, 0, 0);
         syncMismatchDescriptionCloseBounds.setBounds(0, 0, 0, 0);
+        closeSyncMismatchGroupResolve();
         syncMismatchReviewOpen = false;
+        syncReviewMode = SyncReviewMode.MISMATCH;
         syncMismatchReviewSource = null;
         syncMismatchApplyConfirmOpen = false;
         syncMismatchDescriptionTask = null;
         selectedSyncMismatchTaskIds.clear();
+        syncReviewVisibleTasksCache.clear();
         synchronized (syncMismatchTaskBounds) {
             syncMismatchTaskBounds.clear();
         }
@@ -1287,7 +3689,8 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setColor(new Color(0, 0, 0, 135));
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
-        int w = Math.min(panelBounds.width - 36, 470);
+        int maxReviewW = 470;
+        int w = Math.min(panelBounds.width - 36, maxReviewW);
         int h = Math.min(panelBounds.height - 56, 390);
         int x = panelBounds.x + (panelBounds.width - w) / 2;
         int y = panelBounds.y + (panelBounds.height - h) / 2;
@@ -1300,23 +3703,45 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchCloseBounds.setBounds(x + w - pad - closeW, y + pad - 2, closeW, buttonH);
         drawPopupCloseX(g, syncMismatchCloseBounds);
 
+        boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
         boolean hasCollectionLogReview = mismatches.stream()
                 .anyMatch(task -> isCollectionLogSyncSource(task.getSource()));
         boolean hasCombatAchievementReview = mismatches.stream()
                 .anyMatch(task -> task.getSource() == TaskSource.COMBAT_ACHIEVEMENT);
         g.setColor(P.UI_GOLD);
         String reviewMessage;
-        if (hasCollectionLogReview && hasCombatAchievementReview)
+        String reviewHelper = "";
+        String reviewInstruction = "";
+        if (reviewingCompletionCandidates)
         {
-            reviewMessage = "Tasks marked complete in Xtreme Tasker but not detected in-game after sync";
+            if (hasCollectionLogReview && hasCombatAchievementReview)
+            {
+                reviewMessage = "Tasks found completed in game via sync, but not marked completed in plugin.";
+            }
+            else if (hasCollectionLogReview)
+            {
+                reviewMessage = "Collection Log + Achievement Diary tasks found completed in game via sync, but not marked completed in plugin.";
+            }
+            else
+            {
+                reviewMessage = "Combat Achievement tasks found completed in game via sync, but not marked completed in plugin.";
+            }
+            reviewInstruction = "Choose which tasks to mark complete in plugin, then select Apply to save.";
+        }
+        else if (hasCollectionLogReview && hasCombatAchievementReview)
+        {
+            reviewMessage = "Tasks marked completed in plugin, but not found completed in game via sync.";
+            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
         }
         else if (hasCollectionLogReview)
         {
-            reviewMessage = "CLOG/AD tasks marked complete in Xtreme Tasker but not detected in-game after sync";
+            reviewMessage = "Collection Log + Achievement Diary tasks marked completed in plugin, but not found completed in game via sync.";
+            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
         }
         else
         {
-            reviewMessage = "CA tasks marked complete in Xtreme Tasker but not detected in-game after sync";
+            reviewMessage = "Combat Achievement tasks marked completed in plugin, but not found completed in game via sync.";
+            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
         }
         int reviewMessageMaxW = w - pad * 3 - closeW;
         List<String> reviewMessageLines = TextUtils.wrapText(reviewMessage, fm, reviewMessageMaxW);
@@ -1327,17 +3752,36 @@ public class XtremeTaskerOverlay extends Overlay {
             titleY += fm.getHeight();
         }
 
-        int nextY = titleY + 2;
-        if (hasCollectionLogReview)
+        int nextY = titleY - fm.getAscent() + fm.getHeight();
+        if (!reviewHelper.isEmpty())
         {
             g.setColor(P.UI_TEXT_DIM);
+            for (String line : TextUtils.wrapText(reviewHelper, fm, w - pad * 2))
+            {
+                g.drawString(line, x + pad, nextY + fm.getAscent());
+                nextY += fm.getHeight();
+            }
+        }
+        boolean showCollectionLogRefreshHint = hasCollectionLogReview && !reviewingCompletionCandidates;
+        if (!reviewInstruction.isEmpty())
+        {
+            g.setColor(P.UI_TEXT_DIM);
+            for (String line : TextUtils.wrapText(reviewInstruction, fm, w - pad * 2))
+            {
+                g.drawString(line, x + pad, nextY + fm.getAscent());
+                nextY += fm.getHeight();
+            }
+        }
+        if (showCollectionLogRefreshHint)
+        {
+            g.setColor(P.UI_TEXT);
             String refreshHint = "If new CLOG items are missing, open your Collection Log in game, then sync again.";
             g.drawString(TextUtils.truncateToWidth(refreshHint, fm, w - pad * 2),
                     x + pad, nextY + fm.getAscent());
             nextY += fm.getHeight();
         }
 
-        int headerTop = nextY + (hasCollectionLogReview ? fm.getHeight() + 14 : 14);
+        int headerTop = nextY + ((showCollectionLogRefreshHint || !reviewHelper.isEmpty() || !reviewInstruction.isEmpty()) ? fm.getHeight() + 14 : 14);
         int footerH = buttonH + fm.getHeight() + 10;
         int listBottom = y + h - pad - footerH;
         Rectangle listFrame = new Rectangle(x + pad, 0, w - pad * 2, 0);
@@ -1346,7 +3790,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setColor(P.UI_TEXT_DIM);
         g.drawString("Task", listFrame.x, headerTop + fm.getAscent());
 
-        String actionHeader = "Mark incomplete?";
+        String actionHeader = reviewingCompletionCandidates ? "Mark complete?" : "Mark incomplete?";
         int headerCheckboxSize = 16;
         int actionHeaderW = fm.stringWidth(actionHeader);
         int actionHeaderContentW = actionHeaderW + 5 + headerCheckboxSize;
@@ -1354,7 +3798,8 @@ public class XtremeTaskerOverlay extends Overlay {
         g.drawString(actionHeader, actionHeaderX, headerTop + fm.getAscent());
 
         int selectedVisibleCount = selectedVisibleSyncMismatchCount(mismatches);
-        boolean allMismatchTasksSelected = selectedVisibleCount >= mismatches.size();
+        int selectableVisibleCount = selectableVisibleSyncMismatchCount(mismatches);
+        boolean allMismatchTasksSelected = selectableVisibleCount > 0 && selectedVisibleCount >= selectableVisibleCount;
         syncMismatchMarkAllBounds.setBounds(
                 actionHeaderX + actionHeaderW + 5,
                 headerTop + Math.max(0, (fm.getHeight() - headerCheckboxSize) / 2) - 4,
@@ -1414,11 +3859,10 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawRect(row.x, row.y, row.width, row.height);
             g.drawLine(actionColumnX, row.y, actionColumnX, row.y + row.height);
 
-            String label = TextUtils.truncateToWidth(syncMismatchRowLabel(task), fm, actionColumnX - row.x - 16);
+            String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm, actionColumnX - row.x - 16);
             Rectangle taskNameArea = new Rectangle(row.x, row.y, Math.max(0, actionColumnX - row.x), row.height);
-            boolean hoverRow = row.contains(mouseX, mouseY);
             boolean hoverTaskName = taskNameArea.contains(mouseX, mouseY);
-            boolean clickableTaskName = task.getSource() == TaskSource.COMBAT_ACHIEVEMENT;
+            boolean clickableTaskName = hasSyncReviewPopup(task);
             g.setColor(clickableTaskName && hoverTaskName ? P.UI_GOLD : P.UI_TEXT);
             g.drawString(label, row.x + 8, row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent());
             if (hoverTaskName)
@@ -1429,23 +3873,6 @@ public class XtremeTaskerOverlay extends Overlay {
                     g.drawLine(row.x + 8, underlineY, row.x + 8 + fm.stringWidth(label), underlineY);
                 }
             }
-            if (hoverRow)
-            {
-                String gameProgress = plugin.getSyncMismatchGameProgressLabel(task);
-                if (gameProgress != null && !gameProgress.isEmpty())
-                {
-                    int hintX = row.x + 8 + fm.stringWidth(label) + 8;
-                    int hintMaxW = Math.max(0, row.x + row.width - hintX - 8);
-                    if (hintMaxW > 40)
-                    {
-                        String hint = TextUtils.truncateToWidth(gameProgress, fm, hintMaxW);
-                        g.setColor(P.UI_TEXT_DIM);
-                        int hintY = row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent();
-                        g.drawString(hint, hintX, hintY);
-                    }
-                }
-            }
-
             int smallBtn = Math.min(20, row.height - 4);
             Rectangle btn = new Rectangle(
                     actionColumnX + (actionColumnW - smallBtn) / 2,
@@ -1462,7 +3889,14 @@ public class XtremeTaskerOverlay extends Overlay {
                     syncMismatchTaskNameBounds.put(task, taskNameArea);
                 }
             }
-            drawSyncMismatchCheckbox(g, btn, selectedSyncMismatchTaskIds.contains(task.getId()));
+            if (syncMismatchUsesGroupResolver(task))
+            {
+                drawSyncMismatchGroupAction(g, fm, hitTarget, task);
+            }
+            else
+            {
+                drawSyncMismatchCheckbox(g, btn, selectedSyncMismatchTaskIds.contains(task.getId()));
+            }
             rowY += rowBlock;
         }
         g.setClip(oldClip);
@@ -1474,16 +3908,19 @@ public class XtremeTaskerOverlay extends Overlay {
             int scrollBarW = 6;
             int sbX = syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW;
             syncMismatchScrollbarRailBounds.setBounds(sbX, syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height);
-            g.setColor(new Color(18, 14, 9, 200));
+            g.setColor(new Color(0, 0, 0, 60));
             g.fillRect(sbX, syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height);
 
             float thumbRatio = (float) visible / mismatches.size();
-            int thumbH = Math.max(14, (int) (syncMismatchViewportBounds.height * thumbRatio));
+            int thumbH = Math.min(syncMismatchViewportBounds.height,
+                    Math.max(12, Math.round(syncMismatchViewportBounds.height * thumbRatio)));
             float scrollRatio = maxOffset > 0 ? (float) syncMismatchScroll.offsetRows / maxOffset : 0f;
             int thumbY = syncMismatchViewportBounds.y + (int) ((syncMismatchViewportBounds.height - thumbH) * scrollRatio);
-            syncMismatchScrollbarThumbBounds.setBounds(sbX, thumbY, scrollBarW, thumbH);
-            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 160));
-            g.fillRoundRect(sbX, thumbY, scrollBarW, thumbH, 3, 3);
+            Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+            syncMismatchScrollbarThumbBounds.setBounds(thumb);
+            drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
+            g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
         }
 
         String scrollHint = "Displaying " + (syncMismatchScroll.offsetRows + 1) + "-"
@@ -1512,15 +3949,103 @@ public class XtremeTaskerOverlay extends Overlay {
             renderSyncMismatchDescription(g, fm);
         }
 
+        if (syncMismatchGroupResolveTask != null)
+        {
+            renderSyncMismatchGroupResolve(g, fm);
+        }
+
         if (syncMismatchApplyConfirmOpen)
         {
             renderSyncMismatchApplyConfirm(g, fm);
+        }
+
+        if (syncMismatchGuardMessage != null)
+        {
+            renderSyncMismatchGuard(g, fm);
         }
     }
 
     private List<XtremeTask> visibleSyncMismatchTasks()
     {
-        return plugin.getSyncMismatchTasks(syncMismatchReviewSource);
+        String cacheKey = syncReviewVisibleTasksCacheKey();
+        List<XtremeTask> cached = syncReviewVisibleTasksCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        List<XtremeTask> tasks = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource)
+                : plugin.getSyncMismatchTasks(syncMismatchReviewSource);
+        tasks = collapseSyncMismatchGroupRows(tasks);
+        List<XtremeTask> snapshot = tasks == null
+                ? List.of()
+                : Collections.unmodifiableList(new ArrayList<>(tasks));
+        syncReviewVisibleTasksCache.put(cacheKey, snapshot);
+        return snapshot;
+    }
+
+    private List<XtremeTask> collapseSyncMismatchGroupRows(List<XtremeTask> tasks)
+    {
+        if (tasks == null || tasks.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> out = new ArrayList<>();
+        Set<String> seenGroups = new HashSet<>();
+        for (XtremeTask task : tasks)
+        {
+            if (task == null)
+            {
+                continue;
+            }
+
+            String groupKey = syncMismatchGroupKey(task);
+            if (groupKey != null)
+            {
+                if (seenGroups.add(groupKey))
+                {
+                    out.add(task);
+                }
+                continue;
+            }
+
+            out.add(task);
+        }
+        return out;
+    }
+
+    private String syncMismatchGroupKey(XtremeTask task)
+    {
+        if (!syncMismatchUsesGroupResolver(task))
+        {
+            return null;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.isEmpty())
+        {
+            return task.getId();
+        }
+
+        return group.stream()
+                .filter(Objects::nonNull)
+                .map(XtremeTask::getId)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(task.getId());
+    }
+
+    private String syncReviewVisibleTasksCacheKey()
+    {
+        return "mode=" + syncReviewMode
+                + "|source=" + syncMismatchReviewSource
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|lastSync=" + plugin.getLastSyncResultAtLocalTime()
+                + "|lastCa=" + plugin.getLastCombatAchievementSyncResultAtLocalTime()
+                + "|lastCl=" + plugin.getLastCollectionLogSyncResultAtLocalTime();
     }
 
     private int selectedVisibleSyncMismatchCount(List<XtremeTask> mismatches)
@@ -1528,7 +4053,16 @@ public class XtremeTaskerOverlay extends Overlay {
         int count = 0;
         for (XtremeTask task : mismatches)
         {
-            if (task != null && task.getId() != null && selectedSyncMismatchTaskIds.contains(task.getId()))
+            if (task == null || task.getId() == null)
+            {
+                continue;
+            }
+
+            if (syncMismatchUsesGroupResolver(task))
+            {
+                count += selectedSyncMismatchGroupCount(task);
+            }
+            else if (selectedSyncMismatchTaskIds.contains(task.getId()))
             {
                 count++;
             }
@@ -1536,11 +4070,233 @@ public class XtremeTaskerOverlay extends Overlay {
         return count;
     }
 
+    private int selectableVisibleSyncMismatchCount(List<XtremeTask> mismatches)
+    {
+        if (mismatches == null || mismatches.isEmpty())
+        {
+            return 0;
+        }
+
+        int count = 0;
+        for (XtremeTask task : mismatches)
+        {
+            if (task == null || task.getId() == null)
+            {
+                continue;
+            }
+
+            if (syncMismatchUsesGroupResolver(task))
+            {
+                count += syncMismatchGroupSelectableTasks(task).size();
+            }
+            else
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean syncMismatchUsesGroupResolver(XtremeTask task)
+    {
+        if (task == null
+                || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return false;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        return group != null
+                && group.size() > 1
+                && !syncMismatchGroupResolveTasks(task).isEmpty();
+    }
+
+    private List<XtremeTask> syncMismatchGroupResolveTasks(XtremeTask task)
+    {
+        return syncMismatchGroupActionTasks(task);
+    }
+
+    private List<XtremeTask> syncMismatchGroupActionTasks(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.size() <= 1)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> reviewTasks = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource)
+                : plugin.getSyncMismatchTasks(syncMismatchReviewSource);
+        Set<String> reviewTaskIds = reviewTasks.stream()
+                .filter(Objects::nonNull)
+                .map(XtremeTask::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (reviewTaskIds.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> out = new ArrayList<>();
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null && groupedTask.getId() != null && reviewTaskIds.contains(groupedTask.getId()))
+            {
+                out.add(groupedTask);
+            }
+        }
+        return out;
+    }
+
+    private List<XtremeTask> syncMismatchGroupSelectableTasks(XtremeTask task)
+    {
+        if (!syncMismatchUsesGroupResolver(task))
+        {
+            return Collections.emptyList();
+        }
+
+        return syncMismatchGroupActionTasks(task);
+    }
+
+    private int selectedSyncMismatchGroupCount(XtremeTask task)
+    {
+        int count = 0;
+        for (XtremeTask groupedTask : syncMismatchGroupSelectableTasks(task))
+        {
+            if (groupedTask != null
+                    && groupedTask.getId() != null
+                    && selectedSyncMismatchTaskIds.contains(groupedTask.getId()))
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private List<XtremeTask> syncMismatchGroupFoundTasks(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return Collections.emptyList();
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        Set<String> notFoundIds = syncMismatchGroupResolveTasks(task).stream()
+                .filter(Objects::nonNull)
+                .map(XtremeTask::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<XtremeTask> found = new ArrayList<>();
+        for (XtremeTask groupedTask : group)
+        {
+            if (groupedTask != null
+                    && groupedTask.getId() != null
+                    && plugin.isTaskCompleted(groupedTask)
+                    && !notFoundIds.contains(groupedTask.getId()))
+            {
+                found.add(groupedTask);
+            }
+        }
+        return found;
+    }
+
+    private void drawSyncMismatchGroupAction(Graphics2D g, FontMetrics fm, Rectangle bounds, XtremeTask task)
+    {
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        int total = Math.max(1, syncMismatchGroupActionTasks(task).size());
+        int selectedCount = selectedSyncMismatchGroupCount(task);
+        String label = selectedCount + "/" + total;
+
+        net.runelite.api.Point mouse = mouseCanvasPositionForPanelRender();
+        boolean hover = mouse != null && bounds.contains(mouse.getX(), mouse.getY());
+        g.setColor(hover ? P.UI_GOLD : P.UI_TEXT);
+        int textX = bounds.x + (bounds.width - fm.stringWidth(label)) / 2;
+        int textY = bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
+        g.drawString(label, textX, textY);
+        g.drawLine(textX, textY + 2, textX + fm.stringWidth(label), textY + 2);
+    }
+
+    private boolean hasSyncReviewPopup(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return false;
+        }
+        return task.getSource() == TaskSource.COMBAT_ACHIEVEMENT
+                || task.getSource() == TaskSource.DIARY_ACHIEVEMENT
+                || hasCollectionLogReviewItems(task);
+    }
+
+    private String syncReviewPopupTitle(XtremeTask task)
+    {
+        String title = syncReviewRowLabel(task);
+        if (title == null || title.trim().isEmpty())
+        {
+            title = task == null ? "" : task.getName();
+        }
+        return title == null || title.trim().isEmpty() ? "Task" : title.trim();
+    }
+
+    private String syncReviewPopupHelperText(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return "";
+        }
+
+        if (syncMismatchUsesGroupResolver(task))
+        {
+            return syncMismatchGroupResolveSummary(task);
+        }
+
+        return syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? "Sync found this completed in game, not marked in plugin"
+                : "Sync did not find this completed in game, marked in plugin";
+    }
+
+    private boolean shouldShowSyncReviewPopupHelper(XtremeTask task)
+    {
+        return false;
+    }
+
+    private boolean hasCollectionLogReviewItems(XtremeTask task)
+    {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
+        {
+            return false;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return false;
+        }
+
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
+        return preview != null && preview.hasItems();
+    }
+
     private void renderSyncMismatchDescription(Graphics2D g, FontMetrics fm)
     {
         XtremeTask task = syncMismatchDescriptionTask;
         if (task == null)
         {
+            return;
+        }
+
+        if (hasCollectionLogReviewItems(task))
+        {
+            renderSyncMismatchCollectionLogDescription(g, fm, task);
             return;
         }
 
@@ -1556,7 +4312,8 @@ public class XtremeTaskerOverlay extends Overlay {
         int tierPillH = 18;
         int closeW = 28;
         int w = Math.min(syncMismatchReviewBounds.width - 44, 360);
-        String tierPillText = task.getSource() == TaskSource.COMBAT_ACHIEVEMENT && task.getTier() != null
+        String tierPillText = (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT
+                || task.getSource() == TaskSource.DIARY_ACHIEVEMENT) && task.getTier() != null
                 ? tierLabel(task.getTier())
                 : null;
         FontMetrics smallFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
@@ -1565,11 +4322,26 @@ public class XtremeTaskerOverlay extends Overlay {
         int iconStackH = iconSize + (tierPillText == null ? 0 : tierPillGap + tierPillH);
         int textXOffset = pad + iconColumnW + pad;
         int textW = w - textXOffset - closeW - pad;
+        List<String> titleLines = TextUtils.wrapText(syncReviewPopupTitle(task), fm, textW);
+        List<String> helperLines = shouldShowSyncReviewPopupHelper(task)
+                ? TextUtils.wrapText(syncReviewPopupHelperText(task), fm, textW)
+                : List.of();
         List<String> lines = TextUtils.wrapText(description.trim(), fm, textW);
-        int visibleLines = Math.max(1, Math.min(lines.size(), 6));
-        int textBlockH = visibleLines * fm.getHeight();
+        boolean achievementDiaryTask = task.getSource() == TaskSource.DIARY_ACHIEVEMENT;
+        int visibleLines = achievementDiaryTask ? Math.max(1, lines.size()) : Math.max(1, Math.min(lines.size(), 5));
+        int titleLineCount = Math.max(1, Math.min(titleLines.size(), 2));
+        int helperLineCount = Math.min(helperLines.size(), 2);
+        int titleGap = Math.max(9, fm.getHeight() / 2);
+        int helperGap = helperLineCount > 0 ? 5 : 0;
+        int textBlockH = titleLineCount * fm.getHeight()
+                + helperLineCount * fm.getHeight()
+                + titleGap
+                + helperGap
+                + visibleLines * fm.getHeight();
         int contentH = Math.max(iconStackH, textBlockH);
-        int h = Math.max(86, Math.min(160, pad * 2 + contentH));
+        int requestedH = Math.max(96, pad * 2 + contentH);
+        int maxH = achievementDiaryTask ? Math.max(96, syncMismatchReviewBounds.height - 36) : 184;
+        int h = Math.min(requestedH, maxH);
         int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
         int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
         syncMismatchDescriptionBounds.setBounds(x, y, w, h);
@@ -1612,8 +4384,23 @@ public class XtremeTaskerOverlay extends Overlay {
         int textTop = contentY + Math.max(0, (contentH - textBlockH) / 2);
         Rectangle textBounds = new Rectangle(x + textXOffset, textTop, textW, textBlockH);
         g.setClip(textBounds);
-        g.setColor(P.UI_TEXT);
         int textY = textBounds.y + fm.getAscent();
+        g.setColor(P.UI_GOLD);
+        for (int i = 0; i < titleLineCount; i++)
+        {
+            String line = titleLines.isEmpty() ? task.getName() : titleLines.get(i);
+            g.drawString(TextUtils.truncateToWidth(line, fm, textBounds.width), textBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        g.setColor(P.UI_TEXT_DIM);
+        for (int i = 0; i < helperLineCount; i++)
+        {
+            g.drawString(TextUtils.truncateToWidth(helperLines.get(i), fm, textBounds.width), textBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        textY += helperGap;
+        textY += titleGap;
+        g.setColor(P.UI_TEXT);
         for (String line : lines)
         {
             if (textY > textBounds.y + textBounds.height)
@@ -1624,6 +4411,308 @@ public class XtremeTaskerOverlay extends Overlay {
             textY += fm.getHeight();
         }
         g.setClip(oldClip);
+    }
+
+    private void renderSyncMismatchCollectionLogDescription(Graphics2D g, FontMetrics fm, XtremeTask task)
+    {
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
+        List<CollectionLogRequirementItem> items = syncReviewCollectionLogItems(preview);
+        boolean showTierSections = preview != null && preview.showTierSections();
+        if (showTierSections)
+        {
+            CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
+            items = currentSection == null ? List.of() : currentSection.items();
+        }
+        boolean simpleSingleItemTask = !showTierSections
+                && items.size() == 1
+                && !isMultiInstanceTask(task)
+                && (preview == null || !preview.showSecondaryItemList());
+        if (items.isEmpty())
+        {
+            return;
+        }
+
+        int pad = 12;
+        int iconSize = 32;
+        int itemIconSize = 18;
+        int tierPillGap = 4;
+        int tierPillH = 18;
+        int closeW = 28;
+        int rowGap = 3;
+        int rowH = Math.max(fm.getHeight(), itemIconSize) + rowGap;
+        int w = Math.min(syncMismatchReviewBounds.width - 48, 360);
+        String tierPillText = task.getTier() == null ? null : tierLabel(task.getTier());
+        FontMetrics smallFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
+        int tierPillW = tierPillText == null ? 0 : Math.max(24, smallFm.stringWidth(tierPillText) + 14);
+        int iconColumnW = Math.max(iconSize, tierPillW);
+        int iconStackH = iconSize + (tierPillText == null ? 0 : tierPillGap + tierPillH);
+        int listXOffset = pad + iconColumnW + pad;
+        int listW = w - listXOffset - closeW - pad;
+        int columnGap = 12;
+        int columns = items.size() > 1 && listW >= 210 ? 2 : 1;
+        int columnW = columns == 1 ? listW : Math.max(90, (listW - columnGap) / 2);
+        int rows = (items.size() + columns - 1) / columns;
+        int listH = simpleSingleItemTask
+                ? 0
+                : rows * rowH;
+        List<String> titleLines = TextUtils.wrapText(syncReviewPopupTitle(task), fm, listW);
+        List<String> helperLines = !simpleSingleItemTask && shouldShowSyncReviewPopupHelper(task)
+                ? TextUtils.wrapText(syncReviewPopupHelperText(task), fm, listW)
+                : List.of();
+        List<String> summaryLines = !simpleSingleItemTask && preview.showSummaryText() && !showTierSections
+                ? TextUtils.wrapText(preview.summaryText(), fm, listW)
+                : List.of();
+        int titleLineCount = Math.max(1, Math.min(titleLines.size(), 2));
+        int helperLineCount = Math.min(helperLines.size(), 2);
+        int summaryLineCount = Math.min(summaryLines.size(), 2);
+        String listHeader = simpleSingleItemTask ? "" : collectionLogRequirementTitle(preview);
+        boolean hasListContent = !listHeader.isEmpty() || summaryLineCount > 0 || listH > 0;
+        int titleGap = helperLineCount > 0 ? 3 : hasListContent ? Math.max(9, fm.getHeight() / 2) : 0;
+        int sectionGap = hasListContent ? Math.max(9, fm.getHeight() / 2) : 0;
+        int summaryGap = showTierSections && summaryLineCount > 0 ? TIER_SECTION_ICON_GAP : 0;
+        int headerGap = 0;
+        int listBlockH = titleLineCount * fm.getHeight()
+                + titleGap
+                + helperLineCount * fm.getHeight()
+                + sectionGap
+                + (listHeader.isEmpty() ? 0 : fm.getHeight())
+                + summaryLineCount * fm.getHeight()
+                + summaryGap
+                + headerGap
+                + listH;
+        int contentH = Math.max(iconStackH, listBlockH);
+        int h = Math.max(106, Math.min(syncMismatchReviewBounds.height - 34, pad * 2 + contentH));
+        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
+        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
+        syncMismatchDescriptionBounds.setBounds(x, y, w, h);
+
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
+                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
+        drawBevelBox(g, syncMismatchDescriptionBounds, new Color(45, 36, 24, 252));
+
+        syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
+        drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
+
+        int availableContentH = Math.max(0, h - pad * 2);
+        int contentY = y + pad + Math.max(0, (availableContentH - Math.min(contentH, availableContentH)) / 2);
+        int iconStackY = contentY + Math.max(0, (Math.min(contentH, availableContentH) - iconStackH) / 2);
+        int iconX = x + pad + Math.max(0, (iconColumnW - iconSize) / 2);
+        int iconY = iconStackY;
+        BufferedImage icon = resolveTaskIcon(task);
+        if (icon != null)
+        {
+            g.drawImage(icon, iconX, iconY, iconSize, iconSize, null);
+        }
+        else
+        {
+            drawBevelBox(g, new Rectangle(iconX, iconY, iconSize, iconSize), P.INPUT_BG);
+        }
+        if (tierPillText != null)
+        {
+            TaskRowsRenderer.drawSourceBadge(
+                    g,
+                    x + pad + Math.max(0, (iconColumnW - tierPillW) / 2),
+                    iconY + iconSize + tierPillGap,
+                    tierPillText,
+                    P.UI_EDGE_DARK,
+                    P.UI_EDGE_LIGHT,
+                    P.UI_GOLD,
+                    P.UI_TEXT);
+        }
+
+        Shape oldClip = g.getClip();
+        Rectangle listBounds = new Rectangle(x + listXOffset, y + pad, listW, availableContentH);
+        g.setClip(listBounds);
+        int listBlockTop = contentY + Math.max(0, (Math.min(contentH, availableContentH) - Math.min(listBlockH, availableContentH)) / 2);
+        int textY = listBlockTop + fm.getAscent();
+        g.setColor(P.UI_GOLD);
+        for (int i = 0; i < titleLineCount; i++)
+        {
+            String line = titleLines.isEmpty() ? task.getName() : titleLines.get(i);
+            g.drawString(TextUtils.truncateToWidth(line, fm, listBounds.width), listBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        textY += titleGap;
+        g.setColor(P.UI_TEXT_DIM);
+        for (int i = 0; i < helperLineCount; i++)
+        {
+            g.drawString(TextUtils.truncateToWidth(helperLines.get(i), fm, listBounds.width), listBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        textY += sectionGap;
+        if (!listHeader.isEmpty())
+        {
+            g.setColor(P.UI_TEXT);
+            g.drawString(TextUtils.truncateToWidth(listHeader, fm, listBounds.width), listBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        g.setColor(P.UI_TEXT_DIM);
+        for (int i = 0; i < summaryLineCount; i++)
+        {
+            g.drawString(TextUtils.truncateToWidth(summaryLines.get(i), fm, listBounds.width), listBounds.x, textY);
+            textY += fm.getHeight();
+        }
+        textY += summaryGap;
+        int listTop = textY + headerGap;
+        if (simpleSingleItemTask)
+        {
+            // The single required CLOG item is already represented by the icon column.
+        }
+        else
+        {
+            for (int i = 0; i < items.size(); i++)
+            {
+                CollectionLogRequirementItem item = items.get(i);
+                if (item == null)
+                {
+                    continue;
+                }
+
+                int col = i / rows;
+                int row = i % rows;
+                int itemX = listBounds.x + col * (columnW + columnGap);
+                int itemY = listTop + row * rowH;
+                if (itemY > listBounds.y + listBounds.height)
+                {
+                    break;
+                }
+                drawSyncReviewCollectionLogItem(g, fm, item, itemX, itemY, columnW, itemIconSize);
+            }
+        }
+        g.setClip(oldClip);
+    }
+
+    private int syncReviewTierSectionsHeight(CollectionLogRequirementPreview preview, int rowH, int listW, int columnGap)
+    {
+        int total = 0;
+        List<CollectionLogRequirementPreview.TierSection> sections = preview == null ? List.of() : preview.tierSections();
+        for (int i = 0; i < sections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = sections.get(i);
+            if (section == null || section.items().isEmpty())
+            {
+                continue;
+            }
+            if (i > 0)
+            {
+                total += 8;
+            }
+            int columns = section.items().size() > 1 && listW >= 210 ? 2 : 1;
+            int rows = (section.items().size() + columns - 1) / columns;
+            total += rows * rowH;
+        }
+        return total;
+    }
+
+    private void drawSyncReviewTierSections(
+            Graphics2D g,
+            FontMetrics fm,
+            CollectionLogRequirementPreview preview,
+            int x,
+            int y,
+            int listW,
+            int rowH,
+            int columnGap,
+            int itemIconSize,
+            Rectangle clipBounds)
+    {
+        List<CollectionLogRequirementPreview.TierSection> sections = preview == null ? List.of() : preview.tierSections();
+        for (int i = 0; i < sections.size(); i++)
+        {
+            CollectionLogRequirementPreview.TierSection section = sections.get(i);
+            if (section == null || section.items().isEmpty())
+            {
+                continue;
+            }
+            if (i > 0)
+            {
+                y += 8;
+            }
+            int columns = section.items().size() > 1 && listW >= 210 ? 2 : 1;
+            int columnW = columns == 1 ? listW : Math.max(90, (listW - columnGap) / 2);
+            int rows = (section.items().size() + columns - 1) / columns;
+            for (int itemIndex = 0; itemIndex < section.items().size(); itemIndex++)
+            {
+                int col = itemIndex / rows;
+                int row = itemIndex % rows;
+                int itemX = x + col * (columnW + columnGap);
+                int itemY = y + row * rowH;
+                if (itemY > clipBounds.y + clipBounds.height)
+                {
+                    return;
+                }
+                drawSyncReviewCollectionLogItem(g, fm, section.items().get(itemIndex), itemX, itemY, columnW, itemIconSize);
+            }
+            y += rows * rowH;
+        }
+    }
+
+    private void drawSyncReviewTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline)
+    {
+        String text = section.tier() == null ? "TIER" : tierLabel(section.tier()).toUpperCase();
+        g.setColor(P.UI_GOLD);
+        g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 180)), x, baseline);
+    }
+
+    private static String collectionLogRequirementTitle(CollectionLogRequirementPreview preview)
+    {
+        if (preview != null && preview.titleText() != null && !preview.titleText().trim().isEmpty())
+        {
+            return preview.titleText();
+        }
+        return preview != null && preview.showSummaryText() && !preview.showItemList()
+                ? "Collection Log Progress"
+                : "Eligible Collection Log items";
+    }
+
+    private List<CollectionLogRequirementItem> syncReviewCollectionLogItems(CollectionLogRequirementPreview preview)
+    {
+        if (preview == null)
+        {
+            return List.of();
+        }
+
+        List<CollectionLogRequirementItem> out = new ArrayList<>();
+        if (preview.showItemList())
+        {
+            out.addAll(preview.getItems());
+        }
+        if (preview.showSecondaryItemList())
+        {
+            out.addAll(preview.secondaryItems());
+        }
+        return out;
+    }
+
+    private void drawSyncReviewCollectionLogItem(
+            Graphics2D g,
+            FontMetrics fm,
+            CollectionLogRequirementItem item,
+            int x,
+            int y,
+            int maxW,
+            int iconSize)
+    {
+        Rectangle iconBounds = new Rectangle(x, y + Math.max(0, (fm.getHeight() - iconSize) / 2), iconSize, iconSize);
+        BufferedImage image = item.getItemId() > 0 ? getCachedItemImage(item.getItemId()) : null;
+        if (image != null)
+        {
+            g.drawImage(image, iconBounds.x, iconBounds.y, iconBounds.width, iconBounds.height, null);
+        }
+        else
+        {
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString("?", iconBounds.x + 5, iconBounds.y + iconBounds.height - 4);
+        }
+
+        String name = item.getName() == null ? "" : item.getName();
+        int textX = iconBounds.x + iconSize + 5;
+        int textW = Math.max(0, maxW - iconSize - 5);
+        String text = TextUtils.truncateToWidth(name, fm, textW);
+        int textY = y + fm.getAscent();
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(text, textX, textY);
     }
 
     private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked)
@@ -1654,7 +4743,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
     }
 
-    private String syncMismatchRowLabel(XtremeTask task)
+    private String syncReviewRowLabel(XtremeTask task)
     {
         if (task == null)
         {
@@ -1662,6 +4751,16 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (syncMismatchUsesGroupResolver(task) && group != null && !group.isEmpty())
+        {
+            XtremeTask first = group.stream().filter(Objects::nonNull).findFirst().orElse(task);
+            return first.getName();
+        }
+
+        if (isDecoratedSequenceTaskName(task.getName()))
+        {
+            return task.getName();
+        }
         if (group == null || group.size() <= 1)
         {
             return task.getName();
@@ -1673,12 +4772,67 @@ public class XtremeTaskerOverlay extends Overlay {
             return task.getName();
         }
 
-        int instanceOrdinal = completedInstanceOrdinalInGroup(group, task);
+        String sequenceSuffix = collectionLogSequenceSuffix(task);
+        if (!sequenceSuffix.isEmpty())
+        {
+            return task.getName() + " (" + sequenceSuffix + ")";
+        }
+
+        int instanceOrdinal = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
+                ? instanceOrdinalInGroup(group, task)
+                : completedInstanceOrdinalInGroup(group, task);
         if (instanceOrdinal <= 0)
         {
             return task.getName() + " " + progress.label();
         }
         return task.getName() + " (" + instanceOrdinal + "/" + group.size() + ")";
+    }
+
+    private static boolean isDecoratedSequenceTaskName(String name)
+    {
+        if (name == null)
+        {
+            return false;
+        }
+
+        String normalized = name.toLowerCase(Locale.ROOT);
+        return isDisplaySequenceTaskName(normalized)
+                && normalized.matches(".*\\([^)]*\\)\\s*$");
+    }
+
+    private static boolean isDisplaySequenceTaskName(String name)
+    {
+        if (name == null)
+        {
+            return false;
+        }
+
+        String normalized = name.toLowerCase(Locale.ROOT);
+        return normalized.contains("next tier")
+                || normalized.contains("first tier")
+                || normalized.contains("next reward")
+                || normalized.contains("mta wand")
+                || normalized.equals("upgrade to apprentice wand")
+                || normalized.equals("upgrade to teacher wand")
+                || normalized.equals("upgrade to master wand");
+    }
+
+    private int instanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)
+    {
+        if (group == null || task == null || task.getId() == null)
+        {
+            return -1;
+        }
+
+        for (int i = 0; i < group.size(); i++)
+        {
+            XtremeTask groupedTask = group.get(i);
+            if (groupedTask != null && Objects.equals(groupedTask.getId(), task.getId()))
+            {
+                return i + 1;
+            }
+        }
+        return -1;
     }
 
     private int completedInstanceOrdinalInGroup(List<XtremeTask> group, XtremeTask task)
@@ -1730,8 +4884,13 @@ public class XtremeTaskerOverlay extends Overlay {
                 syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
 
         int count = selectedVisibleSyncMismatchCount(visibleSyncMismatchTasks());
-        String message = "Mark " + count + " task(s) incomplete?";
-        String warning = "Completion dates and time spent will be cleared.";
+        boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
+        String message = reviewingCompletionCandidates
+                ? "Mark " + count + " task(s) complete?"
+                : "Mark " + count + " task(s) incomplete?";
+        String warning = reviewingCompletionCandidates
+                ? "Completion source will be recorded as sync."
+                : "Completion dates and time spent will be cleared.";
         int w = Math.min(syncMismatchReviewBounds.width - 50,
                 Math.max(fm.stringWidth(message), fm.stringWidth(warning)) + 36);
         int h = 104;
@@ -1755,6 +4914,125 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchConfirmNoBounds.setBounds(syncMismatchConfirmYesBounds.x + buttonW + gap, buttonY, buttonW, buttonH);
         buttonRenderer.drawPlainButton(g, syncMismatchConfirmYesBounds, "Confirm", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
         buttonRenderer.drawPlainButton(g, syncMismatchConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
+    }
+
+    private void renderSyncMismatchGuard(Graphics2D g, FontMetrics fm)
+    {
+        g.setColor(new Color(0, 0, 0, 115));
+        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
+                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
+
+        String title = "Sequence blocked";
+        int maxW = Math.max(120, syncMismatchReviewBounds.width - 70);
+        int textW = Math.max(100, maxW - 36);
+        List<String> lines = TextUtils.wrapText(syncMismatchGuardMessage == null ? "" : syncMismatchGuardMessage, fm, textW);
+        syncMismatchGuardTotalRows = Math.max(1, lines.size());
+        int visibleLineCapacity = Math.min(8, syncMismatchGuardTotalRows);
+        int w = Math.min(maxW, Math.max(fm.stringWidth(title) + 36, widestLineWidth(lines, fm) + 36));
+        int buttonW = 70;
+        int buttonH = ROW_HEIGHT + 8;
+        int lineH = syncMismatchGuardRowBlock();
+        int h = Math.min(syncMismatchReviewBounds.height - 32, 64 + visibleLineCapacity * lineH + buttonH);
+        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
+        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
+        syncMismatchGuardBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, syncMismatchGuardBounds, new Color(45, 36, 24, 252));
+
+        int baseline = y + 16 + fm.getAscent();
+        g.setColor(P.UI_GOLD);
+        g.drawString(title, x + (w - fm.stringWidth(title)) / 2, baseline);
+
+        g.setColor(P.UI_TEXT_DIM);
+        int viewportY = baseline + fm.getHeight() + 8 - fm.getAscent();
+        int viewportH = Math.max(lineH, y + h - buttonH - 18 - viewportY);
+        boolean needsScrollbar = syncMismatchGuardTotalRows > visibleLineCapacity;
+        int scrollbarReserve = needsScrollbar ? 12 : 0;
+        syncMismatchGuardViewportBounds.setBounds(x + 12, viewportY, Math.max(20, w - 24 - scrollbarReserve), viewportH);
+
+        int visibleLines = Math.max(1, syncMismatchGuardScroll.visibleRows(syncMismatchGuardViewportBounds.height, lineH));
+        int maxOffset = Math.max(0, syncMismatchGuardTotalRows - visibleLines);
+        syncMismatchGuardScroll.offsetRows = Math.max(0, Math.min(syncMismatchGuardScroll.offsetRows, maxOffset));
+        int start = syncMismatchGuardScroll.offsetRows;
+        int end = Math.min(syncMismatchGuardTotalRows, start + visibleLines);
+
+        Shape oldClip = g.getClip();
+        g.setClip(syncMismatchGuardViewportBounds);
+        int textY = syncMismatchGuardViewportBounds.y + fm.getAscent();
+        for (int i = start; i < end; i++)
+        {
+            String line = lines.isEmpty() ? "" : lines.get(i);
+            line = TextUtils.truncateToWidth(line, fm, syncMismatchGuardViewportBounds.width);
+            g.setColor(syncMismatchGuardLineColor(line));
+            g.drawString(line, syncMismatchGuardViewportBounds.x, textY);
+            textY += lineH;
+        }
+        g.setClip(oldClip);
+
+        renderSyncMismatchGuardScrollbar(g, syncMismatchGuardTotalRows, visibleLines, start);
+
+        syncMismatchGuardOkBounds.setBounds(x + (w - buttonW) / 2, y + h - buttonH - 10, buttonW, buttonH);
+        buttonRenderer.drawPlainButton(g, syncMismatchGuardOkBounds, "OK", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+    }
+
+    private int syncMismatchGuardRowBlock()
+    {
+        return ROW_HEIGHT;
+    }
+
+    private Color syncMismatchGuardLineColor(String line)
+    {
+        if (line != null && line.startsWith("Save blocked:"))
+        {
+            return new Color(245, 92, 82, 245);
+        }
+        if (line != null && line.startsWith("Task:"))
+        {
+            return P.UI_TEXT;
+        }
+        return P.UI_TEXT_DIM;
+    }
+
+    private void renderSyncMismatchGuardScrollbar(Graphics2D g, int totalRows, int visibleRows, int offsetRows)
+    {
+        syncMismatchGuardScrollbarRailBounds.setBounds(0, 0, 0, 0);
+        syncMismatchGuardScrollbarThumbBounds.setBounds(0, 0, 0, 0);
+        if (totalRows <= visibleRows || visibleRows <= 0 || syncMismatchGuardViewportBounds.height <= 0)
+        {
+            return;
+        }
+
+        int scrollBarW = 6;
+        int sbX = syncMismatchGuardBounds.x + syncMismatchGuardBounds.width - 12 - scrollBarW;
+        syncMismatchGuardScrollbarRailBounds.setBounds(sbX, syncMismatchGuardViewportBounds.y,
+                scrollBarW, syncMismatchGuardViewportBounds.height);
+        g.setColor(new Color(0, 0, 0, 60));
+        g.fillRect(sbX, syncMismatchGuardViewportBounds.y, scrollBarW, syncMismatchGuardViewportBounds.height);
+
+        float thumbRatio = (float) visibleRows / totalRows;
+        int thumbH = Math.min(syncMismatchGuardViewportBounds.height,
+                Math.max(12, Math.round(syncMismatchGuardViewportBounds.height * thumbRatio)));
+        int maxOffset = Math.max(1, totalRows - visibleRows);
+        float scrollRatio = (float) Math.max(0, Math.min(offsetRows, maxOffset)) / maxOffset;
+        int thumbY = syncMismatchGuardViewportBounds.y
+                + (int) ((syncMismatchGuardViewportBounds.height - thumbH) * scrollRatio);
+        Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
+        syncMismatchGuardScrollbarThumbBounds.setBounds(thumb);
+        drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
+        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
+    }
+
+    private static int widestLineWidth(List<String> lines, FontMetrics fm)
+    {
+        int width = 0;
+        if (lines != null)
+        {
+            for (String line : lines)
+            {
+                width = Math.max(width, fm.stringWidth(line == null ? "" : line));
+            }
+        }
+        return width;
     }
 
     private void renderMarkAllIncompleteConfirm(Graphics2D g, FontMetrics fm)
@@ -1884,8 +5162,11 @@ public class XtremeTaskerOverlay extends Overlay {
                 rolling,
                 plugin::getTierProgressLabel,
                 (ignored) -> computeCurrentLineForRender(current, currentCompleted, fm),
-                plugin::getPrerequisiteStatuses,
+                this::getCachedPrerequisiteStatuses,
+                this::getCachedSkillImage,
+                this::getCachedPrerequisiteMarkerImage,
                 this::buildCollectionLogRequirementPreview,
+                this::getCachedItemImage,
                 this::getTasksForTier,
                 tierForProgress,
                 src,
@@ -1901,6 +5182,10 @@ public class XtremeTaskerOverlay extends Overlay {
                 recentCompleted,
                 plugin.getCompletionInfo(recentCompleted),
                 plugin.getTaskTimeTicks(recentCompleted),
+                plugin.canUndoRecentTaskCompletion(),
+                plugin.isTaskSkippingEnabled(),
+                plugin.getSkippedTaskCount(),
+                plugin.isCurrentTaskCompletionCriteriaMet(),
                 keyboardHintsOpen,
                 keyboardHintsButtonBounds,
                 keyboardHintsPopupBounds,
@@ -1934,8 +5219,12 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         String progress = tierLabel(tierForProgress) + ": " + plugin.getTierProgressLabel(tierForProgress);
+        String skipped = "Skipped tasks: " + plugin.getSkippedTaskCount();
+        int skippedW = fm.stringWidth(skipped);
+        int progressW = Math.max(20, innerW - skippedW - 8);
         g.setColor(P.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(progress, fm, innerW), innerX, y + fm.getAscent());
+        g.drawString(TextUtils.truncateToWidth(progress, fm, progressW), innerX, y + fm.getAscent());
+        g.drawString(skipped, innerX + innerW - skippedW, y + fm.getAscent());
         y += fm.getHeight() + 3;
 
         int actionH = ROW_HEIGHT + 6;
@@ -1958,18 +5247,44 @@ public class XtremeTaskerOverlay extends Overlay {
 
         boolean rollEnabled = current == null || currentCompleted;
         boolean completeEnabled = current != null && !currentCompleted;
+        boolean skipEnabled = plugin.isTaskSkippingEnabled();
+        boolean canUndoRecentCompletion = plugin.canUndoRecentTaskCompletion();
+        boolean currentCompletionCriteriaMet = plugin.isCurrentTaskCompletionCriteriaMet();
         int buttonGap = 6;
         int wikiW = current != null && current.getWikiUrl() != null && !current.getWikiUrl().trim().isEmpty()
                 ? Math.max(48, fm.stringWidth("Wiki") + 18)
                 : 0;
         int actionW = wikiW > 0 ? innerW - wikiW - buttonGap : innerW;
-        Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
         if (completeEnabled) {
-            currentLayout.completeButtonBounds.setBounds(actionBounds);
-            buttonRenderer.drawPrimaryButton(g, currentLayout.completeButtonBounds, "Mark complete");
+            if (skipEnabled) {
+                int skipW = Math.min(64, Math.max(48, fm.stringWidth("Skip") + 22));
+                int completeW = Math.max(90, actionW - skipW - buttonGap);
+                currentLayout.completeButtonBounds.setBounds(innerX, y, completeW, actionH);
+                currentLayout.skipButtonBounds.setBounds(innerX + completeW + buttonGap, y, skipW, actionH);
+            } else {
+                currentLayout.completeButtonBounds.setBounds(innerX, y, actionW, actionH);
+            }
+            buttonRenderer.drawPrimaryButton(
+                    g,
+                    currentLayout.completeButtonBounds,
+                    "Mark complete",
+                    currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
+            if (skipEnabled) {
+                buttonRenderer.drawPlainButton(g, currentLayout.skipButtonBounds, "Skip");
+            }
         } else if (rollEnabled) {
-            currentLayout.rollButtonBounds.setBounds(actionBounds);
-            buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+            if (canUndoRecentCompletion) {
+                int undoW = Math.min(70, Math.max(48, fm.stringWidth("Undo") + 22));
+                int rollW = Math.max(90, actionW - undoW - buttonGap);
+                currentLayout.rollButtonBounds.setBounds(innerX, y, rollW, actionH);
+                currentLayout.undoButtonBounds.setBounds(innerX + rollW + buttonGap, y, undoW, actionH);
+                buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+                buttonRenderer.drawPlainButton(g, currentLayout.undoButtonBounds, "Undo");
+            } else {
+                Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
+                currentLayout.rollButtonBounds.setBounds(actionBounds);
+                buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+            }
         }
 
         if (wikiW > 0) {
@@ -1985,30 +5300,58 @@ public class XtremeTaskerOverlay extends Overlay {
         currentLayout.viewportBounds.setBounds(viewport);
 
         List<CompactLine> lines = compactLines(current, rolling);
-        int totalRows = lines.size();
-        int visibleRows = currentScroll.visibleRows(viewport.height, ROW_HEIGHT);
-        int maxOffset = Math.max(0, totalRows - visibleRows);
-        if (currentScroll.offsetRows > maxOffset) {
-            currentScroll.offsetRows = maxOffset;
+        int textW = Math.max(0, viewport.width - 8 - 14);
+        int totalPx = 0;
+        for (CompactLine line : lines) {
+            totalPx += compactLineHeight(line, textW);
         }
-        currentLayout.totalContentPx = totalRows * ROW_HEIGHT;
-        int scrollRows = currentScroll.offsetRows;
+        currentLayout.totalContentPx = totalPx;
 
         drawBevelBox(g, viewport, new Color(32, 24, 15, 160));
         Shape oldClip = g.getClip();
         Rectangle textClip = new Rectangle(viewport.x + 4, viewport.y + 4, Math.max(0, viewport.width - 8), Math.max(0, viewport.height - 8));
+        int visiblePx = Math.max(0, textClip.height);
+        int maxOffsetPx = Math.max(0, totalPx - visiblePx);
+        compactCurrentMaxOffsetPx = maxOffsetPx;
+        applyCompactScrollInputs(maxOffsetPx);
+        int scrollPx = compactCurrentScrollPx;
+
         g.setClip(textClip);
-        int textY = textClip.y + fm.getAscent() + 2 - (scrollRows * ROW_HEIGHT);
+        int textY = textClip.y + fm.getAscent() + 2 - scrollPx;
         int textX = textClip.x + 4;
-        int textW = textClip.width - 14;
         for (CompactLine line : lines) {
-            g.setColor(line.heading ? P.UI_GOLD : (line.dim ? P.UI_TEXT_DIM : P.UI_TEXT));
-            g.drawString(TextUtils.truncateToWidth(line.text, fm, textW), textX, textY);
-            textY += ROW_HEIGHT;
+            if (line.collectionLogPreview != null) {
+                Composite oldComposite = g.getComposite();
+                if (line.dimCollectionLogIcons) {
+                    g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
+                }
+                textY = CollectionLogIconGridRenderer.render(
+                        g,
+                        fm,
+                        textX,
+                        textY,
+                        textW,
+                        line.collectionLogPreview.getItems(),
+                        this::getCachedItemImage,
+                        mousePoint,
+                        textClip,
+                        P.UI_TEXT,
+                        P.UI_TEXT_DIM,
+                        P.UI_EDGE_LIGHT,
+                        P.UI_EDGE_DARK,
+                        line.collectionLogPreview.iconColumns());
+                g.setComposite(oldComposite);
+            } else if (line.tierSection != null) {
+                drawCompactTierLabel(g, fm, line.tierSection, textX, textY);
+                textY += compactLineHeight(line, textW);
+            } else {
+                drawCompactLine(g, fm, line, textX, textY, textW);
+                textY += compactLineHeight(line, textW);
+            }
         }
         g.setClip(oldClip);
 
-        drawCompactScrollbar(g, viewport, totalRows, visibleRows, scrollRows);
+        drawCompactScrollbar(g, viewport, totalPx, visiblePx, scrollPx);
     }
 
     private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card) {
@@ -2100,14 +5443,6 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString(time, timeX, textY + 2);
         }
 
-        if (completed) {
-            String done = "Complete";
-            int doneW = fm.stringWidth(done) + 14;
-            Rectangle doneBadge = new Rectangle(card.x + card.width - doneW - pad, card.y + 7, doneW, ROW_HEIGHT + 2);
-            drawBevelBox(g, doneBadge, new Color(38, 56, 32, 220));
-            g.setColor(new Color(120, 210, 130, 230));
-            g.drawString(done, doneBadge.x + 7, doneBadge.y + ((doneBadge.height - fm.getHeight()) / 2) + fm.getAscent());
-        }
     }
 
     private void drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task, java.awt.Point mousePoint) {
@@ -2139,10 +5474,16 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private List<CompactLine> compactLines(XtremeTask current, boolean rolling) {
+        String cacheKey = compactLinesCacheKey(current, rolling);
+        List<CompactLine> cached = compactLinesCache.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         List<CompactLine> lines = new ArrayList<>();
         if (rolling) {
             lines.add(new CompactLine("Rolling a new task...", false, true));
-            return lines;
+            return cacheCompactLines(cacheKey, lines);
         }
         if (current == null) {
             String notice = Optional.ofNullable(plugin.getPendingRollSkipNotice()).orElse(plugin.getRollSkipNotice());
@@ -2154,24 +5495,87 @@ public class XtremeTaskerOverlay extends Overlay {
             } else {
                 lines.add(new CompactLine("No active task.", false, true));
             }
-            return lines;
+            return cacheCompactLines(cacheKey, lines);
         }
 
         String desc = current.getDescription();
+        String tip = plugin.showTips() ? current.getTip() : null;
+        boolean hasTip = tip != null && !tip.trim().isEmpty();
+        if (hasTip) {
+            tip = tip.trim();
+        }
         if (desc != null && !desc.trim().isEmpty()) {
             lines.add(new CompactLine("Description", true, false));
             lines.addAll(wrappedCompactLines(desc.trim(), false));
+            if (hasTip && current.getSource() != TaskSource.COLLECTION_LOG) {
+                lines.add(CompactLine.spacer());
+                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
+            }
+            lines.add(CompactLine.spacer());
+        }
+
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(current);
+        if (preview != null && preview.hasItems()) {
+            if (hasTip) {
+                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
+                lines.add(CompactLine.spacer());
+            }
+            lines.add(new CompactLine(compactCollectionLogRequirementTitle(preview), true, false));
+            if (preview.showSummaryText()) {
+                lines.addAll(wrappedCompactLines(preview.summaryText(), true));
+                if (preview.showTierSections()) {
+                    lines.add(CompactLine.verticalGap(TIER_SECTION_ICON_GAP));
+                }
+            }
+            if (preview.showTierSections()) {
+                CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
+                if (currentSection != null) {
+                    lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
+                            currentSection.items(),
+                            currentSection.iconColumns())));
+                }
+                List<CollectionLogRequirementPreview.TierSection> otherSections = preview.otherTierSectionsHardestFirst();
+                if (!otherSections.isEmpty()) {
+                    lines.add(CompactLine.verticalGap(COMPACT_SECONDARY_SECTION_GAP));
+                    lines.addAll(wrappedCompactLines(OTHER_SEQUENCE_CLOGS_DIVIDER, true));
+                    lines.addAll(wrappedCompactLines(OTHER_SEQUENCE_CLOGS_LABEL, true));
+                }
+                for (int i = 0; i < otherSections.size(); i++) {
+                    CollectionLogRequirementPreview.TierSection section = otherSections.get(i);
+                    if (i > 0) {
+                        lines.add(CompactLine.verticalGap(6));
+                    }
+                    lines.add(CompactLine.verticalGap(TIER_SECTION_LABEL_TOP_GAP));
+                    lines.add(CompactLine.tierLabel(section));
+                    lines.add(CompactLine.verticalGap(TIER_SECTION_ICON_GAP));
+                    lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
+                            section.items(),
+                            section.iconColumns()), true));
+                }
+            } else if (preview.showItemList()) {
+                lines.add(CompactLine.collectionLogIcons(preview));
+            }
+            if (preview.showSecondaryItemList()) {
+                if (isMedallionAssemblyTitle(preview.secondaryTitleText())) {
+                    lines.add(CompactLine.verticalGap(COMPACT_MEDALLION_ASSEMBLY_TITLE_GAP));
+                }
+                lines.addAll(wrappedCompactLines(preview.secondaryTitleText(), true));
+                lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
+                        preview.secondaryItems(),
+                        preview.secondaryIconColumns())));
+            }
             lines.add(CompactLine.spacer());
         }
 
         lines.add(new CompactLine("Prereqs", true, false));
-        List<PrerequisiteStatus> statuses = plugin.getPrerequisiteStatuses(current);
+        List<PrerequisiteStatus> statuses = getCachedPrerequisiteStatuses(current);
+        String prereqs = normalizeCompactPrereqs(current.getPrereqs());
         if (statuses != null && !statuses.isEmpty()) {
             for (PrerequisiteStatus status : statuses) {
-                lines.addAll(wrappedCompactLines("- " + status.getText(), true));
+                lines.addAll(wrappedCompactPrereqLines(status));
             }
-        } else if (current.getPrereqs() != null && !current.getPrereqs().trim().isEmpty()) {
-            String formatted = current.getPrereqs().replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
+        } else if (!prereqs.isEmpty()) {
+            String formatted = prereqs.replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
             for (String prereq : formatted.split("\n")) {
                 lines.addAll(wrappedCompactLines("- " + prereq, true));
             }
@@ -2179,22 +5583,107 @@ public class XtremeTaskerOverlay extends Overlay {
             lines.add(new CompactLine("None", false, true));
         }
 
-        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(current);
-        if (preview != null && preview.hasItems()) {
-            lines.add(CompactLine.spacer());
-            lines.add(new CompactLine("Eligible CLOGs", true, false));
-            if (preview.showSummaryText()) {
-                lines.addAll(wrappedCompactLines(preview.summaryText(), true));
-            }
-            if (preview.showItemList()) {
-                for (CollectionLogRequirementItem item : preview.getItems()) {
-                    String suffix = item.isAvailable() ? " (not yet applied)" : "";
-                    lines.addAll(wrappedCompactLines("- " + item.getName() + suffix, true));
-                }
-            }
+        return cacheCompactLines(cacheKey, lines);
+    }
+
+    private String compactLinesCacheKey(XtremeTask current, boolean rolling) {
+        return "task=" + safeTaskId(current)
+                + "|rolling=" + rolling
+                + "|notice=" + Optional.ofNullable(plugin.getPendingRollSkipNotice()).orElse(plugin.getRollSkipNotice())
+                + "|tips=" + plugin.showTips()
+                + "|tick=" + client.getTickCount()
+                + "|taskState=" + plugin.getTaskListRenderStateHash()
+                + "|clState=" + plugin.getCollectionLogStateVersion()
+                + "|width=" + (PANEL_W_COMPACT - PANEL_PADDING * 2 - 26);
+    }
+
+    private List<CompactLine> cacheCompactLines(String cacheKey, List<CompactLine> lines) {
+        List<CompactLine> immutableLines = Collections.unmodifiableList(new ArrayList<>(lines));
+        compactLinesCache.put(cacheKey, immutableLines);
+        return immutableLines;
+    }
+
+    private static String compactCollectionLogRequirementTitle(CollectionLogRequirementPreview preview) {
+        if (preview != null && preview.titleText() != null && !preview.titleText().trim().isEmpty()) {
+            return preview.titleText();
+        }
+        return "Eligible Collection Log items";
+    }
+
+    private static boolean isMedallionAssemblyTitle(String title) {
+        String normalized = title == null ? "" : title.trim();
+        return normalized.startsWith(MEDALLION_ASSEMBLY_TITLE_PREFIX)
+                && normalized.toLowerCase().contains("fragments to assemble");
+    }
+
+    private static CollectionLogRequirementPreview singleSectionPreview(List<CollectionLogRequirementItem> items, int iconColumns) {
+        return new CollectionLogRequirementPreview("", "", false, true, items, iconColumns);
+    }
+
+    private static String normalizeCompactPrereqs(String prereqs) {
+        String normalized = prereqs == null ? "" : prereqs.replace("\r", "").trim();
+        return isNoPrereqsText(normalized) ? "" : normalized;
+    }
+
+    private static boolean isNoPrereqsText(String prereqs) {
+        return prereqs.isEmpty() || prereqs.equalsIgnoreCase("none") || prereqs.equalsIgnoreCase("n/a") || prereqs.equals("-");
+    }
+
+    private void drawCompactLine(Graphics2D g, FontMetrics fm, CompactLine line, int x, int y, int maxWidth) {
+        if (line.fixedHeight >= 0) {
+            return;
         }
 
-        return lines;
+        int drawX = x;
+        int drawMaxWidth = maxWidth;
+        PrerequisiteStatus status = line.prerequisiteStatus;
+        if (status == null) {
+            String drawLine = TextUtils.truncateToWidth(line.text, fm, maxWidth);
+            g.setColor(line.heading ? P.UI_GOLD : (line.dim ? P.UI_TEXT_DIM : P.UI_TEXT));
+            g.drawString(drawLine, x, y);
+            return;
+        }
+
+        boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
+        g.setColor(!hasCheckSpans && status.isCompleted() ? P.UI_TEXT_DIM : P.UI_TEXT);
+        if (line.firstPrerequisiteLine) {
+            PrerequisiteIconRenderer.drawMarker(g, fm, line.prerequisiteMarkerImage, x, y);
+        }
+        drawX = PrerequisiteIconRenderer.textX(fm, x, line.prerequisiteMarkerImage);
+        drawMaxWidth = PrerequisiteIconRenderer.textWidth(fm, maxWidth, line.prerequisiteMarkerImage);
+        String drawLine = TextUtils.truncateToWidth(line.text, fm, drawMaxWidth);
+        g.drawString(drawLine, drawX, y);
+
+        if (!hasCheckSpans) {
+            if (status.isCompleted()) {
+                drawCompactStrikeThrough(g, fm, drawLine, drawX, y);
+            }
+            return;
+        }
+
+        for (PrerequisiteStatus.CheckSpan span : status.getCheckSpans()) {
+            if (!span.isCompleted() || span.getStart() < 0 || span.getEnd() > status.getText().length() || span.getStart() >= span.getEnd()) {
+                continue;
+            }
+
+            String spanText = status.getText().substring(span.getStart(), span.getEnd());
+            int lineIndex = drawLine.indexOf(spanText);
+            if (lineIndex < 0) {
+                continue;
+            }
+
+            int spanX = drawX + fm.stringWidth(drawLine.substring(0, lineIndex));
+            g.setColor(P.UI_TEXT_DIM);
+            g.drawString(spanText, spanX, y);
+            drawCompactStrikeThrough(g, fm, spanText, spanX, y);
+        }
+    }
+
+    private void drawCompactStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY) {
+        int lineW = fm.stringWidth(text);
+        int strikeY = baselineY - (fm.getAscent() * 3 / 5);
+        g.setColor(new Color(P.UI_TEXT_DIM.getRed(), P.UI_TEXT_DIM.getGreen(), P.UI_TEXT_DIM.getBlue(), 170));
+        g.drawLine(x, strikeY, x + lineW, strikeY);
     }
 
     private List<CompactLine> wrappedCompactLines(String text, boolean dim) {
@@ -2205,46 +5694,113 @@ public class XtremeTaskerOverlay extends Overlay {
         return out;
     }
 
+    private List<CompactLine> wrappedCompactPrereqLines(PrerequisiteStatus status) {
+        List<CompactLine> out = new ArrayList<>();
+        String text = status == null ? "" : status.getText();
+        FontMetrics fm = fontMetrics();
+        int width = PANEL_W_COMPACT - PANEL_PADDING * 2 - 26;
+        BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, this::getCachedSkillImage, this::getCachedPrerequisiteMarkerImage);
+        int textWidth = PrerequisiteIconRenderer.textWidth(fm, width, markerImage);
+        boolean firstLine = true;
+        for (String line : TextUtils.wrapText(text, fm, textWidth)) {
+            out.add(CompactLine.prerequisite(line, status, markerImage, firstLine));
+            firstLine = false;
+        }
+        return out;
+    }
+
+    private int compactLineHeight(CompactLine line, int maxWidth) {
+        if (line != null && line.fixedHeight >= 0) {
+            return line.fixedHeight;
+        }
+        if (line != null && line.collectionLogPreview != null) {
+            return CollectionLogIconGridRenderer.measureHeight(
+                    line.collectionLogPreview.getItems().size(),
+                    maxWidth,
+                    line.collectionLogPreview.iconColumns());
+        }
+        if (line != null && line.tierSection != null) {
+            return ROW_HEIGHT;
+        }
+        if (line != null && line.prerequisiteStatus != null) {
+            return PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, line.prerequisiteStatus);
+        }
+        return ROW_HEIGHT;
+    }
+
     private FontMetrics fontMetrics() {
         return client.getCanvas().getFontMetrics(FontManager.getRunescapeSmallFont());
     }
 
-    private void drawCompactScrollbar(Graphics2D g, Rectangle viewport, int totalRows, int visibleRows, int offsetRows) {
+    private void drawCompactTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline) {
+        String text = section.tier() == null ? "TIER" : tierLabel(section.tier()).toUpperCase();
+        g.setColor(P.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 160)), x, baseline);
+    }
+
+    private void drawCompactScrollbar(Graphics2D g, Rectangle viewport, int totalPx, int visiblePx, int scrollPx) {
         currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        if (viewport.height <= 0 || totalRows <= visibleRows) {
+        if (viewport.height <= 0 || visiblePx <= 0 || totalPx <= visiblePx) {
             return;
         }
 
         Rectangle rail = taskRowsRendererTasks.scrollbarRailBounds(viewport);
-        Rectangle thumb = taskRowsRendererTasks.scrollbarThumbBounds(totalRows, visibleRows, offsetRows, viewport);
+        g.setColor(new Color(0, 0, 0, 60));
+        g.fillRect(rail.x, rail.y, rail.width, rail.height);
+
+        float thumbRatio = (float) visiblePx / (float) totalPx;
+        int thumbH = Math.min(rail.height, Math.max(12, Math.round(rail.height * thumbRatio)));
+        int maxScrollPx = Math.max(1, totalPx - visiblePx);
+        float scrollRatio = Math.max(0f, Math.min(1f, (float) scrollPx / (float) maxScrollPx));
+        int thumbY = rail.y + (int) ((rail.height - thumbH) * scrollRatio);
+        Rectangle thumb = new Rectangle(rail.x, thumbY, Math.max(0, rail.width - 1), Math.max(0, thumbH - 1));
+
         currentLayout.scrollbarRailBounds.setBounds(rail);
         currentLayout.scrollbarThumbBounds.setBounds(thumb);
 
-        taskRowsRendererTasks.drawScrollbar(g, totalRows, visibleRows, offsetRows, viewport);
+        drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
+
+        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
+        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
     private void scrollCompactCurrent(double preciseWheelRotation) {
-        if (preciseWheelRotation == 0.0 || currentLayout.viewportBounds.height <= 0) {
+        if (preciseWheelRotation == 0.0) {
             return;
         }
 
-        int totalRows = Math.max(1, (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT);
-        currentScroll.onWheel(preciseWheelRotation, currentLayout.viewportBounds.height, currentRowBlock(), totalRows, null);
+        compactCurrentPendingWheelRotation += preciseWheelRotation;
     }
 
     private void setCompactCurrentScrollFraction(double fraction) {
-        int totalRows = Math.max(1, (currentLayout.totalContentPx + ROW_HEIGHT - 1) / ROW_HEIGHT);
-        int viewportH = currentLayout.viewportBounds.height;
-        int rowBlock = currentRowBlock();
-        int visibleRows = currentScroll.visibleRows(viewportH, rowBlock);
-        int maxOffset = Math.max(0, totalRows - visibleRows);
         double clamped = Math.max(0.0, Math.min(1.0, fraction));
-        currentScroll.setOffsetRows((int) Math.round(clamped * maxOffset), viewportH, rowBlock, totalRows);
+        compactCurrentScrollPx = (int) Math.round(clamped * Math.max(0, compactCurrentMaxOffsetPx));
+        compactCurrentWheelRemainderPx = 0.0;
     }
 
     private void resetCompactScroll() {
-        currentScroll.reset();
+        compactCurrentScrollPx = 0;
+        compactCurrentMaxOffsetPx = 0;
+        compactCurrentWheelRemainderPx = 0.0;
+        compactCurrentPendingWheelRotation = 0.0;
+    }
+
+    private void applyCompactScrollInputs(int maxOffsetPx) {
+        if (maxOffsetPx <= 0) {
+            resetCompactScroll();
+            return;
+        }
+
+        if (compactCurrentPendingWheelRotation != 0.0) {
+            double pixels = compactCurrentPendingWheelRotation * SCROLL_ROWS_PER_NOTCH * ROW_HEIGHT + compactCurrentWheelRemainderPx;
+            int deltaPx = pixels > 0 ? (int) Math.floor(pixels) : (int) Math.ceil(pixels);
+            compactCurrentWheelRemainderPx = pixels - deltaPx;
+            compactCurrentPendingWheelRotation = 0.0;
+            compactCurrentScrollPx += deltaPx;
+        }
+
+        compactCurrentScrollPx = Math.max(0, Math.min(maxOffsetPx, compactCurrentScrollPx));
     }
 
     private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {
@@ -2345,7 +5901,10 @@ public class XtremeTaskerOverlay extends Overlay {
         currentLayout.wikiButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.rollButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.completeButtonBounds.setBounds(0, 0, 0, 0);
+        currentLayout.skipButtonBounds.setBounds(0, 0, 0, 0);
+        currentLayout.undoButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
+        currentLayout.skippedTasksIconBounds.setBounds(0, 0, 0, 0);
         currentLayout.viewportBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
@@ -2405,7 +5964,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (info == null || info.timestamp <= 0) {
             return "Completed: date unknown";
         }
-        return "Completed: " + new java.text.SimpleDateFormat("MMM d, h:mm a").format(new Date(info.timestamp));
+        return "Completed: " + COMPACT_COMPLETION_DATE_TIME_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
     private static String compactCompletionSourceSuffix(CompletionInfo info) {
@@ -2419,15 +5978,101 @@ public class XtremeTaskerOverlay extends Overlay {
         private final String text;
         private final boolean heading;
         private final boolean dim;
+        private final CollectionLogRequirementPreview collectionLogPreview;
+        private final boolean dimCollectionLogIcons;
+        private final CollectionLogRequirementPreview.TierSection tierSection;
+        private final PrerequisiteStatus prerequisiteStatus;
+        private final BufferedImage prerequisiteMarkerImage;
+        private final boolean firstPrerequisiteLine;
+        private final int fixedHeight;
 
         private CompactLine(String text, boolean heading, boolean dim) {
             this.text = text == null ? "" : text;
             this.heading = heading;
             this.dim = dim;
+            this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = null;
+            this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
+            this.fixedHeight = -1;
+        }
+
+        private CompactLine(CollectionLogRequirementPreview collectionLogPreview, boolean dimCollectionLogIcons) {
+            this.text = "";
+            this.heading = false;
+            this.dim = false;
+            this.collectionLogPreview = collectionLogPreview;
+            this.dimCollectionLogIcons = dimCollectionLogIcons;
+            this.tierSection = null;
+            this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
+            this.fixedHeight = -1;
+        }
+
+        private CompactLine(String text, PrerequisiteStatus prerequisiteStatus, BufferedImage prerequisiteMarkerImage, boolean firstPrerequisiteLine) {
+            this.text = text == null ? "" : text;
+            this.heading = false;
+            this.dim = false;
+            this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = null;
+            this.prerequisiteStatus = prerequisiteStatus;
+            this.prerequisiteMarkerImage = prerequisiteMarkerImage;
+            this.firstPrerequisiteLine = firstPrerequisiteLine;
+            this.fixedHeight = -1;
+        }
+
+        private CompactLine(int fixedHeight) {
+            this.text = "";
+            this.heading = false;
+            this.dim = true;
+            this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = null;
+            this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
+            this.fixedHeight = Math.max(0, fixedHeight);
+        }
+
+        private CompactLine(CollectionLogRequirementPreview.TierSection tierSection) {
+            this.text = "";
+            this.heading = false;
+            this.dim = false;
+            this.collectionLogPreview = null;
+            this.dimCollectionLogIcons = false;
+            this.tierSection = tierSection;
+            this.prerequisiteStatus = null;
+            this.prerequisiteMarkerImage = null;
+            this.firstPrerequisiteLine = false;
+            this.fixedHeight = -1;
         }
 
         private static CompactLine spacer() {
             return new CompactLine("", false, true);
+        }
+
+        private static CompactLine verticalGap(int height) {
+            return new CompactLine(height);
+        }
+
+        private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview) {
+            return new CompactLine(collectionLogPreview, false);
+        }
+
+        private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview, boolean dimCollectionLogIcons) {
+            return new CompactLine(collectionLogPreview, dimCollectionLogIcons);
+        }
+
+        private static CompactLine tierLabel(CollectionLogRequirementPreview.TierSection tierSection) {
+            return new CompactLine(tierSection);
+        }
+
+        private static CompactLine prerequisite(String text, PrerequisiteStatus status, BufferedImage markerImage, boolean firstLine) {
+            return new CompactLine(text, status, markerImage, firstLine);
         }
     }
 
@@ -2461,8 +6106,35 @@ public class XtremeTaskerOverlay extends Overlay {
                 this::getSortedTasksForTier,
                 hoverX,
                 hoverY,
-                keyboardHintsOpen
+                keyboardHintsOpen,
+                currentKeyboardTriggeredTaskTooltipText(),
+                currentKeyboardTriggeredTaskTooltipAnchor()
         );
+    }
+
+    private void showKeyboardTriggeredTaskTooltip(String text, Rectangle anchor) {
+        keyboardTriggeredTaskTooltipText = text;
+        keyboardTriggeredTaskTooltipAnchor.setBounds(anchor == null ? new Rectangle() : anchor);
+        keyboardTriggeredTaskTooltipUntilMs = System.currentTimeMillis() + KEYBOARD_TRIGGERED_TOOLTIP_MS;
+    }
+
+    private String currentKeyboardTriggeredTaskTooltipText() {
+        if (keyboardTriggeredTaskTooltipText == null) {
+            return null;
+        }
+
+        if (System.currentTimeMillis() > keyboardTriggeredTaskTooltipUntilMs) {
+            keyboardTriggeredTaskTooltipText = null;
+            keyboardTriggeredTaskTooltipAnchor.setBounds(0, 0, 0, 0);
+            keyboardTriggeredTaskTooltipUntilMs = 0L;
+            return null;
+        }
+
+        return keyboardTriggeredTaskTooltipText;
+    }
+
+    private Rectangle currentKeyboardTriggeredTaskTooltipAnchor() {
+        return keyboardTriggeredTaskTooltipText == null ? null : keyboardTriggeredTaskTooltipAnchor;
     }
 
 
@@ -2487,6 +6159,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin.isCombatAchievementSyncedTasksExpanded(),
                 plugin.isCollectionLogSyncedTasksExpanded(),
                 plugin.isCollectionLogSyncPending(),
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size(),
                 plugin.getSyncMismatchTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
                 plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).size()
         );
@@ -2498,6 +6172,10 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesLayout.githubReadmeLinkBounds.setBounds(layout.githubReadmeLinkBounds);
         rulesLayout.syncClogsButtonBounds.setBounds(layout.syncClogsButtonBounds);
         rulesLayout.syncCAsButtonBounds.setBounds(layout.syncCAsButtonBounds);
+        rulesLayout.syncCaFoundReviewButtonBounds.setBounds(layout.syncCaFoundReviewButtonBounds);
+        rulesLayout.syncCaFoundIgnoreButtonBounds.setBounds(layout.syncCaFoundIgnoreButtonBounds);
+        rulesLayout.syncClogFoundReviewButtonBounds.setBounds(layout.syncClogFoundReviewButtonBounds);
+        rulesLayout.syncClogFoundIgnoreButtonBounds.setBounds(layout.syncClogFoundIgnoreButtonBounds);
         rulesLayout.syncCaReviewButtonBounds.setBounds(layout.syncCaReviewButtonBounds);
         rulesLayout.syncCaReviewIgnoreButtonBounds.setBounds(layout.syncCaReviewIgnoreButtonBounds);
         rulesLayout.syncClogReviewButtonBounds.setBounds(layout.syncClogReviewButtonBounds);
@@ -2516,6 +6194,12 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         if (rulesLayout.syncCAsButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "SYNC CAs", P.BTN_DISABLED_BG);
+        }
+        if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Update tasks", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+        }
+        if (rulesLayout.syncClogFoundReviewButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogFoundReviewButtonBounds, "Update tasks", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
         }
         if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
@@ -2621,13 +6305,14 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (code == KeyEvent.VK_SPACE || code == KeyEvent.VK_ENTER) {
-            return toggleSelectedTaskFromKeyboard();
+            return openSelectedTaskDetailsFromKeyboard();
         }
 
         // S toggles completion sort (new model)
         if (code == KeyEvent.VK_S) {
             if (taskQuery.statusFilter != TaskListQuery.StatusFilter.ALL) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"Status\" filter currently applied", controls.sortCompletion);
+                return true;
             }
 
             if (!taskQuery.sortByCompletion) {
@@ -2643,7 +6328,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // T toggles tier sort
         if (code == KeyEvent.VK_T) {
             if (taskQuery.tierScope != TaskListQuery.TierScope.ALL_TIERS) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"All Tiers\" filter must be applied", controls.sortTier);
+                return true;
             }
 
             if (!taskQuery.sortByTier) {
@@ -2659,7 +6345,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // D toggles time-completed sort (requires Complete filter)
         if (code == KeyEvent.VK_D) {
             if (taskQuery.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"Complete\" filter must be applied", controls.sortDate);
+                return true;
             }
 
             if (!taskQuery.sortByDate) {
@@ -2676,7 +6363,8 @@ public class XtremeTaskerOverlay extends Overlay {
         // M toggles time-spent sort (requires Complete filter)
         if (code == KeyEvent.VK_M) {
             if (taskQuery.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-                return false;
+                showKeyboardTriggeredTaskTooltip("\"Complete\" filter must be applied", controls.sortTimeTicks);
+                return true;
             }
 
             if (!taskQuery.sortByTimeTicks) {
@@ -2780,7 +6468,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE && taskDetailsPopup.isOpen()) {
-            taskDetailsPopup.close();
+            closeTaskDetailsWithPendingIncompleteCheck();
             return true;
         }
 
@@ -2812,7 +6500,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return false;
     }
 
-    private boolean toggleSelectedTaskFromKeyboard()
+    private boolean openSelectedTaskDetailsFromKeyboard()
     {
         List<XtremeTask> tasks = getSortedTasksForTier(activeTierTab);
         if (tasks.isEmpty()) {
@@ -2828,37 +6516,13 @@ public class XtremeTaskerOverlay extends Overlay {
             return false;
         }
 
-        boolean condensedRows = useCondensedTaskRows();
-        boolean wasDone = condensedRows
-                ? plugin.getTaskGroupProgress(task).isComplete()
-                : plugin.isTaskCompleted(task);
-        if (!wasDone) {
-            animations.startCompletionAnim(task.getId());
-        }
-
-        if (wasDone) {
-            boolean groupedTask = condensedRows
-                    && plugin.getTaskGroupProgress(task) != null
-                    && plugin.getTaskGroupProgress(task).isGrouped();
-            if (groupedTask || !plugin.skipSingleIncompleteConfirmation()) {
-                pendingMarkAllIncompleteTask = task;
-                pendingMarkAllIncompleteGroupMode = groupedTask;
-                markIncompleteDontShowChecked = false;
-            } else {
-                plugin.toggleTaskCompletedAndPersist(task);
-            }
-        } else if (condensedRows) {
-            if (plugin.getTaskGroupProgress(task).isGrouped()) {
-                plugin.toggleTaskGroupProgressAndPersist(task);
-            } else {
-                plugin.toggleTaskCompletedAndPersist(task);
-            }
-        } else {
-            plugin.toggleTaskCompletedAndPersist(task);
-        }
-
-        List<XtremeTask> tasksAfter = getSortedTasksForTier(activeTierTab);
-        selectionModel.setSelectionToTask(activeTierTab, tasksAfter, task);
+        taskResolveSavedIncompleteEdits = false;
+        selectedTaskResolveIncompleteTaskIds.clear();
+        taskResolveOriginalIncompleteTaskIds.clear();
+        closeTaskResolveWithoutRestoring();
+        closeTaskSyncResult();
+        closeTaskDetailsIncompleteConfirm();
+        taskDetailsPopup.open(task);
         return true;
     }
 
@@ -2893,7 +6557,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE && taskDetailsPopup.isOpen()) {
-            taskDetailsPopup.close();
+            closeTaskDetailsWithPendingIncompleteCheck();
             return true;
         }
 
@@ -2928,15 +6592,87 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private List<XtremeTask> getSortedTasksForTier(TaskTier tier) {
-        List<XtremeTask> base = getTasksForScope(taskQuery.tierScope, activeTierTab);
+        String cacheKey = sortedTaskListCacheKey(tier);
+        List<XtremeTask> cached = sortedTaskListCache.get(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
 
+        long startNanos = System.nanoTime();
+        List<XtremeTask> base = getTasksForScope(taskQuery.tierScope, tier);
         List<XtremeTask> sorted = TaskListPipeline.apply(base, taskQuery, plugin::isTaskCompleted, plugin::isNewTask, plugin::getCompletionInfo, plugin::getTaskTimeTicks);
-        return useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
+        List<XtremeTask> result = useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
+        List<XtremeTask> immutableResult = Collections.unmodifiableList(new ArrayList<>(result));
+        sortedTaskListCache.put(cacheKey, immutableResult);
+        logSlowTaskListBuild(startNanos, tier, base.size(), immutableResult.size());
+        return immutableResult;
     }
 
     private boolean useCondensedTaskRows()
     {
         return plugin.condenseRepeatedTasks() && !taskQuery.sortByDate && !taskQuery.sortByTimeTicks;
+    }
+
+    private String sortedTaskListCacheKey(TaskTier tier)
+    {
+        return "tier=" + tier
+                + "|scope=" + taskQuery.tierScope
+                + "|search=" + (taskQuery.searchText == null ? "" : taskQuery.searchText)
+                + "|src=" + taskQuery.sourceFilter
+                + "|ca=" + taskQuery.sourceCASelected
+                + "|cl=" + taskQuery.sourceClogsSelected
+                + "|da=" + taskQuery.sourceDasSelected
+                + "|status=" + taskQuery.statusFilter
+                + "|sortCompletion=" + taskQuery.sortByCompletion
+                + "|completedFirst=" + taskQuery.completedFirst
+                + "|sortTier=" + taskQuery.sortByTier
+                + "|easyFirst=" + taskQuery.easyTierFirst
+                + "|sortDate=" + taskQuery.sortByDate
+                + "|newestFirst=" + taskQuery.newestFirst
+                + "|sortTicks=" + taskQuery.sortByTimeTicks
+                + "|longestFirst=" + taskQuery.longestFirst
+                + "|newOnly=" + taskQuery.showNewTasksFilter
+                + "|condensed=" + useCondensedTaskRows()
+                + "|state=" + plugin.getTaskListRenderStateHash();
+    }
+
+    private void logSlowTaskListBuild(long startNanos, TaskTier tier, int inputCount, int outputCount)
+    {
+        long elapsedNanos = System.nanoTime() - startNanos;
+        if (elapsedNanos < SLOW_TASK_LIST_LOG_THRESHOLD_NANOS)
+        {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastSlowTaskListLogMs < SLOW_TASK_LIST_LOG_INTERVAL_MS)
+        {
+            return;
+        }
+
+        lastSlowTaskListLogMs = nowMs;
+        log.debug("Slow task list build: tier={}, input={}, output={}, elapsed={}ms",
+                tier, inputCount, outputCount, elapsedNanos / 1_000_000L);
+    }
+
+    private void logSlowPanelRender(long startNanos)
+    {
+        long elapsedNanos = System.nanoTime() - startNanos;
+        if (elapsedNanos < SLOW_PANEL_RENDER_LOG_THRESHOLD_NANOS)
+        {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastSlowPanelRenderLogMs < SLOW_PANEL_RENDER_LOG_INTERVAL_MS)
+        {
+            return;
+        }
+
+        lastSlowPanelRenderLogMs = nowMs;
+        log.debug("Slow Xtreme Tasker panel render: tab={}, compact={}, detailsOpen={}, elapsed={}ms",
+                activeTab, compactPanelMode, taskDetailsPopup.isOpen(), elapsedNanos / 1_000_000L);
     }
 
     // -----------------------------
@@ -3213,6 +6949,20 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public void openSyncCompletionCandidateReview(TaskSource source) {
+                if (!plugin.getSyncCompletionCandidateTasks(source).isEmpty()) {
+                    syncMismatchReviewSource = source;
+                    syncReviewMode = SyncReviewMode.COMPLETION_CANDIDATES;
+                    syncMismatchReviewOpen = true;
+                    syncMismatchScroll.reset();
+                    selectedSyncMismatchTaskIds.clear();
+                    syncMismatchApplyConfirmOpen = false;
+                    syncMismatchGuardMessage = null;
+                    closeSyncMismatchGroupResolve();
+                }
+            }
+
+            @Override
             public void openSyncMismatchReview() {
                 openSyncMismatchReview(null);
             }
@@ -3221,20 +6971,26 @@ public class XtremeTaskerOverlay extends Overlay {
             public void openSyncMismatchReview(TaskSource source) {
                 if (!plugin.getSyncMismatchTasks(source).isEmpty()) {
                     syncMismatchReviewSource = source;
+                    syncReviewMode = SyncReviewMode.MISMATCH;
                     syncMismatchReviewOpen = true;
                     syncMismatchScroll.reset();
                     selectedSyncMismatchTaskIds.clear();
                     syncMismatchApplyConfirmOpen = false;
+                    syncMismatchGuardMessage = null;
+                    closeSyncMismatchGroupResolve();
                 }
             }
 
             @Override
             public void closeSyncMismatchReview() {
                 syncMismatchReviewOpen = false;
+                syncReviewMode = SyncReviewMode.MISMATCH;
                 syncMismatchReviewSource = null;
                 selectedSyncMismatchTaskIds.clear();
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
                 syncMismatchDescriptionTask = null;
+                closeSyncMismatchGroupResolve();
             }
 
             @Override
@@ -3354,12 +7110,19 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public void openTaskDetails(XtremeTask task) {
+                taskResolveSavedIncompleteEdits = false;
+                selectedTaskResolveIncompleteTaskIds.clear();
+                taskResolveOriginalIncompleteTaskIds.clear();
+                closeTaskResolveWithoutRestoring();
+                closeTaskSyncResult();
+                closeTaskDetailsIncompleteConfirm();
                 taskDetailsPopup.open(task);
+                plugin.refreshTaskSyncMismatchForTask(task);
             }
 
             @Override
             public void closeTaskDetails() {
-                taskDetailsPopup.close();
+                closeTaskDetailsWithPendingIncompleteCheck();
             }
 
             @Override
@@ -3403,6 +7166,51 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public Rectangle taskDetailsWikiMenuBounds() {
+                return taskDetailsPopup.wikiMenuBounds();
+            }
+
+            @Override
+            public boolean isTaskDetailsWikiMenuOpen() {
+                return taskDetailsPopup.isWikiMenuOpen();
+            }
+
+            @Override
+            public void openTaskDetailsWikiMenu() {
+                taskDetailsPopup.openWikiMenu();
+            }
+
+            @Override
+            public void closeTaskDetailsWikiMenu() {
+                taskDetailsPopup.closeWikiMenu();
+            }
+
+            @Override
+            public WikiLink taskDetailsWikiLinkAt(Point point) {
+                return taskDetailsPopup.wikiLinkAt(point);
+            }
+
+            @Override
+            public List<WikiLink> taskDetailsWikiLinks(XtremeTask task) {
+                return XtremeTaskerOverlay.this.taskDetailsWikiLinks(task);
+            }
+
+            @Override
+            public Rectangle taskDetailsSyncBounds() {
+                return taskDetailsPopup.syncBounds();
+            }
+
+            @Override
+            public Rectangle taskDetailsIgnoreBounds() {
+                return taskDetailsPopup.ignoreBounds();
+            }
+
+            @Override
+            public Rectangle taskDetailsMarkIncompleteBounds() {
+                return taskDetailsPopup.markIncompleteBounds();
+            }
+
+            @Override
             public Rectangle taskDetailsToggleBounds() {
                 return taskDetailsPopup.toggleBounds();
             }
@@ -3430,6 +7238,21 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds() {
                 return taskDetailsPopup.instanceRemoveBounds();
+            }
+
+            @Override
+            public String taskDetailsSyncButtonLabel(XtremeTask task) {
+                return XtremeTaskerOverlay.this.taskDetailsSyncButtonLabel(task);
+            }
+
+            @Override
+            public void handleTaskDetailsSyncButton(XtremeTask task) {
+                XtremeTaskerOverlay.this.handleTaskDetailsSyncButton(task);
+            }
+
+            @Override
+            public void handleTaskDetailsMarkIncompleteButton(XtremeTask task) {
+                XtremeTaskerOverlay.this.handleTaskDetailsMarkIncompleteButton(task);
             }
 
             @Override
@@ -3506,6 +7329,11 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public boolean isSyncCompletionCandidateReviewOpen() {
+                return syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
+            }
+
+            @Override
             public Rectangle syncMismatchReviewBounds() {
                 return syncMismatchReviewBounds;
             }
@@ -3556,6 +7384,63 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public boolean isSyncMismatchGuardOpen() {
+                return syncMismatchGuardMessage != null;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardBounds() {
+                return syncMismatchGuardBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardOkBounds() {
+                return syncMismatchGuardOkBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardViewportBounds() {
+                return syncMismatchGuardViewportBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardScrollbarRailBounds() {
+                return syncMismatchGuardScrollbarRailBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGuardScrollbarThumbBounds() {
+                return syncMismatchGuardScrollbarThumbBounds;
+            }
+
+            @Override
+            public TaskListScrollController syncMismatchGuardScroll() {
+                return syncMismatchGuardScroll;
+            }
+
+            @Override
+            public int syncMismatchGuardRowBlock() {
+                return scaleInputValue(XtremeTaskerOverlay.this.syncMismatchGuardRowBlock());
+            }
+
+            @Override
+            public int syncMismatchGuardTotalRows() {
+                return syncMismatchGuardTotalRows;
+            }
+
+            @Override
+            public void closeSyncMismatchGuard() {
+                syncMismatchGuardMessage = null;
+                syncMismatchGuardTotalRows = 0;
+                syncMismatchGuardScroll.reset();
+                syncMismatchGuardBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardOkBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardViewportBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardScrollbarRailBounds.setBounds(0, 0, 0, 0);
+                syncMismatchGuardScrollbarThumbBounds.setBounds(0, 0, 0, 0);
+            }
+
+            @Override
             public Rectangle syncMismatchScrollbarRailBounds() {
                 return syncMismatchScrollbarRailBounds;
             }
@@ -3586,6 +7471,11 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public int syncMismatchVisibleTaskCount() {
+                return visibleSyncMismatchTasks().size();
+            }
+
+            @Override
             public boolean isSyncMismatchDescriptionOpen() {
                 return syncMismatchDescriptionTask != null;
             }
@@ -3604,11 +7494,72 @@ public class XtremeTaskerOverlay extends Overlay {
             public void openSyncMismatchDescription(XtremeTask task) {
                 syncMismatchDescriptionTask = task;
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
             public void closeSyncMismatchDescription() {
                 syncMismatchDescriptionTask = null;
+            }
+
+            @Override
+            public boolean isSyncMismatchGroupResolveOpen() {
+                return syncMismatchGroupResolveTask != null;
+            }
+
+            @Override
+            public Rectangle syncMismatchGroupResolveBounds() {
+                return syncMismatchGroupResolveBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGroupResolveSaveBounds() {
+                return syncMismatchGroupResolveSaveBounds;
+            }
+
+            @Override
+            public Rectangle syncMismatchGroupResolveCancelBounds() {
+                return syncMismatchGroupResolveCancelBounds;
+            }
+
+            @Override
+            public Map<XtremeTask, Rectangle> syncMismatchGroupResolveToggleBounds() {
+                return syncMismatchGroupResolveToggleBounds;
+            }
+
+            @Override
+            public void openSyncMismatchGroupResolve(XtremeTask task) {
+                XtremeTaskerOverlay.this.openSyncMismatchGroupResolve(task);
+            }
+
+            @Override
+            public void closeSyncMismatchGroupResolve() {
+                XtremeTaskerOverlay.this.closeSyncMismatchGroupResolve();
+            }
+
+            @Override
+            public void saveSyncMismatchGroupResolve() {
+                XtremeTaskerOverlay.this.saveSyncMismatchGroupResolve();
+            }
+
+            @Override
+            public void toggleSyncMismatchGroupResolveTask(XtremeTask task) {
+                XtremeTaskerOverlay.this.toggleSyncMismatchGroupResolveTask(task);
+            }
+
+            @Override
+            public boolean canToggleSyncMismatchGroupResolveTask(XtremeTask task) {
+                return XtremeTaskerOverlay.this.canToggleSyncMismatchGroupResolveTask(task);
+            }
+
+            @Override
+            public boolean hasSyncMismatchGroupResolveChanges() {
+                return XtremeTaskerOverlay.this.hasSyncMismatchGroupResolveChanges();
+            }
+
+            @Override
+            public boolean isSyncMismatchGroupActionTask(XtremeTask task) {
+                return syncMismatchUsesGroupResolver(task);
             }
 
             @Override
@@ -3619,26 +7570,42 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void toggleSyncMismatchTaskSelected(XtremeTask task) {
                 if (task == null || task.getId() == null) return;
+                if (syncMismatchUsesGroupResolver(task)) {
+                    openSyncMismatchGroupResolve(task);
+                    return;
+                }
                 if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
                     selectedSyncMismatchTaskIds.add(task.getId());
                 }
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
             public void selectAllSyncMismatchTasks() {
                 for (XtremeTask task : visibleSyncMismatchTasks()) {
-                    if (task != null && task.getId() != null) {
+                    if (task == null || task.getId() == null) {
+                        continue;
+                    }
+                    if (syncMismatchUsesGroupResolver(task)) {
+                        for (XtremeTask groupedTask : syncMismatchGroupSelectableTasks(task)) {
+                            if (groupedTask != null && groupedTask.getId() != null) {
+                                selectedSyncMismatchTaskIds.add(groupedTask.getId());
+                            }
+                        }
+                    } else {
                         selectedSyncMismatchTaskIds.add(task.getId());
                     }
                 }
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
             public void clearSyncMismatchSelection() {
                 selectedSyncMismatchTaskIds.clear();
                 syncMismatchApplyConfirmOpen = false;
+                syncMismatchGuardMessage = null;
             }
 
             @Override
@@ -3647,10 +7614,28 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public int syncMismatchSelectableCount() {
+                return selectableVisibleSyncMismatchCount(visibleSyncMismatchTasks());
+            }
+
+            @Override
             public List<XtremeTask> selectedSyncMismatchTasks() {
                 List<XtremeTask> out = new ArrayList<>();
+                Set<String> seen = new HashSet<>();
                 for (XtremeTask task : visibleSyncMismatchTasks()) {
-                    if (task != null && task.getId() != null && selectedSyncMismatchTaskIds.contains(task.getId())) {
+                    if (task == null || task.getId() == null) {
+                        continue;
+                    }
+                    if (syncMismatchUsesGroupResolver(task)) {
+                        for (XtremeTask groupedTask : syncMismatchGroupSelectableTasks(task)) {
+                            if (groupedTask != null
+                                    && groupedTask.getId() != null
+                                    && selectedSyncMismatchTaskIds.contains(groupedTask.getId())
+                                    && seen.add(groupedTask.getId())) {
+                                out.add(groupedTask);
+                            }
+                        }
+                    } else if (selectedSyncMismatchTaskIds.contains(task.getId()) && seen.add(task.getId())) {
                         out.add(task);
                     }
                 }
@@ -3660,6 +7645,16 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void requestSyncMismatchApplyConfirm() {
                 if (syncMismatchSelectedCount() > 0) {
+                    syncMismatchGuardMessage = null;
+                    if (syncReviewMode == SyncReviewMode.MISMATCH) {
+                        String guardMessage = plugin.getSyncMismatchIncompleteGuardMessage(selectedSyncMismatchTasks());
+                        if (guardMessage != null && !guardMessage.trim().isEmpty()) {
+                            syncMismatchGuardMessage = guardMessage;
+                            syncMismatchGuardScroll.reset();
+                            syncMismatchApplyConfirmOpen = false;
+                            return;
+                        }
+                    }
                     syncMismatchApplyConfirmOpen = true;
                 }
             }
@@ -3667,6 +7662,111 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void closeSyncMismatchApplyConfirm() {
                 syncMismatchApplyConfirmOpen = false;
+            }
+
+            @Override
+            public boolean isTaskResolveOpen() {
+                return XtremeTaskerOverlay.this.isTaskResolveOpen();
+            }
+
+            @Override
+            public boolean isTaskSyncResultOpen() {
+                return XtremeTaskerOverlay.this.isTaskSyncResultOpen();
+            }
+
+            @Override
+            public Rectangle taskSyncResultBounds() {
+                return taskSyncResultBounds;
+            }
+
+            @Override
+            public Rectangle taskSyncResultCloseBounds() {
+                return taskSyncResultCloseBounds;
+            }
+
+            @Override
+            public void closeTaskSyncResult() {
+                XtremeTaskerOverlay.this.closeTaskSyncResult();
+            }
+
+            @Override
+            public Rectangle taskResolveBounds() {
+                return taskResolveBounds;
+            }
+
+            @Override
+            public Rectangle taskResolveCloseBounds() {
+                return taskResolveCloseBounds;
+            }
+
+            @Override
+            public Rectangle taskResolveSaveBounds() {
+                return taskResolveSaveBounds;
+            }
+
+            @Override
+            public Rectangle taskResolveCancelBounds() {
+                return taskResolveCancelBounds;
+            }
+
+            @Override
+            public Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds() {
+                return taskResolveInstanceToggleBounds;
+            }
+
+            @Override
+            public void closeTaskResolve() {
+                XtremeTaskerOverlay.this.closeTaskResolve();
+            }
+
+            @Override
+            public void saveTaskResolve() {
+                XtremeTaskerOverlay.this.saveTaskResolve();
+            }
+
+            @Override
+            public void toggleTaskResolveTaskIncomplete(XtremeTask task) {
+                XtremeTaskerOverlay.this.toggleTaskResolveTaskIncomplete(task);
+            }
+
+            @Override
+            public boolean canToggleTaskResolveTaskIncomplete(XtremeTask task) {
+                return XtremeTaskerOverlay.this.canToggleTaskResolveTaskIncomplete(task);
+            }
+
+            @Override
+            public boolean hasTaskResolveChanges() {
+                return XtremeTaskerOverlay.this.hasTaskResolveChanges();
+            }
+
+            @Override
+            public boolean isTaskDetailsIncompleteConfirmOpen() {
+                return XtremeTaskerOverlay.this.isTaskDetailsIncompleteConfirmOpen();
+            }
+
+            @Override
+            public Rectangle taskDetailsIncompleteConfirmBounds() {
+                return taskDetailsIncompleteConfirmBounds;
+            }
+
+            @Override
+            public Rectangle taskDetailsIncompleteConfirmYesBounds() {
+                return taskDetailsIncompleteConfirmYesBounds;
+            }
+
+            @Override
+            public Rectangle taskDetailsIncompleteConfirmNoBounds() {
+                return taskDetailsIncompleteConfirmNoBounds;
+            }
+
+            @Override
+            public void confirmTaskDetailsIncompleteSelection() {
+                XtremeTaskerOverlay.this.confirmTaskDetailsIncompleteSelection();
+            }
+
+            @Override
+            public void closeTaskDetailsIncompleteConfirm() {
+                XtremeTaskerOverlay.this.closeTaskDetailsIncompleteConfirm();
             }
 
             @Override
@@ -3824,10 +7924,27 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(syncMismatchConfirmBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchConfirmYesBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchConfirmNoBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardOkBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardViewportBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardScrollbarRailBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGuardScrollbarThumbBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchScrollbarRailBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchScrollbarThumbBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchDescriptionBounds, anchorX, anchorY, scale);
         scaleRect(syncMismatchDescriptionCloseBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGroupResolveBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGroupResolveSaveBounds, anchorX, anchorY, scale);
+        scaleRect(syncMismatchGroupResolveCancelBounds, anchorX, anchorY, scale);
+        scaleRect(taskSyncResultBounds, anchorX, anchorY, scale);
+        scaleRect(taskSyncResultCloseBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveCloseBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveSaveBounds, anchorX, anchorY, scale);
+        scaleRect(taskResolveCancelBounds, anchorX, anchorY, scale);
+        scaleRect(taskDetailsIncompleteConfirmBounds, anchorX, anchorY, scale);
+        scaleRect(taskDetailsIncompleteConfirmYesBounds, anchorX, anchorY, scale);
+        scaleRect(taskDetailsIncompleteConfirmNoBounds, anchorX, anchorY, scale);
         scaleRect(keyboardHintsButtonBounds, anchorX, anchorY, scale);
         scaleRect(keyboardHintsPopupBounds, anchorX, anchorY, scale);
         scaleRect(taskViewModeBounds, anchorX, anchorY, scale);
@@ -3839,13 +7956,18 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRectMap(taskCheckboxBounds, anchorX, anchorY, scale);
         scaleRectMap(syncMismatchTaskBounds, anchorX, anchorY, scale);
         scaleRectMap(syncMismatchTaskNameBounds, anchorX, anchorY, scale);
+        scaleRectMap(syncMismatchGroupResolveToggleBounds, anchorX, anchorY, scale);
+        scaleRectMap(taskResolveInstanceToggleBounds, anchorX, anchorY, scale);
     }
 
     private void scaleCurrentLayoutBounds(int anchorX, int anchorY, double scale) {
         scaleRect(currentLayout.wikiButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.rollButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.completeButtonBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.skipButtonBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.undoButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.rollSourceIconBounds, anchorX, anchorY, scale);
+        scaleRect(currentLayout.skippedTasksIconBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.viewportBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.scrollbarRailBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.scrollbarThumbBounds, anchorX, anchorY, scale);
@@ -3859,6 +7981,10 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(rulesLayout.githubReadmeLinkBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncClogsButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCAsButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaFoundReviewButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncCaFoundIgnoreButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogFoundReviewButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncClogFoundIgnoreButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaReviewButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaReviewIgnoreButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncClogReviewButtonBounds, anchorX, anchorY, scale);
@@ -3905,6 +8031,9 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(taskDetailsPopup.viewportBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.closeBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.wikiBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.syncBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.ignoreBounds(), anchorX, anchorY, scale);
+        scaleRect(taskDetailsPopup.markIncompleteBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.toggleBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.scrollbarRailBounds(), anchorX, anchorY, scale);
         scaleRect(taskDetailsPopup.scrollbarThumbBounds(), anchorX, anchorY, scale);
@@ -4087,4 +8216,20 @@ public class XtremeTaskerOverlay extends Overlay {
         return getTasksForTier(activeTier);
     }
 
+    private static final class SkillcapeDisplay
+    {
+        private final String name;
+        private final int[] itemIds;
+
+        private SkillcapeDisplay(String name, int[] itemIds)
+        {
+            this.name = name;
+            this.itemIds = itemIds == null ? new int[0] : itemIds;
+        }
+
+        private int displayItemId()
+        {
+            return itemIds.length == 0 ? -1 : itemIds[0];
+        }
+    }
 }

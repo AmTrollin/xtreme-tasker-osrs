@@ -1,7 +1,9 @@
 package com.amtrollin.xtremetasker.tasklist;
 
 import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,6 +13,9 @@ import java.util.Objects;
 
 public final class TaskGroupUtils
 {
+    private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
+    private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
+
     private TaskGroupUtils()
     {
     }
@@ -59,9 +64,68 @@ public final class TaskGroupUtils
             return "";
         }
 
+        String countedCollectionLogKey = countedCollectionLogKey(task);
+        if (countedCollectionLogKey != null)
+        {
+            return countedCollectionLogKey;
+        }
+
         return normalize(task.getName())
                 + "|source=" + Objects.toString(task.getSource(), "")
                 + "|tier=" + Objects.toString(task.getTier(), "");
+    }
+
+    private static String countedCollectionLogKey(XtremeTask task)
+    {
+        TaskVerification verification = task.getVerification();
+        if (verification == null
+                || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG
+                || verification.getCount() == null)
+        {
+            return null;
+        }
+
+        int[] itemIds = verification.getItemIds();
+        if (itemIds == null || itemIds.length == 0)
+        {
+            return null;
+        }
+
+        int[] sortedItemIds = Arrays.stream(itemIds)
+                .filter(itemId -> itemId > 0)
+                .distinct()
+                .sorted()
+                .toArray();
+        String items = Arrays.stream(sortedItemIds)
+                .mapToObj(String::valueOf)
+                .reduce((a, b) -> a + "," + b)
+                .orElse("");
+        if (items.isEmpty())
+        {
+            return null;
+        }
+
+        return "counted-cl|source=" + Objects.toString(task.getSource(), "")
+                + (isAncientPageRequirement(sortedItemIds) ? "" : "|tier=" + Objects.toString(task.getTier(), ""))
+                + "|items=" + items;
+    }
+
+    private static boolean isAncientPageRequirement(int[] itemIds)
+    {
+        int expectedCount = ANCIENT_PAGE_LAST_ITEM_ID - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
+        if (itemIds == null || itemIds.length != expectedCount)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < itemIds.length; i++)
+        {
+            if (itemIds[i] != ANCIENT_PAGE_FIRST_ITEM_ID + i)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String normalize(String value)

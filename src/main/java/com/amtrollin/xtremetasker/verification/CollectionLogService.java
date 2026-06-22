@@ -27,6 +27,10 @@ import java.util.regex.Pattern;
 @Singleton
 public class CollectionLogService
 {
+    private static final String ANCIENT_PAGE_ITEM_NAME = "Ancient page";
+    private static final String MEDALLION_FRAGMENT_ITEM_NAME = "Medallion fragment";
+    private static final int MEDALLION_OF_THE_DEEP_ITEM_ID = 32386;
+
     // Matches "New item added to your collection log: Mark of grace x1."
     // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
@@ -35,6 +39,10 @@ public class CollectionLogService
     );
     private static final Pattern CLOG_RECEIVED_ITEM_PATTERN = Pattern.compile(
             "^You have received\\s+(?:[\\d,]+\\s*x\\s*)?(.+?)\\s*\\.?\\s*$",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN = Pattern.compile(
+            "\\byou\\s+assemble\\s+the\\s+Medallion\\s+of\\s+the\\s+Deep\\b",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -53,10 +61,6 @@ public class CollectionLogService
             Map.entry(25751, 22473), // Lil' zik - Lil' Sot -> Lil' zik
             Map.entry(25752, 22473), // Lil' zik - Lil' Xarp -> Lil' zik
 
-            Map.entry(22481, 22323), // Sanguinesti staff (uncharged) -> Sanguinesti staff
-            Map.entry(22486, 22325), // Scythe of vitur (uncharged) -> Scythe of vitur
-            Map.entry(28549, 28547), // Tumeken's shadow (uncharged) -> Tumeken's shadow
-
             Map.entry(27382, 27352), // Tumeken's guardian - Akkhito -> Tumeken's guardian
             Map.entry(27383, 27352), // Tumeken's guardian - Babi -> Tumeken's guardian
             Map.entry(27387, 27352), // Tumeken's guardian - Elidinis' Damaged Guardian -> Tumeken's guardian
@@ -74,7 +78,10 @@ public class CollectionLogService
             Map.entry(25620, 10879), // Red satchel interface item -> Red satchel
             Map.entry(25621, 10880), // Black satchel interface item -> Black satchel
             Map.entry(25622, 10881), // Gold satchel interface item -> Gold satchel
-            Map.entry(25623, 10882)  // Rune satchel interface item -> Rune satchel
+            Map.entry(25623, 10882), // Rune satchel interface item -> Rune satchel
+
+            Map.entry(27693, 27019), // Ore pack shop/interface item -> Ore pack collection log item
+            Map.entry(27031, 27029)  // Smiths gloves (i) -> Smiths gloves
     );
 
     @Inject
@@ -93,6 +100,17 @@ public class CollectionLogService
     private final Set<Integer> seenItems = new HashSet<>();
     private final Map<Integer, Long> obtainedItemOrder = new HashMap<>();
     private long nextObtainedItemOrder = 1L;
+    private int pendingAncientPageDropCountSinceLastSync = 0;
+    private int pendingMedallionFragmentDropCountSinceLastSync = 0;
+    private Runnable cacheChangeListener;
+    private int cacheChangeBatchDepth = 0;
+    private boolean cacheChangePending = false;
+    private final Map<String, Integer> resolvedChatItemIdsByName = new HashMap<>();
+
+    public void setCacheChangeListener(Runnable cacheChangeListener)
+    {
+        this.cacheChangeListener = cacheChangeListener;
+    }
 
     public void startUp()
     {
@@ -127,6 +145,12 @@ public class CollectionLogService
         // Strip any HTML colour tags RuneLite may inject.
         String clean = raw.replaceAll("<[^>]+>", "").trim();
 
+        if (MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN.matcher(clean).find())
+        {
+            storeItem(MEDALLION_OF_THE_DEEP_ITEM_ID);
+            return;
+        }
+
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
         if (m.find())
         {
@@ -151,6 +175,30 @@ public class CollectionLogService
 
     private void resolveAndStoreByName(String itemName)
     {
+        String cacheKey = chatItemNameCacheKey(itemName);
+        Integer cachedItemId = resolvedChatItemIdsByName.get(cacheKey);
+        if (cachedItemId != null)
+        {
+            storeItem(cachedItemId);
+            return;
+        }
+
+        if (ANCIENT_PAGE_ITEM_NAME.equalsIgnoreCase(itemName))
+        {
+            pendingAncientPageDropCountSinceLastSync++;
+            notifyCacheChanged();
+            log.debug("Collection log chat capture deferred ambiguous Ancient page drop until CLOG sync");
+            return;
+        }
+
+        if (MEDALLION_FRAGMENT_ITEM_NAME.equalsIgnoreCase(itemName))
+        {
+            pendingMedallionFragmentDropCountSinceLastSync++;
+            notifyCacheChanged();
+            log.debug("Collection log chat capture deferred ambiguous Medallion fragment drop until CLOG sync");
+            return;
+        }
+
         List<ItemPrice> results = itemManager.search(itemName);
         if (results == null || results.isEmpty())
         {
@@ -163,6 +211,7 @@ public class CollectionLogService
             if (itemName.equalsIgnoreCase(result.getName()))
             {
                 log.debug("Collection log chat capture: '{}' -> item ID {}", itemName, result.getId());
+                resolvedChatItemIdsByName.put(cacheKey, result.getId());
                 storeItem(result.getId());
                 return;
             }
@@ -182,11 +231,17 @@ public class CollectionLogService
         {
             ItemPrice resolved = normalizedMatches.get(0);
             log.debug("Collection log chat capture (normalized): '{}' -> item ID {}", itemName, resolved.getId());
+            resolvedChatItemIdsByName.put(cacheKey, resolved.getId());
             storeItem(resolved.getId());
             return;
         }
 
         log.debug("Collection log chat capture ignored ambiguous match for '{}' ({} candidates)", itemName, results.size());
+    }
+
+    private static String chatItemNameCacheKey(String value)
+    {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private static String normalizeItemName(String value)
@@ -215,7 +270,10 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
-            markObtainedItem(itemId, null);
+            if (markObtainedItem(itemId, null))
+            {
+                notifyCacheChanged();
+            }
         }
     }
 
@@ -225,6 +283,27 @@ public class CollectionLogService
         {
             seenItems.add(itemId);
             seenItems.add(canonicalCollectionLogItemId(itemId));
+        }
+    }
+
+    public void beginCacheChangeBatch()
+    {
+        cacheChangeBatchDepth++;
+    }
+
+    public void endCacheChangeBatch()
+    {
+        if (cacheChangeBatchDepth <= 0)
+        {
+            cacheChangeBatchDepth = 0;
+            return;
+        }
+
+        cacheChangeBatchDepth--;
+        if (cacheChangeBatchDepth == 0 && cacheChangePending)
+        {
+            cacheChangePending = false;
+            notifyCacheChanged();
         }
     }
 
@@ -297,6 +376,34 @@ public class CollectionLogService
         return java.util.Collections.unmodifiableMap(obtainedItemOrder);
     }
 
+    public int getPendingAncientPageDropCountSinceLastSync()
+    {
+        return Math.max(0, pendingAncientPageDropCountSinceLastSync);
+    }
+
+    public int getPendingMedallionFragmentDropCountSinceLastSync()
+    {
+        return Math.max(0, pendingMedallionFragmentDropCountSinceLastSync);
+    }
+
+    public void clearPendingAncientPageDropCountSinceLastSync()
+    {
+        if (pendingAncientPageDropCountSinceLastSync > 0)
+        {
+            pendingAncientPageDropCountSinceLastSync = 0;
+            notifyCacheChanged();
+        }
+    }
+
+    public void clearPendingMedallionFragmentDropCountSinceLastSync()
+    {
+        if (pendingMedallionFragmentDropCountSinceLastSync > 0)
+        {
+            pendingMedallionFragmentDropCountSinceLastSync = 0;
+            notifyCacheChanged();
+        }
+    }
+
     public void restoreCachedItemIds(Set<Integer> itemIds)
     {
         restoreCachedItemState(itemIds, null);
@@ -330,12 +437,47 @@ public class CollectionLogService
         reset();
     }
 
+    public void removeCachedItemIds(Set<Integer> itemIds)
+    {
+        if (itemIds == null || itemIds.isEmpty())
+        {
+            return;
+        }
+
+        boolean changed = false;
+        for (Integer itemId : itemIds)
+        {
+            if (itemId == null || itemId <= 0)
+            {
+                continue;
+            }
+
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            changed |= obtainedItems.remove(itemId);
+            changed |= obtainedItems.remove(canonicalItemId);
+            changed |= seenItems.remove(itemId);
+            changed |= seenItems.remove(canonicalItemId);
+            changed |= obtainedItemOrder.remove(itemId) != null;
+            changed |= obtainedItemOrder.remove(canonicalItemId) != null;
+        }
+
+        if (changed)
+        {
+            notifyCacheChanged();
+        }
+    }
+
     private void reset()
     {
         obtainedItems.clear();
         seenItems.clear();
         obtainedItemOrder.clear();
         nextObtainedItemOrder = 1L;
+        pendingAncientPageDropCountSinceLastSync = 0;
+        pendingMedallionFragmentDropCountSinceLastSync = 0;
+        cacheChangeBatchDepth = 0;
+        cacheChangePending = false;
+        resolvedChatItemIdsByName.clear();
     }
 
     public long getObtainedItemOrder(int itemId)
@@ -349,21 +491,23 @@ public class CollectionLogService
         return order == null ? Long.MAX_VALUE : order;
     }
 
-    private void markObtainedItem(int itemId, Long restoredOrder)
+    private boolean markObtainedItem(int itemId, Long restoredOrder)
     {
         int canonicalItemId = canonicalCollectionLogItemId(itemId);
-        obtainedItems.add(itemId);
-        obtainedItems.add(canonicalItemId);
+        boolean changed = obtainedItems.add(itemId);
+        changed |= obtainedItems.add(canonicalItemId);
 
         Long order = restoredOrder != null && restoredOrder > 0 ? restoredOrder : existingOrder(itemId, canonicalItemId);
         if (order == null)
         {
             order = nextObtainedItemOrder++;
+            changed = true;
         }
 
-        obtainedItemOrder.putIfAbsent(itemId, order);
-        obtainedItemOrder.putIfAbsent(canonicalItemId, order);
+        changed |= obtainedItemOrder.putIfAbsent(itemId, order) == null;
+        changed |= obtainedItemOrder.putIfAbsent(canonicalItemId, order) == null;
         nextObtainedItemOrder = Math.max(nextObtainedItemOrder, order + 1);
+        return changed;
     }
 
     private Long existingOrder(int itemId, int canonicalItemId)
@@ -379,5 +523,24 @@ public class CollectionLogService
     private int canonicalCollectionLogItemId(int itemId)
     {
         return COLLECTION_LOG_ITEM_ALIASES.getOrDefault(itemId, itemId);
+    }
+
+    public int canonicalItemId(int itemId)
+    {
+        return canonicalCollectionLogItemId(itemId);
+    }
+
+    private void notifyCacheChanged()
+    {
+        if (cacheChangeBatchDepth > 0)
+        {
+            cacheChangePending = true;
+            return;
+        }
+
+        if (cacheChangeListener != null)
+        {
+            cacheChangeListener.run();
+        }
     }
 }

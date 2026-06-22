@@ -9,8 +9,9 @@ import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import net.runelite.client.ui.FontManager;
 
 import java.awt.*;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
@@ -51,6 +52,8 @@ public final class TaskRowsRenderer {
     private static final int SCROLLBAR_WIDTH = 6;
     private static final int SCROLLBAR_GAP = 3;
     private static final int ROW_BADGE_Y_OFFSET = 2;
+    private static final DateTimeFormatter ROW_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault());
 
     public TaskRowsRenderer(
             int panelWidth,
@@ -486,7 +489,7 @@ public final class TaskRowsRenderer {
             {
                 dateText = info.timestamp <= 0
                         ? "date ?"
-                        : new SimpleDateFormat("MMM d").format(new Date(info.timestamp));
+                        : ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
             }
         }
 

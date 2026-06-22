@@ -30,6 +30,19 @@ public final class OverlayWheelHandler implements MouseWheelListener
             return e;
         }
 
+        if (a.isSyncMismatchReviewOpen() && a.isSyncMismatchGuardOpen()
+                && (a.syncMismatchGuardBounds().contains(p) || a.syncMismatchReviewBounds().contains(p)))
+        {
+            a.syncMismatchGuardScroll().onWheel(
+                    precise,
+                    a.syncMismatchGuardViewportBounds().height,
+                    a.syncMismatchGuardRowBlock(),
+                    Math.max(1, a.syncMismatchGuardTotalRows()),
+                    null
+            );
+            return e;
+        }
+
         if (a.isCompactPanelMode())
         {
             a.scrollCompactCurrent(precise);
@@ -38,12 +51,12 @@ public final class OverlayWheelHandler implements MouseWheelListener
 
         if (a.isSyncMismatchReviewOpen() && a.syncMismatchViewportBounds().contains(p))
         {
-            List<XtremeTask> tasks = a.plugin().getSyncMismatchTasks();
+            int taskCount = a.syncMismatchVisibleTaskCount();
             a.syncMismatchScroll().onWheel(
                     precise,
                     a.syncMismatchViewportBounds().height,
                     a.syncMismatchRowBlock(),
-                    tasks.isEmpty() ? 1 : tasks.size(),
+                    taskCount <= 0 ? 1 : taskCount,
                     null
             );
             return e;

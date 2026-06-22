@@ -49,7 +49,9 @@ public final class TasksTabRenderer {
             Function<TaskTier, List<XtremeTask>> sortedTasksProvider,
             int hoverX,
             int hoverY,
-            boolean keyboardHintsOpen
+            boolean keyboardHintsOpen,
+            String keyboardTriggeredTooltipText,
+            Rectangle keyboardTriggeredTooltipAnchor
     ) {
         if (!plugin.hasTaskPackLoaded()) {
             g.setColor(palette.UI_TEXT_DIM);
@@ -107,7 +109,9 @@ public final class TasksTabRenderer {
                 controlsColumnW,
                 hoverX,
                 hoverY,
-                plugin.hasNewTasks()
+                plugin.hasNewTasks(),
+                keyboardTriggeredTooltipText,
+                keyboardTriggeredTooltipAnchor
             );
 
             int dividerTop = contentTopBaseline - fm.getAscent();
@@ -547,9 +551,9 @@ public final class TasksTabRenderer {
     ) {
         String title = "Keyboard hints";
         String[][] sections = {
-                {"Tasks:", "Space/Enter - toggle selected task status", "Up/Down - move through the task list", "Left/Right - switch tier tab"},
-                {"Filter:", "1/2/3/4 - toggle source (all, CAs, CLs, ADs)", "Q/W/E - toggle status (all, complete, incomplete)", "A - toggle tier"},
-                {"Sorts:", "S - source", "T - tier", "D - completion date", "M - time spent", "R - reset sorting"}
+                {"Tasks:", "Space/Enter - open selected task details", "Esc - close task details", "Up/Down - move through task list", "PageUp/PageDown - jump 10 tasks", "Left/Right - switch tier tab"},
+                {"Filter:", "1/2/3/4 - toggle source (all, CAs, CLs, ADs)", "Q - show all statuses", "W - toggle incomplete", "E - toggle complete", "A - toggle tier"},
+                {"Sorts:", "S - completion", "T - tier", "D - completion date", "M - time spent", "R - reset sorting"}
         };
 
         int pad = 10;
