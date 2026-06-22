@@ -4975,7 +4975,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public boolean showSyncTestTools()
     {
-        return config != null && config.showSyncTestTools();
+        return false;
     }
 
     @Override
