@@ -42,8 +42,6 @@ public final class RulesTabRenderer {
     private static final String LINE_SYNC_CLOG_FOUND_ACTIONS_ROW = "[SYNC_CLOG_FOUND_ACTIONS_ROW]";
     private static final String LINE_SYNC_CA_REVIEW_ACTIONS_ROW = "[SYNC_CA_REVIEW_ACTIONS_ROW]";
     private static final String LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW = "[SYNC_CLOG_REVIEW_ACTIONS_ROW]";
-    private static final String LINE_SYNC_CA_TEST_ACTIONS_ROW = "[SYNC_CA_TEST_ACTIONS_ROW]";
-    private static final String LINE_SYNC_CLOG_TEST_ACTIONS_ROW = "[SYNC_CLOG_TEST_ACTIONS_ROW]";
     private static final String LINE_SYNC_CA_MARKED_TOGGLE_PREFIX = "[SYNC_CA_MARKED_TOGGLE]";
     private static final String LINE_SYNC_CLOG_MARKED_TOGGLE_PREFIX = "[SYNC_CLOG_MARKED_TOGGLE]";
     private static final String LINE_SYNC_RESULT_LABEL = "[SYNC_RESULT_LABEL]";
@@ -108,8 +106,7 @@ public final class RulesTabRenderer {
             int combatAchievementFoundCount,
             int collectionLogFoundCount,
             int combatAchievementReviewCount,
-            int collectionLogReviewCount,
-            boolean showSyncTestTools
+            int collectionLogReviewCount
     ) {
         RulesTabLayout layout = new RulesTabLayout();
         layout.taskerFaqLinkBounds.setBounds(0, 0, 0, 0);
@@ -124,10 +121,6 @@ public final class RulesTabRenderer {
         layout.syncCaReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncClogReviewButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncClogReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncCaTestFoundButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncCaTestReviewButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncClogTestFoundButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncClogTestReviewButtonBounds.setBounds(0, 0, 0, 0);
         layout.syncCaMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
         layout.syncClogMarkedTasksToggleBounds.setBounds(0, 0, 0, 0);
         layout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
@@ -187,8 +180,7 @@ public final class RulesTabRenderer {
                     combatAchievementFoundCount,
                     collectionLogFoundCount,
                     combatAchievementReviewCount,
-                    collectionLogReviewCount,
-                    showSyncTestTools
+                    collectionLogReviewCount
             );
         }
 
@@ -276,15 +268,12 @@ public final class RulesTabRenderer {
             if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line)
                     || LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line)
                     || LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line)
-                    || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line)
-                    || LINE_SYNC_CA_TEST_ACTIONS_ROW.equals(line)
-                    || LINE_SYNC_CLOG_TEST_ACTIONS_ROW.equals(line)) {
+                    || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line)) {
                 int gap = 6;
-                boolean testRow = LINE_SYNC_CA_TEST_ACTIONS_ROW.equals(line) || LINE_SYNC_CLOG_TEST_ACTIONS_ROW.equals(line);
                 boolean foundRow = LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line) || LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line);
-                int reviewW = Math.max(fm.stringWidth(testRow ? "Fake found" : (foundRow ? FOUND_COMPLETIONS_BUTTON_LABEL : "Review")) + 18,
-                        testRow ? 92 : (foundRow ? 128 : 76));
-                int ignoreW = Math.max(fm.stringWidth(testRow ? "Fake review" : "Ignore") + 18, testRow ? 96 : 72);
+                int reviewW = Math.max(fm.stringWidth(foundRow ? FOUND_COMPLETIONS_BUTTON_LABEL : "Review") + 18,
+                        foundRow ? 128 : 76);
+                int ignoreW = Math.max(fm.stringWidth("Ignore") + 18, 72);
                 int btnH = rowHeight + 10;
                 int btnX = bx;
                 int by = drawY - fm.getAscent();
@@ -308,16 +297,6 @@ public final class RulesTabRenderer {
                     {
                         layout.syncClogReviewButtonBounds.setBounds(btnX, by, reviewW, btnH);
                         layout.syncClogReviewIgnoreButtonBounds.setBounds(btnX + reviewW + gap, by, ignoreW, btnH);
-                    }
-                    else if (LINE_SYNC_CA_TEST_ACTIONS_ROW.equals(line))
-                    {
-                        layout.syncCaTestFoundButtonBounds.setBounds(btnX, by, reviewW, btnH);
-                        layout.syncCaTestReviewButtonBounds.setBounds(btnX + reviewW + gap, by, ignoreW, btnH);
-                    }
-                    else
-                    {
-                        layout.syncClogTestFoundButtonBounds.setBounds(btnX, by, reviewW, btnH);
-                        layout.syncClogTestReviewButtonBounds.setBounds(btnX + reviewW + gap, by, ignoreW, btnH);
                     }
                 }
 
@@ -465,8 +444,7 @@ public final class RulesTabRenderer {
             int combatAchievementFoundCount,
             int collectionLogFoundCount,
             int combatAchievementReviewCount,
-            int collectionLogReviewCount,
-            boolean showSyncTestTools
+            int collectionLogReviewCount
     )
     {
         int contentW = Math.max(120, viewportW - SYNC_SCROLLBAR_CONTENT_GUTTER);
@@ -494,8 +472,7 @@ public final class RulesTabRenderer {
                 lastCombatAchievementSyncedTaskNames,
                 showCombatAchievementSyncedTaskNames,
                 combatAchievementFoundCount,
-                combatAchievementReviewCount,
-                showSyncTestTools
+                combatAchievementReviewCount
         );
         List<String> clogLines = buildCollectionLogSyncColumn(
                 fm,
@@ -506,8 +483,7 @@ public final class RulesTabRenderer {
                 showCollectionLogSyncedTaskNames,
                 collectionLogSyncPending,
                 collectionLogFoundCount,
-                collectionLogReviewCount,
-                showSyncTestTools
+                collectionLogReviewCount
         );
 
         int caRows = contentRows(caLines, rb);
@@ -548,8 +524,7 @@ public final class RulesTabRenderer {
             List<String> lastCombatAchievementSyncedTaskNames,
             boolean showCombatAchievementSyncedTaskNames,
             int combatAchievementFoundCount,
-            int combatAchievementReviewCount,
-            boolean showSyncTestTools
+            int combatAchievementReviewCount
     )
     {
         List<String> lines = new ArrayList<>();
@@ -572,7 +547,6 @@ public final class RulesTabRenderer {
         }
         addReviewDivider(lines, combatAchievementReviewCount);
         addReviewLines(lines, combatAchievementReviewCount, "CA", fm, maxWidth, LINE_SYNC_CA_REVIEW_ACTIONS_ROW);
-        addTestToolLines(lines, showSyncTestTools, fm, maxWidth, LINE_SYNC_CA_TEST_ACTIONS_ROW);
         lines.add("");
         return lines;
     }
@@ -586,8 +560,7 @@ public final class RulesTabRenderer {
             boolean showCollectionLogSyncedTaskNames,
             boolean collectionLogSyncPending,
             int collectionLogFoundCount,
-            int collectionLogReviewCount,
-            boolean showSyncTestTools
+            int collectionLogReviewCount
     )
     {
         List<String> lines = new ArrayList<>();
@@ -614,7 +587,6 @@ public final class RulesTabRenderer {
         }
         addReviewDivider(lines, collectionLogReviewCount);
         addReviewLines(lines, collectionLogReviewCount, "CLOG/ADs", fm, maxWidth, LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW);
-        addTestToolLines(lines, showSyncTestTools, fm, maxWidth, LINE_SYNC_CLOG_TEST_ACTIONS_ROW);
         lines.add("");
         return lines;
     }
@@ -662,16 +634,13 @@ public final class RulesTabRenderer {
             if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line)
                     || LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line)
                     || LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line)
-                    || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line)
-                    || LINE_SYNC_CA_TEST_ACTIONS_ROW.equals(line)
-                    || LINE_SYNC_CLOG_TEST_ACTIONS_ROW.equals(line))
+                    || LINE_SYNC_CLOG_REVIEW_ACTIONS_ROW.equals(line))
             {
                 int gap = 6;
-                boolean testRow = LINE_SYNC_CA_TEST_ACTIONS_ROW.equals(line) || LINE_SYNC_CLOG_TEST_ACTIONS_ROW.equals(line);
                 boolean foundRow = LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line) || LINE_SYNC_CLOG_FOUND_ACTIONS_ROW.equals(line);
-                int reviewW = Math.max(fm.stringWidth(testRow ? "Fake found" : (foundRow ? FOUND_COMPLETIONS_BUTTON_LABEL : "Review")) + 18,
-                        testRow ? 92 : (foundRow ? 128 : 76));
-                int ignoreW = Math.max(fm.stringWidth(testRow ? "Fake review" : "Ignore") + 18, testRow ? 96 : 72);
+                int reviewW = Math.max(fm.stringWidth(foundRow ? FOUND_COMPLETIONS_BUTTON_LABEL : "Review") + 18,
+                        foundRow ? 128 : 76);
+                int ignoreW = Math.max(fm.stringWidth("Ignore") + 18, 72);
                 int btnH = rowHeight + 10;
                 int by = drawY - fm.getAscent();
                 int groupW = foundRow ? reviewW : reviewW + gap + ignoreW;
@@ -700,16 +669,6 @@ public final class RulesTabRenderer {
                 {
                     layout.syncClogReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
                     layout.syncClogReviewIgnoreButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
-                }
-                else if (LINE_SYNC_CA_TEST_ACTIONS_ROW.equals(line))
-                {
-                    layout.syncCaTestFoundButtonBounds.setBounds(groupX, by, reviewW, btnH);
-                    layout.syncCaTestReviewButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
-                }
-                else
-                {
-                    layout.syncClogTestFoundButtonBounds.setBounds(groupX, by, reviewW, btnH);
-                    layout.syncClogTestReviewButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
                 }
                 drawY += Math.max(rb, btnH + listRowSpacing);
                 continue;
@@ -965,24 +924,6 @@ public final class RulesTabRenderer {
         {
             lines.add(LINE_SYNC_FOUND_REVIEW_DIVIDER);
         }
-    }
-
-    private void addTestToolLines(
-            List<String> lines,
-            boolean showSyncTestTools,
-            FontMetrics fm,
-            int maxWidth,
-            String actionsMarker)
-    {
-        if (!showSyncTestTools)
-        {
-            return;
-        }
-
-        lines.add("");
-        lines.add("Test tools");
-        lines.addAll(TextUtils.wrapText("Stage fake review rows for UI testing. Real progress is not read.", fm, maxWidth));
-        lines.add(actionsMarker);
     }
 
     private void addSyncTimestampLine(

@@ -110,14 +110,6 @@ public interface TaskerService
 
     void markAllSyncMismatchTasksIncompleteAndPersist();
 
-    void debugCollectionLogCacheAndReport();
-
-    boolean showSyncTestTools();
-
-    void debugStageSyncCompletionCandidateReview(TaskSource source);
-
-    void debugStageSyncMismatchReview(TaskSource source);
-
     List<PrerequisiteStatus> getPrerequisiteStatuses(XtremeTask task);
 
     boolean isNewTask(XtremeTask task);
