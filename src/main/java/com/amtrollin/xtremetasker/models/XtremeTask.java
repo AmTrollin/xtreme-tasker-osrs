@@ -3,11 +3,13 @@ package com.amtrollin.xtremetasker.models;
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
+import lombok.Getter;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Objects;
 
+@Getter
 public class XtremeTask {
     private final String id;
     private final String name;
@@ -60,50 +62,6 @@ public class XtremeTask {
             trimmedId = generateStableId(this.name, this.source, this.tier, this.wikiUrl, this.iconKey, this.iconItemId);
         }
         this.id = trimmedId;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public TaskSource getSource() {
-        return source;
-    }
-
-    public TaskTier getTier() {
-        return tier;
-    }
-
-    public Integer getIconItemId() {
-        return iconItemId;
-    }
-
-    public String getIconKey() {
-        return iconKey;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public String getPrereqs() {
-        return prereqs;
-    }
-
-    public String getWikiUrl() {
-        return wikiUrl;
-    }
-
-    public String getTip() {
-        return tip;
-    }
-
-    public TaskVerification getVerification() {
-        return verification;
     }
 
     @Override

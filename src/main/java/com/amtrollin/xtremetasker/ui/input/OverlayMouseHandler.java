@@ -43,8 +43,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private int taskDetailsScrollbarGrabOffsetY = 0;
     private boolean draggingSyncMismatchScrollbar = false;
     private int syncMismatchScrollbarGrabOffsetY = 0;
-    private boolean draggingSyncMismatchGuardScrollbar = false;
-    private int syncMismatchGuardScrollbarGrabOffsetY = 0;
     private boolean draggingCompactCurrentScrollbar = false;
     private int compactCurrentScrollbarGrabOffsetY = 0;
     private final Rectangle compactCurrentDragRailBounds = new Rectangle();
@@ -225,12 +223,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     return e;
                 }
 
-                if (a.taskDetailsSyncBounds().contains(p)) {
-                    a.handleTaskDetailsSyncButton(a.taskDetailsTask());
-                    e.consume();
-                    return e;
-                }
-
                 if (a.taskDetailsIgnoreBounds().contains(p)) {
                     a.plugin().dismissTaskSyncMismatchAndPersist(a.taskDetailsTask());
                     e.consume();
@@ -239,8 +231,19 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
                 if (a.taskDetailsMarkIncompleteBounds().contains(p)) {
                     a.handleTaskDetailsMarkIncompleteButton(a.taskDetailsTask());
+                    rememberTaskDetailsIncompleteConfirmOpeningClick(e, p, button);
                     e.consume();
                     return e;
+                }
+
+                for (Map.Entry<XtremeTask, Rectangle> entry : a.taskDetailsInstanceRemoveBounds().entrySet()) {
+                    Rectangle bounds = entry.getValue();
+                    if (bounds != null && bounds.contains(p)) {
+                        a.handleTaskDetailsInstanceMarkIncompleteButton(entry.getKey());
+                        rememberTaskDetailsIncompleteConfirmOpeningClick(e, p, button);
+                        e.consume();
+                        return e;
+                    }
                 }
 
                 // General click inside popup — consume and stop
@@ -789,7 +792,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
     private boolean isSuppressedTaskDetailsIncompleteConfirmClicked(MouseEvent e, Point p, int button)
     {
-        if (e.getID() != MouseEvent.MOUSE_CLICKED || !suppressNextTaskDetailsIncompleteConfirmClicked)
+        if (!suppressNextTaskDetailsIncompleteConfirmClicked
+                || (e.getID() != MouseEvent.MOUSE_RELEASED && e.getID() != MouseEvent.MOUSE_CLICKED))
         {
             return false;
         }
@@ -801,7 +805,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 && dy <= SYNC_MISMATCH_DUPLICATE_CLICK_TOLERANCE_PX;
         if (samePhysicalClick)
         {
-            suppressNextTaskDetailsIncompleteConfirmClicked = false;
+            suppressNextTaskDetailsIncompleteConfirmClicked = e.getID() != MouseEvent.MOUSE_CLICKED;
         }
         return samePhysicalClick;
     }
@@ -1002,54 +1006,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
 
             a.closeSyncMismatchDescription();
-            rememberSyncMismatchClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        if (a.isSyncMismatchGuardOpen())
-        {
-            if (a.syncMismatchGuardOkBounds().contains(p))
-            {
-                a.closeSyncMismatchGuard();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            if (a.syncMismatchGuardScrollbarRailBounds().width > 0)
-            {
-                Rectangle thumb = a.syncMismatchGuardScrollbarThumbBounds();
-                Rectangle rail = a.syncMismatchGuardScrollbarRailBounds();
-
-                if (thumb.contains(p))
-                {
-                    draggingSyncMismatchGuardScrollbar = true;
-                    syncMismatchGuardScrollbarGrabOffsetY = p.y - thumb.y;
-                    rememberSyncMismatchClick(e, p, button);
-                    e.consume();
-                    return true;
-                }
-
-                if (rail.contains(p))
-                {
-                    draggingSyncMismatchGuardScrollbar = true;
-                    syncMismatchGuardScrollbarGrabOffsetY = Math.max(0, thumb.height / 2);
-                    updateSyncMismatchGuardScrollbarDrag(e.getY());
-                    rememberSyncMismatchClick(e, p, button);
-                    e.consume();
-                    return true;
-                }
-            }
-
-            if (a.syncMismatchGuardBounds().contains(p))
-            {
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            a.closeSyncMismatchGuard();
             rememberSyncMismatchClick(e, p, button);
             e.consume();
             return true;
@@ -1287,11 +1243,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || a.syncMismatchCancelBounds().contains(p)
                 || a.syncMismatchScrollbarThumbBounds().contains(p)
                 || a.syncMismatchScrollbarRailBounds().contains(p)
-                || (a.isSyncMismatchGuardOpen() && (
-                        a.syncMismatchGuardOkBounds().contains(p)
-                                || a.syncMismatchGuardScrollbarThumbBounds().contains(p)
-                                || a.syncMismatchGuardScrollbarRailBounds().contains(p)
-                ))
                 || syncMismatchTaskAt(p, true) != null
                 || syncMismatchTaskAt(p, false) != null
                 || (a.isSyncMismatchApplyConfirmOpen() && (
@@ -1480,9 +1431,9 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         a.taskDetailsCloseBounds().contains(p)
                         || a.taskDetailsWikiBounds().contains(p)
                         || (a.isTaskDetailsWikiMenuOpen() && a.taskDetailsWikiMenuBounds().contains(p))
-                        || a.taskDetailsSyncBounds().contains(p)
                         || a.taskDetailsIgnoreBounds().contains(p)
                         || a.taskDetailsMarkIncompleteBounds().contains(p)
+                        || taskDetailsInstanceRemoveContains(p)
                         || a.taskDetailsScrollbarThumbBounds().contains(p)
                         || a.taskDetailsScrollbarRailBounds().contains(p)
                 ))
@@ -1577,6 +1528,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
     }
 
+    private boolean taskDetailsInstanceRemoveContains(Point p)
+    {
+        return containsAny(a.taskDetailsInstanceRemoveBounds(), p);
+    }
+
     private static boolean containsAny(Map<?, Rectangle> bounds, Point p) {
         synchronized (bounds) {
             for (Rectangle r : bounds.values()) {
@@ -1643,12 +1599,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         if (draggingSyncMismatchScrollbar) {
             updateSyncMismatchScrollbarDrag(e.getY());
-            e.consume();
-            return e;
-        }
-
-        if (draggingSyncMismatchGuardScrollbar) {
-            updateSyncMismatchGuardScrollbarDrag(e.getY());
             e.consume();
             return e;
         }
@@ -1724,10 +1674,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
         if (draggingSyncMismatchScrollbar) {
             draggingSyncMismatchScrollbar = false;
-            e.consume();
-        }
-        if (draggingSyncMismatchGuardScrollbar) {
-            draggingSyncMismatchGuardScrollbar = false;
             e.consume();
         }
         if (draggingCompactCurrentScrollbar) {
@@ -1888,30 +1834,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         double frac = (double) (thumbY - rail.y) / (double) trackH;
         int nextOffset = (int) Math.round(frac * maxOffset);
         a.syncMismatchScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
-    }
-
-    private void updateSyncMismatchGuardScrollbarDrag(int mouseY) {
-        Rectangle rail = a.syncMismatchGuardScrollbarRailBounds();
-        Rectangle thumb = a.syncMismatchGuardScrollbarThumbBounds();
-        if (rail.height <= 0 || thumb.height <= 0) {
-            return;
-        }
-
-        int totalRows = Math.max(1, a.syncMismatchGuardTotalRows());
-        int rowBlock = a.syncMismatchGuardRowBlock();
-        int viewportH = a.syncMismatchGuardViewportBounds().height;
-        int visible = a.syncMismatchGuardScroll().visibleRows(viewportH, rowBlock);
-        int maxOffset = Math.max(0, totalRows - visible);
-        int trackH = Math.max(0, rail.height - thumb.height);
-        if (totalRows <= 0 || visible <= 0 || maxOffset <= 0 || trackH <= 0) {
-            a.syncMismatchGuardScroll().setOffsetRows(0, viewportH, rowBlock, totalRows);
-            return;
-        }
-
-        int thumbY = Math.max(rail.y, Math.min(mouseY - syncMismatchGuardScrollbarGrabOffsetY, rail.y + trackH));
-        double frac = (double) (thumbY - rail.y) / (double) trackH;
-        int nextOffset = (int) Math.round(frac * maxOffset);
-        a.syncMismatchGuardScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
     }
 
     private void updateCompactCurrentScrollbarDrag(int mouseY) {

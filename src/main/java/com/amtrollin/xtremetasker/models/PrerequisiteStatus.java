@@ -1,10 +1,12 @@
 package com.amtrollin.xtremetasker.models;
 
 import net.runelite.api.Skill;
+import lombok.Getter;
 
 import java.util.Collections;
 import java.util.List;
 
+@Getter
 public class PrerequisiteStatus
 {
     private final String text;
@@ -42,34 +44,9 @@ public class PrerequisiteStatus
         this.markerIcons = markerIcons == null ? List.of() : Collections.unmodifiableList(markerIcons);
     }
 
-    public String getText()
-    {
-        return text;
-    }
-
-    public boolean isCompleted()
-    {
-        return completed;
-    }
-
-    public List<CheckSpan> getCheckSpans()
-    {
-        return checkSpans;
-    }
-
-    public List<Skill> getSkillIcons()
-    {
-        return skillIcons;
-    }
-
     public boolean hasQuestIcon()
     {
         return markerIcons.contains(MarkerIcon.QUEST) || markerIcons.contains(MarkerIcon.START_QUEST);
-    }
-
-    public List<MarkerIcon> getMarkerIcons()
-    {
-        return markerIcons;
     }
 
     public enum MarkerIcon
@@ -129,6 +106,7 @@ public class PrerequisiteStatus
         CURRENCY
     }
 
+    @Getter
     public static class CheckSpan
     {
         private final int start;
@@ -142,19 +120,5 @@ public class PrerequisiteStatus
             this.completed = completed;
         }
 
-        public int getStart()
-        {
-            return start;
-        }
-
-        public int getEnd()
-        {
-            return end;
-        }
-
-        public boolean isCompleted()
-        {
-            return completed;
-        }
     }
 }

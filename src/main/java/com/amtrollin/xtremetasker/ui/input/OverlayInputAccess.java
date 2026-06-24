@@ -132,7 +132,6 @@ public interface OverlayInputAccess
     void closeTaskDetailsWikiMenu();
     WikiLink taskDetailsWikiLinkAt(Point point);
     List<WikiLink> taskDetailsWikiLinks(XtremeTask task);
-    Rectangle taskDetailsSyncBounds();
     Rectangle taskDetailsIgnoreBounds();
     Rectangle taskDetailsMarkIncompleteBounds();
     Rectangle taskDetailsToggleBounds();
@@ -141,9 +140,8 @@ public interface OverlayInputAccess
     Rectangle taskDetailsDecrementGroupBounds();
     Rectangle taskDetailsIncrementGroupBounds();
     Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds();
-    String taskDetailsSyncButtonLabel(XtremeTask task);
-    void handleTaskDetailsSyncButton(XtremeTask task);
     void handleTaskDetailsMarkIncompleteButton(XtremeTask task);
+    void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task);
 
     boolean isMarkAllIncompleteConfirmOpen();
     void requestMarkAllIncompleteConfirmation(XtremeTask task);
@@ -170,16 +168,6 @@ public interface OverlayInputAccess
     Rectangle syncMismatchConfirmBounds();
     Rectangle syncMismatchConfirmYesBounds();
     Rectangle syncMismatchConfirmNoBounds();
-    boolean isSyncMismatchGuardOpen();
-    Rectangle syncMismatchGuardBounds();
-    Rectangle syncMismatchGuardOkBounds();
-    Rectangle syncMismatchGuardViewportBounds();
-    Rectangle syncMismatchGuardScrollbarRailBounds();
-    Rectangle syncMismatchGuardScrollbarThumbBounds();
-    TaskListScrollController syncMismatchGuardScroll();
-    int syncMismatchGuardRowBlock();
-    int syncMismatchGuardTotalRows();
-    void closeSyncMismatchGuard();
     Rectangle syncMismatchScrollbarRailBounds();
     Rectangle syncMismatchScrollbarThumbBounds();
     Map<XtremeTask, Rectangle> syncMismatchTaskBounds();

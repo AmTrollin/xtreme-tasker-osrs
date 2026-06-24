@@ -372,7 +372,7 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    public void syncMismatchApplyBlocksIncompleteSelectionInsideDisplaySequence() throws Exception
+    public void syncMismatchApplyAllowsIncompleteSelectionInsideDisplaySequence() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
 
@@ -444,44 +444,18 @@ public class CollectionLogMismatchTest
         syncMismatchTaskIds.add(bootsSecond.getId());
         plugin.setSyncMismatchTitleForTesting("Review completed tasks");
 
-        String guardMessage = plugin.getSyncMismatchIncompleteGuardMessage(Collections.singletonList(beginner));
-        assertTrue("Beginner wand should require higher wand steps to be selected too",
-                guardMessage != null && guardMessage.contains("Apprentice MTA wand"));
-        assertTrue("Single-sequence message should separate the headline from the fix",
-                guardMessage.contains("out of order.\n\nTask: Upgrade the MTA wand once\nSelected \"Obtain Beginner MTA wand\""));
-
         List<XtremeTask> mixedInvalidSelection = List.of(beginner, apprentice, unrelated, bootsFirst);
-        guardMessage = plugin.getSyncMismatchIncompleteGuardMessage(mixedInvalidSelection);
-        assertTrue("Mixed saves should still be blocked by a bad wand sequence",
-                guardMessage != null && guardMessage.contains("Beginner MTA wand"));
-        assertTrue("Multiple bad selections in one wand series should be named",
-                guardMessage.contains("Apprentice MTA wand"));
-        assertTrue("Missing higher wand step should be named",
-                guardMessage.contains("Teacher MTA wand"));
-        assertTrue("Multiple bad series should be summarized together",
-                guardMessage.contains("2 sequences"));
-        assertTrue("A second bad sequence should be named too",
-                guardMessage.contains("metal boots"));
-        assertTrue("Multi-sequence message should put each sequence on its own paragraph",
-                guardMessage.contains("out of order.\n\nTask: Upgrade the MTA wand once\nSelected \"Obtain Beginner MTA wand\"")
-                        && guardMessage.contains("unselect \"Obtain Beginner MTA wand\" and \"Upgrade to Apprentice MTA wand\".\n\nTask: Get the next tier of metal boots"));
-
         plugin.markSyncMismatchTasksIncompleteAndPersist(mixedInvalidSelection);
-        assertTrue("Guarded beginner wand should remain complete", plugin.isTaskCompleted(beginner));
-        assertTrue("Guarded apprentice wand should remain complete", plugin.isTaskCompleted(apprentice));
-        assertTrue("Guarded teacher wand should remain complete", plugin.isTaskCompleted(teacher));
-        assertTrue("Unrelated selected task should not be saved when any sequence is invalid", plugin.isTaskCompleted(unrelated));
-        assertTrue("Guarded boots task should remain complete", plugin.isTaskCompleted(bootsFirst));
-        assertTrue("Guarded higher boots task should remain complete", plugin.isTaskCompleted(bootsSecond));
-
-        assertEquals("Suffix sequence selections should be saveable from the grouped picker",
-                null,
-                plugin.getSyncMismatchIncompleteGuardMessage(List.of(apprentice, teacher)));
-
-        plugin.markSyncMismatchTasksIncompleteAndPersist(List.of(beginner, apprentice, teacher));
         assertFalse(plugin.isTaskCompleted(beginner));
         assertFalse(plugin.isTaskCompleted(apprentice));
+        assertTrue("Unselected higher wand step should stay complete", plugin.isTaskCompleted(teacher));
+        assertFalse("Unrelated selected task should save too", plugin.isTaskCompleted(unrelated));
+        assertFalse(plugin.isTaskCompleted(bootsFirst));
+        assertTrue("Unselected higher boots step should stay complete", plugin.isTaskCompleted(bootsSecond));
+
+        plugin.markSyncMismatchTasksIncompleteAndPersist(List.of(teacher, bootsSecond));
         assertFalse(plugin.isTaskCompleted(teacher));
+        assertFalse(plugin.isTaskCompleted(bootsSecond));
     }
 
     @Test

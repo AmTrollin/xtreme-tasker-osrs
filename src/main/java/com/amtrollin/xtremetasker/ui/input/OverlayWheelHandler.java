@@ -30,19 +30,6 @@ public final class OverlayWheelHandler implements MouseWheelListener
             return e;
         }
 
-        if (a.isSyncMismatchReviewOpen() && a.isSyncMismatchGuardOpen()
-                && (a.syncMismatchGuardBounds().contains(p) || a.syncMismatchReviewBounds().contains(p)))
-        {
-            a.syncMismatchGuardScroll().onWheel(
-                    precise,
-                    a.syncMismatchGuardViewportBounds().height,
-                    a.syncMismatchGuardRowBlock(),
-                    Math.max(1, a.syncMismatchGuardTotalRows()),
-                    null
-            );
-            return e;
-        }
-
         if (a.isCompactPanelMode())
         {
             a.scrollCompactCurrent(precise);

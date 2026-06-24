@@ -1,9 +1,11 @@
 package com.amtrollin.xtremetasker.models.verification;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.Getter;
 
 import java.util.Map;
 
+@Getter
 public class TaskVerification
 {
     @SerializedName("method")
@@ -31,46 +33,6 @@ public class TaskVerification
     // skill fields: map of skill name -> required XP (all entries are 13034431 = level 99)
     @SerializedName("experience")
     private Map<String, Long> experience;
-
-    public VerificationType getType()
-    {
-        return type;
-    }
-
-    public Integer getTaskId()
-    {
-        return taskId;
-    }
-
-    public int[] getItemIds()
-    {
-        return itemIds;
-    }
-
-    public Integer getCount()
-    {
-        return count;
-    }
-
-    public Integer getCompletionItemId()
-    {
-        return completionItemId;
-    }
-
-    public String getRegion()
-    {
-        return region;
-    }
-
-    public String getDifficulty()
-    {
-        return difficulty;
-    }
-
-    public Map<String, Long> getExperience()
-    {
-        return experience;
-    }
 
     public enum VerificationType
     {

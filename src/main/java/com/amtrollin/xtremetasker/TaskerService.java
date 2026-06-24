@@ -98,8 +98,6 @@ public interface TaskerService
 
     String getSyncMismatchGameProgressLabel(XtremeTask task);
 
-    String getSyncMismatchIncompleteGuardMessage(List<XtremeTask> tasks);
-
     void dismissSyncMismatchReview();
 
     void dismissSyncMismatchReview(TaskSource source);

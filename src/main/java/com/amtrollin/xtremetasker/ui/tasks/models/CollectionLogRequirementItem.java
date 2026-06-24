@@ -1,5 +1,8 @@
 package com.amtrollin.xtremetasker.ui.tasks.models;
 
+import lombok.Getter;
+
+@Getter
 public final class CollectionLogRequirementItem
 {
     private final int itemId;
@@ -37,16 +40,6 @@ public final class CollectionLogRequirementItem
         this.dimWhenMissing = dimWhenMissing;
     }
 
-    public int getItemId()
-    {
-        return itemId;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
     public boolean isObtained()
     {
         return status == Status.OBTAINED || status == Status.APPLIED;
@@ -65,21 +58,6 @@ public final class CollectionLogRequirementItem
     public boolean isReady()
     {
         return status == Status.READY;
-    }
-
-    public Status getStatus()
-    {
-        return status;
-    }
-
-    public String getBadgeText()
-    {
-        return badgeText;
-    }
-
-    public boolean isDimWhenMissing()
-    {
-        return dimWhenMissing;
     }
 
     public enum Status
