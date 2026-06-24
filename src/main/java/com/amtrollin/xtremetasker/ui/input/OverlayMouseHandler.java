@@ -135,10 +135,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (tryHandleTaskSyncResultClick(e, p, button)) {
-            return e;
-        }
-
         if (tryHandleTaskResolveClick(e, p, button)) {
             return e;
         }
@@ -738,10 +734,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (tryHandleTaskSyncResultClick(e, p, button)) {
-            return e;
-        }
-
         if (a.isMarkAllIncompleteConfirmOpen() || a.isTaskDetailsOpen() || a.isTaskResolveOpen()) {
             return e;
         }
@@ -821,31 +813,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         suppressTaskDetailsIncompleteConfirmClickX = p.x;
         suppressTaskDetailsIncompleteConfirmClickY = p.y;
         suppressTaskDetailsIncompleteConfirmClickButton = button;
-    }
-
-    private boolean tryHandleTaskSyncResultClick(MouseEvent e, Point p, int button)
-    {
-        if (!a.isTaskSyncResultOpen() || button != MouseEvent.BUTTON1)
-        {
-            return false;
-        }
-
-        if (a.taskSyncResultCloseBounds().contains(p))
-        {
-            a.closeTaskSyncResult();
-            e.consume();
-            return true;
-        }
-
-        if (a.taskSyncResultBounds().contains(p))
-        {
-            e.consume();
-            return true;
-        }
-
-        a.closeTaskSyncResult();
-        e.consume();
-        return true;
     }
 
     private boolean tryHandleTaskResolveClick(MouseEvent e, Point p, int button)
@@ -1365,12 +1332,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 updateHandCursor(hoveringSyncMismatch);
                 return e;
             }
-        }
-
-        if (a.isTaskSyncResultOpen())
-        {
-            updateHandCursor(a.taskSyncResultCloseBounds().contains(p));
-            return e;
         }
 
         if (a.isTaskResolveOpen())

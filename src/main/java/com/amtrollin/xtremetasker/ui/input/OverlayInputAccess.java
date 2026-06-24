@@ -203,10 +203,6 @@ public interface OverlayInputAccess
     void closeSyncMismatchApplyConfirm();
 
     boolean isTaskResolveOpen();
-    boolean isTaskSyncResultOpen();
-    Rectangle taskSyncResultBounds();
-    Rectangle taskSyncResultCloseBounds();
-    void closeTaskSyncResult();
     Rectangle taskResolveBounds();
     Rectangle taskResolveCloseBounds();
     Rectangle taskResolveSaveBounds();
