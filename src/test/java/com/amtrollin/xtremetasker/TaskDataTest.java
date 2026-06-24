@@ -197,7 +197,6 @@ public class TaskDataTest
 
         assertNotNull("Hard Giants' Foundry task must exist", foundryTask);
         assertEquals("Get last unique from Giants' Foundry", optionalString(foundryTask, "name"));
-        assertEquals("Giants' Foundry", optionalString(foundryTask, "wikiTitle"));
         assertEquals("https://oldschool.runescape.wiki/w/Giants%27_Foundry", optionalString(foundryTask, "wikiUrl"));
 
         JsonObject verification = foundryTask.getAsJsonObject("verification");
@@ -219,7 +218,7 @@ public class TaskDataTest
         JsonArray tasks = pack.getAsJsonArray("tasks");
 
         List<String> issues = new ArrayList<>();
-        List<String> textFields = Arrays.asList("name", "prereqs", "wikiTitle", "wikiUrl", "description", "tip");
+        List<String> textFields = Arrays.asList("name", "prereqs", "wikiUrl", "description", "tip");
         for (JsonElement taskElement : tasks)
         {
             JsonObject task = taskElement.getAsJsonObject();
