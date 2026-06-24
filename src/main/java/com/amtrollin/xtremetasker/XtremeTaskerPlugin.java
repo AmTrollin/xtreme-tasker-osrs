@@ -68,38 +68,6 @@ import java.util.stream.Stream;
 public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
     private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
-
-        /**
-         * Returns the roll skip notice if the current tier is exhausted for the active filter,
-         * but before rolling into the next tier. Used to warn the user before rolling.
-         */
-        public String getPendingRollSkipNotice() {
-            TaskTier currentTier = getCurrentTier();
-            if (currentTier == null) return null;
-    
-            XtremeTaskerConfig.RollSourceFilter sourceFilter = config.rollSourceFilter();
-            if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.ALL) return null;
-    
-            List<XtremeTask> available = tasks.stream()
-                    .filter(t -> t.getTier() == currentTier)
-                    .filter(t -> !isTaskCompleted(t))
-                    .filter(t -> {
-                        if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
-                            return t.getSource() == TaskSource.COMBAT_ACHIEVEMENT;
-                        } else if (sourceFilter == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                            return isCollectionLogSyncSource(t.getSource());
-                        }
-                        return true;
-                    })
-                    .collect(Collectors.toList());
-    
-            if (!available.isEmpty()) return null; // Still tasks left in this tier for this filter
-    
-            TaskTier nextTier = nextAvailableTierForSource(sourceFilter, currentTier);
-            if (nextTier == null) return null;
-
-            return buildSourceFilteredRollNotice(sourceFilter, currentTier, nextTier);
-        }
     private static final String CONFIG_GROUP = "xtremetasker";
     private static final String SKIP_SINGLE_INCOMPLETE_CONFIRM_KEY = "skipSingleIncompleteConfirm";
     private static final String STATE_KEY_PREFIX = "state_";
@@ -215,9 +183,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Set<String> newTaskIds = new HashSet<>();
     // Set during rollRandomTask when a tier-skip occurs due to source filter exhaustion
     private String rollSkipNotice = null;
-    private String lastSyncResult = null;
-    private long lastSyncResultAtEpochMillis = 0L;
-    private String lastSyncResultAtLocalTime = null;
     private String lastCombatAchievementSyncResult = null;
     private long lastCombatAchievementSyncResultAtEpochMillis = 0L;
     private String lastCombatAchievementSyncResultAtLocalTime = null;
@@ -788,8 +753,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     + (newTaskCount == 1 ? "" : "s") + "! Open the Tasks tab to see them.");
         }
 
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     private String getAccountKey() {
@@ -1284,9 +1248,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setCurrentTaskCollectionLogBaselineCount(currentTaskCollectionLogBaselineCount);
         state.setLastSeenPackVersion(lastSeenPackVersion);
         state.setLastKnownTaskCount(lastKnownTaskCount);
-        state.setLastSyncResult(lastSyncResult);
-        state.setLastSyncResultAtEpochMillis(lastSyncResultAtEpochMillis);
-        state.setLastSyncResultAtLocalTime(lastSyncResultAtLocalTime);
         state.setLastCombatAchievementSyncResult(lastCombatAchievementSyncResult);
         state.setLastCombatAchievementSyncResultAtEpochMillis(lastCombatAchievementSyncResultAtEpochMillis);
         state.setLastCombatAchievementSyncResultAtLocalTime(lastCombatAchievementSyncResultAtLocalTime);
@@ -1693,12 +1654,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTaskCollectionLogBaselineCount = state.getCurrentTaskCollectionLogBaselineCount();
         lastSeenPackVersion = state.getLastSeenPackVersion();
         lastKnownTaskCount = state.getLastKnownTaskCount();
-        lastSyncResult = safeTrim(state.getLastSyncResult());
-        lastSyncResultAtEpochMillis = state.getLastSyncResultAtEpochMillis();
-        lastSyncResultAtLocalTime = safeTrim(state.getLastSyncResultAtLocalTime());
-        if (lastSyncResultAtLocalTime == null && lastSyncResultAtEpochMillis > 0L)
+        String legacyLastSyncResult = safeTrim(state.getLastSyncResult());
+        long legacyLastSyncResultAtEpochMillis = state.getLastSyncResultAtEpochMillis();
+        String legacyLastSyncResultAtLocalTime = safeTrim(state.getLastSyncResultAtLocalTime());
+        if (legacyLastSyncResultAtLocalTime == null && legacyLastSyncResultAtEpochMillis > 0L)
         {
-            lastSyncResultAtLocalTime = formatSaveTime(lastSyncResultAtEpochMillis);
+            legacyLastSyncResultAtLocalTime = formatSaveTime(legacyLastSyncResultAtEpochMillis);
         }
         lastCombatAchievementSyncResult = safeTrim(state.getLastCombatAchievementSyncResult());
         lastCombatAchievementSyncResultAtEpochMillis = state.getLastCombatAchievementSyncResultAtEpochMillis();
@@ -1718,7 +1679,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         setLastSyncedTaskNames(TaskSource.COLLECTION_LOG, state.getLastCollectionLogSyncedTaskNames());
         combatAchievementSyncedTasksExpanded = state.isCombatAchievementSyncedTasksExpanded();
         collectionLogSyncedTasksExpanded = state.isCollectionLogSyncedTasksExpanded();
-        migrateLegacyLastSyncResultIfNeeded();
+        migrateLegacyLastSyncResultIfNeeded(
+                legacyLastSyncResult,
+                legacyLastSyncResultAtEpochMillis,
+                legacyLastSyncResultAtLocalTime);
         if (state.getSyncCompletionCandidateTaskIds() != null)
         {
             syncCompletionCandidateTaskIds.addAll(state.getSyncCompletionCandidateTaskIds());
@@ -1755,9 +1719,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         loadedStateAtMillis = 0L;
         lastSeenPackVersion = 0;
         lastKnownTaskCount = 0;
-        lastSyncResult = null;
-        lastSyncResultAtEpochMillis = 0L;
-        lastSyncResultAtLocalTime = null;
         lastCombatAchievementSyncResult = null;
         lastCombatAchievementSyncResultAtEpochMillis = 0L;
         lastCombatAchievementSyncResultAtLocalTime = null;
@@ -1802,11 +1763,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        Map<String, XtremeTask> byId = tasks.stream()
-                .filter(Objects::nonNull)
-                .filter(task -> task.getId() != null)
-                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
-
+        Map<String, XtremeTask> byId = tasksById();
         List<String> names = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         for (String id : newlySyncedTaskIds)
@@ -1864,24 +1821,27 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         collectionLogSyncedTasksExpanded = expanded;
     }
 
-    private void migrateLegacyLastSyncResultIfNeeded()
+    private void migrateLegacyLastSyncResultIfNeeded(
+            String legacyLastSyncResult,
+            long legacyLastSyncResultAtEpochMillis,
+            String legacyLastSyncResultAtLocalTime)
     {
-        if (lastSyncResult == null || lastSyncResult.trim().isEmpty())
+        if (legacyLastSyncResult == null || legacyLastSyncResult.trim().isEmpty())
         {
             return;
         }
 
-        if (lastSyncResult.startsWith("Combat Achievement") && lastCombatAchievementSyncResult == null)
+        if (legacyLastSyncResult.startsWith("Combat Achievement") && lastCombatAchievementSyncResult == null)
         {
-            lastCombatAchievementSyncResult = lastSyncResult;
-            lastCombatAchievementSyncResultAtEpochMillis = lastSyncResultAtEpochMillis;
-            lastCombatAchievementSyncResultAtLocalTime = lastSyncResultAtLocalTime;
+            lastCombatAchievementSyncResult = legacyLastSyncResult;
+            lastCombatAchievementSyncResultAtEpochMillis = legacyLastSyncResultAtEpochMillis;
+            lastCombatAchievementSyncResultAtLocalTime = legacyLastSyncResultAtLocalTime;
         }
-        else if (lastSyncResult.startsWith("Collection Log") && lastCollectionLogSyncResult == null)
+        else if (legacyLastSyncResult.startsWith("Collection Log") && lastCollectionLogSyncResult == null)
         {
-            lastCollectionLogSyncResult = lastSyncResult;
-            lastCollectionLogSyncResultAtEpochMillis = lastSyncResultAtEpochMillis;
-            lastCollectionLogSyncResultAtLocalTime = lastSyncResultAtLocalTime;
+            lastCollectionLogSyncResult = legacyLastSyncResult;
+            lastCollectionLogSyncResultAtEpochMillis = legacyLastSyncResultAtEpochMillis;
+            lastCollectionLogSyncResultAtLocalTime = legacyLastSyncResultAtLocalTime;
         }
     }
 
@@ -2266,6 +2226,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .filter(task -> id.equals(task.getId()))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private Map<String, XtremeTask> tasksById()
+    {
+        return tasks.stream()
+                .filter(Objects::nonNull)
+                .filter(task -> task.getId() != null)
+                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
     }
 
     public Long getTaskTimeTicks(XtremeTask task)
@@ -2705,6 +2673,32 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 + "\nEnable " + otherLabel + " to officially finish the " + currentTierLabel + " tier.";
     }
 
+    /**
+     * Returns the roll skip notice if the current tier is exhausted for the active filter,
+     * but before rolling into the next tier. Used to warn the user before rolling.
+     */
+    public String getPendingRollSkipNotice()
+    {
+        TaskTier currentTier = getCurrentTier();
+        XtremeTaskerConfig.RollSourceFilter sourceFilter = config.rollSourceFilter();
+        if (currentTier == null || sourceFilter == XtremeTaskerConfig.RollSourceFilter.ALL)
+        {
+            return null;
+        }
+
+        boolean currentTierHasAvailableTask = tasks.stream()
+                .anyMatch(task -> task.getTier() == currentTier
+                        && !isTaskCompleted(task)
+                        && matchesRollSourceFilter(task, sourceFilter));
+        if (currentTierHasAvailableTask)
+        {
+            return null;
+        }
+
+        TaskTier nextTier = nextAvailableTierForSource(sourceFilter, currentTier);
+        return nextTier == null ? null : buildSourceFilteredRollNotice(sourceFilter, currentTier, nextTier);
+    }
+
     public void rollRandomTaskAndPersist()
     {
         if (!hasTaskPackLoaded())
@@ -2731,8 +2725,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         currentTaskId = (currentTask != null) ? currentTask.getId() : null;
         captureCurrentTaskCollectionLogBaseline();
-        dirty = true;
-        persistIfPossible(); // writes immediately if activeAccountKey != null
+        markDirtyAndPersist(); // writes immediately if activeAccountKey != null
     }
 
     @Override
@@ -2770,8 +2763,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         currentTaskId = (currentTask != null) ? currentTask.getId() : null;
         captureCurrentTaskCollectionLogBaseline();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     public void completeCurrentTaskAndPersist()
@@ -2792,8 +2784,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTaskId = null;
 
         rebuildTierCounts();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     public boolean canUndoRecentTaskCompletion()
@@ -2832,8 +2823,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         undoableCompletedTaskId = null;
 
         rebuildTierCounts();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     public void toggleTaskCompletedAndPersist(XtremeTask task)
@@ -2861,8 +2851,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         rebuildTierCounts();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     @Override
@@ -2938,8 +2927,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         rebuildTierCounts();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     private void markTaskIncomplete(String id)
@@ -3072,6 +3060,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             saveStateForAccount(activeAccountKey);
             dirty = false;
         });
+    }
+
+    private void markDirtyAndPersist()
+    {
+        dirty = true;
+        persistIfPossible();
     }
 
     // ---------- JSON task pack loading ----------
@@ -3798,32 +3792,24 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public String getLastSyncResult()
     {
-        String result;
-        if (lastCombatAchievementSyncResult != null && lastCollectionLogSyncResult != null)
-        {
-            result = lastCombatAchievementSyncResultAtEpochMillis >= lastCollectionLogSyncResultAtEpochMillis
-                    ? lastCombatAchievementSyncResult
-                    : lastCollectionLogSyncResult;
-            return cleanSyncResultForDisplay(result);
-        }
-        result = lastCombatAchievementSyncResult != null
+        return cleanSyncResultForDisplay(shouldShowCombatAchievementSyncResult()
                 ? lastCombatAchievementSyncResult
-                : lastCollectionLogSyncResult;
-        return cleanSyncResultForDisplay(result);
+                : lastCollectionLogSyncResult);
     }
 
     @Override
     public String getLastSyncResultAtLocalTime()
     {
-        if (lastCombatAchievementSyncResult != null && lastCollectionLogSyncResult != null)
-        {
-            return lastCombatAchievementSyncResultAtEpochMillis >= lastCollectionLogSyncResultAtEpochMillis
-                    ? lastCombatAchievementSyncResultAtLocalTime
-                    : lastCollectionLogSyncResultAtLocalTime;
-        }
-        return lastCombatAchievementSyncResult != null
+        return shouldShowCombatAchievementSyncResult()
                 ? lastCombatAchievementSyncResultAtLocalTime
                 : lastCollectionLogSyncResultAtLocalTime;
+    }
+
+    private boolean shouldShowCombatAchievementSyncResult()
+    {
+        return lastCombatAchievementSyncResult != null
+                && (lastCollectionLogSyncResult == null
+                || lastCombatAchievementSyncResultAtEpochMillis >= lastCollectionLogSyncResultAtEpochMillis);
     }
 
     @Override
@@ -3878,11 +3864,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        Map<String, XtremeTask> byId = tasks.stream()
-                .filter(Objects::nonNull)
-                .filter(task -> task.getId() != null)
-                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
-
+        Map<String, XtremeTask> byId = tasksById();
         syncMismatchTaskIds.removeIf(id -> {
             XtremeTask task = byId.get(id);
             return task == null || matchesSyncMismatchSource(task, source);
@@ -3915,11 +3897,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        Map<String, XtremeTask> byId = tasks.stream()
-                .filter(Objects::nonNull)
-                .filter(task -> task.getId() != null)
-                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
-
+        Map<String, XtremeTask> byId = tasksById();
         syncCompletionCandidateTaskIds.removeIf(id -> {
             XtremeTask task = byId.get(id);
             return task == null || matchesSyncMismatchSource(task, source);
@@ -3941,29 +3919,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     syncCompletionCandidateTaskIds.add(id);
                 }
             }
-        }
-    }
-
-    private void setSyncMismatchTasks(String title, List<XtremeTask> mismatches)
-    {
-        syncMismatchTaskIds.clear();
-        syncMismatchTitle = "";
-        if (mismatches == null || mismatches.isEmpty())
-        {
-            return;
-        }
-
-        Set<String> seen = new HashSet<>();
-        for (XtremeTask task : mismatches)
-        {
-            if (task != null && task.getId() != null && seen.add(task.getId()))
-            {
-                syncMismatchTaskIds.add(task.getId());
-            }
-        }
-        if (!syncMismatchTaskIds.isEmpty())
-        {
-            syncMismatchTitle = title == null ? "Review completed tasks" : title;
         }
     }
 
@@ -4003,10 +3958,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return syncMismatchTasksCache;
         }
 
-        Map<String, XtremeTask> byId = tasks.stream()
-                .filter(Objects::nonNull)
-                .filter(task -> task.getId() != null)
-                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
+        Map<String, XtremeTask> byId = tasksById();
         List<XtremeTask> out = new ArrayList<>();
         for (String id : syncMismatchTaskIds)
         {
@@ -4039,10 +3991,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        Map<String, XtremeTask> byId = tasks.stream()
-                .filter(Objects::nonNull)
-                .filter(task -> task.getId() != null)
-                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
+        Map<String, XtremeTask> byId = tasksById();
 
         boolean hasCollectionLogItemMismatch = false;
         for (String id : syncMismatchTaskIds)
@@ -4081,8 +4030,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             {
                 syncMismatchTitle = "";
             }
-            dirty = true;
-            persistIfPossible();
+            markDirtyAndPersist();
         }
     }
 
@@ -4254,8 +4202,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 ? ""
                 : "Review completed tasks";
         syncMismatchTasksCacheValid = false;
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     private static boolean isPassiveSyncMismatchSource(XtremeTask task)
@@ -4356,8 +4303,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             syncMismatchTitle = "";
         }
         syncMismatchTasksCacheValid = false;
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     @Override
@@ -4434,10 +4380,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return Collections.emptyList();
         }
 
-        Map<String, XtremeTask> byId = tasks.stream()
-                .filter(Objects::nonNull)
-                .filter(task -> task.getId() != null)
-                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
+        Map<String, XtremeTask> byId = tasksById();
 
         List<XtremeTask> out = new ArrayList<>();
         boolean changed = false;
@@ -4462,8 +4405,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 XtremeTask task = byId.get(id);
                 return task == null || isTaskCompleted(task);
             });
-            dirty = true;
-            persistIfPossible();
+            markDirtyAndPersist();
         }
 
         return out;
@@ -4478,10 +4420,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
         else
         {
-            Map<String, XtremeTask> byId = tasks.stream()
-                    .filter(Objects::nonNull)
-                    .filter(task -> task.getId() != null)
-                    .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
+            Map<String, XtremeTask> byId = tasksById();
 
             syncCompletionCandidateTaskIds.removeIf(id -> {
                 XtremeTask task = byId.get(id);
@@ -4489,8 +4428,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             });
         }
 
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     @Override
@@ -4527,8 +4465,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         syncCompletionCandidateTaskIds.removeAll(ids);
         rebuildTierCounts();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     @Override
@@ -4575,8 +4512,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public void dismissSyncMismatchReview()
     {
         clearSyncMismatchReviewState();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     @Override
@@ -4588,10 +4524,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        Map<String, XtremeTask> byId = tasks.stream()
-                .filter(Objects::nonNull)
-                .filter(task -> task.getId() != null)
-                .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
+        Map<String, XtremeTask> byId = tasksById();
 
         syncMismatchTaskIds.removeIf(id -> {
             XtremeTask task = byId.get(id);
@@ -4601,8 +4534,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             syncMismatchTitle = "";
         }
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     private void clearSyncMismatchReviewState()
@@ -4651,8 +4583,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             syncMismatchTitle = "";
         }
         rebuildTierCounts();
-        dirty = true;
-        persistIfPossible();
+        markDirtyAndPersist();
     }
 
     @Override
@@ -4692,8 +4623,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (!isFirstLoad && loadedPackVersion > lastSeenPackVersion) {
             log.debug("Task-pack version advanced from {} to {}", lastSeenPackVersion, loadedPackVersion);
             lastSeenPackVersion = loadedPackVersion;
-            dirty = true;
-            persistIfPossible();
+            markDirtyAndPersist();
         }
     }
 
@@ -4788,8 +4718,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 maybeFireVersionNudge();
             }
 
-            dirty = true;
-            persistIfPossible();
+            markDirtyAndPersist();
 
             detectNewTaskIds(tasks, previousKnownCount);
             int newTaskCount = newTaskIds.size();
@@ -4802,8 +4731,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             lastKnownTaskCount = tasks.size();
             knownTaskIds.clear();
             knownTaskIds.addAll(validIds);
-            dirty = true;
-            persistIfPossible();
+            markDirtyAndPersist();
 
         } catch (Exception e) {
             log.error("Failed to load embedded tasks.json", e);
@@ -4982,20 +4910,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void setSyncResultAndChat(TaskSource source, String msg)
     {
-        lastSyncResult = msg;
-        lastSyncResultAtEpochMillis = System.currentTimeMillis();
-        lastSyncResultAtLocalTime = formatSaveTime(lastSyncResultAtEpochMillis);
+        long now = System.currentTimeMillis();
+        String localTime = formatSaveTime(now);
         if (source == TaskSource.COMBAT_ACHIEVEMENT)
         {
             lastCombatAchievementSyncResult = msg;
-            lastCombatAchievementSyncResultAtEpochMillis = lastSyncResultAtEpochMillis;
-            lastCombatAchievementSyncResultAtLocalTime = lastSyncResultAtLocalTime;
+            lastCombatAchievementSyncResultAtEpochMillis = now;
+            lastCombatAchievementSyncResultAtLocalTime = localTime;
         }
         else if (source == TaskSource.COLLECTION_LOG)
         {
             lastCollectionLogSyncResult = msg;
-            lastCollectionLogSyncResultAtEpochMillis = lastSyncResultAtEpochMillis;
-            lastCollectionLogSyncResultAtLocalTime = lastSyncResultAtLocalTime;
+            lastCollectionLogSyncResultAtEpochMillis = now;
+            lastCollectionLogSyncResultAtLocalTime = localTime;
         }
         chat(msg);
     }
