@@ -6602,18 +6602,8 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
-            public Rectangle taskDetailsIgnoreBounds() {
-                return taskDetailsPopup.ignoreBounds();
-            }
-
-            @Override
             public Rectangle taskDetailsMarkIncompleteBounds() {
                 return taskDetailsPopup.markIncompleteBounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsToggleBounds() {
-                return taskDetailsPopup.toggleBounds();
             }
 
             @Override
@@ -6624,16 +6614,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public Rectangle taskDetailsScrollbarThumbBounds() {
                 return taskDetailsPopup.scrollbarThumbBounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsDecrementGroupBounds() {
-                return taskDetailsPopup.decrementGroupBounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsIncrementGroupBounds() {
-                return taskDetailsPopup.incrementGroupBounds();
             }
 
             @Override

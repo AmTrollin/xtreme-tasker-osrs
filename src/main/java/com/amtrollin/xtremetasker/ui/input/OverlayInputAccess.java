@@ -132,13 +132,9 @@ public interface OverlayInputAccess
     void closeTaskDetailsWikiMenu();
     WikiLink taskDetailsWikiLinkAt(Point point);
     List<WikiLink> taskDetailsWikiLinks(XtremeTask task);
-    Rectangle taskDetailsIgnoreBounds();
     Rectangle taskDetailsMarkIncompleteBounds();
-    Rectangle taskDetailsToggleBounds();
     Rectangle taskDetailsScrollbarRailBounds();
     Rectangle taskDetailsScrollbarThumbBounds();
-    Rectangle taskDetailsDecrementGroupBounds();
-    Rectangle taskDetailsIncrementGroupBounds();
     Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds();
     void handleTaskDetailsMarkIncompleteButton(XtremeTask task);
     void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task);

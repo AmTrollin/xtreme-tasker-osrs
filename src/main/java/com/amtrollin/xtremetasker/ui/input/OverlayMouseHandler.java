@@ -218,12 +218,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     return e;
                 }
 
-                if (a.taskDetailsIgnoreBounds().contains(p)) {
-                    a.plugin().dismissTaskSyncMismatchAndPersist(a.taskDetailsTask());
-                    e.consume();
-                    return e;
-                }
-
                 if (a.taskDetailsMarkIncompleteBounds().contains(p)) {
                     a.handleTaskDetailsMarkIncompleteButton(a.taskDetailsTask());
                     rememberTaskDetailsIncompleteConfirmOpeningClick(e, p, button);
@@ -1377,7 +1371,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         a.taskDetailsCloseBounds().contains(p)
                         || a.taskDetailsWikiBounds().contains(p)
                         || (a.isTaskDetailsWikiMenuOpen() && a.taskDetailsWikiMenuBounds().contains(p))
-                        || a.taskDetailsIgnoreBounds().contains(p)
                         || a.taskDetailsMarkIncompleteBounds().contains(p)
                         || taskDetailsInstanceRemoveContains(p)
                         || a.taskDetailsScrollbarThumbBounds().contains(p)

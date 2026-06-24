@@ -61,13 +61,9 @@ public final class TaskDetailsPopup
     private final Rectangle closeBounds = new Rectangle();
     private final Rectangle wikiBounds = new Rectangle();
     private final Rectangle wikiMenuBounds = new Rectangle();
-    private final Rectangle ignoreBounds = new Rectangle();
     private final Rectangle markIncompleteBounds = new Rectangle();
-    private final Rectangle toggleBounds = new Rectangle();
     private final Rectangle scrollbarRailBounds = new Rectangle();
     private final Rectangle scrollbarThumbBounds = new Rectangle();
-    private final Rectangle decrementGroupBounds = new Rectangle();
-    private final Rectangle incrementGroupBounds = new Rectangle();
     private final Rectangle groupProgressHelpBounds = new Rectangle();
     private final Map<XtremeTask, Rectangle> instanceRemoveBounds = new LinkedHashMap<>();
     private final List<WikiLink> wikiLinks = new ArrayList<>();
@@ -113,13 +109,9 @@ public final class TaskDetailsPopup
         closeBounds.setBounds(0, 0, 0, 0);
         wikiBounds.setBounds(0, 0, 0, 0);
         wikiMenuBounds.setBounds(0, 0, 0, 0);
-        ignoreBounds.setBounds(0, 0, 0, 0);
         markIncompleteBounds.setBounds(0, 0, 0, 0);
-        toggleBounds.setBounds(0, 0, 0, 0);
         scrollbarRailBounds.setBounds(0, 0, 0, 0);
         scrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        decrementGroupBounds.setBounds(0, 0, 0, 0);
-        incrementGroupBounds.setBounds(0, 0, 0, 0);
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
         wikiLinks.clear();
@@ -187,19 +179,9 @@ public final class TaskDetailsPopup
         return null;
     }
 
-    public Rectangle ignoreBounds()
-    {
-        return ignoreBounds;
-    }
-
     public Rectangle markIncompleteBounds()
     {
         return markIncompleteBounds;
-    }
-
-    public Rectangle toggleBounds()
-    {
-        return toggleBounds;
     }
 
     public Rectangle scrollbarRailBounds()
@@ -210,16 +192,6 @@ public final class TaskDetailsPopup
     public Rectangle scrollbarThumbBounds()
     {
         return scrollbarThumbBounds;
-    }
-
-    public Rectangle decrementGroupBounds()
-    {
-        return decrementGroupBounds;
-    }
-
-    public Rectangle incrementGroupBounds()
-    {
-        return incrementGroupBounds;
     }
 
     public Map<XtremeTask, Rectangle> instanceRemoveBounds()
@@ -390,7 +362,6 @@ public final class TaskDetailsPopup
         int wikiTextW = fm.stringWidth(wikiText);
         g.drawString(wikiText, wikiBounds.x + (wikiBounds.width - wikiTextW) / 2, centeredTextBaseline(wikiBounds, fm));
 
-        ignoreBounds.setBounds(0, 0, 0, 0);
         markIncompleteBounds.setBounds(0, 0, 0, 0);
         if (headerComplete && !grouped)
         {
@@ -419,10 +390,7 @@ public final class TaskDetailsPopup
         int contentLeft = bounds.x + pad;
         int contentTop = metaYTop + badgeH + 12;
         int contentW = bounds.width - (pad * 2);
-        decrementGroupBounds.setBounds(0, 0, 0, 0);
-        incrementGroupBounds.setBounds(0, 0, 0, 0);
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
-        toggleBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
         java.awt.Point mousePoint = mouse == null ? null : new java.awt.Point(mouse.getX(), mouse.getY());
 
@@ -430,7 +398,7 @@ public final class TaskDetailsPopup
         List<XtremeTask> groupInstances = (grouped && taskGroupProvider != null) ? taskGroupProvider.apply(task) : List.of();
         CompletionInfo completionInfo = (completionInfoProvider != null) ? completionInfoProvider.apply(task) : null;
         Long ticks = (taskTicksProvider != null) ? taskTicksProvider.apply(task) : null;
-        String completionLine = buildCompletionLine(completionInfo, ticks);
+        String completionLine = buildCompletionLine(completionInfo);
         String timeTakenLine = done ? buildTimeSpentLine(completionInfo, ticks) : null;
         CollectionLogRequirementPreview requirementPreview = collectionLogRequirementPreviewProvider == null
                 ? null
@@ -989,27 +957,6 @@ public final class TaskDetailsPopup
         return y;
     }
 
-    private void drawPopupButton(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean enabled)
-    {
-        Color bg = enabled ? new Color(32, 26, 17, 235) : new Color(32, 26, 17, 140);
-        drawBevelBox(g, bounds, bg);
-
-        if (enabled)
-        {
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 200));
-            g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
-        }
-
-        g.setColor(enabled ? palette.UI_TEXT : new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 140));
-
-        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - 10);
-        int tw = fm.stringWidth(drawText);
-
-        g.drawString(drawText,
-                bounds.x + (bounds.width - tw) / 2,
-                centeredTextBaseline(bounds, fm));
-    }
-
     private void drawMarkIncompleteAction(Graphics2D g, Rectangle bounds, boolean hover)
     {
         Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
@@ -1053,9 +1000,6 @@ public final class TaskDetailsPopup
     {
         final int rowH = 18;
         final int gap = 6;
-        decrementGroupBounds.setBounds(0, 0, 0, 0);
-        incrementGroupBounds.setBounds(0, 0, 0, 0);
-
         String text = "Completed: " + progress.getCompleted() + "/" + progress.getTotal();
         int textX = x;
         int textW = Math.max(0, contentW - (textX - x));
@@ -1228,36 +1172,6 @@ public final class TaskDetailsPopup
         }
     }
 
-    private void drawTinyButton(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean enabled)
-    {
-        Color bg = enabled ? new Color(32, 26, 17, 235) : new Color(32, 26, 17, 140);
-        drawBevelBox(g, bounds, bg);
-        g.setColor(enabled ? palette.UI_TEXT : new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 140));
-        int tw = fm.stringWidth(text);
-        g.drawString(text, bounds.x + (bounds.width - tw) / 2, centeredTextBaseline(bounds, fm));
-    }
-
-    private int drawBevelBadge(Graphics2D g, FontMetrics fm, int x, int yTop, String text, boolean activeLook)
-    {
-        final int padX = 8;
-        final int h = ROW_HEIGHT + 4;
-        int textW = fm.stringWidth(text);
-        int w = Math.max(26, textW + padX * 2);
-
-        Rectangle r = new Rectangle(x, yTop, w, h);
-
-        Color bg = activeLook ? new Color(78, 62, 38, 240) : new Color(32, 26, 17, 235);
-        drawBevelBox(g, r, bg);
-
-        g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 160));
-        g.drawRect(r.x, r.y, r.width, r.height);
-
-        g.setColor(palette.UI_TEXT);
-        g.drawString(text, r.x + (r.width - textW) / 2, centeredTextBaseline(r, fm));
-
-        return w;
-    }
-
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill)
     {
         TaskRowsRenderer.drawBevelBoxLogic(g, r, fill, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT);
@@ -1301,11 +1215,6 @@ public final class TaskDetailsPopup
         {
             return null;
         }
-    }
-
-    private void drawTooltip(Graphics2D g, FontMetrics fm, String text, int anchorX, int anchorY)
-    {
-        drawTooltip(g, fm, text, anchorX, anchorY, false);
     }
 
     private void drawTooltip(Graphics2D g, FontMetrics fm, String text, int anchorX, int anchorY, boolean alignLeft)
@@ -1642,7 +1551,7 @@ public final class TaskDetailsPopup
                 : "Eligible Collection Log items";
     }
 
-    private static String buildCompletionLine(CompletionInfo info, Long ticks)
+    private static String buildCompletionLine(CompletionInfo info)
     {
         if (info == null) return null;
         if (info.timestamp <= 0) return "Date unknown";
@@ -1688,7 +1597,7 @@ public final class TaskDetailsPopup
         {
             CompletedInstance completed = completedInstances.get(i);
             String prefix = instanceHistoryPrefix(completed.task, i, collectionLogSequenceLabelProvider);
-            String dateText = instanceCompletionDateText(completed.info, completed.ticks);
+            String dateText = instanceCompletionDateText(completed.info);
             String timeText = instanceTimeSpentText(completed.info, completed.ticks);
 
             lines.add(new InstanceHistoryLine(
@@ -1772,7 +1681,7 @@ public final class TaskDetailsPopup
         }
     }
 
-    private static String instanceCompletionDateText(CompletionInfo info, Long ticks)
+    private static String instanceCompletionDateText(CompletionInfo info)
     {
         if (info == null)
         {
