@@ -147,12 +147,21 @@ public class PrerequisiteTrackerServiceTest
     }
 
     @Test
-    public void bareFavourPrerequisiteUsesFavourIconMarker()
+    public void taiBwoFavourPrerequisiteCompletesAndUsesBulletMarker()
     {
         PrerequisiteStatus status = serviceWithVarbitValue(4600, 100).evaluate("Tai Bwo Wannai Cleanup favour").get(0);
 
         assertTrue(status.isCompleted());
-        assertEquals(List.of(MarkerIcon.FAVOUR), status.getMarkerIcons());
+        assertEquals(List.of(MarkerIcon.BULLET), status.getMarkerIcons());
+    }
+
+    @Test
+    public void kourendFavourPrerequisiteUsesBulletMarker()
+    {
+        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 100).evaluate("100% Hosidius favour").get(0);
+
+        assertFalse(status.isCompleted());
+        assertEquals(List.of(MarkerIcon.BULLET), status.getMarkerIcons());
     }
 
     @Test
@@ -172,72 +181,50 @@ public class PrerequisiteTrackerServiceTest
     }
 
     @Test
-    public void jagexAccountPrerequisiteUsesJagexAccountIconMarker()
+    public void jagexAccountPrerequisiteUsesBulletMarker()
     {
         PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0)
                 .evaluate("Own a Jagex Account or set up the older RuneScape Authenticator")
                 .get(0);
 
-        assertEquals(List.of(MarkerIcon.JAGEX_ACCOUNT), status.getMarkerIcons());
+        assertEquals(List.of(MarkerIcon.BULLET), status.getMarkerIcons());
     }
 
     @Test
-    public void namedNonSkillPrerequisitesUseSpecificIconMarkers()
+    public void namedNonSkillPrerequisitesUseBulletMarker()
     {
         PrerequisiteTrackerService service = new PrerequisiteTrackerService(id -> 0);
 
-        assertEquals(List.of(MarkerIcon.THERMONUCLEAR_SMOKE_DEVIL),
-                service.evaluate("Defeat the Thermonuclear smoke devil").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.RAID_WIKI),
-                service.evaluate("See Wiki (Based on Raid)").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.GIANT_MOLE),
-                service.evaluate("Defeat the Giant Mole").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.PROSPECTOR_HELMET),
-                service.evaluate("Acquire a prospector helmet from the Motherlode Mine").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.LIZARDMAN_SHAMAN),
-                service.evaluate("Defeat a Lizardman Shaman in the Lizardman Temple").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.BONES_TO_PEACHES),
-                service.evaluate("Access to the Bones to Peaches spell from the Mage Training Arena").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.ZULRAH),
-                service.evaluate("Defeat Zulrah").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.CHAOS_ELEMENTAL),
-                service.evaluate("Defeat the Chaos elemental").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.THERMONUCLEAR_SMOKE_DEVIL),
-                service.evaluate("Access to Thermonuclear smoke devil").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.CHOMPY_BIRD),
-                service.evaluate("Reach 1,000 chompy or jubbly bird kills").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.KALPHITE_QUEEN),
-                service.evaluate("Defeat the Kalphite Queen and obtain her tattered head").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.PENANCE_QUEEN),
-                service.evaluate("Defeat the Penance Queen and acquire level 5 in all Barbarian Assault roles").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.PYRAMID_PLUNDER),
-                service.evaluate("Open the Grand Gold Chest in the final room of Pyramid Plunder").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.SKOTIZO),
-                service.evaluate("Defeat Skotizo").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.HYDRA),
-                service.evaluate("Defeat a Hydra in the Karuulm Slayer Dungeon").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.WHITE_KNIGHT),
-                service.evaluate("Reach the rank of White Knight Master").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.KET_ZEK),
-                service.evaluate("Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.TZHAAR_FIGHT_CAVE),
-                service.evaluate("TzHaar Fight Cave").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.BARROWS_CHEST),
-                service.evaluate("Open the Barrows chest while wearing a full Barrows set").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.CHAMBERS_OF_XERIC),
-                service.evaluate("Chambers of Xeric").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.CRAZY_ARCHAEOLOGIST, MarkerIcon.CHAOS_FANATIC, MarkerIcon.SCORPIA),
-                service.evaluate("Defeat the Crazy Archaeologist, Chaos Fanatic, and Scorpia").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.SARADOMIN_STRIKE, MarkerIcon.CLAWS_OF_GUTHIX, MarkerIcon.FLAMES_OF_ZAMORAK),
-                service.evaluate("Access to at least one of the three god spells").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.DAGANNOTH_REX, MarkerIcon.DAGANNOTH_SUPREME, MarkerIcon.DAGANNOTH_PRIME),
-                service.evaluate("Defeat each of the Dagannoth Kings").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.CALLISTO, MarkerIcon.VENENATIS, MarkerIcon.VETION),
-                service.evaluate("Defeat Callisto/Artio, Venenatis/Spindel, and Vet'ion/Calvar'ion").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.KRIL_TSUTSAROTH, MarkerIcon.KREEARRA, MarkerIcon.COMMANDER_ZILYANA, MarkerIcon.GENERAL_GRAARDOR),
-                service.evaluate("Defeat all God Wars Dungeon generals except Nex").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.VOID_TOP, MarkerIcon.VOID_ROBE, MarkerIcon.VOID_GLOVES),
-                service.evaluate("Acquire and wear any complete void set").get(0).getMarkerIcons());
+        for (String prerequisite : List.of(
+                "Defeat the Thermonuclear smoke devil",
+                "See Wiki (Based on Raid)",
+                "Defeat the Giant Mole",
+                "Acquire a prospector helmet from the Motherlode Mine",
+                "Defeat a Lizardman Shaman in the Lizardman Temple",
+                "Access to the Bones to Peaches spell from the Mage Training Arena",
+                "Defeat Zulrah",
+                "Defeat the Chaos elemental",
+                "Access to Thermonuclear smoke devil",
+                "Reach 1,000 chompy or jubbly bird kills",
+                "Defeat the Kalphite Queen and obtain her tattered head",
+                "Defeat the Penance Queen and acquire level 5 in all Barbarian Assault roles",
+                "Open the Grand Gold Chest in the final room of Pyramid Plunder",
+                "Defeat Skotizo",
+                "Defeat a Hydra in the Karuulm Slayer Dungeon",
+                "Reach the rank of White Knight Master",
+                "Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave",
+                "TzHaar Fight Cave",
+                "Open the Barrows chest while wearing a full Barrows set",
+                "Chambers of Xeric",
+                "Defeat the Crazy Archaeologist, Chaos Fanatic, and Scorpia",
+                "Access to at least one of the three god spells",
+                "Defeat each of the Dagannoth Kings",
+                "Defeat Callisto/Artio, Venenatis/Spindel, and Vet'ion/Calvar'ion",
+                "Defeat all God Wars Dungeon generals except Nex",
+                "Acquire and wear any complete void set"))
+        {
+            assertEquals(List.of(MarkerIcon.BULLET), service.evaluate(prerequisite).get(0).getMarkerIcons());
+        }
         assertEquals(List.of(MarkerIcon.WILDERNESS),
                 service.evaluate("Access to the Wilderness God Wars Dungeon").get(0).getMarkerIcons());
     }

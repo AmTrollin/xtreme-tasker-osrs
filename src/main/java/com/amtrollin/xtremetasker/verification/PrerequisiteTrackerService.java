@@ -47,7 +47,6 @@ public class PrerequisiteTrackerService
     private static final Pattern TOTAL_LEVEL_PATTERN = Pattern.compile("^(\\d+)\\s+total\\s+level$", Pattern.CASE_INSENSITIVE);
     private static final Pattern FAVOR_PERCENT_PATTERN = Pattern.compile("^(?:reach\\s+)?(\\d+)%\\s+(.+?)\\s+favou?r$", Pattern.CASE_INSENSITIVE);
     private static final Pattern FAVOR_PREREQ_PATTERN = Pattern.compile("^(?:reach\\s+)?(.+?)\\s+favou?r$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern JAGEX_ACCOUNT_PATTERN = Pattern.compile("^own\\s+a\\s+jagex\\s+account$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COINS_PATTERN = Pattern.compile("^([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*([kmb]?)\\s*(?:coins?|gp)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern POINTS_PATTERN = Pattern.compile("^([0-9][0-9,]*(?:\\.[0-9]+)?)([kmb]?)\\s+(.+?)\\s+points?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern DIARY_PREREQ_PATTERN = Pattern.compile(
@@ -68,6 +67,7 @@ public class PrerequisiteTrackerService
     private final Map<String, Integer> varbitsByName = new HashMap<>();
     private final IntUnaryOperator varbitReader;
     private final ToIntFunction<Skill> skillLevelReader;
+    private static final int VARBIT_TAI_BWO_WANNAI_CLEANUP = 4600;
 
     @Inject
     private Client client;
@@ -285,18 +285,16 @@ public class PrerequisiteTrackerService
         }
 
         Matcher favorMatcher = FAVOR_PERCENT_PATTERN.matcher(normalized);
-        if (favorMatcher.matches())
+        if (favorMatcher.matches() && isTaiBwoFavorLabel(favorMatcher.group(2)))
         {
             int requiredFavor = Integer.parseInt(favorMatcher.group(1));
-            Integer currentFavor = getFavorFor(favorMatcher.group(2));
-            return currentFavor != null && currentFavor >= requiredFavor;
+            return getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP) >= requiredFavor;
         }
 
         Matcher bareFavorMatcher = FAVOR_PREREQ_PATTERN.matcher(normalized);
-        if (bareFavorMatcher.matches())
+        if (bareFavorMatcher.matches() && isTaiBwoFavorLabel(bareFavorMatcher.group(1)))
         {
-            Integer currentFavor = getFavorFor(bareFavorMatcher.group(1));
-            return currentFavor != null && currentFavor >= 100;
+            return getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP) >= 100;
         }
 
         Matcher coinsMatcher = COINS_PATTERN.matcher(normalized);
@@ -444,11 +442,6 @@ public class PrerequisiteTrackerService
         registerVarbit("TITHE_FARM_POINTS", Varbits.TITHE_FARM_POINTS);
         registerVarbit("BA_GC", Varbits.BA_GC);
 
-        registerVarbit("KOUREND_FAVOR_ARCEUUS", Varbits.KOUREND_FAVOR_ARCEUUS);
-        registerVarbit("KOUREND_FAVOR_HOSIDIUS", Varbits.KOUREND_FAVOR_HOSIDIUS);
-        registerVarbit("KOUREND_FAVOR_LOVAKENGJ", Varbits.KOUREND_FAVOR_LOVAKENGJ);
-        registerVarbit("KOUREND_FAVOR_PISCARILIUS", Varbits.KOUREND_FAVOR_PISCARILIUS);
-        registerVarbit("KOUREND_FAVOR_SHAYZIEN", Varbits.KOUREND_FAVOR_SHAYZIEN);
     }
 
     private void registerDiaryVarbits()
@@ -701,27 +694,6 @@ public class PrerequisiteTrackerService
                 icons.add(MarkerIcon.TOTAL);
                 continue;
             }
-            if (FAVOR_PERCENT_PATTERN.matcher(normalized).matches())
-            {
-                icons.add(MarkerIcon.FAVOUR);
-                continue;
-            }
-            if (FAVOR_PREREQ_PATTERN.matcher(normalized).matches())
-            {
-                icons.add(MarkerIcon.FAVOUR);
-                continue;
-            }
-            if (JAGEX_ACCOUNT_PATTERN.matcher(normalized).matches())
-            {
-                icons.add(MarkerIcon.JAGEX_ACCOUNT);
-                continue;
-            }
-            List<MarkerIcon> namedPrereqIcons = namedPrerequisiteMarkerIcons(normalized);
-            if (!namedPrereqIcons.isEmpty())
-            {
-                icons.addAll(namedPrereqIcons);
-                continue;
-            }
             if (COINS_PATTERN.matcher(normalized).matches())
             {
                 icons.add(MarkerIcon.CURRENCY);
@@ -750,80 +722,12 @@ public class PrerequisiteTrackerService
             {
                 icons.add(MarkerIcon.WILDERNESS);
             }
+            else if (skillIcons(option).isEmpty())
+            {
+                icons.add(MarkerIcon.BULLET);
+            }
         }
         return new ArrayList<>(icons);
-    }
-
-    private List<MarkerIcon> namedPrerequisiteMarkerIcons(String prerequisite)
-    {
-        String normalized = normalize(prerequisite);
-        if (normalized.contains("thermonuclearsmokedevil"))
-        {
-            return List.of(MarkerIcon.THERMONUCLEAR_SMOKE_DEVIL);
-        }
-
-        if (normalized.contains("chompy") || normalized.contains("jubblybirdkills"))
-        {
-            return List.of(MarkerIcon.CHOMPY_BIRD);
-        }
-
-        if (normalized.contains("kalphitequeen"))
-        {
-            return List.of(MarkerIcon.KALPHITE_QUEEN);
-        }
-
-        if (normalized.contains("penancequeen"))
-        {
-            return List.of(MarkerIcon.PENANCE_QUEEN);
-        }
-
-        switch (normalized)
-        {
-            case "defeatthecrazyarchaeologistchaosfanaticandscorpia":
-                return List.of(MarkerIcon.CRAZY_ARCHAEOLOGIST, MarkerIcon.CHAOS_FANATIC, MarkerIcon.SCORPIA);
-            case "accesstoatleastoneofthethreegodspells":
-                return List.of(MarkerIcon.SARADOMIN_STRIKE, MarkerIcon.CLAWS_OF_GUTHIX, MarkerIcon.FLAMES_OF_ZAMORAK);
-            case "defeateachofthedagannothkings":
-                return List.of(MarkerIcon.DAGANNOTH_REX, MarkerIcon.DAGANNOTH_SUPREME, MarkerIcon.DAGANNOTH_PRIME);
-            case "defeatcallistoartiovenenatisspindelandvetioncalvarion":
-                return List.of(MarkerIcon.CALLISTO, MarkerIcon.VENENATIS, MarkerIcon.VETION);
-            case "defeatallgodwarsdungeongeneralsexceptnex":
-                return List.of(MarkerIcon.KRIL_TSUTSAROTH, MarkerIcon.KREEARRA, MarkerIcon.COMMANDER_ZILYANA, MarkerIcon.GENERAL_GRAARDOR);
-            case "acquireandwearanycompletevoidset":
-                return List.of(MarkerIcon.VOID_TOP, MarkerIcon.VOID_ROBE, MarkerIcon.VOID_GLOVES);
-            case "seewikibasedonraid":
-                return List.of(MarkerIcon.RAID_WIKI);
-            case "defeatthegiantmole":
-                return List.of(MarkerIcon.GIANT_MOLE);
-            case "acquireaprospectorhelmetfromthemotherlodemine":
-                return List.of(MarkerIcon.PROSPECTOR_HELMET);
-            case "defeatalizardmanshamaninthelizardmantemple":
-                return List.of(MarkerIcon.LIZARDMAN_SHAMAN);
-            case "accesstothebonestopeachesspellfromthemagetrainingarena":
-                return List.of(MarkerIcon.BONES_TO_PEACHES);
-            case "defeatzulrah":
-                return List.of(MarkerIcon.ZULRAH);
-            case "defeatthechaoselemental":
-                return List.of(MarkerIcon.CHAOS_ELEMENTAL);
-            case "openthegrandgoldchestinthefinalroomofpyramidplunder":
-                return List.of(MarkerIcon.PYRAMID_PLUNDER);
-            case "defeatskotizo":
-                return List.of(MarkerIcon.SKOTIZO);
-            case "defeatahydrainthekaruulmslayerdungeon":
-                return List.of(MarkerIcon.HYDRA);
-            case "reachtherankofwhiteknightmaster":
-                return List.of(MarkerIcon.WHITE_KNIGHT);
-            case "defeataketzekinthetzhaarfightcaveonthe31stwave":
-                return List.of(MarkerIcon.KET_ZEK);
-            case "tzhaarfightcave":
-                return List.of(MarkerIcon.TZHAAR_FIGHT_CAVE);
-            case "openthebarrowschestwhilewearingafullbarrowsset":
-                return List.of(MarkerIcon.BARROWS_CHEST);
-            case "chambersofxeric":
-                return List.of(MarkerIcon.CHAMBERS_OF_XERIC);
-            default:
-                return List.of();
-        }
     }
 
     private MarkerIcon miniquestMarkerIcon(String prerequisite)
@@ -850,6 +754,12 @@ public class PrerequisiteTrackerService
             default:
                 return null;
         }
+    }
+
+    private static boolean isTaiBwoFavorLabel(String rawFavorLabel)
+    {
+        String label = normalize(rawFavorLabel);
+        return label.contains("taibwo") || label.contains("wannai");
     }
 
     private int realSkillLevel(Skill skill)
@@ -905,54 +815,6 @@ public class PrerequisiteTrackerService
         if (label.contains("chambersofxeric") || label.equals("cox") || label.equals("raids") || label.equals("raid"))
         {
             return client == null ? null : client.getVarpValue(VarPlayer.RAIDS_PERSONAL_POINTS);
-        }
-
-        return null;
-    }
-
-    // Raw varbit ID for Tai Bwo Wannai Cleanup minigame favour (0–100 scale).
-    // No constant exists in RuneLite's Varbits API for this; sourced from OSRS wiki varbit 4600.
-    private static final int VARBIT_TAI_BWO_WANNAI_CLEANUP = 4600;
-
-    private Integer getFavorFor(String rawFavorLabel)
-    {
-        String label = normalize(rawFavorLabel);
-
-        if (label.contains("tai bwo") || label.contains("wannai"))
-        {
-            return getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP);
-        }
-
-        if (label.contains("arceuus"))
-        {
-            return getVarbitByName("KOUREND_FAVOR_ARCEUUS");
-        }
-        if (label.contains("hosidius"))
-        {
-            return getVarbitByName("KOUREND_FAVOR_HOSIDIUS");
-        }
-        if (label.contains("lovakengj"))
-        {
-            return getVarbitByName("KOUREND_FAVOR_LOVAKENGJ");
-        }
-        if (label.contains("piscarilius"))
-        {
-            return getVarbitByName("KOUREND_FAVOR_PISCARILIUS");
-        }
-        if (label.contains("shayzien"))
-        {
-            return getVarbitByName("KOUREND_FAVOR_SHAYZIEN");
-        }
-
-        // For broad "Kourend favour" phrasing, require all five houses at threshold.
-        if (label.contains("kourend") || label.contains("house"))
-        {
-            int arceuus = valueOrZero(getVarbitByName("KOUREND_FAVOR_ARCEUUS"));
-            int hosidius = valueOrZero(getVarbitByName("KOUREND_FAVOR_HOSIDIUS"));
-            int lovakengj = valueOrZero(getVarbitByName("KOUREND_FAVOR_LOVAKENGJ"));
-            int piscarilius = valueOrZero(getVarbitByName("KOUREND_FAVOR_PISCARILIUS"));
-            int shayzien = valueOrZero(getVarbitByName("KOUREND_FAVOR_SHAYZIEN"));
-            return Math.min(Math.min(arceuus, hosidius), Math.min(Math.min(lovakengj, piscarilius), shayzien));
         }
 
         return null;
