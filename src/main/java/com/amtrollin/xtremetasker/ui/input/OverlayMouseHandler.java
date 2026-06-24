@@ -16,7 +16,6 @@ import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.util.LinkBrowser;
 
 import java.awt.*;
-import java.awt.Cursor;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
@@ -1254,23 +1253,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
         List<XtremeTask> tasksBefore = a.getSortedTasksForTier(a.activeTier());
         a.selectionModel().setSelectionToTask(a.activeTier(), tasksBefore, task);
 
-        if (button == MouseEvent.BUTTON1)
-        {
-            a.openTaskDetails(task);
-            rememberTaskRowClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        if (button == MouseEvent.BUTTON3)
-        {
-            a.openTaskDetails(task);
-            rememberTaskRowClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        return false;
+        a.openTaskDetails(task);
+        rememberTaskRowClick(e, p, button);
+        e.consume();
+        return true;
     }
 
     private boolean isDuplicateTaskRowClick(MouseEvent e, Point p, int button)
@@ -1375,7 +1361,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         boolean completionDisabled = tq.statusFilter != TaskListQuery.StatusFilter.ALL;
         boolean tierEnabledScope = tq.tierScope == TaskListQuery.TierScope.ALL_TIERS;
         boolean dateEnabledScope = tq.statusFilter == TaskListQuery.StatusFilter.COMPLETE;
-        boolean hasAnySort = tq.sortByCompletion || tq.sortByTier || tq.sortByDate || tq.sortByTimeTicks;
 
         TaskControlsLayout cl = a.controlsLayout();
 
@@ -1453,7 +1438,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || (tierEnabledScope && cl.sortTier.contains(p))
                         || (dateEnabledScope && cl.sortDate.contains(p))
                         || (dateEnabledScope && cl.sortTimeTicks.width > 0 && cl.sortTimeTicks.contains(p))
-                        || (hasAnySort && cl.sortReset.contains(p))
                         // new tasks button
                         || cl.filterNewTasks.contains(p)
                         || cl.filterNewTasksHelp.contains(p)
@@ -2027,22 +2011,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         // Oldest First → OFF
         q.sortByDate = false;
         return true;
-    }
-
-    private boolean onClickSortReset() {
-        TaskListQuery q = a.taskQuery();
-        boolean changed = false;
-
-        if (q.sortByCompletion) {
-            q.sortByCompletion = false;
-            changed = true;
-        }
-        if (q.sortByTier) {
-            q.sortByTier = false;
-            changed = true;
-        }
-
-        return changed;
     }
 
     /** Returns the character index in {@code text} closest to pixel {@code clickX}. */
