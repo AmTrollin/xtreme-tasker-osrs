@@ -77,7 +77,6 @@ import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFil
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CLOGS;
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.DAS;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
-import static com.amtrollin.xtremetasker.ui.style.UiStrings.*;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
 
 public class XtremeTaskerOverlay extends Overlay {
@@ -1799,7 +1798,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private double compactCurrentWheelRemainderPx = 0.0;
     private double compactCurrentPendingWheelRotation = 0.0;
 
-    private final CurrentTabRenderer currentTabRenderer = new CurrentTabRenderer(PANEL_W_TASKS, PANEL_PADDING, ROW_HEIGHT, P.UI_GOLD, P.UI_TEXT, P.UI_TEXT_DIM, P.BTN_ENABLED_BG, P.UI_EDGE_LIGHT, P.UI_EDGE_DARK, WIKI_BUTTON_TEXT);
+    private final CurrentTabRenderer currentTabRenderer = new CurrentTabRenderer(PANEL_W_TASKS, PANEL_PADDING, ROW_HEIGHT, P.UI_GOLD, P.UI_TEXT, P.UI_TEXT_DIM, P.UI_EDGE_LIGHT, P.UI_EDGE_DARK);
     private final CurrentTabViewRenderer currentTabViewRenderer = new CurrentTabViewRenderer(currentTabRenderer, P);
     private final CurrentTabState currentTabState = new CurrentTabState(currentLayout);
 
@@ -4580,7 +4579,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 null,
                 this::buildCollectionLogRequirementPreview,
                 this::getCachedItemImage,
-                this::getTasksForTier,
                 tierForProgress,
                 src,
                 plugin.getRollSourceFilter(),

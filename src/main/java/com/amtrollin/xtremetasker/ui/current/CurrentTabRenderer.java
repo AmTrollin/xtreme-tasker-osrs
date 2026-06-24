@@ -54,11 +54,8 @@ public final class CurrentTabRenderer
     private final Color uiGold;
     private final Color uiText;
     private final Color uiTextDim;
-    private final Color tabActiveBg;
     private final Color edgeLight;
     private final Color edgeDark;
-
-    private final String wikiButtonText;
 
     public CurrentTabRenderer(
             int panelWidth,
@@ -67,10 +64,8 @@ public final class CurrentTabRenderer
             Color uiGold,
             Color uiText,
             Color uiTextDim,
-            Color tabActiveBg,
             Color edgeLight,
-            Color edgeDark,
-            String wikiButtonText
+            Color edgeDark
     )
     {
         this.panelWidth = panelWidth;
@@ -79,10 +74,8 @@ public final class CurrentTabRenderer
         this.uiGold = uiGold;
         this.uiText = uiText;
         this.uiTextDim = uiTextDim;
-        this.tabActiveBg = tabActiveBg;
         this.edgeLight = edgeLight;
         this.edgeDark = edgeDark;
-        this.wikiButtonText = wikiButtonText;
     }
 
     /**
@@ -102,14 +95,12 @@ public final class CurrentTabRenderer
             boolean currentCompleted,
             boolean rolling,
             Function<TaskTier, String> tierProgressLabel,
-            Function<TaskTier, Integer> tierPercent, // optional, can be null
             Function<XtremeTask, String> currentLineProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
             Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
             Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
-            Function<TaskTier, List<XtremeTask>> tasksForTierProvider,
             TaskTier tierForProgress,
             TaskSource currentSource,
             XtremeTaskerConfig.RollSourceFilter rollSourceFilter,
@@ -958,18 +949,6 @@ public final class CurrentTabRenderer
         return tierLabel(t);
     }
 
-    private void drawEmptyCurrentHeader(Graphics2D g, FontMetrics fm, int panelX, int maxW, int baselineY)
-    {
-        String title = "No active task";
-        g.setColor(uiText);
-        g.drawString(title, panelX + panelPadding, baselineY);
-
-        String prompt = "Roll a task when you're ready.";
-        prompt = truncateToWidth(prompt, fm, maxW);
-        g.setColor(uiTextDim);
-        g.drawString(prompt, panelX + panelPadding, baselineY + fm.getHeight());
-    }
-
     private void drawCenteredQuestionMark(Graphics2D g, int x, int y, int size)
     {
         java.awt.font.GlyphVector glyph = g.getFont().createGlyphVector(g.getFontRenderContext(), "?");
@@ -1601,28 +1580,6 @@ public final class CurrentTabRenderer
                 : "Eligible Collection Log items";
     }
 
-    private void drawBadgesLeftAligned(Graphics2D g, FontMetrics fm, int panelX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
-    {
-        if (src == null && tier == null) return;
-        int x = panelX + panelPadding;
-        final int badgeGap = 4;
-        if (src != null)
-        {
-            String srcText = shortSource(src);
-            int w = TaskRowsRenderer.drawSourceBadge(g, x, yTop, srcText, edgeDark, edgeLight, uiGold, uiText);
-            Rectangle srcBounds = new Rectangle(x, yTop, w, rowHeight + 4);
-            if (mousePoint != null && srcBounds.contains(mousePoint))
-            {
-                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds, panelX + panelWidth - panelPadding);
-            }
-            x += w + badgeGap;
-        }
-        if (tier != null)
-        {
-            TaskRowsRenderer.drawSourceBadge(g, x, yTop, tierLabel(tier), edgeDark, edgeLight, uiGold, uiText);
-        }
-    }
-
     private void drawBadgesRightAligned(Graphics2D g, FontMetrics fm, int rightX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
     {
         if (src == null && tier == null) return;
@@ -1656,47 +1613,6 @@ public final class CurrentTabRenderer
         int x = Math.min(badgeBounds.x, maxRight - fm.stringWidth(text));
         g.setColor(uiTextDim);
         g.drawString(text, x, badgeBounds.y - 4);
-    }
-
-    private void drawBadgesNearText(
-            Graphics2D g, FontMetrics fm,
-            int panelX, int rowBaselineY,
-            TaskSource src,
-            TaskTier tier,
-            String lineText
-    )
-    {
-        if (src == null && tier == null) return;
-
-        final int h = 20;
-        final int gap = 8;
-        final int badgeGap = 4;
-
-        FontMetrics sfm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
-        String srcText = src != null ? shortSource(src) : null;
-        String tierText = tier != null ? tierLabel(tier) : null;
-
-        int srcW = srcText != null ? Math.max(26, sfm.stringWidth(srcText) + 16) : 0;
-        int tierW = tierText != null ? Math.max(26, sfm.stringWidth(tierText) + 16) : 0;
-        int totalW = srcW + (srcText != null && tierText != null ? badgeGap : 0) + tierW;
-
-        int contentLeft = panelX + panelPadding;
-        int contentRight = panelX + panelWidth - panelPadding;
-        int lineW = (lineText == null) ? 0 : fm.stringWidth(lineText);
-        int x = Math.min(contentLeft + lineW + gap, contentRight - totalW);
-
-        final int verticalNudge = -2;
-        int y = (rowBaselineY - fm.getAscent())
-                + (rowHeight - h) / 2
-                + verticalNudge;
-
-        if (srcText != null) {
-            srcW = TaskRowsRenderer.drawSourceBadge(g, x, y, srcText, edgeDark, edgeLight, uiGold, uiText);
-            x += srcW + badgeGap;
-        }
-        if (tierText != null) {
-            TaskRowsRenderer.drawSourceBadge(g, x, y, tierText, edgeDark, edgeLight, uiGold, uiText);
-        }
     }
 
     private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)
