@@ -18434,7 +18434,7 @@
     },
     {
       "id": "collection_log_hard_obtain-sunfire-splinters_001_0b9d5c9047",
-      "name": "Obtain Sunfire splinters",
+      "name": "Get Sunfire splinters",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
       "prereqs": "Children of the Sun quest",
@@ -18566,7 +18566,7 @@
       "id": "collection_log_hard_get-the-alchemist-s-amulet_001_f2473478c5",
       "name": "Get the Alchemist's amulet",
       "source": "COLLECTION_LOG",
-      "tier": "MEDIUM",
+      "tier": "HARD",
       "prereqs": "Children of the Sun quest; 60 Herblore",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Alchemist%27s_amulet",
       "verification": {
@@ -18582,7 +18582,7 @@
       "id": "collection_log_hard_get-1-unique-from-the-hueycoatl_001_6c04c312e8",
       "name": "Get 1 unique from the Hueycoatl",
       "source": "COLLECTION_LOG",
-      "tier": "HARD",
+      "tier": "MEDIUM",
       "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Hueycoatl",
       "verification": {
@@ -36937,7 +36937,7 @@
     },
     {
       "id": "collection_log_master_obtain-the-quetzin_001_c9aede9984",
-      "name": "Obtain the Quetzin",
+      "name": "Get the Quetzin",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "Children of the Sun quest; 57 Hunter",
