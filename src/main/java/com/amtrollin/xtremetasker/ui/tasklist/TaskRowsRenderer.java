@@ -19,7 +19,6 @@ import static com.amtrollin.xtremetasker.tasklist.TaskListPipeline.safe;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class TaskRowsRenderer {
-    private final int panelWidth;
     private final int panelPadding;
     private final int rowHeight;
     private final int listRowSpacing;
@@ -33,14 +32,10 @@ public final class TaskRowsRenderer {
     private final Color rowHoverBg;
     private final Color rowSelectedBg;
     private final Color rowSelectedOutline;
-    private final Color rowDoneBg;
-    private final Color rowLine;
     private final Color strikeColor;
     private final Color uiText;
     private final Color uiTextDim;
     private final Color pipRing;
-    private final Color pipDoneFill;
-    private final Color pipDoneRing;
     private final Color uiGold;
     private final Color edgeLight;
     private final Color edgeDark;
@@ -57,7 +52,6 @@ public final class TaskRowsRenderer {
             DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault());
 
     public TaskRowsRenderer(
-            int panelWidth,
             int panelPadding,
             int rowHeight,
             int listRowSpacing,
@@ -67,19 +61,14 @@ public final class TaskRowsRenderer {
             Color rowHoverBg,
             Color rowSelectedBg,
             Color rowSelectedOutline,
-            Color rowDoneBg,
-            Color rowLine,
             Color strikeColor,
             Color uiText,
             Color uiTextDim,
             Color pipRing,
-            Color pipDoneFill,
-            Color pipDoneRing,
             Color uiGold,
             Color edgeLight,
             Color edgeDark
     ) {
-        this.panelWidth = panelWidth;
         this.panelPadding = panelPadding;
         this.rowHeight = rowHeight;
         this.listRowSpacing = listRowSpacing;
@@ -90,14 +79,10 @@ public final class TaskRowsRenderer {
         this.rowHoverBg = rowHoverBg;
         this.rowSelectedBg = rowSelectedBg;
         this.rowSelectedOutline = rowSelectedOutline;
-        this.rowDoneBg = rowDoneBg;
-        this.rowLine = rowLine;
         this.strikeColor = strikeColor;
         this.uiText = uiText;
         this.uiTextDim = uiTextDim;
         this.pipRing = pipRing;
-        this.pipDoneFill = pipDoneFill;
-        this.pipDoneRing = pipDoneRing;
         this.uiGold = uiGold;
         this.edgeLight = edgeLight;
         this.edgeDark = edgeDark;

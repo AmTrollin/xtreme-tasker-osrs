@@ -820,20 +820,9 @@ public class PrerequisiteTrackerService
         return null;
     }
 
-    private Integer getVarbitByName(String varbitName)
-    {
-        Integer varbit = varbitsByName.get(varbitName);
-        return varbit != null ? getVarbitValue(varbit) : null;
-    }
-
     private int getVarbitValue(int varbitId)
     {
         return varbitReader == null ? client.getVarbitValue(varbitId) : varbitReader.applyAsInt(varbitId);
-    }
-
-    private static int valueOrZero(Integer value)
-    {
-        return value == null ? 0 : value;
     }
 
     private long getKnownCoins()

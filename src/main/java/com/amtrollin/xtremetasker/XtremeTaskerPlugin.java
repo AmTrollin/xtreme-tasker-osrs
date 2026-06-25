@@ -2288,21 +2288,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return task.getName() + " (" + step.label + ")";
     }
 
-    private String sequenceDisplayName(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return "";
-        }
-
-        XtremeTask decorated = decorateCurrentSequenceTask(task);
-        if (decorated == null || decorated.getName() == null)
-        {
-            return task.getName();
-        }
-        return decorated.getName();
-    }
-
     @Override
     public String getCollectionLogSequenceStepLabel(XtremeTask task)
     {

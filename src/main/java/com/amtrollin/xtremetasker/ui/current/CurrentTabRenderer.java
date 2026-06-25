@@ -935,16 +935,6 @@ public final class CurrentTabRenderer
         drawCenteredQuestionMark(g, x, y, size);
     }
 
-    private void drawHeaderTooltip(Graphics2D g, FontMetrics fm, String tip, int iconX, int iconY, int iconSize, int minX, int maxX)
-    {
-        int tipW = fm.stringWidth(tip) + 10;
-        int tipX = iconX + (iconSize - tipW) / 2;
-        if (tipX < minX) tipX = minX;
-        if (tipX + tipW > maxX) tipX = maxX - tipW;
-        g.setColor(uiTextDim);
-        g.drawString(tip, tipX + 5, iconY + iconSize + fm.getAscent() + 2);
-    }
-
     private static BufferedImage loadQuestionIconSafe()
     {
         try (InputStream in = CurrentTabRenderer.class.getResourceAsStream("/icons/notifications/OSRS_question.png"))

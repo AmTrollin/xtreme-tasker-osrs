@@ -30,11 +30,9 @@ public class TaskControlsRenderer
 {
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
-    private final int panelWidth;
     private final int panelPadding;
     private final int rowHeight;
 
-    private final Color tabInactiveBg;
     private final Color uiEdgeLight;
     private final Color uiEdgeDark;
     private final Color uiGold;
@@ -47,10 +45,8 @@ public class TaskControlsRenderer
     private final Color pillOffBg;
 
     public TaskControlsRenderer(
-            int panelWidth,
             int panelPadding,
             int rowHeight,
-            Color tabInactiveBg,
             Color uiEdgeLight,
             Color uiEdgeDark,
             Color uiGold,
@@ -62,11 +58,9 @@ public class TaskControlsRenderer
             Color pillOffBg
     )
     {
-        this.panelWidth = panelWidth;
         this.panelPadding = panelPadding;
         this.rowHeight = rowHeight;
 
-        this.tabInactiveBg = tabInactiveBg;
         this.uiEdgeLight = uiEdgeLight;
         this.uiEdgeDark = uiEdgeDark;
         this.uiGold = uiGold;

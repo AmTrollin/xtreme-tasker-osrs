@@ -1,6 +1,5 @@
 package com.amtrollin.xtremetasker.models.persistence;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -13,7 +12,6 @@ import java.util.Set;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class PersistedState {
     private int schemaVersion = 1;
     private long savedAtEpochMillis = 0L;
