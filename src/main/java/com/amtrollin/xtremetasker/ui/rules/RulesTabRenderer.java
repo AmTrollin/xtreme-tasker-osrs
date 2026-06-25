@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static java.awt.Color.white;
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class RulesTabRenderer {
     private final int panelWidth;
@@ -97,17 +98,14 @@ public final class RulesTabRenderer {
             int collectionLogReviewCount
     ) {
         RulesTabLayout layout = new RulesTabLayout();
-        layout.taskerFaqLinkBounds.setBounds(0, 0, 0, 0);
-        layout.reloadButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncProgressButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncCaFoundReviewButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncCaReviewButtonBounds.setBounds(0, 0, 0, 0);
-        layout.syncCaReviewIgnoreButtonBounds.setBounds(0, 0, 0, 0);
+        clearBounds(
+                layout.taskerFaqLinkBounds, layout.githubReadmeLinkBounds, layout.reloadButtonBounds,
+                layout.syncProgressButtonBounds, layout.syncCaFoundReviewButtonBounds,
+                layout.syncCaReviewButtonBounds, layout.syncCaReviewIgnoreButtonBounds,
+                layout.subTabRulesBounds, layout.subTabDataSyncsBounds
+        );
         int bx = panelX + panelPadding;
         int viewportW = panelWidth - 2 * panelPadding;
-
-        layout.subTabRulesBounds.setBounds(0, 0, 0, 0);
-        layout.subTabDataSyncsBounds.setBounds(0, 0, 0, 0);
 
         int navTop = cursorYBaseline - fm.getAscent() + 2;
         int navH = rowHeight + 8;
@@ -372,7 +370,7 @@ public final class RulesTabRenderer {
                 int dividerW = Math.max(40, colW / 2);
                 int dividerX = x + Math.max(0, (colW - dividerW) / 2);
                 int dividerY = drawY - rb + fm.getDescent() + 8;
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 105));
+                g.setColor(withAlpha(uiGold, 105));
                 g.drawLine(dividerX, dividerY, dividerX + dividerW, dividerY);
                 drawY += Math.max(4, rb / 3);
                 continue;
@@ -424,8 +422,7 @@ public final class RulesTabRenderer {
             if (markedLine != null)
             {
                 g.setColor(markedLineColor(line));
-                String drawText = TextUtils.truncateToWidth(markedLine, fm, colW - 8);
-                g.drawString(drawText, x + Math.max(0, (colW - fm.stringWidth(drawText)) / 2), drawY);
+                drawCenteredText(g, fm, markedLine, x, drawY, colW, 8);
                 drawY += rb;
                 continue;
             }
@@ -445,8 +442,7 @@ public final class RulesTabRenderer {
                 }
                 else
                 {
-                    String drawText = TextUtils.truncateToWidth(line, fm, colW - 8);
-                    g.drawString(drawText, x + Math.max(0, (colW - fm.stringWidth(drawText)) / 2), drawY);
+                    drawCenteredText(g, fm, line, x, drawY, colW, 8);
                 }
                 g.setFont(normalFont);
                 fm = g.getFontMetrics();
@@ -454,8 +450,7 @@ public final class RulesTabRenderer {
             else
             {
                 g.setColor(uiTextDim);
-                String drawText = TextUtils.truncateToWidth(line, fm, colW - 8);
-                g.drawString(drawText, x + Math.max(0, (colW - fm.stringWidth(drawText)) / 2), drawY);
+                drawCenteredText(g, fm, line, x, drawY, colW, 8);
             }
             drawY += rb;
         }
@@ -510,7 +505,7 @@ public final class RulesTabRenderer {
         g.drawString(linkText, cursorX, baseline);
         int linkW = fm.stringWidth(linkText);
         linkBounds.setBounds(cursorX, baseline - fm.getAscent(), linkW, fm.getHeight());
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 180));
+        g.setColor(withAlpha(uiGold, 180));
         g.drawLine(cursorX, baseline + 2, cursorX + linkW, baseline + 2);
         cursorX += linkW;
 
@@ -600,11 +595,6 @@ public final class RulesTabRenderer {
         {
             lines.addAll(prefixWrappedLines(LINE_SYNC_TIMESTAMP_PREFIX, label + ": " + time.trim(), fm, maxWidth));
         }
-    }
-
-    private void addSyncResultLabelLine(List<String> lines)
-    {
-        lines.add(LINE_SYNC_RESULT_LABEL + "Result:");
     }
 
     private void addSyncResultStatusMessageLines(List<String> lines, int foundCount, FontMetrics fm, int maxWidth)
@@ -768,10 +758,10 @@ public final class RulesTabRenderer {
         int h = left.height;
 
         // Outer border (gold, single rect around both)
-        Color borderColor = new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 160);
-        Color activeBg   = new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55);
+        Color borderColor = withAlpha(uiGold, 160);
+        Color activeBg   = withAlpha(uiGold, 55);
         Color inactiveBg = new Color(20, 16, 10, 210);
-        Color divider    = new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 80);
+        Color divider    = withAlpha(uiGold, 80);
 
         // Fill segments
         g.setColor(leftActive ? activeBg : inactiveBg);
@@ -788,7 +778,7 @@ public final class RulesTabRenderer {
         g.drawRect(x, y, totalW, h);
 
         // Active segment bottom accent line
-        Color accentColor = new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 200);
+        Color accentColor = withAlpha(uiGold, 200);
         if (leftActive) {
             g.setColor(accentColor);
             g.drawLine(left.x + 1, y + h, left.x + left.width - 1, y + h);
@@ -817,6 +807,20 @@ public final class RulesTabRenderer {
 
     public static String githubReadmeUrl() {
         return GITHUB_README_URL;
+    }
+
+    private static void clearBounds(Rectangle... bounds)
+    {
+        for (Rectangle bound : bounds)
+        {
+            bound.setBounds(0, 0, 0, 0);
+        }
+    }
+
+    private static void drawCenteredText(Graphics2D g, FontMetrics fm, String text, int x, int baseline, int width, int pad)
+    {
+        String drawText = TextUtils.truncateToWidth(text, fm, Math.max(0, width - pad));
+        g.drawString(drawText, x + Math.max(0, (width - fm.stringWidth(drawText)) / 2), baseline);
     }
 
 }

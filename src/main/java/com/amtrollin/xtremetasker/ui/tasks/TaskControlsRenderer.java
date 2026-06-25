@@ -14,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import net.runelite.client.ui.FontManager;
 
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 
 /**
@@ -158,7 +159,7 @@ public class TaskControlsRenderer
             int ex = textX + charPositions[selEnd];
             int selTop = layout.searchBox.y + 3;
             int selH = layout.searchBox.height - 6;
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 90));
+            g.setColor(withAlpha(uiGold, 90));
             g.fillRect(sx, selTop, Math.max(1, ex - sx), selH);
         }
 
@@ -383,16 +384,6 @@ public class TaskControlsRenderer
         return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
     }
 
-    private Color withAlpha(Color c, int a)
-    {
-        return new Color(c.getRed(), c.getGreen(), c.getBlue(), clamp(a));
-    }
-
-    private int clamp(int v)
-    {
-        return Math.max(0, Math.min(255, v));
-    }
-
     // Blink timing: 500ms on, 500ms off
     private static final long CARET_BLINK_MS = 500L;
 
@@ -491,7 +482,7 @@ public class TaskControlsRenderer
             return;
         }
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(x1, y, x2, y);
     }
 
@@ -521,12 +512,7 @@ public class TaskControlsRenderer
         drawHeaderRule(g, ruleX1, baselineY - headerFm.getAscent() + headerFm.getHeight() / 2, ruleX2);
 
         boolean hovered = clearBounds.contains(mouseX, mouseY);
-        g.setColor(new Color(
-                uiTextDim.getRed(),
-                uiTextDim.getGreen(),
-                uiTextDim.getBlue(),
-                hovered ? 230 : 180
-        ));
+        g.setColor(withAlpha(uiTextDim, hovered ? 230 : 180));
         if (rowW > clearW)
         {
             Font savedFont = g.getFont();

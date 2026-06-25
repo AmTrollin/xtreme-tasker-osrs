@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.tasklist.TaskListPipeline.safe;
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class TaskRowsRenderer {
     private final int panelWidth;
@@ -204,7 +205,7 @@ public final class TaskRowsRenderer {
             if (partialGroup || completed) {
                 Color rail = completed
                         ? new Color(105, 205, 128, 175)
-                        : new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 150);
+                        : withAlpha(uiGold, 150);
                 g.setColor(rail);
                 g.fillRect(rowBounds.x, rowBounds.y + 1, 2, rowBounds.height - 2);
             }
@@ -284,7 +285,7 @@ public final class TaskRowsRenderer {
             }
 
             g.setColor(completed
-                    ? new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 220)
+                    ? withAlpha(uiTextDim, 220)
                     : uiText);
             g.drawString(taskName, textX, drawY);
 
@@ -295,23 +296,11 @@ public final class TaskRowsRenderer {
             // source (rightmost)
             int srcX = pillRightEdge - srcW;
             g.setFont(smallFont);
-            g.setColor(new Color(40, 30, 15, 190));
-            g.fillRoundRect(srcX, pillTop, srcW, pillH, pillArc, pillArc);
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 60));
-            g.drawRoundRect(srcX, pillTop, srcW - 1, pillH - 1, pillArc, pillArc);
-            g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 210));
-            g.drawString(srcText, srcX + (srcW - sfm.stringWidth(srcText)) / 2,
-                    pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
+            drawRowPill(g, sfm, srcText, srcX, pillTop, srcW, pillH, pillArc, withAlpha(uiTextDim, 210));
 
             // tier (left of source)
             int tierX = srcX - pillGap - tierW;
-            g.setColor(new Color(40, 30, 15, 190));
-            g.fillRoundRect(tierX, pillTop, tierW, pillH, pillArc, pillArc);
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 60));
-            g.drawRoundRect(tierX, pillTop, tierW - 1, pillH - 1, pillArc, pillArc);
-            g.setColor(tierTextColor(task.getTier()));
-            g.drawString(tierText, tierX + (tierW - sfm.stringWidth(tierText)) / 2,
-                    pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
+            drawRowPill(g, sfm, tierText, tierX, pillTop, tierW, pillH, pillArc, tierTextColor(task.getTier()));
 
             g.setFont(fm.getFont()); // restore row font
 
@@ -325,8 +314,8 @@ public final class TaskRowsRenderer {
                 g.setColor(progress.isComplete()
                         ? new Color(120, 200, 140, 225)
                         : partialGroup
-                        ? new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 230)
-                        : new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 225));
+                        ? withAlpha(uiGold, 230)
+                        : withAlpha(uiTextDim, 225));
                 g.drawString(progressText, progressX + 3,
                         pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
                 g.setFont(fm.getFont());
@@ -343,9 +332,9 @@ public final class TaskRowsRenderer {
                 int newAnchorX = columnReserveW > 0 ? Math.min(leftBadgeX, metaLeftX) : leftBadgeX;
                 int newX = newAnchorX - pillGap - newW;
                 g.setFont(smallFont);
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 70));
+                g.setColor(withAlpha(uiGold, 70));
                 g.drawRoundRect(newX, pillTop, newW - 1, pillH - 1, pillArc, pillArc);
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 210));
+                g.setColor(withAlpha(uiGold, 210));
                 g.drawString("NEW", newX + (newW - sfm.stringWidth("NEW")) / 2,
                         pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
                 g.setFont(fm.getFont());
@@ -402,6 +391,16 @@ public final class TaskRowsRenderer {
         }
     }
 
+    private void drawRowPill(Graphics2D g, FontMetrics fm, String text, int x, int y, int w, int h, int arc, Color textColor)
+    {
+        g.setColor(new Color(40, 30, 15, 190));
+        g.fillRoundRect(x, y, w, h, arc, arc);
+        g.setColor(withAlpha(uiGold, 60));
+        g.drawRoundRect(x, y, w - 1, h - 1, arc, arc);
+        g.setColor(textColor);
+        g.drawString(text, x + (w - fm.stringWidth(text)) / 2, y + ((h - fm.getHeight()) / 2) + fm.getAscent());
+    }
+
     private void drawStatusPip(Graphics2D g, int cx, int cy, boolean done, boolean partial, float animProgress) {
         // Visual size boost (does not change layout spacing)
         int drawSize = Math.max(6, statusPipSize + PIP_VISUAL_BOOST_PX);
@@ -413,18 +412,18 @@ public final class TaskRowsRenderer {
         // Slightly thicker ring for readability: draw twice (offset by 1px)
         Color doneRing = new Color(120, 200, 140, 230);
         Color doneFill = new Color(78, 160, 96, 235);
-        g.setColor(done ? doneRing : (partial ? new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 190) : pipRing));
+        g.setColor(done ? doneRing : (partial ? withAlpha(uiGold, 190) : pipRing));
         g.drawOval(x, y, drawSize, drawSize);
         g.drawOval(x + 1, y + 1, drawSize - 2, drawSize - 2);
 
         // Add a faint inner ring when not done (makes "toggle target" feel more obvious)
         if (!done) {
             if (partial) {
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 120));
+                g.setColor(withAlpha(uiGold, 120));
                 g.fillArc(x + 3, y + 3, drawSize - 6, drawSize - 6, 90, -180);
                 return;
             }
-            g.setColor(new Color(pipRing.getRed(), pipRing.getGreen(), pipRing.getBlue(), 60));
+            g.setColor(withAlpha(pipRing, 60));
             g.drawOval(x + 2, y + 2, drawSize - 4, drawSize - 4);
             return;
         }
@@ -490,7 +489,7 @@ public final class TaskRowsRenderer {
         }
 
         g.setFont(smallFont);
-        g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 210));
+        g.setColor(withAlpha(uiTextDim, 210));
         if (showCompletionMeta && dateColumnBounds != null && dateColumnBounds.width > 0)
         {
             drawColumnText(g, sfm, dateColumnBounds, rowDateText(task, completionInfoProvider), baseline);
@@ -577,7 +576,7 @@ public final class TaskRowsRenderer {
         Rectangle thumb = scrollbarThumbBounds(totalRows, visibleRows, offsetRows, viewport);
         drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));
+        g.setColor(withAlpha(uiGold, 140));
         g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
@@ -629,10 +628,10 @@ public final class TaskRowsRenderer {
         g.setColor(new Color(60, 48, 28, 200));
         g.fillRoundRect(x, yTop, w, h, arc, arc);
         // Single thin dim border
-        g.setColor(new Color(gold.getRed(), gold.getGreen(), gold.getBlue(), 70));
+        g.setColor(withAlpha(gold, 70));
         g.drawRoundRect(x, yTop, w - 1, h - 1, arc, arc);
         // Label text
-        g.setColor(new Color(uiText.getRed(), uiText.getGreen(), uiText.getBlue(), 210));
+        g.setColor(withAlpha(uiText, 210));
         g.drawString(text, x + (w - textW) / 2, yTop + ((h - fm.getHeight()) / 2) + fm.getAscent());
         g.setFont(savedFont);
         return w;

@@ -9,6 +9,8 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
+
 public final class ButtonRenderer
 {
     private final UiPalette palette;
@@ -31,14 +33,7 @@ public final class ButtonRenderer
 
         g.setColor(active ? palette.UI_TEXT : palette.UI_TEXT_DIM);
 
-        FontMetrics fm = g.getFontMetrics();
-        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - 8);
-        int tw = fm.stringWidth(drawText);
-
-        int tx = bounds.x + (bounds.width - tw) / 2;
-        int ty = centeredTextBaseline(bounds, fm);
-
-        g.drawString(drawText, tx, ty);
+        drawCenteredText(g, bounds, text, 8);
     }
 
     /** Primary action button — used for Roll task / Mark complete. Brighter bg, solid gold border. */
@@ -60,18 +55,13 @@ public final class ButtonRenderer
         g.drawRect(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1);
         // Inner gold accent at 130 alpha for a subtle decorative border
         Color accent = borderAccent == null ? palette.UI_GOLD : borderAccent;
-        g.setColor(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), borderAccent == null ? 130 : 230));
+        g.setColor(withAlpha(accent, borderAccent == null ? 130 : 230));
         g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
 
         // White/light text instead of gold
         g.setColor(palette.UI_TEXT);
 
-        FontMetrics fm = g.getFontMetrics();
-        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - 10);
-        int tw = fm.stringWidth(drawText);
-        int tx = bounds.x + (bounds.width - tw) / 2;
-        int ty = centeredTextBaseline(bounds, fm);
-        g.drawString(drawText, tx, ty);
+        drawCenteredText(g, bounds, text, 10);
     }
 
     public void drawButton(Graphics2D g, Rectangle bounds, String text, boolean enabled)
@@ -90,16 +80,9 @@ public final class ButtonRenderer
             g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
 
-        g.setColor(enabled ? palette.UI_TEXT : new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 130));
+        g.setColor(enabled ? palette.UI_TEXT : withAlpha(palette.UI_TEXT_DIM, 130));
 
-        FontMetrics fm = g.getFontMetrics();
-        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - 10);
-        int tw = fm.stringWidth(drawText);
-
-        int tx = bounds.x + (bounds.width - tw) / 2;
-        int ty = centeredTextBaseline(bounds, fm);
-
-        g.drawString(drawText, tx, ty);
+        drawCenteredText(g, bounds, text, 10);
     }
 
     /** Like drawButton but no gold border and dim-gray text — used for help-tab buttons. */
@@ -130,14 +113,7 @@ public final class ButtonRenderer
 
         g.setColor(textColor);
 
-        FontMetrics fm = g.getFontMetrics();
-        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - 10);
-        int tw = fm.stringWidth(drawText);
-
-        int tx = bounds.x + (bounds.width - tw) / 2;
-        int ty = centeredTextBaseline(bounds, fm);
-
-        g.drawString(drawText, tx, ty);
+        drawCenteredText(g, bounds, text, 10);
     }
 
     public void drawBevelBox(Graphics2D g, Rectangle r, Color fill)
@@ -148,5 +124,12 @@ public final class ButtonRenderer
     private int centeredTextBaseline(Rectangle bounds, FontMetrics fm)
     {
         return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
+    }
+
+    private void drawCenteredText(Graphics2D g, Rectangle bounds, String text, int pad)
+    {
+        FontMetrics fm = g.getFontMetrics();
+        String drawText = TextUtils.truncateToWidth(text, fm, bounds.width - pad);
+        g.drawString(drawText, bounds.x + (bounds.width - fm.stringWidth(drawText)) / 2, centeredTextBaseline(bounds, fm));
     }
 }

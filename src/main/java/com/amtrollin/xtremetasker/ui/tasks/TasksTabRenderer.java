@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class TasksTabRenderer {
     private static final int TASKS_CONTROLS_COLUMN_W = 228;
@@ -112,7 +113,7 @@ public final class TasksTabRenderer {
             int dividerBottom = panelBounds.y + panelBounds.height - PANEL_PADDING - fm.getHeight() - 8;
             if (dividerBottom > dividerTop + 10) {
                 int dividerX = listColumnX - (columnsGap / 2);
-                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 45));
+                g.setColor(withAlpha(palette.UI_GOLD, 45));
                 g.drawLine(dividerX, dividerTop, dividerX, dividerBottom);
             }
 
@@ -143,12 +144,7 @@ public final class TasksTabRenderer {
 
         listCursorBaseline += barH + progressPadBottom + 6;
 
-        g.setColor(new Color(
-                palette.UI_TEXT_DIM.getRed(),
-                palette.UI_TEXT_DIM.getGreen(),
-                palette.UI_TEXT_DIM.getBlue(),
-                170
-        ));
+        g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
 
         drawTaskTableHeader(g, fm, state.taskQuery(), state.controlsLayout().sortDate, state.controlsLayout().sortTimeTicks,
                 state.controlsLayout().sortTier, state.controlsLayout().sortSource,
@@ -259,14 +255,14 @@ public final class TasksTabRenderer {
 
         Rectangle v = layout.viewportBounds;
         if (v.width > 0 && v.height > 0) {
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 70));
+            g.setColor(withAlpha(palette.UI_GOLD, 70));
             g.drawRect(v.x - 2, v.y - 2, v.width + 4, v.height + 4);
 
-            g.setColor(new Color(palette.UI_EDGE_LIGHT.getRed(), palette.UI_EDGE_LIGHT.getGreen(), palette.UI_EDGE_LIGHT.getBlue(), 55));
+            g.setColor(withAlpha(palette.UI_EDGE_LIGHT, 55));
             g.drawLine(v.x - 1, v.y - 1, v.x + v.width + 2, v.y - 1);
             g.drawLine(v.x - 1, v.y - 1, v.x - 1, v.y + v.height + 2);
 
-            g.setColor(new Color(palette.UI_EDGE_DARK.getRed(), palette.UI_EDGE_DARK.getGreen(), palette.UI_EDGE_DARK.getBlue(), 85));
+            g.setColor(withAlpha(palette.UI_EDGE_DARK, 85));
             g.drawLine(v.x + v.width + 2, v.y - 1, v.x + v.width + 2, v.y + v.height + 2);
             g.drawLine(v.x - 1, v.y + v.height + 2, v.x + v.width + 2, v.y + v.height + 2);
         }
@@ -312,7 +308,7 @@ public final class TasksTabRenderer {
         boolean complete = pctValue >= 100;
         Color pctColor = complete
                 ? new Color(120, 200, 140, active ? 230 : 190)
-                : (active ? palette.UI_TEXT_DIM : new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 180));
+                : (active ? palette.UI_TEXT_DIM : withAlpha(palette.UI_TEXT_DIM, 180));
         g.setColor(pctColor);
         g.drawString(pct, pctX, ty);
     }
@@ -395,7 +391,7 @@ public final class TasksTabRenderer {
         dateBounds.setBounds(dateX, top, dateW, h);
         timeBounds.setBounds(timeX, top, timeW, h);
 
-        g.setColor(new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 170));
+        g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
         g.drawString(TextUtils.truncateToWidth("Task", fm, Math.max(0, dateX - x - gap)), x, baselineY);
         drawHeaderSortLabel(g, fm, dateBounds, dateLabel, query.sortByDate);
         drawHeaderSortLabel(g, fm, timeBounds, timeLabel, query.sortByTimeTicks);
@@ -403,12 +399,7 @@ public final class TasksTabRenderer {
     }
 
     private void drawHeaderSortLabel(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean active) {
-        g.setColor(active ? palette.UI_GOLD : new Color(
-                palette.UI_TEXT_DIM.getRed(),
-                palette.UI_TEXT_DIM.getGreen(),
-                palette.UI_TEXT_DIM.getBlue(),
-                175
-        ));
+        g.setColor(active ? palette.UI_GOLD : withAlpha(palette.UI_TEXT_DIM, 175));
         String draw = TextUtils.truncateToWidth(text, fm, Math.max(0, bounds.width - 4));
         g.drawString(draw, bounds.x + Math.max(0, (bounds.width - fm.stringWidth(draw)) / 2),
                 bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent());
@@ -441,12 +432,7 @@ public final class TasksTabRenderer {
     }
 
     private void drawSmallHeaderSortLabel(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean active) {
-        g.setColor(active ? palette.UI_GOLD : new Color(
-                palette.UI_TEXT_DIM.getRed(),
-                palette.UI_TEXT_DIM.getGreen(),
-                palette.UI_TEXT_DIM.getBlue(),
-                160
-        ));
+        g.setColor(active ? palette.UI_GOLD : withAlpha(palette.UI_TEXT_DIM, 160));
         String draw = TextUtils.truncateToWidth(text, fm, bounds.width);
         g.drawString(draw, bounds.x + Math.max(0, (bounds.width - fm.stringWidth(draw)) / 2),
                 bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent());

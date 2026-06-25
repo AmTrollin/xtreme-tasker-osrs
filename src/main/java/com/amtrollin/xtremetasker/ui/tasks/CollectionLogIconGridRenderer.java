@@ -13,6 +13,8 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
+
 public final class CollectionLogIconGridRenderer
 {
     private static final Logger log = LoggerFactory.getLogger(CollectionLogIconGridRenderer.class);
@@ -433,9 +435,9 @@ public final class CollectionLogIconGridRenderer
 
         g.setColor(new Color(25, 18, 10, 245));
         g.fillRect(x, y, w, h);
-        g.setColor(new Color(edgeLight.getRed(), edgeLight.getGreen(), edgeLight.getBlue(), 100));
+        g.setColor(withAlpha(edgeLight, 100));
         g.drawRect(x, y, w - 1, h - 1);
-        g.setColor(new Color(edgeDark.getRed(), edgeDark.getGreen(), edgeDark.getBlue(), 180));
+        g.setColor(withAlpha(edgeDark, 180));
         g.drawLine(x + 1, y + h - 1, x + w - 1, y + h - 1);
 
         g.setColor(textColor);

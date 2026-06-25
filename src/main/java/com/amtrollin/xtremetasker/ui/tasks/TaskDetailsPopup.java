@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class TaskDetailsPopup
 {
@@ -334,7 +335,7 @@ public final class TaskDetailsPopup
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
 
         int headerBottomY = bounds.y + pad + btnH + 6;
-        g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 55));
+        g.setColor(withAlpha(palette.UI_GOLD, 55));
         g.drawLine(bounds.x + pad, headerBottomY, bounds.x + bounds.width - pad, headerBottomY);
 
         g.setFont(FontManager.getRunescapeSmallFont());
@@ -593,10 +594,7 @@ public final class TaskDetailsPopup
                         contentW);
             }
 
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
+            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
         }
 
         if (showDescriptionSection)
@@ -630,10 +628,7 @@ public final class TaskDetailsPopup
 
         if (showDescriptionSection)
         {
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
+            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
         }
 
         if (showStandaloneSyncMismatch)
@@ -645,9 +640,7 @@ public final class TaskDetailsPopup
                     y,
                     contentW);
 
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
+            y = drawSectionDivider(g, fm, contentLeft, y, contentW);
         }
 
         if (hasRequirementPreview)
@@ -727,10 +720,7 @@ public final class TaskDetailsPopup
                         requirementPreview.secondaryIconColumns());
             }
 
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
+            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
         }
 
         g.setColor(palette.UI_GOLD);
@@ -784,10 +774,7 @@ public final class TaskDetailsPopup
 
         if (!instanceHistoryLines.isEmpty())
         {
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
+            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
 
             g.setColor(palette.UI_GOLD);
             g.drawString("Completed instances", contentLeft, y);
@@ -802,10 +789,7 @@ public final class TaskDetailsPopup
         }
         else if (completionLine != null || timeTakenLine != null)
         {
-            y += 6;
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 35));
-            g.drawLine(contentLeft, y - (fm.getAscent() / 2), contentLeft + contentW, y - (fm.getAscent() / 2));
-            y += 12;
+            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
 
             g.setColor(palette.UI_GOLD);
             g.drawString("Completion", contentLeft, y);
@@ -930,7 +914,7 @@ public final class TaskDetailsPopup
             wikiLinkBounds.add(row);
             if (row.contains(mouseX, mouseY))
             {
-                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 45));
+                g.setColor(withAlpha(palette.UI_GOLD, 45));
                 g.fillRect(row.x, row.y, row.width, row.height);
             }
 
@@ -1077,13 +1061,15 @@ public final class TaskDetailsPopup
     {
         int lineW = fm.stringWidth(text);
         int strikeY = baselineY - (fm.getAscent() * 3 / 5);
-        g.setColor(new Color(
-                palette.UI_TEXT_DIM.getRed(),
-                palette.UI_TEXT_DIM.getGreen(),
-                palette.UI_TEXT_DIM.getBlue(),
-                170
-        ));
+        g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
         g.drawLine(x, strikeY, x + lineW, strikeY);
+    }
+
+    private int drawSectionDivider(Graphics2D g, FontMetrics fm, int x, int y, int width)
+    {
+        g.setColor(withAlpha(palette.UI_GOLD, 35));
+        g.drawLine(x, y - (fm.getAscent() / 2), x + width, y - (fm.getAscent() / 2));
+        return y + 12;
     }
 
     private void drawHeaderCheckMark(Graphics2D g, int x, int y, int size)
@@ -1199,7 +1185,7 @@ public final class TaskDetailsPopup
             return;
         }
 
-        g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 140));
+        g.setColor(withAlpha(palette.UI_GOLD, 140));
         g.fillOval(x, y, size, size);
         g.setColor(new Color(20, 15, 10, 220));
         drawCenteredQuestionMark(g, x, y, size);

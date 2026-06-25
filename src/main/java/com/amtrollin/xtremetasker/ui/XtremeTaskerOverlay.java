@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
 
@@ -1992,7 +1993,7 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawArc(iconBounds.x + 1, iconBounds.y + 1, ICON_WIDTH - 3, ICON_HEIGHT - 3, 45, 180);
             g.setColor(P.UI_EDGE_DARK);
             g.drawArc(iconBounds.x + 1, iconBounds.y + 1, ICON_WIDTH - 3, ICON_HEIGHT - 3, 225, 180);
-            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 180));
+            g.setColor(withAlpha(P.UI_GOLD, 180));
             g.drawOval(iconBounds.x + 1, iconBounds.y + 1, ICON_WIDTH - 3, ICON_HEIGHT - 3);
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_DEFAULT);
 
@@ -2111,7 +2112,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
         g.setColor(hoveringClose ? new Color(22, 17, 11, 235) : new Color(18, 14, 9, 185));
         g.fillRoundRect(closeX - 2, closeY - 2, closeSize + 4, closeSize + 4, 4, 4);
-        g.setColor(new Color(P.UI_EDGE_LIGHT.getRed(), P.UI_EDGE_LIGHT.getGreen(), P.UI_EDGE_LIGHT.getBlue(), hoveringClose ? 95 : 55));
+        g.setColor(withAlpha(P.UI_EDGE_LIGHT, hoveringClose ? 95 : 55));
         g.drawRoundRect(closeX - 2, closeY - 2, closeSize + 4, closeSize + 4, 4, 4);
 
         g.setColor(hoveringClose ? Color.WHITE : new Color(200, 200, 200, 180));
@@ -2139,7 +2140,7 @@ public class XtremeTaskerOverlay extends Overlay {
         drawPanelModeToggle(g, fm, rlMouse);
 
         // gold divider under header
-        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 180));
+        g.setColor(withAlpha(P.UI_GOLD, 180));
         g.fillRect(panelX + 1, cursorY, panelW - 2, 1);
         cursorY += 1;
 
@@ -2814,7 +2815,7 @@ public class XtremeTaskerOverlay extends Overlay {
         else
         {
             bg = selected ? new Color(45, 68, 38, 230) : P.INPUT_BG;
-            strokeColor = selected ? new Color(105, 220, 125, 245) : new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 185);
+            strokeColor = selected ? new Color(105, 220, 125, 245) : withAlpha(P.UI_GOLD, 185);
         }
 
         drawBevelBox(g, bounds, bg);
@@ -2844,7 +2845,7 @@ public class XtremeTaskerOverlay extends Overlay {
         else
         {
             bg = selectedIncomplete ? new Color(82, 36, 30, 230) : P.INPUT_BG;
-            strokeColor = selectedIncomplete ? new Color(245, 92, 82, 245) : new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 185);
+            strokeColor = selectedIncomplete ? new Color(245, 92, 82, 245) : withAlpha(P.UI_GOLD, 185);
         }
 
         drawBevelBox(g, bounds, bg);
@@ -3497,7 +3498,7 @@ public class XtremeTaskerOverlay extends Overlay {
             Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
             syncMismatchScrollbarThumbBounds.setBounds(thumb);
             drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
-            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
+            g.setColor(withAlpha(P.UI_GOLD, 140));
             g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
         }
 
@@ -4309,7 +4310,7 @@ public class XtremeTaskerOverlay extends Overlay {
             int boxY = checkboxY + (checkboxH - boxSize) / 2 - 1;
             g.setColor(new Color(32, 26, 17, 235));
             g.fillRect(checkboxX, boxY, boxSize, boxSize);
-            g.setColor(new Color(P.UI_TEXT_DIM.getRed(), P.UI_TEXT_DIM.getGreen(), P.UI_TEXT_DIM.getBlue(), 150));
+            g.setColor(withAlpha(P.UI_TEXT_DIM, 150));
             g.drawRect(checkboxX, boxY, boxSize, boxSize);
             if (markIncompleteDontShowChecked)
             {
@@ -4340,7 +4341,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 "No",
                 new Color(58, 48, 32, 245),
                 P.UI_TEXT,
-                new Color(P.UI_TEXT_DIM.getRed(), P.UI_TEXT_DIM.getGreen(), P.UI_TEXT_DIM.getBlue(), 150)
+                withAlpha(P.UI_TEXT_DIM, 150)
         );
     }
 
@@ -4645,7 +4646,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 4,
                 4
         );
-        g.setColor(new Color(P.UI_EDGE_LIGHT.getRed(), P.UI_EDGE_LIGHT.getGreen(), P.UI_EDGE_LIGHT.getBlue(), hovered ? 95 : 55));
+        g.setColor(withAlpha(P.UI_EDGE_LIGHT, hovered ? 95 : 55));
         g.drawRoundRect(
                 panelModeToggleBounds.x - 2,
                 panelModeToggleBounds.y - 2,
@@ -4720,7 +4721,7 @@ public class XtremeTaskerOverlay extends Overlay {
             y = anchor.y - h - 5;
         }
 
-        g.setColor(new Color(P.UI_TEXT_DIM.getRed(), P.UI_TEXT_DIM.getGreen(), P.UI_TEXT_DIM.getBlue(), 190));
+        g.setColor(withAlpha(P.UI_TEXT_DIM, 190));
         int textY = y + padY + fm.getAscent();
         for (String line : lines) {
             g.drawString(line, x + padX, textY);

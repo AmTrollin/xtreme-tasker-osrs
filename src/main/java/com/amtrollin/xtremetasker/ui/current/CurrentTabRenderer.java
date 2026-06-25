@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.sourceLabel;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
@@ -239,7 +240,7 @@ public final class CurrentTabRenderer
         drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
 
         int dividerX = rightX - gap / 2;
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
 
         drawRollingIdentityColumn(g, leftCard, current, currentLineProvider);
@@ -281,7 +282,7 @@ public final class CurrentTabRenderer
         drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
 
         int dividerX = rightX - gap / 2;
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
 
         drawEmptyCurrentIdentityColumn(
@@ -343,7 +344,7 @@ public final class CurrentTabRenderer
         drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
 
         int dividerX = rightX - gap / 2;
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
 
         int wikiTop = leftCard.y + 10;
@@ -520,7 +521,7 @@ public final class CurrentTabRenderer
         if (rollSkipNotice != null && !rollSkipNotice.isEmpty())
         {
             List<String> noticeLines = wrapText(rollSkipNotice, smallFm, innerW);
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 210));
+            g.setColor(withAlpha(uiGold, 210));
             for (String line : noticeLines)
             {
                 int lineX = x + Math.max(0, (innerW - smallFm.stringWidth(line)) / 2);
@@ -538,7 +539,7 @@ public final class CurrentTabRenderer
             int rowW = noticeW + iconGap + iconSize;
             int noticeX = x + Math.max(0, (innerW - rowW) / 2);
 
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 200));
+            g.setColor(withAlpha(uiGold, 200));
             g.drawString(notice, noticeX, noticeBaselineY);
 
             int iconX = noticeX + noticeW + iconGap;
@@ -928,7 +929,7 @@ public final class CurrentTabRenderer
             return;
         }
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));
+        g.setColor(withAlpha(uiGold, 140));
         g.fillOval(x, y, size, size);
         g.setColor(new Color(20, 15, 10, 220));
         drawCenteredQuestionMark(g, x, y, size);
@@ -1506,7 +1507,7 @@ public final class CurrentTabRenderer
         layout.scrollbarThumbBounds.setBounds(thumb);
         drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));
+        g.setColor(withAlpha(uiGold, 140));
         g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
@@ -1526,7 +1527,7 @@ public final class CurrentTabRenderer
             return;
         }
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 62));
+        g.setColor(withAlpha(uiGold, 62));
         g.drawLine(x, y, x + w, y);
         g.drawLine(x, y + h, x + w, y + h);
     }
@@ -1581,7 +1582,7 @@ public final class CurrentTabRenderer
     {
         int lineW = fm.stringWidth(text);
         int strikeY = baselineY - (fm.getAscent() * 3 / 5);
-        g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 170));
+        g.setColor(withAlpha(uiTextDim, 170));
         g.drawLine(x, strikeY, x + lineW, strikeY);
     }
 
