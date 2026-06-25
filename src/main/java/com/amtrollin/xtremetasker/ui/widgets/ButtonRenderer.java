@@ -121,6 +121,40 @@ public final class ButtonRenderer
         TaskRowsRenderer.drawBevelBoxLogic(g, r, fill, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT);
     }
 
+    public static void drawScrollbar(Graphics2D g, Rectangle rail, int totalRows, int visibleRows, int offsetRows,
+                                     Rectangle railBounds, Rectangle thumbBounds, Color edgeDark, Color edgeLight, Color gold)
+    {
+        railBounds.setBounds(0, 0, 0, 0);
+        thumbBounds.setBounds(0, 0, 0, 0);
+        if (totalRows <= visibleRows || totalRows <= 0 || visibleRows <= 0 || rail.height <= 0)
+        {
+            return;
+        }
+
+        railBounds.setBounds(rail);
+        g.setColor(new Color(0, 0, 0, 60));
+        g.fillRect(rail.x, rail.y, rail.width, rail.height);
+
+        float thumbRatio = (float) visibleRows / totalRows;
+        int thumbH = Math.min(rail.height, Math.max(12, Math.round(rail.height * thumbRatio)));
+        int maxOffset = Math.max(1, totalRows - visibleRows);
+        float scrollRatio = (float) Math.max(0, Math.min(maxOffset, offsetRows)) / maxOffset;
+        int thumbY = rail.y + (int) ((rail.height - thumbH) * scrollRatio);
+        Rectangle thumb = new Rectangle(rail.x, thumbY, Math.max(0, rail.width - 1), Math.max(0, thumbH - 1));
+        thumbBounds.setBounds(thumb);
+        TaskRowsRenderer.drawBevelBoxLogic(g, thumb, new Color(78, 62, 38, 200), edgeDark, edgeLight);
+        g.setColor(withAlpha(gold, 140));
+        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
+    }
+
+    public static void drawCheckmark(Graphics2D g, Rectangle box, int pad)
+    {
+        int midX = box.x + box.width / 2 - 1;
+        int bottomY = box.y + box.height - pad - 1;
+        g.drawLine(box.x + pad, box.y + box.height / 2, midX, bottomY);
+        g.drawLine(midX, bottomY, box.x + box.width - pad, box.y + pad);
+    }
+
     private int centeredTextBaseline(Rectangle bounds, FontMetrics fm)
     {
         return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();

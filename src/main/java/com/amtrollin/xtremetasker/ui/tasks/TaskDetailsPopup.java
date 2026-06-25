@@ -15,6 +15,7 @@ import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
+import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import net.runelite.api.Skill;
 import net.runelite.client.ui.FontManager;
 
@@ -811,26 +812,9 @@ public final class TaskDetailsPopup
         g.setClip(oldClip);
 
         // Scrollbar (drawn outside clip)
-        scrollbarRailBounds.setBounds(0, 0, 0, 0);
-        scrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        if (needsScroll)
-        {
-            int sbX = bounds.x + bounds.width - pad / 2 - scrollBarW;
-            scrollbarRailBounds.setBounds(sbX, viewportTop, scrollBarW, viewportH);
-            g.setColor(new Color(0, 0, 0, 60));
-            g.fillRect(sbX, viewportTop, scrollBarW, viewportH);
-            float thumbRatio = (float) visibleRows / totalContentRows;
-            int thumbH = Math.max(12, (int) (viewportH * thumbRatio));
-            float scrollRatio = maxScrollOffset > 0 ? (float) scroll.offsetRows / maxScrollOffset : 0f;
-            int thumbY = viewportTop + (int) ((viewportH - thumbH) * scrollRatio);
-            Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
-            scrollbarThumbBounds.setBounds(thumb);
-            drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
-
-            g.setColor(new Color(
-                    palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 140));
-            g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
-        }
+        ButtonRenderer.drawScrollbar(g, new Rectangle(bounds.x + bounds.width - pad / 2 - scrollBarW, viewportTop, scrollBarW, viewportH),
+                totalContentRows, visibleRows, scroll.offsetRows, scrollbarRailBounds, scrollbarThumbBounds,
+                palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT, palette.UI_GOLD);
         int footerX = bounds.x + footerPad;
         int footerW = bounds.width - (footerPad * 2);
 

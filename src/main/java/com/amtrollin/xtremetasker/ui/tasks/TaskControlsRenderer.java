@@ -242,28 +242,14 @@ public class TaskControlsRenderer
 
         int availableSource = rowW - leftPad - rightPad;
 
-        int wAll = pillWidth(fm, SRC_ALL, pillPadX, 42, availableSource);
-        int wCA = pillWidth(fm, SRC_CA, pillPadX, 42, availableSource);
-        int wCL = pillWidth(fm, SRC_CL, pillPadX, 52, availableSource);
-        int wDA = pillWidth(fm, SRC_DA, pillPadX, 42, availableSource);
-
-        int sx = rightAlignedX(rowX, rowW, rightPad, chipGap, wAll, wCA, wCL, wDA);
-        layout.filterSourceAll.setBounds(sx, rowTop, wAll, rowH);
-        sx += wAll + chipGap;
-
-        layout.filterCA.setBounds(sx, rowTop, wCA, rowH);
-        sx += wCA + chipGap;
-
-        layout.filterCL.setBounds(sx, rowTop, wCL, rowH);
-        sx += wCL + chipGap;
-
-        layout.filterDA.setBounds(sx, rowTop, wDA, rowH);
-
         boolean sourceAll = query.isSourceAllSelected();
-        drawPill(g, fm, layout.filterSourceAll, SRC_ALL, sourceAll);
-        drawPill(g, fm, layout.filterCA, SRC_CA, !sourceAll && query.sourceCASelected);
-        drawPill(g, fm, layout.filterCL, SRC_CL, !sourceAll && query.sourceClogsSelected);
-        drawPill(g, fm, layout.filterDA, SRC_DA, !sourceAll && query.sourceDasSelected);
+        drawRightAlignedPillRow(g, fm, rowX, rowW, rowTop, rowH, rightPad, chipGap, pillPadX,
+                availableSource,
+                new Rectangle[] {layout.filterSourceAll, layout.filterCA, layout.filterCL, layout.filterDA},
+                new String[] {SRC_ALL, SRC_CA, SRC_CL, SRC_DA},
+                new int[] {42, 42, 52, 42},
+                new boolean[] {sourceAll, !sourceAll && query.sourceCASelected,
+                        !sourceAll && query.sourceClogsSelected, !sourceAll && query.sourceDasSelected});
 
         cursorY += rowH + 3;
 
@@ -281,22 +267,14 @@ public class TaskControlsRenderer
 
         int availableStatus = rowW - leftPad - rightPad;
 
-        int wAllS = pillWidth(fm, ST_ALL, pillPadX, 42, availableStatus);
-        int wIncS = pillWidth(fm, ST_INC, pillPadX, 70, availableStatus);
-        int wCompS = pillWidth(fm, ST_COMP, pillPadX, 70, availableStatus);
-
-        int stx = rightAlignedX(rowX, rowW, rightPad, chipGap, wAllS, wIncS, wCompS);
-        layout.filterStatusAll.setBounds(stx, rowTop, wAllS, rowH);
-        stx += wAllS + chipGap;
-
-        layout.filterIncomplete.setBounds(stx, rowTop, wIncS, rowH);
-        stx += wIncS + chipGap;
-
-        layout.filterComplete.setBounds(stx, rowTop, wCompS, rowH);
-
-        drawPill(g, fm, layout.filterStatusAll, ST_ALL, query.statusFilter == TaskListQuery.StatusFilter.ALL);
-        drawPill(g, fm, layout.filterIncomplete, ST_INC, query.statusFilter == TaskListQuery.StatusFilter.INCOMPLETE);
-        drawPill(g, fm, layout.filterComplete, ST_COMP, query.statusFilter == TaskListQuery.StatusFilter.COMPLETE);
+        drawRightAlignedPillRow(g, fm, rowX, rowW, rowTop, rowH, rightPad, chipGap, pillPadX,
+                availableStatus,
+                new Rectangle[] {layout.filterStatusAll, layout.filterIncomplete, layout.filterComplete},
+                new String[] {ST_ALL, ST_INC, ST_COMP},
+                new int[] {42, 70, 70},
+                new boolean[] {query.statusFilter == TaskListQuery.StatusFilter.ALL,
+                        query.statusFilter == TaskListQuery.StatusFilter.INCOMPLETE,
+                        query.statusFilter == TaskListQuery.StatusFilter.COMPLETE});
 
         cursorY += rowH + 3;
 
@@ -313,9 +291,8 @@ public class TaskControlsRenderer
 
         int availableTier = rowW - leftPad - rightPad;
 
-        int halfTierW = Math.max(70, (availableTier - chipGap) / 2);
-        int wThis = halfTierW;
-        int wAllT = halfTierW;
+        int wAllT = pillWidth(fm, T_ALL, pillPadX, 70, availableTier);
+        int wThis = Math.max(70, availableTier - chipGap - wAllT);
 
         int tx = rowX + leftPad;
         layout.filterTierThis.setBounds(tx, rowTop, wThis, rowH);
@@ -351,38 +328,15 @@ public class TaskControlsRenderer
         final String COL_SRC = "Source";
 
         int availableColumns = rowW - leftPad - rightPad;
-        int halfColumnW = Math.max(48, (availableColumns - chipGap) / 2);
-        int wDate = halfColumnW;
-        int wTime = halfColumnW;
-        int wTier = halfColumnW;
-        int wSrc = halfColumnW;
-
-        int cx = rowX + leftPad;
-        layout.columnDate.setBounds(cx, rowTop, wDate, rowH);
-        cx += wDate + chipGap;
-
-        layout.columnTime.setBounds(cx, rowTop, wTime, rowH);
+        drawTwoColumnPillGrid(g, fm, rowX + leftPad, rowTop, rowH, availableColumns, chipGap,
+                new Rectangle[] {layout.columnDate, layout.columnTime, layout.columnTier, layout.columnSource},
+                new String[] {COL_DATE, COL_TIME, COL_TIER, COL_SRC},
+                new boolean[] {layout.showDateColumn, layout.showTimeColumn, layout.showTierColumn, layout.showSourceColumn});
 
         cursorY += rowH + chipGap;
-        rowTop = cursorY - fm.getAscent();
-        cx = rowX + leftPad;
-
-        layout.columnTier.setBounds(cx, rowTop, wTier, rowH);
-        cx += wTier + chipGap;
-
-        layout.columnSource.setBounds(cx, rowTop, wSrc, rowH);
-
-        drawPill(g, fm, layout.columnDate, COL_DATE, layout.showDateColumn);
-        drawPill(g, fm, layout.columnTime, COL_TIME, layout.showTimeColumn);
-        drawPill(g, fm, layout.columnTier, COL_TIER, layout.showTierColumn);
-        drawPill(g, fm, layout.columnSource, COL_SRC, layout.showSourceColumn);
-
         cursorY += rowH + 20;
 
-        layout.sortDate.setBounds(0, 0, 0, 0);
-        layout.sortTimeTicks.setBounds(0, 0, 0, 0);
-        layout.sortTier.setBounds(0, 0, 0, 0);
-        layout.sortSource.setBounds(0, 0, 0, 0);
+        clearBounds(layout.sortDate, layout.sortTimeTicks, layout.sortTier, layout.sortSource);
 
         return cursorY;
 
@@ -458,6 +412,59 @@ public class TaskControlsRenderer
             }
         }
         return Math.max(rowX, rowX + rowW - rightPad - total);
+    }
+
+    private void drawRightAlignedPillRow(
+            Graphics2D g,
+            FontMetrics fm,
+            int rowX,
+            int rowW,
+            int rowTop,
+            int rowH,
+            int rightPad,
+            int chipGap,
+            int pillPadX,
+            int availableW,
+            Rectangle[] bounds,
+            String[] labels,
+            int[] minWidths,
+            boolean[] selected)
+    {
+        int[] widths = new int[labels.length];
+        for (int i = 0; i < labels.length; i++)
+        {
+            widths[i] = pillWidth(fm, labels[i], pillPadX, minWidths[i], availableW);
+        }
+
+        int x = rightAlignedX(rowX, rowW, rightPad, chipGap, widths);
+        for (int i = 0; i < labels.length; i++)
+        {
+            bounds[i].setBounds(x, rowTop, widths[i], rowH);
+            drawPill(g, fm, bounds[i], labels[i], selected[i]);
+            x += widths[i] + chipGap;
+        }
+    }
+
+    private void drawTwoColumnPillGrid(
+            Graphics2D g,
+            FontMetrics fm,
+            int x,
+            int rowTop,
+            int rowH,
+            int availableW,
+            int chipGap,
+            Rectangle[] bounds,
+            String[] labels,
+            boolean[] selected)
+    {
+        int w = Math.max(48, (availableW - chipGap) / 2);
+        for (int i = 0; i < labels.length; i++)
+        {
+            int col = i % 2;
+            int row = i / 2;
+            bounds[i].setBounds(x + col * (w + chipGap), rowTop + row * (rowH + chipGap), w, rowH);
+            drawPill(g, fm, bounds[i], labels[i], selected[i]);
+        }
     }
 
     private void drawTierScopePill(Graphics2D g, FontMetrics fm, Rectangle bounds, String fullText, boolean on)
@@ -593,6 +600,14 @@ public class TaskControlsRenderer
         catch (Exception ignored)
         {
             return null;
+        }
+    }
+
+    private static void clearBounds(Rectangle... bounds)
+    {
+        for (Rectangle bound : bounds)
+        {
+            bound.setBounds(0, 0, 0, 0);
         }
     }
 

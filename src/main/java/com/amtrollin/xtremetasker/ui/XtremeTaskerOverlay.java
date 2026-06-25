@@ -83,6 +83,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final BufferedImage PLUGIN_ICON = loadPluginIconSafe();
     private static final BufferedImage HEADER_ICON = loadHeaderIconSafe();
     private static final UiPalette P = UiPalette.DEFAULT;
+    private static final Color POPUP_BG = new Color(45, 36, 24, 252);
+    private static final Color POPUP_BG_SOFT = new Color(45, 36, 24, 248);
     private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
     private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
     private static final int COLLECTION_LOG_PREVIEW_CACHE_LIMIT = 256;
@@ -302,6 +304,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private enum MainTab {CURRENT, TASKS, RULES}
 
+    private static final MainTab[] MAIN_TABS = {MainTab.CURRENT, MainTab.TASKS, MainTab.RULES};
+    private static final String[] MAIN_TAB_LABELS = {"Current", "Tasks", "Help"};
     private MainTab activeTab = MainTab.CURRENT;
 
     private static final List<TaskTier> TIER_TABS = Arrays.asList(TaskTier.EASY, TaskTier.MEDIUM, TaskTier.HARD, TaskTier.ELITE, TaskTier.MASTER);
@@ -2159,10 +2163,8 @@ public class XtremeTaskerOverlay extends Overlay {
             if (pendingMarkAllIncompleteTask != null) {
                 renderMarkAllIncompleteConfirm(g, fm);
             } else {
-                markAllIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
-                markAllIncompleteYesBounds.setBounds(0, 0, 0, 0);
-                markAllIncompleteNoBounds.setBounds(0, 0, 0, 0);
-                markIncompleteDontShowBounds.setBounds(0, 0, 0, 0);
+                clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
+                        markAllIncompleteNoBounds, markIncompleteDontShowBounds);
             }
 
             animations.prune();
@@ -2179,17 +2181,12 @@ public class XtremeTaskerOverlay extends Overlay {
         int availableTabsW = panelInnerWidth();
         int tabW = (availableTabsW - 8) / 3;
 
-        int tab1X = panelX + PANEL_PADDING;
-        int tab2X = tab1X + tabW + 4;
-        int tab3X = tab2X + tabW + 4;
-
-        currentTabBounds.setBounds(tab1X, cursorY, tabW, tabH);
-        tasksTabBounds.setBounds(tab2X, cursorY, tabW, tabH);
-        rulesTabBounds.setBounds(tab3X, cursorY, tabW, tabH);
-
-        buttonRenderer.drawTab(g, currentTabBounds, "Current", activeTab == MainTab.CURRENT);
-        buttonRenderer.drawTab(g, tasksTabBounds, "Tasks", activeTab == MainTab.TASKS);
-        buttonRenderer.drawTab(g, rulesTabBounds, "Help", activeTab == MainTab.RULES);
+        Rectangle[] tabBounds = {currentTabBounds, tasksTabBounds, rulesTabBounds};
+        for (int i = 0; i < tabBounds.length; i++)
+        {
+            tabBounds[i].setBounds(panelX + PANEL_PADDING + i * (tabW + 4), cursorY, tabW, tabH);
+            buttonRenderer.drawTab(g, tabBounds[i], MAIN_TAB_LABELS[i], activeTab == MAIN_TABS[i]);
+        }
 
         cursorY += tabH + 10;
 
@@ -2206,10 +2203,8 @@ public class XtremeTaskerOverlay extends Overlay {
         if (pendingMarkAllIncompleteTask != null) {
             renderMarkAllIncompleteConfirm(g, fm);
         } else {
-            markAllIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
-            markAllIncompleteYesBounds.setBounds(0, 0, 0, 0);
-            markAllIncompleteNoBounds.setBounds(0, 0, 0, 0);
-            markIncompleteDontShowBounds.setBounds(0, 0, 0, 0);
+            clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
+                    markAllIncompleteNoBounds, markIncompleteDontShowBounds);
         }
 
         if (syncMismatchReviewOpen && !visibleSyncMismatchTasks().isEmpty()) {
@@ -2300,8 +2295,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        g.setColor(new Color(0, 0, 0, 135));
-        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+        drawScrim(g, panelBounds, 135);
 
         List<XtremeTask> resolveTasks = resolveTasksForTask(task);
         int pad = 12;
@@ -2317,7 +2311,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int x = panelBounds.x + (panelBounds.width - w) / 2;
         int y = panelBounds.y + (panelBounds.height - h) / 2;
         taskResolveBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, taskResolveBounds, new Color(45, 36, 24, 252));
+        drawBevelBox(g, taskResolveBounds, POPUP_BG);
         taskResolveCloseBounds.setBounds(0, 0, 0, 0);
 
         g.setColor(P.UI_GOLD);
@@ -2353,9 +2347,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int actionY = y + h - pad - buttonH;
         int buttonW = 72;
         int gap = 8;
-        int buttonsW = buttonW * 2 + gap;
-        taskResolveSaveBounds.setBounds(x + (w - buttonsW) / 2, actionY, buttonW, buttonH);
-        taskResolveCancelBounds.setBounds(taskResolveSaveBounds.x + buttonW + gap, actionY, buttonW, buttonH);
+        layoutButtonPair(taskResolveSaveBounds, taskResolveCancelBounds, x, w, actionY, buttonW, buttonH, gap);
         buttonRenderer.drawPlainButton(g, taskResolveSaveBounds, "Save",
                 hasTaskResolveChanges() ? P.BTN_ENABLED_BG : P.BTN_DISABLED_BG,
                 hasTaskResolveChanges() ? P.UI_TEXT : P.UI_TEXT_DIM,
@@ -2378,9 +2370,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        g.setColor(new Color(0, 0, 0, 115));
-        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
-                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
+        drawScrim(g, syncMismatchReviewBounds, 115);
 
         int pad = 12;
         int rowGap = 4;
@@ -2396,7 +2386,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
         int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
         syncMismatchGroupResolveBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, syncMismatchGroupResolveBounds, new Color(45, 36, 24, 252));
+        drawBevelBox(g, syncMismatchGroupResolveBounds, POPUP_BG);
 
         int textY = y + pad + fm.getAscent();
         g.setColor(P.UI_GOLD);
@@ -2446,10 +2436,8 @@ public class XtremeTaskerOverlay extends Overlay {
         int actionY = y + h - pad - buttonH;
         int buttonW = 72;
         int gap = 8;
-        int buttonsW = buttonW * 2 + gap;
         boolean saveEnabled = hasSyncMismatchGroupResolveChanges();
-        syncMismatchGroupResolveSaveBounds.setBounds(x + (w - buttonsW) / 2, actionY, buttonW, buttonH);
-        syncMismatchGroupResolveCancelBounds.setBounds(syncMismatchGroupResolveSaveBounds.x + buttonW + gap, actionY, buttonW, buttonH);
+        layoutButtonPair(syncMismatchGroupResolveSaveBounds, syncMismatchGroupResolveCancelBounds, x, w, actionY, buttonW, buttonH, gap);
         buttonRenderer.drawPlainButton(g, syncMismatchGroupResolveSaveBounds, "Save",
                 saveEnabled ? P.BTN_ENABLED_BG : P.BTN_DISABLED_BG,
                 saveEnabled ? P.UI_TEXT : P.UI_TEXT_DIM,
@@ -2774,8 +2762,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
     {
-        g.setColor(new Color(0, 0, 0, 135));
-        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+        drawScrim(g, panelBounds, 135);
 
         String message = "Mark task incomplete?";
         String warning = "Can only be completed again by rolling or syncing, if applicable.";
@@ -2789,7 +2776,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int x = panelBounds.x + (panelBounds.width - w) / 2;
         int y = panelBounds.y + (panelBounds.height - h) / 2;
         taskDetailsIncompleteConfirmBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, taskDetailsIncompleteConfirmBounds, new Color(45, 36, 24, 252));
+        drawBevelBox(g, taskDetailsIncompleteConfirmBounds, POPUP_BG);
 
         int textY = y + pad + fm.getAscent() + 4;
         g.setColor(P.UI_TEXT);
@@ -2797,10 +2784,8 @@ public class XtremeTaskerOverlay extends Overlay {
         g.setColor(new Color(245, 92, 82, 245));
         g.drawString(warning, x + (w - fm.stringWidth(warning)) / 2, textY + fm.getHeight() + 3);
 
-        int buttonsW = buttonW * 2 + gap;
         int buttonY = y + h - pad - buttonH;
-        taskDetailsIncompleteConfirmYesBounds.setBounds(x + (w - buttonsW) / 2, buttonY, buttonW, buttonH);
-        taskDetailsIncompleteConfirmNoBounds.setBounds(taskDetailsIncompleteConfirmYesBounds.x + buttonW + gap, buttonY, buttonW, buttonH);
+        layoutButtonPair(taskDetailsIncompleteConfirmYesBounds, taskDetailsIncompleteConfirmNoBounds, x, w, buttonY, buttonW, buttonH, gap);
         buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmYesBounds, "Confirm",
                 new Color(86, 31, 24, 235), P.UI_TEXT, new Color(245, 92, 82, 220));
         buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
@@ -2808,22 +2793,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void drawResolveToggleGlyph(Graphics2D g, Rectangle bounds, boolean selected, boolean enabled)
     {
-        Color bg;
-        Color strokeColor;
-        if (!enabled)
-        {
-            bg = selected ? new Color(43, 45, 43, 210) : new Color(28, 28, 28, 185);
-            strokeColor = new Color(135, 135, 135, selected ? 185 : 95);
-        }
-        else
-        {
-            bg = selected ? new Color(45, 68, 38, 230) : P.INPUT_BG;
-            strokeColor = selected ? new Color(105, 220, 125, 245) : withAlpha(P.UI_GOLD, 185);
-        }
-
-        drawBevelBox(g, bounds, bg);
-        g.setColor(strokeColor);
-        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
+        drawResolveToggleFrame(g, bounds, selected, enabled,
+                new Color(45, 68, 38, 230), new Color(43, 45, 43, 210), new Color(105, 220, 125, 245));
         if (!selected)
         {
             return;
@@ -2831,29 +2802,14 @@ public class XtremeTaskerOverlay extends Overlay {
 
         Stroke oldStroke = g.getStroke();
         g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(bounds.x + 4, bounds.y + bounds.height / 2, bounds.x + bounds.width / 2 - 1, bounds.y + bounds.height - 5);
-        g.drawLine(bounds.x + bounds.width / 2 - 1, bounds.y + bounds.height - 5, bounds.x + bounds.width - 4, bounds.y + 4);
+        ButtonRenderer.drawCheckmark(g, bounds, 4);
         g.setStroke(oldStroke);
     }
 
     private void drawResolveIncompleteToggleGlyph(Graphics2D g, Rectangle bounds, boolean selectedIncomplete, boolean enabled)
     {
-        Color bg;
-        Color strokeColor;
-        if (!enabled)
-        {
-            bg = selectedIncomplete ? new Color(48, 34, 32, 210) : new Color(28, 28, 28, 185);
-            strokeColor = new Color(135, 135, 135, selectedIncomplete ? 185 : 95);
-        }
-        else
-        {
-            bg = selectedIncomplete ? new Color(82, 36, 30, 230) : P.INPUT_BG;
-            strokeColor = selectedIncomplete ? new Color(245, 92, 82, 245) : withAlpha(P.UI_GOLD, 185);
-        }
-
-        drawBevelBox(g, bounds, bg);
-        g.setColor(strokeColor);
-        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
+        drawResolveToggleFrame(g, bounds, selectedIncomplete, enabled,
+                new Color(82, 36, 30, 230), new Color(48, 34, 32, 210), new Color(245, 92, 82, 245));
         if (!selectedIncomplete)
         {
             return;
@@ -2864,6 +2820,20 @@ public class XtremeTaskerOverlay extends Overlay {
         g.drawLine(bounds.x + 5, bounds.y + 5, bounds.x + bounds.width - 5, bounds.y + bounds.height - 5);
         g.drawLine(bounds.x + bounds.width - 5, bounds.y + 5, bounds.x + 5, bounds.y + bounds.height - 5);
         g.setStroke(oldStroke);
+    }
+
+    private void drawResolveToggleFrame(Graphics2D g, Rectangle bounds, boolean selected, boolean enabled,
+                                        Color selectedBg, Color disabledSelectedBg, Color selectedStroke)
+    {
+        Color bg = enabled
+                ? (selected ? selectedBg : P.INPUT_BG)
+                : (selected ? disabledSelectedBg : new Color(28, 28, 28, 185));
+        Color strokeColor = enabled
+                ? (selected ? selectedStroke : withAlpha(P.UI_GOLD, 185))
+                : new Color(135, 135, 135, selected ? 185 : 95);
+        drawBevelBox(g, bounds, bg);
+        g.setColor(strokeColor);
+        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
     }
 
     private String taskResolveCompletionDateText(XtremeTask task)
@@ -3018,9 +2988,8 @@ public class XtremeTaskerOverlay extends Overlay {
         taskResolveOriginalIncompleteTaskIds.clear();
         taskDetailsIncompleteConfirmOpen = false;
         taskDetailsIncompleteConfirmCloseAfter = true;
-        taskDetailsIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
-        taskDetailsIncompleteConfirmYesBounds.setBounds(0, 0, 0, 0);
-        taskDetailsIncompleteConfirmNoBounds.setBounds(0, 0, 0, 0);
+        clearBounds(taskDetailsIncompleteConfirmBounds, taskDetailsIncompleteConfirmYesBounds,
+                taskDetailsIncompleteConfirmNoBounds);
     }
 
     private void openTaskResolve(XtremeTask task)
@@ -3047,10 +3016,7 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         taskResolveTask = null;
         taskResolveOriginalIncompleteTaskIds.clear();
-        taskResolveBounds.setBounds(0, 0, 0, 0);
-        taskResolveCloseBounds.setBounds(0, 0, 0, 0);
-        taskResolveSaveBounds.setBounds(0, 0, 0, 0);
-        taskResolveCancelBounds.setBounds(0, 0, 0, 0);
+        clearBounds(taskResolveBounds, taskResolveCloseBounds, taskResolveSaveBounds, taskResolveCancelBounds);
         taskResolveInstanceToggleBounds.clear();
     }
 
@@ -3122,9 +3088,8 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchGroupResolveTask = null;
         selectedSyncMismatchGroupResolveTaskIds.clear();
         originalSyncMismatchGroupResolveTaskIds.clear();
-        syncMismatchGroupResolveBounds.setBounds(0, 0, 0, 0);
-        syncMismatchGroupResolveSaveBounds.setBounds(0, 0, 0, 0);
-        syncMismatchGroupResolveCancelBounds.setBounds(0, 0, 0, 0);
+        clearBounds(syncMismatchGroupResolveBounds, syncMismatchGroupResolveSaveBounds,
+                syncMismatchGroupResolveCancelBounds);
         syncMismatchGroupResolveToggleBounds.clear();
     }
 
@@ -3224,19 +3189,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void clearSyncMismatchReviewBounds()
     {
-        syncMismatchReviewBounds.setBounds(0, 0, 0, 0);
-        syncMismatchViewportBounds.setBounds(0, 0, 0, 0);
-        syncMismatchCloseBounds.setBounds(0, 0, 0, 0);
-        syncMismatchMarkAllBounds.setBounds(0, 0, 0, 0);
-        syncMismatchApplyBounds.setBounds(0, 0, 0, 0);
-        syncMismatchCancelBounds.setBounds(0, 0, 0, 0);
-        syncMismatchConfirmBounds.setBounds(0, 0, 0, 0);
-        syncMismatchConfirmYesBounds.setBounds(0, 0, 0, 0);
-        syncMismatchConfirmNoBounds.setBounds(0, 0, 0, 0);
-        syncMismatchScrollbarRailBounds.setBounds(0, 0, 0, 0);
-        syncMismatchScrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        syncMismatchDescriptionBounds.setBounds(0, 0, 0, 0);
-        syncMismatchDescriptionCloseBounds.setBounds(0, 0, 0, 0);
+        clearBounds(syncMismatchReviewBounds, syncMismatchViewportBounds, syncMismatchCloseBounds,
+                syncMismatchMarkAllBounds, syncMismatchApplyBounds, syncMismatchCancelBounds,
+                syncMismatchConfirmBounds, syncMismatchConfirmYesBounds, syncMismatchConfirmNoBounds,
+                syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds,
+                syncMismatchDescriptionBounds, syncMismatchDescriptionCloseBounds);
         closeSyncMismatchGroupResolve();
         syncMismatchReviewOpen = false;
         syncReviewMode = SyncReviewMode.MISMATCH;
@@ -3262,8 +3219,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        g.setColor(new Color(0, 0, 0, 135));
-        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+        drawScrim(g, panelBounds, 135);
 
         int maxReviewW = 470;
         int w = Math.min(panelBounds.width - 36, maxReviewW);
@@ -3271,7 +3227,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int x = panelBounds.x + (panelBounds.width - w) / 2;
         int y = panelBounds.y + (panelBounds.height - h) / 2;
         syncMismatchReviewBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, syncMismatchReviewBounds, new Color(45, 36, 24, 248));
+        drawBevelBox(g, syncMismatchReviewBounds, POPUP_BG_SOFT);
 
         int pad = 12;
         int closeW = 28;
@@ -3284,70 +3240,12 @@ public class XtremeTaskerOverlay extends Overlay {
                 .anyMatch(task -> isCollectionLogSyncSource(task.getSource()));
         boolean hasCombatAchievementReview = mismatches.stream()
                 .anyMatch(task -> task.getSource() == TaskSource.COMBAT_ACHIEVEMENT);
-        g.setColor(P.UI_GOLD);
-        String reviewMessage;
-        String reviewHelper = "";
-        String reviewInstruction = "";
-        if (reviewingCompletionCandidates)
-        {
-            if (hasCollectionLogReview && hasCombatAchievementReview)
-            {
-                reviewMessage = "Tasks found completed in game via sync, but not marked completed in plugin.";
-            }
-            else if (hasCollectionLogReview)
-            {
-                reviewMessage = "Collection Log + Achievement Diary tasks found completed in game via sync, but not marked completed in plugin.";
-            }
-            else
-            {
-                reviewMessage = "Combat Achievement tasks found completed in game via sync, but not marked completed in plugin.";
-            }
-            reviewInstruction = "Choose which tasks to mark complete in plugin, then select Apply to save.";
-        }
-        else if (hasCollectionLogReview && hasCombatAchievementReview)
-        {
-            reviewMessage = "Tasks marked completed in plugin, but not found completed in game via sync.";
-            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
-        }
-        else if (hasCollectionLogReview)
-        {
-            reviewMessage = "Collection Log + Achievement Diary tasks marked completed in plugin, but not found completed in game via sync.";
-            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
-        }
-        else
-        {
-            reviewMessage = "Combat Achievement tasks marked completed in plugin, but not found completed in game via sync.";
-            reviewInstruction = "Choose which tasks to mark incomplete in plugin, then select Apply to save.";
-        }
-        int reviewMessageMaxW = w - pad * 3 - closeW;
-        List<String> reviewMessageLines = TextUtils.wrapText(reviewMessage, fm, reviewMessageMaxW);
-        int titleY = y + pad + fm.getAscent();
-        for (String line : reviewMessageLines)
-        {
-            g.drawString(line, x + pad, titleY);
-            titleY += fm.getHeight();
-        }
-
-        int nextY = titleY - fm.getAscent() + fm.getHeight();
-        if (!reviewHelper.isEmpty())
-        {
-            g.setColor(P.UI_TEXT_DIM);
-            for (String line : TextUtils.wrapText(reviewHelper, fm, w - pad * 2))
-            {
-                g.drawString(line, x + pad, nextY + fm.getAscent());
-                nextY += fm.getHeight();
-            }
-        }
+        int nextY = drawWrappedBlock(g, fm,
+                syncReviewIntroMessage(reviewingCompletionCandidates, hasCollectionLogReview, hasCombatAchievementReview),
+                x + pad, y + pad, w - pad * 3 - closeW, P.UI_GOLD) + fm.getHeight();
         boolean showCollectionLogRefreshHint = hasCollectionLogReview && !reviewingCompletionCandidates;
-        if (!reviewInstruction.isEmpty())
-        {
-            g.setColor(P.UI_TEXT_DIM);
-            for (String line : TextUtils.wrapText(reviewInstruction, fm, w - pad * 2))
-            {
-                g.drawString(line, x + pad, nextY + fm.getAscent());
-                nextY += fm.getHeight();
-            }
-        }
+        nextY = drawWrappedBlock(g, fm, syncReviewInstruction(reviewingCompletionCandidates),
+                x + pad, nextY, w - pad * 2, P.UI_TEXT_DIM);
         if (showCollectionLogRefreshHint)
         {
             g.setColor(P.UI_TEXT);
@@ -3357,7 +3255,7 @@ public class XtremeTaskerOverlay extends Overlay {
             nextY += fm.getHeight();
         }
 
-        int headerTop = nextY + ((showCollectionLogRefreshHint || !reviewHelper.isEmpty() || !reviewInstruction.isEmpty()) ? fm.getHeight() + 14 : 14);
+        int headerTop = nextY + fm.getHeight() + 14;
         int footerH = buttonH + fm.getHeight() + 10;
         int listBottom = y + h - pad - footerH;
         Rectangle listFrame = new Rectangle(x + pad, 0, w - pad * 2, 0);
@@ -3496,26 +3394,10 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         g.setClip(oldClip);
 
-        syncMismatchScrollbarRailBounds.setBounds(0, 0, 0, 0);
-        syncMismatchScrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        if (needsScrollbar)
-        {
-            int sbX = syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW;
-            syncMismatchScrollbarRailBounds.setBounds(sbX, syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height);
-            g.setColor(new Color(0, 0, 0, 60));
-            g.fillRect(sbX, syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height);
-
-            float thumbRatio = (float) visible / mismatches.size();
-            int thumbH = Math.min(syncMismatchViewportBounds.height,
-                    Math.max(12, Math.round(syncMismatchViewportBounds.height * thumbRatio)));
-            float scrollRatio = maxOffset > 0 ? (float) syncMismatchScroll.offsetRows / maxOffset : 0f;
-            int thumbY = syncMismatchViewportBounds.y + (int) ((syncMismatchViewportBounds.height - thumbH) * scrollRatio);
-            Rectangle thumb = new Rectangle(sbX, thumbY, Math.max(0, scrollBarW - 1), Math.max(0, thumbH - 1));
-            syncMismatchScrollbarThumbBounds.setBounds(thumb);
-            drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
-            g.setColor(withAlpha(P.UI_GOLD, 140));
-            g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
-        }
+        ButtonRenderer.drawScrollbar(g, new Rectangle(syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW,
+                        syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height),
+                mismatches.size(), visible, syncMismatchScroll.offsetRows, syncMismatchScrollbarRailBounds,
+                syncMismatchScrollbarThumbBounds, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD);
 
         String scrollHint = "Displaying " + (syncMismatchScroll.offsetRows + 1) + "-"
                 + Math.min(mismatches.size(), syncMismatchScroll.offsetRows + visible)
@@ -3552,6 +3434,23 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             renderSyncMismatchApplyConfirm(g, fm);
         }
+    }
+
+    private String syncReviewIntroMessage(boolean completionCandidates, boolean hasCollectionLogReview, boolean hasCombatAchievementReview)
+    {
+        String prefix = hasCollectionLogReview && hasCombatAchievementReview
+                ? "Tasks"
+                : hasCollectionLogReview ? "Collection Log + Achievement Diary tasks" : "Combat Achievement tasks";
+        String suffix = completionCandidates
+                ? "found completed in game via sync, but not marked completed in plugin."
+                : "marked completed in plugin, but not found completed in game via sync.";
+        return prefix + " " + suffix;
+    }
+
+    private String syncReviewInstruction(boolean completionCandidates)
+    {
+        return "Choose which tasks to mark " + (completionCandidates ? "complete" : "incomplete")
+                + " in plugin, then select Apply to save.";
     }
 
     private List<XtremeTask> visibleSyncMismatchTasks()
@@ -3900,10 +3799,8 @@ public class XtremeTaskerOverlay extends Overlay {
         int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
         syncMismatchDescriptionBounds.setBounds(x, y, w, h);
 
-        g.setColor(new Color(0, 0, 0, 115));
-        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
-                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
-        drawBevelBox(g, syncMismatchDescriptionBounds, new Color(45, 36, 24, 252));
+        drawScrim(g, syncMismatchReviewBounds, 115);
+        drawBevelBox(g, syncMismatchDescriptionBounds, POPUP_BG);
 
         syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
         drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
@@ -3970,10 +3867,8 @@ public class XtremeTaskerOverlay extends Overlay {
         int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
         syncMismatchDescriptionBounds.setBounds(x, y, w, h);
 
-        g.setColor(new Color(0, 0, 0, 115));
-        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
-                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
-        drawBevelBox(g, syncMismatchDescriptionBounds, new Color(45, 36, 24, 252));
+        drawScrim(g, syncMismatchReviewBounds, 115);
+        drawBevelBox(g, syncMismatchDescriptionBounds, POPUP_BG);
 
         syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
         drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
@@ -4070,8 +3965,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.drawRect(box.x + 1, box.y + 1, box.width - 3, box.height - 3);
         if (checked)
         {
-            g.drawLine(box.x + 5, box.y + box.height / 2, box.x + box.width / 2 - 1, box.y + box.height - 6);
-            g.drawLine(box.x + box.width / 2 - 1, box.y + box.height - 6, box.x + box.width - 5, box.y + 5);
+            ButtonRenderer.drawCheckmark(g, box, 5);
         }
     }
 
@@ -4233,9 +4127,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void renderSyncMismatchApplyConfirm(Graphics2D g, FontMetrics fm)
     {
-        g.setColor(new Color(0, 0, 0, 115));
-        g.fillRect(syncMismatchReviewBounds.x, syncMismatchReviewBounds.y,
-                syncMismatchReviewBounds.width, syncMismatchReviewBounds.height);
+        drawScrim(g, syncMismatchReviewBounds, 115);
 
         int count = selectedVisibleSyncMismatchCount(visibleSyncMismatchTasks());
         boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
@@ -4251,7 +4143,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
         int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
         syncMismatchConfirmBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, syncMismatchConfirmBounds, new Color(45, 36, 24, 252));
+        drawBevelBox(g, syncMismatchConfirmBounds, POPUP_BG);
 
         int firstY = y + 18 + fm.getAscent();
         g.setColor(P.UI_TEXT);
@@ -4262,18 +4154,15 @@ public class XtremeTaskerOverlay extends Overlay {
         int buttonW = 70;
         int buttonH = ROW_HEIGHT + 8;
         int gap = 8;
-        int buttonsW = buttonW * 2 + gap;
         int buttonY = y + h - buttonH - 10;
-        syncMismatchConfirmYesBounds.setBounds(x + (w - buttonsW) / 2, buttonY, buttonW, buttonH);
-        syncMismatchConfirmNoBounds.setBounds(syncMismatchConfirmYesBounds.x + buttonW + gap, buttonY, buttonW, buttonH);
+        layoutButtonPair(syncMismatchConfirmYesBounds, syncMismatchConfirmNoBounds, x, w, buttonY, buttonW, buttonH, gap);
         buttonRenderer.drawPlainButton(g, syncMismatchConfirmYesBounds, "Confirm", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
         buttonRenderer.drawPlainButton(g, syncMismatchConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
     }
 
     private void renderMarkAllIncompleteConfirm(Graphics2D g, FontMetrics fm)
     {
-        g.setColor(new Color(0, 0, 0, 125));
-        g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
+        drawScrim(g, panelBounds, 125);
 
         XtremeTask pending = pendingMarkAllIncompleteTask;
         boolean multipleTasks = pending != null && pendingMarkAllIncompleteGroupMode;
@@ -4295,15 +4184,13 @@ public class XtremeTaskerOverlay extends Overlay {
         int y = panelBounds.y + (panelBounds.height - h) / 2;
         markAllIncompleteConfirmBounds.setBounds(x, y, w, h);
 
-        drawBevelBox(g, markAllIncompleteConfirmBounds, new Color(45, 36, 24, 248));
+        drawBevelBox(g, markAllIncompleteConfirmBounds, POPUP_BG_SOFT);
 
         int buttonW = 70;
         int buttonH = ROW_HEIGHT + 6;
         int gap = 8;
-        int buttonsW = buttonW * 2 + gap;
         int buttonY = y + h - buttonH - 10;
-        markAllIncompleteYesBounds.setBounds(x + (w - buttonsW) / 2, buttonY, buttonW, buttonH);
-        markAllIncompleteNoBounds.setBounds(markAllIncompleteYesBounds.x + buttonW + gap, buttonY, buttonW, buttonH);
+        layoutButtonPair(markAllIncompleteYesBounds, markAllIncompleteNoBounds, x, w, buttonY, buttonW, buttonH, gap);
 
         String drawMessage = TextUtils.truncateToWidth(message, fm, w - 20);
         String drawWarning = TextUtils.truncateToWidth(warning, fm, w - 20);
@@ -4336,8 +4223,7 @@ public class XtremeTaskerOverlay extends Overlay {
             if (markIncompleteDontShowChecked)
             {
                 g.setColor(P.UI_GOLD);
-                g.drawLine(checkboxX + 2, boxY + boxSize / 2, checkboxX + boxSize / 2 - 1, boxY + boxSize - 3);
-                g.drawLine(checkboxX + boxSize / 2 - 1, boxY + boxSize - 3, checkboxX + boxSize - 2, boxY + 2);
+                ButtonRenderer.drawCheckmark(g, new Rectangle(checkboxX, boxY, boxSize, boxSize), 2);
             }
 
             g.setColor(P.UI_TEXT_DIM);
@@ -4345,7 +4231,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         else
         {
-            markIncompleteDontShowBounds.setBounds(0, 0, 0, 0);
+            clearBounds(markIncompleteDontShowBounds);
         }
 
         buttonRenderer.drawPlainButton(
@@ -4759,24 +4645,16 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private void resetCurrentLayoutBounds() {
-        currentLayout.wikiButtonBounds.setBounds(0, 0, 0, 0);
-        currentLayout.rollButtonBounds.setBounds(0, 0, 0, 0);
-        currentLayout.completeButtonBounds.setBounds(0, 0, 0, 0);
-        currentLayout.undoButtonBounds.setBounds(0, 0, 0, 0);
-        currentLayout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
-        currentLayout.viewportBounds.setBounds(0, 0, 0, 0);
-        currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
-        currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
+        clearBounds(currentLayout.wikiButtonBounds, currentLayout.rollButtonBounds,
+                currentLayout.completeButtonBounds, currentLayout.undoButtonBounds,
+                currentLayout.rollSourceIconBounds, currentLayout.viewportBounds,
+                currentLayout.scrollbarRailBounds, currentLayout.scrollbarThumbBounds);
         currentLayout.totalContentPx = 0;
     }
 
     private void clearFullPanelTabBounds() {
-        currentTabBounds.setBounds(0, 0, 0, 0);
-        tasksTabBounds.setBounds(0, 0, 0, 0);
-        rulesTabBounds.setBounds(0, 0, 0, 0);
-        taskListViewportBounds.setBounds(0, 0, 0, 0);
-        taskScrollbarRailBounds.setBounds(0, 0, 0, 0);
-        taskScrollbarThumbBounds.setBounds(0, 0, 0, 0);
+        clearBounds(currentTabBounds, tasksTabBounds, rulesTabBounds, taskListViewportBounds,
+                taskScrollbarRailBounds, taskScrollbarThumbBounds);
     }
 
     private static String compactFormatTicks(long seconds) {
@@ -5037,6 +4915,40 @@ public class XtremeTaskerOverlay extends Overlay {
         taskListView.resetAfterQueryChange(activeTierTab, tasks, plugin::isTaskCompleted);
     }
 
+    private void prepareTasksTabOnOpen()
+    {
+        TaskTier tier = null;
+        XtremeTask cur = plugin.getCurrentTask();
+        if (cur != null)
+        {
+            tier = cur.getTier();
+        }
+        if (tier == null)
+        {
+            tier = plugin.getCurrentTier();
+        }
+        if (tier != null)
+        {
+            activeTierTab = tier;
+        }
+
+        if (!tasksSourceFilterInitialized)
+        {
+            tasksSourceFilterInitialized = true;
+            XtremeTaskerConfig.RollSourceFilter rsf = plugin.getRollSourceFilter();
+            if (rsf == XtremeTaskerConfig.RollSourceFilter.CA_ONLY)
+            {
+                taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
+            }
+            else
+            {
+                taskQuery.selectAllSources();
+            }
+        }
+
+        resetTaskListViewAfterQueryChange();
+    }
+
     // --------- data + pipeline ---------
     private List<XtremeTask> getTasksForTier(TaskTier tier) {
         List<XtremeTask> out = new ArrayList<>();
@@ -5281,60 +5193,16 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
-            public MainTab activeTab() {
-                switch (activeTab) {
-                    case TASKS:
-                        return MainTab.TASKS;
-                    case RULES:
-                        return MainTab.RULES;
-                    default:
-                        return MainTab.CURRENT;
-                }
+            public OverlayInputAccess.MainTab activeTab() {
+                return OverlayInputAccess.MainTab.valueOf(activeTab.name());
             }
 
             @Override
-            public void setActiveTab(MainTab tab) {
-                switch (tab) {
-                    case CURRENT:
-                        activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
-                        break;
-
-                    case TASKS:
-                        activeTab = XtremeTaskerOverlay.MainTab.TASKS;
-
-                        // Default Tasks tab to the tier the user is currently working on
-                        TaskTier tier = null;
-                        XtremeTask cur = plugin.getCurrentTask();
-                        if (cur != null) {
-                            tier = cur.getTier();
-                        }
-                        if (tier == null) {
-                            tier = plugin.getCurrentTier();
-                        }
-                        if (tier != null) {
-                            activeTierTab = tier;
-                        }
-
-                        // Default source filter to match the roll source config (only on first visit)
-                        if (!tasksSourceFilterInitialized) {
-                            tasksSourceFilterInitialized = true;
-                            XtremeTaskerConfig.RollSourceFilter rsf = plugin.getRollSourceFilter();
-                            if (rsf == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
-                                taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
-                            } else if (rsf == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                                taskQuery.selectAllSources();
-                            } else {
-                                taskQuery.selectAllSources();
-                            }
-                        }
-
-                        // Reset selection/scroll for the new tier
-                        XtremeTaskerOverlay.this.resetTaskListViewAfterQueryChange();
-                        break;
-
-                    case RULES:
-                        activeTab = XtremeTaskerOverlay.MainTab.RULES;
-                        break;
+            public void setActiveTab(OverlayInputAccess.MainTab tab) {
+                activeTab = XtremeTaskerOverlay.MainTab.valueOf(tab.name());
+                if (activeTab == XtremeTaskerOverlay.MainTab.TASKS)
+                {
+                    prepareTasksTabOnOpen();
                 }
             }
 
@@ -5704,10 +5572,8 @@ public class XtremeTaskerOverlay extends Overlay {
             public void closeMarkAllIncompleteConfirmation() {
                 pendingMarkAllIncompleteTask = null;
                 pendingMarkAllIncompleteGroupMode = false;
-                markAllIncompleteConfirmBounds.setBounds(0, 0, 0, 0);
-                markAllIncompleteYesBounds.setBounds(0, 0, 0, 0);
-                markAllIncompleteNoBounds.setBounds(0, 0, 0, 0);
-                markIncompleteDontShowBounds.setBounds(0, 0, 0, 0);
+                clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
+                        markAllIncompleteNoBounds, markIncompleteDontShowBounds);
                 markIncompleteDontShowChecked = false;
             }
 
@@ -6210,45 +6076,20 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        scaleRect(panelBounds, anchorX, anchorY, scale);
-        scaleRect(panelDragBarBounds, anchorX, anchorY, scale);
-        scaleRect(panelCloseBounds, anchorX, anchorY, scale);
-        scaleRect(panelModeToggleBounds, anchorX, anchorY, scale);
-
-        scaleRect(currentTabBounds, anchorX, anchorY, scale);
-        scaleRect(tasksTabBounds, anchorX, anchorY, scale);
-        scaleRect(rulesTabBounds, anchorX, anchorY, scale);
-
-        scaleRect(taskListViewportBounds, anchorX, anchorY, scale);
-        scaleRect(taskScrollbarRailBounds, anchorX, anchorY, scale);
-        scaleRect(taskScrollbarThumbBounds, anchorX, anchorY, scale);
-        scaleRect(markAllIncompleteConfirmBounds, anchorX, anchorY, scale);
-        scaleRect(markAllIncompleteYesBounds, anchorX, anchorY, scale);
-        scaleRect(markAllIncompleteNoBounds, anchorX, anchorY, scale);
-        scaleRect(markIncompleteDontShowBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchReviewBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchViewportBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchCloseBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchMarkAllBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchApplyBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchCancelBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchConfirmBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchConfirmYesBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchConfirmNoBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchScrollbarRailBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchScrollbarThumbBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchDescriptionBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchDescriptionCloseBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchGroupResolveBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchGroupResolveSaveBounds, anchorX, anchorY, scale);
-        scaleRect(syncMismatchGroupResolveCancelBounds, anchorX, anchorY, scale);
-        scaleRect(taskResolveBounds, anchorX, anchorY, scale);
-        scaleRect(taskResolveCloseBounds, anchorX, anchorY, scale);
-        scaleRect(taskResolveSaveBounds, anchorX, anchorY, scale);
-        scaleRect(taskResolveCancelBounds, anchorX, anchorY, scale);
-        scaleRect(taskDetailsIncompleteConfirmBounds, anchorX, anchorY, scale);
-        scaleRect(taskDetailsIncompleteConfirmYesBounds, anchorX, anchorY, scale);
-        scaleRect(taskDetailsIncompleteConfirmNoBounds, anchorX, anchorY, scale);
+        scaleRects(anchorX, anchorY, scale,
+                panelBounds, panelDragBarBounds, panelCloseBounds, panelModeToggleBounds,
+                currentTabBounds, tasksTabBounds, rulesTabBounds,
+                taskListViewportBounds, taskScrollbarRailBounds, taskScrollbarThumbBounds,
+                markAllIncompleteConfirmBounds, markAllIncompleteYesBounds, markAllIncompleteNoBounds,
+                markIncompleteDontShowBounds, syncMismatchReviewBounds, syncMismatchViewportBounds,
+                syncMismatchCloseBounds, syncMismatchMarkAllBounds, syncMismatchApplyBounds,
+                syncMismatchCancelBounds, syncMismatchConfirmBounds, syncMismatchConfirmYesBounds,
+                syncMismatchConfirmNoBounds, syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds,
+                syncMismatchDescriptionBounds, syncMismatchDescriptionCloseBounds,
+                syncMismatchGroupResolveBounds, syncMismatchGroupResolveSaveBounds,
+                syncMismatchGroupResolveCancelBounds, taskResolveBounds, taskResolveCloseBounds,
+                taskResolveSaveBounds, taskResolveCancelBounds, taskDetailsIncompleteConfirmBounds,
+                taskDetailsIncompleteConfirmYesBounds, taskDetailsIncompleteConfirmNoBounds);
         scaleCurrentLayoutBounds(anchorX, anchorY, scale);
         scaleRulesLayoutBounds(anchorX, anchorY, scale);
         scaleControlsLayoutBounds(controls, anchorX, anchorY, scale);
@@ -6261,52 +6102,30 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private void scaleCurrentLayoutBounds(int anchorX, int anchorY, double scale) {
-        scaleRect(currentLayout.wikiButtonBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.rollButtonBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.completeButtonBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.undoButtonBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.rollSourceIconBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.viewportBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.scrollbarRailBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.scrollbarThumbBounds, anchorX, anchorY, scale);
+        scaleRects(anchorX, anchorY, scale,
+                currentLayout.wikiButtonBounds, currentLayout.rollButtonBounds,
+                currentLayout.completeButtonBounds, currentLayout.undoButtonBounds,
+                currentLayout.rollSourceIconBounds, currentLayout.viewportBounds,
+                currentLayout.scrollbarRailBounds, currentLayout.scrollbarThumbBounds);
     }
 
     private void scaleRulesLayoutBounds(int anchorX, int anchorY, double scale) {
-        scaleRect(rulesLayout.viewportBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.reloadButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.taskerFaqLinkBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.githubReadmeLinkBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncProgressButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncCaFoundReviewButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncCaReviewButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncCaReviewIgnoreButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.subTabRulesBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.subTabDataSyncsBounds, anchorX, anchorY, scale);
+        scaleRects(anchorX, anchorY, scale,
+                rulesLayout.viewportBounds, rulesLayout.reloadButtonBounds,
+                rulesLayout.taskerFaqLinkBounds, rulesLayout.githubReadmeLinkBounds,
+                rulesLayout.syncProgressButtonBounds, rulesLayout.syncCaFoundReviewButtonBounds,
+                rulesLayout.syncCaReviewButtonBounds, rulesLayout.syncCaReviewIgnoreButtonBounds,
+                rulesLayout.subTabRulesBounds, rulesLayout.subTabDataSyncsBounds);
     }
 
     private void scaleControlsLayoutBounds(TaskControlsLayout layout, int anchorX, int anchorY, double scale) {
-        scaleRect(layout.searchBox, anchorX, anchorY, scale);
-        scaleRect(layout.filtersHeaderBounds, anchorX, anchorY, scale);
-        scaleRect(layout.filterSourceAll, anchorX, anchorY, scale);
-        scaleRect(layout.filterCA, anchorX, anchorY, scale);
-        scaleRect(layout.filterCL, anchorX, anchorY, scale);
-        scaleRect(layout.filterDA, anchorX, anchorY, scale);
-        scaleRect(layout.filterStatusAll, anchorX, anchorY, scale);
-        scaleRect(layout.filterIncomplete, anchorX, anchorY, scale);
-        scaleRect(layout.filterComplete, anchorX, anchorY, scale);
-        scaleRect(layout.filterTierThis, anchorX, anchorY, scale);
-        scaleRect(layout.filterTierAll, anchorX, anchorY, scale);
-        scaleRect(layout.columnDate, anchorX, anchorY, scale);
-        scaleRect(layout.columnTime, anchorX, anchorY, scale);
-        scaleRect(layout.columnTier, anchorX, anchorY, scale);
-        scaleRect(layout.columnSource, anchorX, anchorY, scale);
-        scaleRect(layout.sortDate, anchorX, anchorY, scale);
-        scaleRect(layout.sortTimeTicks, anchorX, anchorY, scale);
-        scaleRect(layout.sortTier, anchorX, anchorY, scale);
-        scaleRect(layout.sortSource, anchorX, anchorY, scale);
-        scaleRect(layout.clearFilters, anchorX, anchorY, scale);
-        scaleRect(layout.filterNewTasks, anchorX, anchorY, scale);
-        scaleRect(layout.filterNewTasksHelp, anchorX, anchorY, scale);
+        scaleRects(anchorX, anchorY, scale,
+                layout.searchBox, layout.filtersHeaderBounds, layout.filterSourceAll, layout.filterCA,
+                layout.filterCL, layout.filterDA, layout.filterStatusAll, layout.filterIncomplete,
+                layout.filterComplete, layout.filterTierThis, layout.filterTierAll, layout.columnDate,
+                layout.columnTime, layout.columnTier, layout.columnSource, layout.sortDate,
+                layout.sortTimeTicks, layout.sortTier, layout.sortSource, layout.clearFilters,
+                layout.filterNewTasks, layout.filterNewTasksHelp);
         layout.searchTextX = scaleX(layout.searchTextX, anchorX, scale);
         for (int i = 0; i < layout.searchCharXPositions.length; i++) {
             layout.searchCharXPositions[i] = scaleX(layout.searchCharXPositions[i], anchorX, scale);
@@ -6318,6 +6137,14 @@ public class XtremeTaskerOverlay extends Overlay {
             for (Rectangle r : map.values()) {
                 scaleRect(r, anchorX, anchorY, scale);
             }
+        }
+    }
+
+    private void scaleRects(int anchorX, int anchorY, double scale, Rectangle... rects)
+    {
+        for (Rectangle rect : rects)
+        {
+            scaleRect(rect, anchorX, anchorY, scale);
         }
     }
 
@@ -6343,6 +6170,38 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill) {
         buttonRenderer.drawBevelBox(g, r, fill);
+    }
+
+    private void drawScrim(Graphics2D g, Rectangle r, int alpha)
+    {
+        g.setColor(new Color(0, 0, 0, alpha));
+        g.fillRect(r.x, r.y, r.width, r.height);
+    }
+
+    private int drawWrappedBlock(Graphics2D g, FontMetrics fm, String text, int x, int top, int maxW, Color color)
+    {
+        g.setColor(color);
+        for (String line : TextUtils.wrapText(text, fm, maxW))
+        {
+            g.drawString(line, x, top + fm.getAscent());
+            top += fm.getHeight();
+        }
+        return top;
+    }
+
+    private static void clearBounds(Rectangle... bounds)
+    {
+        for (Rectangle bound : bounds)
+        {
+            bound.setBounds(0, 0, 0, 0);
+        }
+    }
+
+    private void layoutButtonPair(Rectangle left, Rectangle right, int x, int w, int y, int buttonW, int buttonH, int gap)
+    {
+        int buttonsW = buttonW * 2 + gap;
+        left.setBounds(x + (w - buttonsW) / 2, y, buttonW, buttonH);
+        right.setBounds(left.x + buttonW + gap, y, buttonW, buttonH);
     }
 
     private int centeredTextBaseline(Rectangle bounds, FontMetrics fm) {
