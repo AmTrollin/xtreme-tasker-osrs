@@ -304,6 +304,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private enum MainTab {CURRENT, TASKS, RULES}
 
+    private static final MainTab[] MAIN_TABS = {MainTab.CURRENT, MainTab.TASKS, MainTab.RULES};
+    private static final String[] MAIN_TAB_LABELS = {"Current", "Tasks", "Help"};
     private MainTab activeTab = MainTab.CURRENT;
 
     private static final List<TaskTier> TIER_TABS = Arrays.asList(TaskTier.EASY, TaskTier.MEDIUM, TaskTier.HARD, TaskTier.ELITE, TaskTier.MASTER);
@@ -2179,17 +2181,12 @@ public class XtremeTaskerOverlay extends Overlay {
         int availableTabsW = panelInnerWidth();
         int tabW = (availableTabsW - 8) / 3;
 
-        int tab1X = panelX + PANEL_PADDING;
-        int tab2X = tab1X + tabW + 4;
-        int tab3X = tab2X + tabW + 4;
-
-        currentTabBounds.setBounds(tab1X, cursorY, tabW, tabH);
-        tasksTabBounds.setBounds(tab2X, cursorY, tabW, tabH);
-        rulesTabBounds.setBounds(tab3X, cursorY, tabW, tabH);
-
-        buttonRenderer.drawTab(g, currentTabBounds, "Current", activeTab == MainTab.CURRENT);
-        buttonRenderer.drawTab(g, tasksTabBounds, "Tasks", activeTab == MainTab.TASKS);
-        buttonRenderer.drawTab(g, rulesTabBounds, "Help", activeTab == MainTab.RULES);
+        Rectangle[] tabBounds = {currentTabBounds, tasksTabBounds, rulesTabBounds};
+        for (int i = 0; i < tabBounds.length; i++)
+        {
+            tabBounds[i].setBounds(panelX + PANEL_PADDING + i * (tabW + 4), cursorY, tabW, tabH);
+            buttonRenderer.drawTab(g, tabBounds[i], MAIN_TAB_LABELS[i], activeTab == MAIN_TABS[i]);
+        }
 
         cursorY += tabH + 10;
 
@@ -4918,6 +4915,40 @@ public class XtremeTaskerOverlay extends Overlay {
         taskListView.resetAfterQueryChange(activeTierTab, tasks, plugin::isTaskCompleted);
     }
 
+    private void prepareTasksTabOnOpen()
+    {
+        TaskTier tier = null;
+        XtremeTask cur = plugin.getCurrentTask();
+        if (cur != null)
+        {
+            tier = cur.getTier();
+        }
+        if (tier == null)
+        {
+            tier = plugin.getCurrentTier();
+        }
+        if (tier != null)
+        {
+            activeTierTab = tier;
+        }
+
+        if (!tasksSourceFilterInitialized)
+        {
+            tasksSourceFilterInitialized = true;
+            XtremeTaskerConfig.RollSourceFilter rsf = plugin.getRollSourceFilter();
+            if (rsf == XtremeTaskerConfig.RollSourceFilter.CA_ONLY)
+            {
+                taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
+            }
+            else
+            {
+                taskQuery.selectAllSources();
+            }
+        }
+
+        resetTaskListViewAfterQueryChange();
+    }
+
     // --------- data + pipeline ---------
     private List<XtremeTask> getTasksForTier(TaskTier tier) {
         List<XtremeTask> out = new ArrayList<>();
@@ -5162,60 +5193,16 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
-            public MainTab activeTab() {
-                switch (activeTab) {
-                    case TASKS:
-                        return MainTab.TASKS;
-                    case RULES:
-                        return MainTab.RULES;
-                    default:
-                        return MainTab.CURRENT;
-                }
+            public OverlayInputAccess.MainTab activeTab() {
+                return OverlayInputAccess.MainTab.valueOf(activeTab.name());
             }
 
             @Override
-            public void setActiveTab(MainTab tab) {
-                switch (tab) {
-                    case CURRENT:
-                        activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
-                        break;
-
-                    case TASKS:
-                        activeTab = XtremeTaskerOverlay.MainTab.TASKS;
-
-                        // Default Tasks tab to the tier the user is currently working on
-                        TaskTier tier = null;
-                        XtremeTask cur = plugin.getCurrentTask();
-                        if (cur != null) {
-                            tier = cur.getTier();
-                        }
-                        if (tier == null) {
-                            tier = plugin.getCurrentTier();
-                        }
-                        if (tier != null) {
-                            activeTierTab = tier;
-                        }
-
-                        // Default source filter to match the roll source config (only on first visit)
-                        if (!tasksSourceFilterInitialized) {
-                            tasksSourceFilterInitialized = true;
-                            XtremeTaskerConfig.RollSourceFilter rsf = plugin.getRollSourceFilter();
-                            if (rsf == XtremeTaskerConfig.RollSourceFilter.CA_ONLY) {
-                                taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
-                            } else if (rsf == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY) {
-                                taskQuery.selectAllSources();
-                            } else {
-                                taskQuery.selectAllSources();
-                            }
-                        }
-
-                        // Reset selection/scroll for the new tier
-                        XtremeTaskerOverlay.this.resetTaskListViewAfterQueryChange();
-                        break;
-
-                    case RULES:
-                        activeTab = XtremeTaskerOverlay.MainTab.RULES;
-                        break;
+            public void setActiveTab(OverlayInputAccess.MainTab tab) {
+                activeTab = XtremeTaskerOverlay.MainTab.valueOf(tab.name());
+                if (activeTab == XtremeTaskerOverlay.MainTab.TASKS)
+                {
+                    prepareTasksTabOnOpen();
                 }
             }
 
