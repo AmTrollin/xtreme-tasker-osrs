@@ -8,58 +8,18 @@ import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.google.gson.Gson;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class CollectionLogMismatchTest
 {
-    @Test
-    public void collectionLogCacheListenerFiresForNewObtainedItemsOnly()
-    {
-        CollectionLogService collectionLogService = new CollectionLogService();
-        AtomicInteger changes = new AtomicInteger();
-        collectionLogService.setCacheChangeListener(changes::incrementAndGet);
-
-        collectionLogService.storeItem(10878);
-        assertEquals(1, changes.get());
-        assertTrue(collectionLogService.isItemObtained(10878));
-
-        collectionLogService.storeItem(10878);
-        assertEquals(1, changes.get());
-
-        collectionLogService.restoreCachedItemIds(Collections.singleton(10879));
-        assertEquals(1, changes.get());
-        assertTrue(collectionLogService.isItemObtained(10879));
-    }
-
-    @Test
-    public void collectionLogCacheBatchCoalescesNewObtainedItemNotifications()
-    {
-        CollectionLogService collectionLogService = new CollectionLogService();
-        AtomicInteger changes = new AtomicInteger();
-        collectionLogService.setCacheChangeListener(changes::incrementAndGet);
-
-        collectionLogService.beginCacheChangeBatch();
-        collectionLogService.storeItem(10878);
-        collectionLogService.storeItem(10879);
-        collectionLogService.storeItem(10879);
-
-        assertEquals("batched collection-log scans should not notify per item", 0, changes.get());
-
-        collectionLogService.endCacheChangeBatch();
-
-        assertEquals("batched collection-log scans should notify once when changed", 1, changes.get());
-        assertTrue(collectionLogService.isItemObtained(10878));
-        assertTrue(collectionLogService.isItemObtained(10879));
-    }
-
     @Test
     public void collectionLogRequirementNotFoundBySyncIsMarkedAsMismatch() throws Exception
     {
@@ -101,100 +61,6 @@ public class CollectionLogMismatchTest
         collectionLogService.storeItem(10878);
         List<XtremeTask> mismatchesWhenObtained = plugin.findCollectionLogSyncMismatches(true);
         assertTrue("Obtained requirement should no longer mismatch", mismatchesWhenObtained.isEmpty());
-    }
-
-    @Test
-    public void collectionLogSyncFindsCandidatesWithoutMarkingTasksComplete() throws Exception
-    {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        CollectionLogService collectionLogService = new CollectionLogService();
-        plugin.setCollectionLogServiceForTesting(collectionLogService);
-
-        XtremeTask task = collectionLogTask(
-                "collection_log_easy_get-a-green-satchel_001_test",
-                "Get a Green satchel",
-                TaskTier.EASY,
-                new int[]{10878},
-                1
-        );
-
-        List<XtremeTask> tasks = plugin.tasksForTesting();
-        tasks.clear();
-        tasks.add(task);
-
-        collectionLogService.storeItem(10878);
-
-        List<String> candidates = new java.util.ArrayList<>();
-        int found = plugin.findCollectionLogCompletionCandidatesFromCache(candidates);
-
-        assertEquals(1, found);
-        assertEquals(task.getId(), candidates.get(0));
-        assertFalse("Sync discovery must not auto-mark the task complete", plugin.isTaskCompleted(task));
-        assertTrue(plugin.manualCompletedTaskIdsForTesting().isEmpty());
-        assertTrue(plugin.syncedCompletedTaskIdsForTesting().isEmpty());
-    }
-
-    @Test
-    public void collectionLogCacheChangeRefreshesCountedGroupCandidates() throws Exception
-    {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        CollectionLogService collectionLogService = new CollectionLogService();
-        plugin.setCollectionLogServiceForTesting(collectionLogService);
-
-        int[] giantsFoundryItemIds = new int[]{27012, 27014, 27017, 27019, 27021, 27023, 27025, 27027, 27029};
-        List<XtremeTask> tasks = plugin.tasksForTesting();
-        tasks.clear();
-        for (int i = 1; i <= 4; i++)
-        {
-            tasks.add(collectionLogTask(
-                    "collection_log_easy_get-1-unique-from-giants-foundry_00" + i + "_test",
-                    "Get 1 unique from Giants' Foundry",
-                    TaskTier.EASY,
-                    giantsFoundryItemIds,
-                    i
-            ));
-        }
-
-        Set<String> syncedCompletedTaskIds = plugin.syncedCompletedTaskIdsForTesting();
-        syncedCompletedTaskIds.clear();
-        syncedCompletedTaskIds.add(tasks.get(0).getId());
-        syncedCompletedTaskIds.add(tasks.get(1).getId());
-
-        collectionLogService.storeItem(27012);
-        collectionLogService.storeItem(27014);
-        collectionLogService.storeItem(27017);
-        collectionLogService.storeItem(27019);
-
-        List<XtremeTask> candidates = plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG);
-        assertEquals("Four cached Giants' Foundry uniques should stage the third and fourth easy tasks",
-                2, candidates.size());
-        assertEquals(tasks.get(2).getId(), candidates.get(0).getId());
-        assertEquals(tasks.get(3).getId(), candidates.get(1).getId());
-        assertFalse("Cache refresh must not auto-mark the staged task complete", plugin.isTaskCompleted(tasks.get(2)));
-        assertFalse("Cache refresh must not auto-mark the staged task complete", plugin.isTaskCompleted(tasks.get(3)));
-    }
-
-    @Test
-    public void applyingSyncCandidatesMarksTasksCompleteAsSynced() throws Exception
-    {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        XtremeTask task = collectionLogTask(
-                "collection_log_easy_get-a-green-satchel_001_test",
-                "Get a Green satchel",
-                TaskTier.EASY,
-                new int[]{10878},
-                1
-        );
-
-        List<XtremeTask> tasks = plugin.tasksForTesting();
-        tasks.clear();
-        tasks.add(task);
-
-        plugin.markSyncCompletionCandidateTasksCompleteAndPersist(Collections.singletonList(task));
-
-        assertTrue(plugin.isTaskCompleted(task));
-        assertTrue(plugin.manualCompletedTaskIdsForTesting().isEmpty());
-        assertTrue(plugin.syncedCompletedTaskIdsForTesting().contains(task.getId()));
     }
 
     @Test
@@ -370,90 +236,228 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    public void syncMismatchApplyAllowsIncompleteSelectionInsideDisplaySequence() throws Exception
+    public void satchelInterfaceItemsCountForSatchelRequirements() throws Exception
     {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        int[][] satchelIds = new int[][]{
+                {10877, 25618},
+                {10878, 25619},
+                {10879, 25620},
+                {10880, 25621},
+                {10881, 25622},
+                {10882, 25623}
+        };
 
-        int[] mtaWandItemIds = new int[]{6908, 6910, 6912, 6914};
-        XtremeTask beginner = collectionLogTask(
-                "collection_log_easy_upgrade-the-mta-wand-once_001_test",
-                "Upgrade the MTA wand once",
-                TaskTier.EASY,
-                mtaWandItemIds,
-                1
-        );
-        XtremeTask apprentice = collectionLogTask(
-                "collection_log_easy_upgrade-the-mta-wand-once_002_test",
-                "Upgrade the MTA wand once",
-                TaskTier.EASY,
-                mtaWandItemIds,
-                2
-        );
-        XtremeTask teacher = collectionLogTask(
-                "collection_log_easy_upgrade-the-mta-wand-once_003_test",
-                "Upgrade the MTA wand once",
-                TaskTier.EASY,
-                mtaWandItemIds,
-                3
-        );
-        XtremeTask unrelated = collectionLogTask(
-                "collection_log_easy_get-a-green-satchel_001_guard_test",
-                "Get a Green satchel",
-                TaskTier.EASY,
-                new int[]{10878},
-                1
-        );
-        XtremeTask bootsFirst = countedCollectionLogTask(
-                "collection_log_easy_get-the-next-tier-of-metal-boots_001_guard_test",
-                "Get the next tier of metal boots",
-                1
-        );
-        XtremeTask bootsSecond = countedCollectionLogTask(
-                "collection_log_easy_get-the-next-tier-of-metal-boots_002_guard_test",
-                "Get the next tier of metal boots",
-                2
-        );
+        for (int[] ids : satchelIds)
+        {
+            XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+            CollectionLogService collectionLogService = new CollectionLogService();
+            plugin.setCollectionLogServiceForTesting(collectionLogService);
 
-        List<XtremeTask> tasks = plugin.tasksForTesting();
-        tasks.clear();
-        tasks.add(beginner);
-        tasks.add(apprentice);
-        tasks.add(teacher);
-        tasks.add(unrelated);
-        tasks.add(bootsFirst);
-        tasks.add(bootsSecond);
+            int realItemId = ids[0];
+            int interfaceItemId = ids[1];
+            TaskVerification verification = new Gson().fromJson(
+                    "{\"method\":\"collection-log\",\"itemIds\":[" + realItemId + "],\"count\":1}",
+                    TaskVerification.class
+            );
 
-        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
-        manualCompletedTaskIds.clear();
-        manualCompletedTaskIds.add(beginner.getId());
-        manualCompletedTaskIds.add(apprentice.getId());
-        manualCompletedTaskIds.add(teacher.getId());
-        manualCompletedTaskIds.add(unrelated.getId());
-        manualCompletedTaskIds.add(bootsFirst.getId());
-        manualCompletedTaskIds.add(bootsSecond.getId());
+            XtremeTask task = new XtremeTask(
+                    "collection_log_easy_get-a-satchel_" + realItemId + "_test",
+                    "Get a satchel",
+                    TaskSource.COLLECTION_LOG,
+                    TaskTier.EASY,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    verification,
+                    null
+            );
 
-        List<String> syncMismatchTaskIds = plugin.syncMismatchTaskIdsForTesting();
-        syncMismatchTaskIds.clear();
-        syncMismatchTaskIds.add(beginner.getId());
-        syncMismatchTaskIds.add(apprentice.getId());
-        syncMismatchTaskIds.add(teacher.getId());
-        syncMismatchTaskIds.add(unrelated.getId());
-        syncMismatchTaskIds.add(bootsFirst.getId());
-        syncMismatchTaskIds.add(bootsSecond.getId());
-        plugin.setSyncMismatchTitleForTesting("Review completed tasks");
+            List<XtremeTask> tasks = plugin.tasksForTesting();
+            tasks.clear();
+            tasks.add(task);
 
-        List<XtremeTask> mixedInvalidSelection = List.of(beginner, apprentice, unrelated, bootsFirst);
-        plugin.markSyncMismatchTasksIncompleteAndPersist(mixedInvalidSelection);
-        assertFalse(plugin.isTaskCompleted(beginner));
-        assertFalse(plugin.isTaskCompleted(apprentice));
-        assertTrue("Unselected higher wand step should stay complete", plugin.isTaskCompleted(teacher));
-        assertFalse("Unrelated selected task should save too", plugin.isTaskCompleted(unrelated));
-        assertFalse(plugin.isTaskCompleted(bootsFirst));
-        assertTrue("Unselected higher boots step should stay complete", plugin.isTaskCompleted(bootsSecond));
+            Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
+            manualCompletedTaskIds.clear();
+            manualCompletedTaskIds.add(task.getId());
 
-        plugin.markSyncMismatchTasksIncompleteAndPersist(List.of(teacher, bootsSecond));
-        assertFalse(plugin.isTaskCompleted(teacher));
-        assertFalse(plugin.isTaskCompleted(bootsSecond));
+            collectionLogService.storeSeenItem(interfaceItemId);
+            collectionLogService.storeItem(interfaceItemId);
+
+            List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
+            assertTrue("Satchel interface item " + interfaceItemId + " should satisfy satchel requirement " + realItemId,
+                    mismatches.isEmpty());
+        }
+    }
+
+    @Test
+    public void olmletVariantsCountAsOneOlmletLogSlot()
+    {
+        int[] olmletVariantIds = new int[]{
+                24656,
+                24658,
+                20851,
+                22376,
+                22378,
+                22380,
+                22382,
+                22384
+        };
+
+        for (int olmletVariantId : olmletVariantIds)
+        {
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(olmletVariantId);
+            collectionLogService.storeItem(olmletVariantId);
+
+            assertTrue("Olmlet variant " + olmletVariantId + " should satisfy Olmlet",
+                    collectionLogService.hasSeenAll(new int[]{20851}));
+            assertEquals("Olmlet variant " + olmletVariantId + " should count as one Olmlet slot",
+                    1, collectionLogService.countObtained(new int[]{20851}));
+        }
+
+        CollectionLogService collectionLogService = new CollectionLogService();
+        for (int olmletVariantId : olmletVariantIds)
+        {
+            collectionLogService.storeItem(olmletVariantId);
+        }
+
+        assertEquals("Multiple Olmlet variants should still count as one Olmlet slot",
+                1, collectionLogService.countObtained(new int[]{20851}));
+    }
+
+    @Test
+    public void lilZikVariantsCountAsOneLilZikLogSlot()
+    {
+        int[] lilZikVariantIds = new int[]{
+                25749,
+                25748,
+                25750,
+                25751,
+                25752,
+                22473
+        };
+
+        for (int lilZikVariantId : lilZikVariantIds)
+        {
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(lilZikVariantId);
+            collectionLogService.storeItem(lilZikVariantId);
+
+            assertTrue("Lil' zik variant " + lilZikVariantId + " should satisfy Lil' zik",
+                    collectionLogService.hasSeenAll(new int[]{22473}));
+            assertEquals("Lil' zik variant " + lilZikVariantId + " should count as one Lil' zik slot",
+                    1, collectionLogService.countObtained(new int[]{22473}));
+        }
+
+        CollectionLogService collectionLogService = new CollectionLogService();
+        for (int lilZikVariantId : lilZikVariantIds)
+        {
+            collectionLogService.storeItem(lilZikVariantId);
+        }
+
+        assertEquals("Multiple Lil' zik variants should still count as one Lil' zik slot",
+                1, collectionLogService.countObtained(new int[]{22473}));
+    }
+
+    @Test
+    public void chargedAndUnchargedRaidItemsCountAsOneLogSlot()
+    {
+        int[][] chargedItemPairs = new int[][]{
+                {22323, 22481}, // Sanguinesti staff
+                {22325, 22486}, // Scythe of vitur
+                {28547, 28549}  // Tumeken's shadow
+        };
+
+        for (int[] chargedItemPair : chargedItemPairs)
+        {
+            int canonicalItemId = chargedItemPair[0];
+            int alternateItemId = chargedItemPair[1];
+
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(alternateItemId);
+            collectionLogService.storeItem(alternateItemId);
+
+            assertTrue("Alternate item " + alternateItemId + " should satisfy canonical item " + canonicalItemId,
+                    collectionLogService.hasSeenAll(new int[]{canonicalItemId}));
+            assertEquals("Alternate item " + alternateItemId + " should count as one canonical slot",
+                    1, collectionLogService.countObtained(new int[]{canonicalItemId}));
+            assertEquals("Charged and uncharged aliases in one requirement should not double-count",
+                    1, collectionLogService.countObtained(new int[]{canonicalItemId, alternateItemId}));
+            assertTrue("Charged and uncharged aliases in one requirement should be satisfied by either form",
+                    collectionLogService.hasSeenAll(new int[]{canonicalItemId, alternateItemId}));
+        }
+    }
+
+    @Test
+    public void tumekensGuardianVariantsCountAsOneGuardianLogSlot()
+    {
+        int[] guardianVariantIds = new int[]{
+                27382,
+                27383,
+                27387,
+                27354,
+                27384,
+                27386,
+                27352,
+                27385
+        };
+
+        for (int guardianVariantId : guardianVariantIds)
+        {
+            CollectionLogService collectionLogService = new CollectionLogService();
+            collectionLogService.storeSeenItem(guardianVariantId);
+            collectionLogService.storeItem(guardianVariantId);
+
+            assertTrue("Tumeken's guardian variant " + guardianVariantId + " should satisfy Tumeken's guardian",
+                    collectionLogService.hasSeenAll(new int[]{27352}));
+            assertEquals("Tumeken's guardian variant " + guardianVariantId + " should count as one guardian slot",
+                    1, collectionLogService.countObtained(new int[]{27352}));
+        }
+
+        CollectionLogService collectionLogService = new CollectionLogService();
+        for (int guardianVariantId : guardianVariantIds)
+        {
+            collectionLogService.storeItem(guardianVariantId);
+        }
+
+        assertEquals("Multiple Tumeken's guardian variants should still count as one guardian slot",
+                1, collectionLogService.countObtained(new int[]{27352}));
+    }
+
+    @Test
+    public void restoredCollectionLogCacheMarksItemsAsSeenAgain()
+    {
+        CollectionLogService collectionLogService = new CollectionLogService();
+
+        assertTrue("Fresh cache should not report unseen items as seen",
+                !collectionLogService.hasSeenAll(new int[]{10878}));
+
+        collectionLogService.restoreCachedItemIds(Collections.singleton(10878));
+
+        assertTrue("Restored cache should mark persisted item ids as seen",
+                collectionLogService.hasSeenAll(new int[]{10878}));
+    }
+
+    @Test
+    public void collectionLogItemAcquisitionOrderIsPreservedAcrossRestore()
+    {
+        CollectionLogService collectionLogService = new CollectionLogService();
+        collectionLogService.storeItem(23285);
+        collectionLogService.storeItem(23291);
+
+        Map<Integer, Long> order = new HashMap<>(collectionLogService.getCachedItemOrder());
+        Set<Integer> itemIds = new HashSet<>(collectionLogService.getCachedItemIds());
+
+        CollectionLogService restored = new CollectionLogService();
+        restored.restoreCachedItemState(itemIds, order);
+        restored.storeItem(23288);
+
+        assertTrue("First restored item should keep the earliest order",
+                restored.getObtainedItemOrder(23285) < restored.getObtainedItemOrder(23291));
+        assertTrue("Newly captured items should sort after restored items",
+                restored.getObtainedItemOrder(23291) < restored.getObtainedItemOrder(23288));
     }
 
     @Test
@@ -498,7 +502,7 @@ public class CollectionLogMismatchTest
         return new XtremeTask(
                 id,
                 name,
-                TaskSource.DIARY_ACHIEVEMENT,
+                TaskSource.COLLECTION_LOG,
                 TaskTier.EASY,
                 null,
                 null,

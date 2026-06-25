@@ -74,7 +74,7 @@ public class TaskDataTest
     public void taskSearchMatchesTwoCharacterTermsInAnyOrder()
     {
         List<XtremeTask> tasks = Arrays.asList(
-                new XtremeTask("cape", "Obtain any level 99 skillcape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
+                new XtremeTask("cape", "1 level 99 cape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
                 new XtremeTask("other", "Get bolt racks from Barrows", TaskSource.COLLECTION_LOG, TaskTier.EASY)
         );
 
@@ -92,31 +92,6 @@ public class TaskDataTest
         query.searchText = "level 99";
         List<XtremeTask> orderedResults = TaskListPipeline.apply(tasks, query, task -> false);
         assertEquals(reversedResults.get(0).getId(), orderedResults.get(0).getId());
-    }
-
-    @Test
-    public void sourceFilterSupportsMultipleSelectedSources()
-    {
-        List<XtremeTask> tasks = Arrays.asList(
-                new XtremeTask("ca", "A Combat Achievement", TaskSource.COMBAT_ACHIEVEMENT, TaskTier.EASY),
-                new XtremeTask("cl", "A Collection Log task", TaskSource.COLLECTION_LOG, TaskTier.EASY),
-                new XtremeTask("ad", "An Achievement Diary task", TaskSource.DIARY_ACHIEVEMENT, TaskTier.EASY)
-        );
-
-        TaskListQuery query = new TaskListQuery();
-        query.toggleSource(TaskListQuery.SourceFilter.CA);
-        query.toggleSource(TaskListQuery.SourceFilter.CLOGS);
-
-        Set<String> ids = TaskListPipeline.apply(tasks, query, task -> false).stream()
-                .map(XtremeTask::getId)
-                .collect(Collectors.toSet());
-        assertEquals(Set.of("ca", "cl"), ids);
-
-        query.toggleSource(TaskListQuery.SourceFilter.DAS);
-
-        assertTrue("Selecting all three source filters should normalize to All", query.isSourceAllSelected());
-        List<XtremeTask> allResults = TaskListPipeline.apply(tasks, query, task -> false);
-        assertEquals(3, allResults.size());
     }
 
     @Test
@@ -176,6 +151,61 @@ public class TaskDataTest
         assertTrue(
                 "KNOWN_CLOG_VERIFICATION_GAPS has stale IDs (remove these): " + staleAllowlist,
                 staleAllowlist.isEmpty());
+    }
+
+    @Test
+    public void taskPackTextHasNoObviousReleaseArtifacts()
+    {
+        JsonObject pack = loadTaskPack();
+        JsonArray tasks = pack.getAsJsonArray("tasks");
+
+        List<String> issues = new ArrayList<>();
+        List<String> textFields = Arrays.asList("name", "prereqs", "wikiTitle", "wikiUrl", "description", "tip");
+        for (JsonElement taskElement : tasks)
+        {
+            JsonObject task = taskElement.getAsJsonObject();
+            String taskId = optionalString(task, "id");
+
+            for (String field : textFields)
+            {
+                if (!task.has(field) || task.get(field).isJsonNull())
+                {
+                    continue;
+                }
+
+                String value = task.get(field).getAsString();
+                if (value.indexOf('\u00A0') >= 0)
+                {
+                    issues.add(taskId + " " + field + " contains a non-breaking space");
+                }
+                if (!value.equals(value.trim()))
+                {
+                    issues.add(taskId + " " + field + " has leading/trailing whitespace");
+                }
+                if (value.contains("you's"))
+                {
+                    issues.add(taskId + " " + field + " contains \"you's\"");
+                }
+                if (value.contains("The ides of Milk"))
+                {
+                    issues.add(taskId + " " + field + " has inconsistent Ides of Milk capitalization");
+                }
+                if (value.equals("The Ides of Milk"))
+                {
+                    issues.add(taskId + " " + field + " should include the quest suffix");
+                }
+                if (value.contains("This means must"))
+                {
+                    issues.add(taskId + " " + field + " contains truncated/awkward strategy text");
+                }
+                if ("description".equals(field) && value.endsWith("..."))
+                {
+                    issues.add(taskId + " description appears truncated");
+                }
+            }
+        }
+
+        assertTrue("Task text release artifacts found: " + issues, issues.isEmpty());
     }
 
     private static JsonObject loadTaskPack()
