@@ -10,12 +10,12 @@ Want to see it in action? Check out [@amtrollin](https://www.youtube.com/@AmTrol
 
 ## Overview
 
-* Roll randomized Combat Achievement, Collection Log, and Achievement Diary tasks.
-* Progress through Easy, Medium, Hard, Elite, and Master tiers.
-* Track your current task, timer, requirements, wiki links, and tier progress.
-* Search, filter, and sort the complete task list.
-* Sync existing account progress with review before applying changes.
-* Store progress locally per RuneLite character profile.
+* Roll randomized Combat Achievement, Collection Log, and Achievement Diary tasks
+* Progress through Easy, Medium, Hard, Elite, and Master tiers
+* Track your current task, timer, requirements, wiki links, and tier progress
+* Search, filter, and sort the complete task list
+* Sync existing account progress with review before applying changes
+* Store progress locally per RuneLite character profile
 
 ## Getting Started
 
@@ -27,9 +27,9 @@ Open the Xtreme Tasker overlay. If importing an existing account, go to **Help �
 
 ## Overlay Tabs
 
-* **Current** – Current task, timer, requirements, completion controls, and wiki links.
-* **Tasks** – Browse, search, filter, sort, and review every task.
-* **Help** – Rules, FAQs, documentation, and account sync.
+* **Current** – Current task, timer, requirements, completion controls, and wiki links
+* **Tasks** – Browse, search, filter, sort, and review every task
+* **Help** – Rules, FAQs, documentation, and account sync
 
 ## Progress Sync
 
