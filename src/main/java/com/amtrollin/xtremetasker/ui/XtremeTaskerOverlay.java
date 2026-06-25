@@ -741,11 +741,19 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             summaryText = summaryText.isEmpty() ? pendingMedallionFragmentSummary : summaryText + "  " + pendingMedallionFragmentSummary;
         }
-        String titleText = showSequenceTierSections
-                ? "Eligible Collection Log items"
-                : requiredCount >= itemIds.length
-                ? "Needed Collection Log items"
-                : "";
+        String titleText;
+        if (showSequenceTierSections)
+        {
+            titleText = "Eligible Collection Log items";
+        }
+        else if (itemIds.length == 1)
+        {
+            titleText = "Needed Collection Log item";
+        }
+        else
+        {
+            titleText = "Needed Collection Log items";
+        }
         String secondaryTitleText = secondaryItems.isEmpty()
                 ? ""
                 : allRequiredItemsObtained ? "Now assemble:" : "Need all " + requiredCount + " fragments to assemble:";
@@ -3374,6 +3382,10 @@ public class XtremeTaskerOverlay extends Overlay {
                 rowCheckboxSize,
                 rowCheckboxSize);
         drawSyncMismatchCheckbox(g, syncMismatchMarkAllBounds, allMismatchTasksSelected);
+        if (!allMismatchTasksSelected)
+        {
+            drawSyncMismatchHeaderInnerBorder(g, syncMismatchMarkAllBounds);
+        }
 
         net.runelite.api.Point mouse = mouseCanvasPositionForPanelRender();
         int mouseX = mouse == null ? -1 : mouse.getX();
@@ -4057,6 +4069,12 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawLine(box.x + 5, box.y + box.height / 2, box.x + box.width / 2 - 1, box.y + box.height - 6);
             g.drawLine(box.x + box.width / 2 - 1, box.y + box.height - 6, box.x + box.width - 5, box.y + 5);
         }
+    }
+
+    private void drawSyncMismatchHeaderInnerBorder(Graphics2D g, Rectangle box)
+    {
+        g.setColor(P.UI_GOLD);
+        g.drawRect(box.x + 1, box.y + 1, box.width - 3, box.height - 3);
     }
 
     private void drawPopupCloseX(Graphics2D g, Rectangle bounds)
