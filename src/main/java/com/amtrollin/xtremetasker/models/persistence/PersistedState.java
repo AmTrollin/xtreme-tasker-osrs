@@ -47,9 +47,9 @@ public class PersistedState {
     private Map<String, Long> manualCompletionTimestamps = new HashMap<>();
     /** epoch-millis timestamps for tasks marked complete via sync. */
     private Map<String, Long> syncedCompletionTimestamps = new HashMap<>();
-    /** accumulated in-game ticks spent on each task while logged in. */
+    /** accumulated in game ticks spent on each task while logged in. */
     private Map<String, Long> taskTimeTicksById = new HashMap<>();
-    /** accumulated in-game ticks captured at the moment each task was completed. */
+    /** accumulated in game ticks captured at the moment each task was completed. */
     private Map<String, Long> completedTaskTimeTicksById = new HashMap<>();
     /** Collection log item IDs RuneLite has exposed for this account. */
     private Set<Integer> collectionLogItemIds = new HashSet<>();

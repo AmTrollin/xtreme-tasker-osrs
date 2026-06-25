@@ -8,7 +8,6 @@ public final class CollectionLogRequirementItem
     private final int itemId;
     private final String name;
     private final Status status;
-    private final String badgeText;
     private final boolean dimWhenMissing;
 
     public CollectionLogRequirementItem(String name, boolean obtained)
@@ -23,20 +22,14 @@ public final class CollectionLogRequirementItem
 
     public CollectionLogRequirementItem(int itemId, String name, Status status)
     {
-        this(itemId, name, status, null);
+        this(itemId, name, status, false);
     }
 
-    public CollectionLogRequirementItem(int itemId, String name, Status status, String badgeText)
-    {
-        this(itemId, name, status, badgeText, false);
-    }
-
-    public CollectionLogRequirementItem(int itemId, String name, Status status, String badgeText, boolean dimWhenMissing)
+    public CollectionLogRequirementItem(int itemId, String name, Status status, boolean dimWhenMissing)
     {
         this.itemId = itemId;
         this.name = name;
         this.status = status == null ? Status.MISSING : status;
-        this.badgeText = badgeText == null ? "" : badgeText.trim();
         this.dimWhenMissing = dimWhenMissing;
     }
 

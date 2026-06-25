@@ -773,8 +773,7 @@ public class XtremeTaskerOverlay extends Overlay {
             items.add(new CollectionLogRequirementItem(
                     itemId,
                     collectionLogRequirementItemName(itemId),
-                    statusByItemId.getOrDefault(itemId, CollectionLogRequirementItem.Status.MISSING),
-                    collectionLogRequirementBadgeText(itemId)));
+                    statusByItemId.getOrDefault(itemId, CollectionLogRequirementItem.Status.MISSING)));
         }
         return items;
     }
@@ -801,7 +800,7 @@ public class XtremeTaskerOverlay extends Overlay {
         List<CollectionLogRequirementItem> items = new ArrayList<>(statusByItemName.size());
         for (Map.Entry<String, CollectionLogRequirementItem.Status> entry : statusByItemName.entrySet()) {
             int itemId = itemIdByItemName.getOrDefault(entry.getKey(), -1);
-            items.add(new CollectionLogRequirementItem(itemId, entry.getKey(), entry.getValue(), collectionLogRequirementBadgeText(itemId)));
+            items.add(new CollectionLogRequirementItem(itemId, entry.getKey(), entry.getValue()));
         }
         return items;
     }
@@ -831,7 +830,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 : allRequiredItemsObtained
                 ? CollectionLogRequirementItem.Status.READY
                 : CollectionLogRequirementItem.Status.MISSING;
-        return List.of(new CollectionLogRequirementItem(completionItemId, plugin.getItemName(completionItemId), status, "", true));
+        return List.of(new CollectionLogRequirementItem(completionItemId, plugin.getItemName(completionItemId), status, true));
     }
 
     private String collectionLogRequirementItemName(int itemId)
@@ -848,16 +847,6 @@ public class XtremeTaskerOverlay extends Overlay {
             return "Page " + ancientPageNumber;
         }
         return plugin.getItemName(itemId);
-    }
-
-    private String collectionLogRequirementBadgeText(int itemId)
-    {
-        int ancientPageNumber = ancientPageNumber(itemId);
-        if (ancientPageNumber > 0)
-        {
-            return String.valueOf(ancientPageNumber);
-        }
-        return "";
     }
 
     private String pendingMedallionFragmentSummary()
@@ -1104,8 +1093,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     .add(new CollectionLogRequirementItem(
                             itemId,
                             collectionLogRequirementItemName(itemId),
-                            status,
-                            collectionLogRequirementBadgeText(itemId)));
+                            status));
         }
 
         if (itemsByTier.size() <= 1)

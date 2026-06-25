@@ -18582,7 +18582,7 @@
       "id": "collection_log_hard_get-1-unique-from-the-hueycoatl_001_6c04c312e8",
       "name": "Get 1 unique from the Hueycoatl",
       "source": "COLLECTION_LOG",
-      "tier": "HARD",
+      "tier": "MEDIUM",
       "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/The_Hueycoatl",
       "verification": {

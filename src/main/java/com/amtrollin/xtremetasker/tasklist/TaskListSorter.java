@@ -22,7 +22,7 @@ public final class TaskListSorter
 
     public interface TicksLookup
     {
-        /** Returns accumulated in-game ticks for a task, or null if none. */
+        /** Returns accumulated in game ticks for a task, or null if none. */
         Long getTicks(XtremeTask task);
     }
 

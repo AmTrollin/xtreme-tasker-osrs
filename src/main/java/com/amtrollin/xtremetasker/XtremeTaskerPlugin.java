@@ -2862,7 +2862,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        // Accumulate in-game ticks for the current task, or for the just-completed
+        // Accumulate in game ticks for the current task, or for the just-completed
         // undoable task while it is waiting in the empty Current state.
         String timerTaskId = currentTaskId != null ? currentTaskId : undoableCompletedTaskId;
         if (timerTaskId != null && client.getGameState() == GameState.LOGGED_IN)
@@ -2935,7 +2935,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
             else if (collectionLogSummary.capturedItems == 0)
             {
-                msg = "Account progress sync done! No new completions found. No CLOG items are cached yet this session - open your Collection Log, then sync again. Combat Achievements and Achievement Diaries were checked from in-game progress.";
+                msg = "Account progress sync done! No new completions found. No CLOG items are cached yet this session - open your Collection Log, then sync again. Combat Achievements and Achievement Diaries were checked from in game progress.";
             }
             else
             {
