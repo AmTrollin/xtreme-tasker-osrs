@@ -10,8 +10,6 @@ Xtreme Tasker turns OSRS into a long-term progression challenge by mixing Combat
 
 Inspired by Tedious' Collection Log Master game mode, Xtreme Tasker combines multiple progression systems into a single randomized journey.
 
-For advanced topics such as saves, backups, recovery, and account switching, see the [Detailed Guide](docs/DETAILED_GUIDE.md).
-
 Want to see the plugin in action? Check out [@amtrollin](https://www.youtube.com/@AmTrollin/playlists)'s YouTube series, [Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H).
 
 ## Gameplay Overview
@@ -120,17 +118,9 @@ Grandmaster Combat Achievement tasks are included in the Master tier for Xtreme 
 
 You can configure rolls to use only Combat Achievement tasks or only Collection Log and Achievement Diary tasks. Tier completion still expects all sources, so you cannot fully complete a tier or finish Xtreme Tasker progression without eventually rolling the others.
 
-### Can I skip a task?
-
-Task skipping is off by default. If you enable `Enable task skipping` in plugin config, the Current tab shows a Skip button that rerolls the current task and increments your skipped task count.
-
 ### Where is my progress saved?
 
 Progress is saved per character under `~/.runelite/xtreme-tasker-states/` and mirrored into RuneLite config for compatibility. The plugin keeps rolling local backups and can restore or repair from the newest valid backup if the primary save cannot be read.
-
-### Where can I read more?
-
-Use the [Detailed Guide](docs/DETAILED_GUIDE.md) for deeper notes about task sources, repeated tasks, saves, backups, account switching, and manual recovery.
 
 ## Privacy
 
