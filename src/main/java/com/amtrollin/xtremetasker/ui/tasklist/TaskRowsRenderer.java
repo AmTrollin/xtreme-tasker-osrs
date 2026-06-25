@@ -44,12 +44,12 @@ public final class TaskRowsRenderer {
     // Increase this to make the circle larger. Keep small so it doesn't collide with text.
     private static final int PIP_VISUAL_BOOST_PX = 4; // try 2–6; 4 is a nice "more prominent" bump
 
-    private static final int VIEWPORT_TOP_PAD = 4;
+    private static final int VIEWPORT_TOP_PAD = 2;
     private static final int SCROLLBAR_WIDTH = 6;
     private static final int SCROLLBAR_GAP = 3;
     private static final int ROW_BADGE_Y_OFFSET = 2;
     private static final DateTimeFormatter ROW_DATE_FORMAT =
-            DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault());
+            DateTimeFormatter.ofPattern("MMM d, yy").withZone(ZoneId.systemDefault());
 
     public TaskRowsRenderer(
             int panelPadding,
@@ -89,7 +89,7 @@ public final class TaskRowsRenderer {
     }
 
     public int rowBlock() {
-        return rowHeight + listRowSpacing + 2;
+        return rowHeight + listRowSpacing + 1;
     }
 
     private static String prettyTier(TaskTier t)
@@ -142,6 +142,10 @@ public final class TaskRowsRenderer {
 
         int rb = rowBlock();
         int visibleRows = (rb <= 0) ? 0 : Math.max(0, viewportH / rb);
+        if (visibleRows > 0)
+        {
+            layout.viewportBounds.height = visibleRows * rb;
+        }
         boolean needsScrollbar = tasks.size() > visibleRows && visibleRows > 0 && viewportH > 0;
         int rowW = Math.max(0, viewportW - (needsScrollbar ? SCROLLBAR_WIDTH + SCROLLBAR_GAP : 0));
 
@@ -168,7 +172,7 @@ public final class TaskRowsRenderer {
                     viewportX,
                     (drawY - fm.getAscent()) - 2,
                     rowW,
-                    rowHeight + 4
+                    rowHeight + 3
             );
             layout.rowBounds.put(task, rowBounds);
 
@@ -336,17 +340,7 @@ public final class TaskRowsRenderer {
             drawY += rb;
         }
 
-        // Shrink viewportBounds to actual content height so no empty gap shows below last row
-        if (end > start)
-        {
-            int lastRowBottom = (drawY - rb) - fm.getAscent() + rowHeight + 4;
-            int contentH = Math.max(0, lastRowBottom - viewportY);
-            if (contentH < layout.viewportBounds.height)
-            {
-                layout.viewportBounds.height = contentH;
-            }
-        }
-        else if (end == start)
+        if (end == start)
         {
             layout.viewportBounds.height = 0;
         }

@@ -92,9 +92,9 @@ public final class TasksTabRenderer {
             final int contentTopBaseline = cursorYBaseline;
             final int columnsGap = 8;
             final int controlsColumnW = Math.min(TASKS_CONTROLS_COLUMN_W, Math.max(224, innerW - columnsGap - 280));
-            final int listColumnW = Math.max(220, innerW - controlsColumnW - columnsGap);
-            final int controlsColumnX = panelX + PANEL_PADDING;
-            final int listColumnX = controlsColumnX + controlsColumnW + columnsGap;
+            final int controlsColumnX = panelX;
+            final int listColumnX = controlsColumnX + controlsColumnW + Math.max(2, columnsGap - 4);
+            final int listColumnW = Math.max(220, panelBounds.x + panelBounds.width - PANEL_PADDING - listColumnX);
 
             controlsRenderer.render(
                 g,
@@ -111,9 +111,12 @@ public final class TasksTabRenderer {
             );
 
             int dividerTop = contentTopBaseline - fm.getAscent();
-            int dividerBottom = panelBounds.y + panelBounds.height - PANEL_PADDING - fm.getHeight() - 8;
+            int dividerBottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
             if (dividerBottom > dividerTop + 10) {
-                int dividerX = listColumnX - (columnsGap / 2);
+                int controlsContentRight = state.controlsLayout().searchBox.width > 0
+                        ? state.controlsLayout().searchBox.x + state.controlsLayout().searchBox.width
+                        : controlsColumnX + controlsColumnW;
+                int dividerX = controlsContentRight + Math.max(0, (listColumnX - controlsContentRight) / 2);
                 g.setColor(withAlpha(palette.UI_GOLD, 45));
                 g.drawLine(dividerX, dividerTop, dividerX, dividerBottom);
             }
@@ -158,11 +161,7 @@ public final class TasksTabRenderer {
         // -----------------------------
         List<XtremeTask> tasks = sortedTasksProvider.apply(activeTier);
 
-        int hintPaddingBottom = 10;
-
-        int hintBaselineY = panelBounds.y + panelBounds.height - hintPaddingBottom;
-        int keyboardButtonTop = hintBaselineY - fm.getAscent() - 3;
-        int listMaxBottom = keyboardButtonTop - 3;
+        int listMaxBottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
 
         Rectangle listPanelBounds = new Rectangle(
                 listColumnX - PANEL_PADDING,
@@ -200,7 +199,7 @@ public final class TasksTabRenderer {
         }
 
         int listTop = listCursorBaseline - fm.getAscent();
-        final int LIST_TOP_INSET = 5;
+        final int LIST_TOP_INSET = 2;
         listTop += LIST_TOP_INSET;
 
         int viewportH = Math.max(0, listMaxBottom - listTop);
@@ -261,11 +260,12 @@ public final class TasksTabRenderer {
         Rectangle v = layout.viewportBounds;
         if (v.width > 0 && v.height > 0) {
             g.setColor(withAlpha(palette.UI_GOLD, 70));
-            g.drawRect(v.x - 2, v.y - 2, v.width + 4, v.height + 4);
+            g.drawLine(v.x - 2, v.y - 2, v.x + v.width + 2, v.y - 2);
+            g.drawLine(v.x + v.width + 2, v.y - 2, v.x + v.width + 2, v.y + v.height + 2);
+            g.drawLine(v.x - 2, v.y + v.height + 2, v.x + v.width + 2, v.y + v.height + 2);
 
             g.setColor(withAlpha(palette.UI_EDGE_LIGHT, 55));
             g.drawLine(v.x - 1, v.y - 1, v.x + v.width + 2, v.y - 1);
-            g.drawLine(v.x - 1, v.y - 1, v.x - 1, v.y + v.height + 2);
 
             g.setColor(withAlpha(palette.UI_EDGE_DARK, 85));
             g.drawLine(v.x + v.width + 2, v.y - 1, v.x + v.width + 2, v.y + v.height + 2);
@@ -431,12 +431,12 @@ public final class TasksTabRenderer {
             int baselineY,
             int width
     ) {
-        int reservedBadgeW = 96;
+        int reservedBadgeW = 90;
         int gap = 4;
         String dateLabel = "Date " + (!query.sortByDate ? "-" : (query.newestFirst ? "v" : "^"));
         String timeLabel = "Time " + (!query.sortByTimeTicks ? "-" : (query.longestFirst ? "v" : "^"));
-        int timeW = Math.max(54, fm.stringWidth(timeLabel) + 14);
-        int dateW = Math.max(58, fm.stringWidth(dateLabel) + 14);
+        int timeW = Math.max(48, fm.stringWidth(timeLabel) + 10);
+        int dateW = Math.max(76, fm.stringWidth("Jun 25, 26") + 8);
         int timeX = x + width - reservedBadgeW - timeW;
         int dateX = timeX - gap - dateW;
         int top = baselineY - fm.getAscent() - 2;

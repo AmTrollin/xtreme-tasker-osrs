@@ -2272,7 +2272,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             switch (step.itemId)
             {
                 case 6908:
-                    return "Obtain Beginner MTA wand";
+                    return "Get Beginner MTA wand";
                 case 6910:
                     return "Upgrade to Apprentice MTA wand";
                 case 6912:
