@@ -6,6 +6,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -59,6 +60,7 @@ public final class RulesTabRenderer {
     private static final Color SYNC_FOUND_GREEN = new Color(111, 190, 92);
     private static final Color SYNC_ERROR_RED = new Color(198, 82, 70);
     private static final String FOUND_COMPLETIONS_BUTTON_LABEL = "Update tasks";
+    private static final List<String> RULES_COPY_LINES = loadRulesCopyLinesSafe();
 
     public RulesTabRenderer(
             int panelWidth,
@@ -516,42 +518,18 @@ public final class RulesTabRenderer {
     private List<String> buildRulesLines(FontMetrics fm, int maxWidth) {
         List<String> lines = new ArrayList<>();
         lines.add(LINE_RULES_TOP_SPACER);
-        lines.add("Rules:");
-        lines.addAll(TextUtils.wrapText(
-                "Xtreme Tasker adds extra rules on top of official Tasker. See the GitHub README.",
-                fm,
-                maxWidth
-        ));
-        lines.add("");
-        lines.add("Boss combat training allowance");
-        lines.addAll(TextUtils.wrapText(
-                "For any task requiring that you kill a boss with a suggested skills section on their "
-                        + "\"strategies\" OSRS wiki page, you are allowed to train your combat skills to those "
-                        + "suggested skills. You must do this through the Slayer skill, with any slayer master(s) "
-                        + "of your choosing.",
-                fm,
-                maxWidth
-        ));
-        lines.add("");
-        lines.addAll(TextUtils.wrapText(
-                "It's heavily recommended to be strategic when choosing your slayer master(s) for supplies "
-                        + "and equipment throughout the grind. For example, Krystilia's slayer list includes mammoths "
-                        + "which drop single dose prayer potions. This would be especially useful for bosses that "
-                        + "require overhead prayers to kill them.",
-                fm,
-                maxWidth
-        ));
-        lines.add("");
-        lines.add("Official Tasker rules");
-        lines.addAll(TextUtils.wrapText(
-                "Xtreme Tasker is built on top of official Tasker, a well established ruleset "
-                        + "developed by the Tasker community. All official Tasker rules apply in full — "
-                        + "refer to the Rules and Overview section of the TaskerFAQ for all tasks, "
-                        + "including combat achievements.",
-                fm,
-                maxWidth
-        ));
-        lines.add("");
+        for (String rawLine : RULES_COPY_LINES)
+        {
+            String line = rawLine.trim();
+            if (line.isEmpty())
+            {
+                lines.add("");
+            }
+            else
+            {
+                lines.addAll(TextUtils.wrapText(line, fm, maxWidth));
+            }
+        }
         return lines;
     }
 
@@ -744,6 +722,29 @@ public final class RulesTabRenderer {
         catch (Exception ignored)
         {
             return null;
+        }
+    }
+
+    private static List<String> loadRulesCopyLinesSafe()
+    {
+        try (InputStream in = RulesTabRenderer.class.getResourceAsStream("/ui/rules.txt"))
+        {
+            if (in == null)
+            {
+                return List.of("Rules:", "Rules text unavailable.");
+            }
+            String text = new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
+            String[] lines = text.split("\n", -1);
+            List<String> out = new ArrayList<>(lines.length);
+            for (String line : lines)
+            {
+                out.add(line);
+            }
+            return out;
+        }
+        catch (Exception ignored)
+        {
+            return List.of("Rules:", "Rules text unavailable.");
         }
     }
 
