@@ -30,9 +30,6 @@ public interface OverlayInputAccess
     // panel / drag / tab state
     boolean isPanelOpen();
     void setPanelOpen(boolean open);
-    boolean isCompactPanelMode();
-    void setCompactPanelMode(boolean compact);
-    Rectangle panelModeToggleBounds();
 
     boolean isDraggingPanel();
     void setDraggingPanel(boolean dragging);

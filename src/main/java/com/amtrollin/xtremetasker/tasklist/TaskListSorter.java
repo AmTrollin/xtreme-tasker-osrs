@@ -1,6 +1,5 @@
 package com.amtrollin.xtremetasker.tasklist;
 
-import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
@@ -14,110 +13,10 @@ public final class TaskListSorter
 {
     private TaskListSorter() {}
 
-    public interface CompletionInfoLookup
-    {
-        /** Returns the CompletionInfo for a task, or null if not completed. */
-        CompletionInfo getInfo(XtremeTask task);
-    }
-
-    public interface TicksLookup
-    {
-        /** Returns accumulated in game ticks for a task, or null if none. */
-        Long getTicks(XtremeTask task);
-    }
-
     public static Comparator<XtremeTask> comparator(TaskListQuery q, TaskListFilter.CompletionLookup completed)
     {
-        return comparator(q, completed, null, null);
-    }
-
-    public static Comparator<XtremeTask> comparator(
-            TaskListQuery q,
-            TaskListFilter.CompletionLookup completed,
-            CompletionInfoLookup infoLookup)
-    {
-        return comparator(q, completed, infoLookup, null);
-    }
-
-    public static Comparator<XtremeTask> comparator(
-            TaskListQuery q,
-            TaskListFilter.CompletionLookup completed,
-            CompletionInfoLookup infoLookup,
-            TicksLookup ticksLookup)
-    {
-        final boolean sortByDate = q.sortByDate && infoLookup != null;
-
-        final boolean sortByTimeTicks = q.sortByTimeTicks && ticksLookup != null;
-        final boolean sortByTier = q.sortByTier;
-        final boolean sortBySource = q.sortBySource;
-
         return (a, b) ->
         {
-            if (sortByTier)
-            {
-                int cmp = q.easyTierFirst
-                        ? Integer.compare(tierRank(a), tierRank(b))
-                        : Integer.compare(tierRank(b), tierRank(a));
-                if (cmp != 0) return cmp;
-            }
-
-            if (sortBySource)
-            {
-                int cmp = q.sourceFirst
-                        ? Integer.compare(sourceRank(a), sourceRank(b))
-                        : Integer.compare(sourceRank(b), sourceRank(a));
-                if (cmp != 0) return cmp;
-            }
-
-            if (sortByDate)
-            {
-                CompletionInfo aInfo = infoLookup.getInfo(a);
-                CompletionInfo bInfo = infoLookup.getInfo(b);
-
-                long aTs = (aInfo != null && aInfo.timestamp > 0) ? aInfo.timestamp : -1L;
-                long bTs = (bInfo != null && bInfo.timestamp > 0) ? bInfo.timestamp : -1L;
-
-                // Unknown timestamps go last regardless of sort direction
-                if (aTs < 0 && bTs < 0)
-                {
-                    return 0;
-                }
-                else if (aTs < 0)
-                {
-                    return 1; // a goes after b
-                }
-                else if (bTs < 0)
-                {
-                    return -1; // a goes before b
-                }
-                else
-                {
-                    int cmp = q.newestFirst
-                            ? Long.compare(bTs, aTs)
-                            : Long.compare(aTs, bTs);
-                    if (cmp != 0) return cmp;
-                }
-            }
-
-            if (sortByTimeTicks)
-            {
-                Long aTicks = ticksLookup.getTicks(a);
-                Long bTicks = ticksLookup.getTicks(b);
-                long aT = sortableTicks(aTicks);
-                long bT = sortableTicks(bTicks);
-                // Tasks with no ticks go last
-                if (aT < 0 && bT < 0) return 0;
-                else if (aT < 0) return 1;
-                else if (bT < 0) return -1;
-                else
-                {
-                    int cmp = q.longestFirst
-                            ? Long.compare(bT, aT)
-                            : Long.compare(aT, bT);
-                    if (cmp != 0) return cmp;
-                }
-            }
-
             int sequenceCmp = compareCountedCollectionLogSequence(a, b);
             if (sequenceCmp != 0) return sequenceCmp;
 
@@ -125,21 +24,6 @@ public final class TaskListSorter
             String bn = b.getName() == null ? "" : b.getName();
             return an.compareToIgnoreCase(bn);
         };
-    }
-
-    private static long sortableTicks(Long ticks)
-    {
-        return ticks != null && ticks > 0 ? ticks : -1L;
-    }
-
-    private static int tierRank(XtremeTask task)
-    {
-        return task == null || task.getTier() == null ? Integer.MAX_VALUE : task.getTier().ordinal();
-    }
-
-    private static int sourceRank(XtremeTask task)
-    {
-        return task == null || task.getSource() == null ? Integer.MAX_VALUE : task.getSource().ordinal();
     }
 
     private static int compareCountedCollectionLogSequence(XtremeTask a, XtremeTask b)

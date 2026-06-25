@@ -19,7 +19,7 @@ public final class TaskListPipeline {
             TaskListQuery query,
             TaskListFilter.CompletionLookup completed
     ) {
-        return apply(input, query, completed, null, null);
+        return apply(input, query, completed, null);
     }
 
     public static List<XtremeTask> apply(
@@ -27,27 +27,6 @@ public final class TaskListPipeline {
             TaskListQuery query,
             TaskListFilter.CompletionLookup completed,
             TaskListFilter.NewTaskLookup isNew
-    ) {
-        return apply(input, query, completed, isNew, null);
-    }
-
-    public static List<XtremeTask> apply(
-            List<XtremeTask> input,
-            TaskListQuery query,
-            TaskListFilter.CompletionLookup completed,
-            TaskListFilter.NewTaskLookup isNew,
-            TaskListSorter.CompletionInfoLookup infoLookup
-    ) {
-        return apply(input, query, completed, isNew, infoLookup, null);
-    }
-
-    public static List<XtremeTask> apply(
-            List<XtremeTask> input,
-            TaskListQuery query,
-            TaskListFilter.CompletionLookup completed,
-            TaskListFilter.NewTaskLookup isNew,
-            TaskListSorter.CompletionInfoLookup infoLookup,
-            TaskListSorter.TicksLookup ticksLookup
     ) {
         if (input == null || input.isEmpty()) {
             return new ArrayList<>();
@@ -81,7 +60,7 @@ public final class TaskListPipeline {
             out.add(t);
         }
 
-        out.sort(TaskListSorter.comparator(query, completed, infoLookup, ticksLookup));
+        out.sort(TaskListSorter.comparator(query, completed));
         return out;
     }
 

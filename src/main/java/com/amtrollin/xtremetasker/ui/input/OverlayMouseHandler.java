@@ -252,13 +252,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (button == MouseEvent.BUTTON1 && a.panelModeToggleBounds().contains(p)) {
-            a.setCompactPanelMode(!a.isCompactPanelMode());
-            a.setActiveTab(OverlayInputAccess.MainTab.CURRENT);
-            e.consume();
-            return e;
-        }
-
         if (tryHandleTaskRowClick(e, p, button)) {
             return e;
         }
@@ -375,33 +368,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 } else if (a.controlsLayout().filterTierAll.contains(p)) {
                     changed = setTierScope(TaskListQuery.TierScope.ALL_TIERS);
                 }
-                else if (a.controlsLayout().columnDate.contains(p)) {
-                    a.controlsLayout().showDateColumn = !a.controlsLayout().showDateColumn;
-                    changed = true;
-                } else if (a.controlsLayout().columnTime.contains(p)) {
-                    a.controlsLayout().showTimeColumn = !a.controlsLayout().showTimeColumn;
-                    changed = true;
-                } else if (a.controlsLayout().columnTier.contains(p)) {
-                    a.controlsLayout().showTierColumn = !a.controlsLayout().showTierColumn;
-                    changed = true;
-                } else if (a.controlsLayout().columnSource.contains(p)) {
-                    a.controlsLayout().showSourceColumn = !a.controlsLayout().showSourceColumn;
-                    changed = true;
-                }
-
-                // ----------------------------
-                // 4) Table sort headers
-                // ----------------------------
-                if (a.controlsLayout().sortDate.contains(p)) {
-                    changed = onClickSortDate();
-                } else if (a.controlsLayout().sortTimeTicks.width > 0 && a.controlsLayout().sortTimeTicks.contains(p)) {
-                    changed = onClickSortTimeTicks();
-                } else if (a.controlsLayout().sortTier.width > 0 && a.controlsLayout().sortTier.contains(p)) {
-                    changed = onClickSortTier();
-                } else if (a.controlsLayout().sortSource.width > 0 && a.controlsLayout().sortSource.contains(p)) {
-                    changed = onClickSortSource();
-                }
-
                 // ----------------------------
                 // 5) See New Tasks toggle (session-only, only visible when hasNewTasks)
                 // ----------------------------
@@ -468,7 +434,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
         if (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && button == MouseEvent.BUTTON1) {
             XtremeTask current = a.plugin().getCurrentTask();
 
-            if (!a.isCompactPanelMode() && a.currentLayout().scrollbarRailBounds.width > 0) {
+            if (a.currentLayout().scrollbarRailBounds.width > 0) {
                 Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
                 Rectangle rail = a.currentLayout().scrollbarRailBounds;
 
@@ -1239,7 +1205,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || a.currentTabBounds().contains(p)
                 || a.tasksTabBounds().contains(p)
                 || a.rulesTabBounds().contains(p)
-                || a.panelModeToggleBounds().contains(p)
                 || a.iconBounds().contains(p)
                 // task details popup
                 || (a.isTaskDetailsOpen() && (
@@ -1268,10 +1233,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
                         || (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p))
-                        || (!a.isCompactPanelMode() && (
-                                a.currentLayout().scrollbarThumbBounds.contains(p)
-                                        || a.currentLayout().scrollbarRailBounds.contains(p)
-                        ))
+                        || a.currentLayout().scrollbarThumbBounds.contains(p)
+                        || a.currentLayout().scrollbarRailBounds.contains(p)
                 ))
                 // TASKS tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.TASKS && (
@@ -1289,15 +1252,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || cl.filterComplete.contains(p)
                         || cl.filterTierThis.contains(p)
                         || cl.filterTierAll.contains(p)
-                        || cl.columnDate.contains(p)
-                        || cl.columnTime.contains(p)
-                        || cl.columnTier.contains(p)
-                        || cl.columnSource.contains(p)
-                        // table sort headers
-                        || cl.sortDate.contains(p)
-                        || (cl.sortTimeTicks.width > 0 && cl.sortTimeTicks.contains(p))
-                        || (cl.sortTier.width > 0 && cl.sortTier.contains(p))
-                        || (cl.sortSource.width > 0 && cl.sortSource.contains(p))
                         // new tasks button
                         || cl.filterNewTasks.contains(p)
                         || cl.filterNewTasksHelp.contains(p)
@@ -1625,90 +1579,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         TaskListQuery q = a.taskQuery();
         if (q.tierScope == next) return false;
         q.tierScope = next;
-        return true;
-    }
-
-    // =========================
-    // Sort helpers
-    // =========================
-
-    private boolean onClickSortTimeTicks() {
-        TaskListQuery q = a.taskQuery();
-        if (!q.sortByTimeTicks)
-        {
-            q.sortByDate = false;
-            q.sortByTier = false;
-            q.sortBySource = false;
-            q.sortByTimeTicks = true;
-            q.longestFirst = false;
-            return true;
-        }
-        if (q.longestFirst)
-        {
-            q.sortByTimeTicks = false;
-            return true;
-        }
-        q.longestFirst = !q.longestFirst;
-        return true;
-    }
-
-    private boolean onClickSortDate() {
-        TaskListQuery q = a.taskQuery();
-        if (!q.sortByDate)
-        {
-            q.sortByDate = true;
-            q.sortByTimeTicks = false;
-            q.sortByTier = false;
-            q.sortBySource = false;
-            q.newestFirst = false;
-            return true;
-        }
-        if (q.newestFirst)
-        {
-            q.sortByDate = false;
-            return true;
-        }
-        q.newestFirst = !q.newestFirst;
-        return true;
-    }
-
-    private boolean onClickSortTier() {
-        TaskListQuery q = a.taskQuery();
-        if (!q.sortByTier)
-        {
-            q.sortByDate = false;
-            q.sortByTimeTicks = false;
-            q.sortBySource = false;
-            q.sortByTier = true;
-            q.easyTierFirst = true;
-            return true;
-        }
-        if (!q.easyTierFirst)
-        {
-            q.sortByTier = false;
-            return true;
-        }
-        q.easyTierFirst = false;
-        return true;
-    }
-
-    private boolean onClickSortSource() {
-        TaskListQuery q = a.taskQuery();
-        if (!q.sortBySource)
-        {
-            q.sortByDate = false;
-            q.sortByTimeTicks = false;
-            q.sortByTier = false;
-            q.sortBySource = true;
-            q.sourceFirst = true;
-            return true;
-        }
-        if (!q.sourceFirst)
-        {
-            q.sortBySource = false;
-            return true;
-        }
-        q.sourceFirst = false;
         return true;
     }
 

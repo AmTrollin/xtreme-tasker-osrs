@@ -163,7 +163,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle panelBounds = new Rectangle();
     private final Rectangle panelDragBarBounds = new Rectangle();
     private final Rectangle panelCloseBounds = new Rectangle();
-    private final Rectangle panelModeToggleBounds = new Rectangle();
     private final Rectangle iconBounds = new Rectangle();
 
     private final Rectangle currentTabBounds = new Rectangle();
@@ -220,7 +219,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private RulesTabLayout.SubTab rulesSubTab = RulesTabLayout.SubTab.RULES;
 
     private boolean panelOpen = false;
-    private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
@@ -266,9 +264,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private static final int PANEL_W_TASKS = 690;
     private static final int PANEL_H_TASKS = 460;
-    private static final int PANEL_W_COMPACT = 370;
-    private static final int PANEL_H_COMPACT = 260;
-    private static final double PANEL_SCALE_MIN = 0.82;
+    private static final double PANEL_SCALE_MIN = 0.95;
     private static final double PANEL_SCALE_AUTO_START_W = 1400.0;
     private static final double PANEL_SCALE_AUTO_START_H = 900.0;
     private static final double PANEL_SCALE_AUTO_RANGE_W = 1000.0;
@@ -1883,6 +1879,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private double computePanelScale(int canvasW, int canvasH, int panelW, int panelH) {
+        double maxScale = client.isResized() ? 1.0 : PANEL_SCALE_MIN;
         double widthPressure = (canvasW - PANEL_SCALE_AUTO_START_W) / PANEL_SCALE_AUTO_RANGE_W;
         double heightPressure = (canvasH - PANEL_SCALE_AUTO_START_H) / PANEL_SCALE_AUTO_RANGE_H;
         double pressure = Math.max(widthPressure, heightPressure);
@@ -1890,13 +1887,13 @@ public class XtremeTaskerOverlay extends Overlay {
 
         double fitW = canvasW <= 8 ? 1.0 : (canvasW - 8.0) / panelW;
         double fitH = canvasH <= 4 ? 1.0 : (canvasH - 4.0) / panelH;
-        double fitScale = Math.min(1.0, Math.min(fitW, fitH));
+        double fitScale = Math.min(maxScale, Math.min(fitW, fitH));
 
         double scale = Math.min(autoScale, fitScale);
         if (fitScale < PANEL_SCALE_MIN) {
-            return Math.max(0.55, Math.min(1.0, scale));
+            return Math.max(0.55, Math.min(maxScale, scale));
         }
-        return Math.max(PANEL_SCALE_MIN, Math.min(1.0, scale));
+        return Math.max(PANEL_SCALE_MIN, Math.min(maxScale, scale));
     }
 
     private net.runelite.api.Point toPanelRenderMouse(net.runelite.api.Point mouse, int anchorX, int anchorY, double scale) {
@@ -2030,8 +2027,8 @@ public class XtremeTaskerOverlay extends Overlay {
         synchronized (tierTabBounds) {
             tierTabBounds.clear();
         }
-        int panelW = compactPanelMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
-        int panelHeight = compactPanelMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
+        int panelW = PANEL_W_TASKS;
+        int panelHeight = PANEL_H_TASKS;
         panelScale = computePanelScale(canvasW, canvasH, panelW, panelHeight);
 
         int physicalPanelW = Math.max(1, (int) Math.round(panelW * panelScale));
@@ -2139,13 +2136,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int cursorY = panelY + headerH;
 
-        int modeW = closeSize;
-        int modeH = closeSize;
-        int modeX = panelX + closeInset;
-        int modeY = closeY;
-        panelModeToggleBounds.setBounds(modeX, modeY, modeW, modeH);
-        drawPanelModeToggle(g, fm, rlMouse);
-
         // gold divider under header
         g.setColor(withAlpha(P.UI_GOLD, 180));
         g.fillRect(panelX + 1, cursorY, panelW - 2, 1);
@@ -2154,27 +2144,6 @@ public class XtremeTaskerOverlay extends Overlay {
         panelDragBarBounds.setBounds(panelX, panelY, panelW, cursorY - panelY);
 
         cursorY += 4;
-
-        if (compactPanelMode) {
-            clearFullPanelTabBounds();
-            activeTab = MainTab.CURRENT;
-            renderCompactPanel(g, fm, panelX, cursorY);
-
-            if (pendingMarkAllIncompleteTask != null) {
-                renderMarkAllIncompleteConfirm(g, fm);
-            } else {
-                clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
-                        markAllIncompleteNoBounds, markIncompleteDontShowBounds);
-            }
-
-            animations.prune();
-            g.setTransform(oldTransform);
-            scalePanelInputBounds(panelX, panelY, panelScale);
-            panelBoundsScaledForInput = true;
-            panelRenderMouse = null;
-            logSlowPanelRender(panelRenderStartNanos);
-            return new Dimension(physicalPanelW, physicalPanelH);
-        }
 
         // tabs
         int tabH = ROW_HEIGHT + 6;
@@ -2853,7 +2822,7 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             return "time unknown";
         }
-        return compactFormatTicks(Math.round(ticks * 0.6));
+        return formatShortDuration(Math.round(ticks * 0.6));
     }
 
     private boolean isMultiInstanceTask(XtremeTask task)
@@ -4307,357 +4276,7 @@ public class XtremeTaskerOverlay extends Overlay {
         );
     }
 
-    private void renderCompactPanel(Graphics2D g, FontMetrics fm, int panelX, int contentTop) {
-        resetCurrentLayoutBounds();
-        int innerX = panelX + PANEL_PADDING;
-        int innerW = panelBounds.width - PANEL_PADDING * 2;
-        int bottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
-        int cardH = Math.max(120, bottom - contentTop);
-        Rectangle card = new Rectangle(innerX, contentTop, innerW, cardH);
-        drawBevelBox(g, card, new Color(26, 17, 10, 225));
-
-        if (!plugin.hasTaskPackLoaded()) {
-            drawCompactCenteredText(g, fm, card, "No tasks loaded.", P.UI_TEXT_DIM);
-            return;
-        }
-
-        XtremeTask current = plugin.getCurrentTask();
-        boolean rolling = animations.isRolling();
-        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
-        boolean showCurrentTask = current != null && !currentCompleted && !rolling;
-
-        net.runelite.api.Point rlMouse = mouseCanvasPositionForPanelRender();
-        java.awt.Point mousePoint = rlMouse == null ? null : new java.awt.Point(rlMouse.getX(), rlMouse.getY());
-
-        Shape oldClip = g.getClip();
-        g.setClip(new Rectangle(card.x + 2, card.y + 2, card.width - 4, card.height - 4));
-        if (rolling) {
-            drawCompactRolling(g, fm, card, current);
-        } else if (showCurrentTask) {
-            drawCompactCurrentIdentity(g, fm, card, current, mousePoint);
-        } else {
-            drawCompactEmptyIdentity(g, fm, card);
-        }
-        g.setClip(oldClip);
-
-        if (rolling) {
-            return;
-        }
-
-        int actionH = ROW_HEIGHT + 8;
-        int actionW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Mark complete") + 58));
-        int actionX = card.x + (card.width - actionW) / 2;
-        int actionY = card.y + card.height - actionH - 14;
-        if (showCurrentTask) {
-            currentLayout.completeButtonBounds.setBounds(actionX, actionY, actionW, actionH);
-            buttonRenderer.drawPrimaryButton(
-                    g,
-                    currentLayout.completeButtonBounds,
-                    "Mark complete",
-                    plugin.isCurrentTaskCompletionCriteriaMet() ? UiPalette.TIER_COMPLETE_GLOW : null);
-        } else {
-            int rollW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Roll task") + 58));
-            currentLayout.rollButtonBounds.setBounds(card.x + (card.width - rollW) / 2, actionY, rollW, actionH);
-            buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
-        }
-    }
-
-    private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current) {
-        int x = card.x + 14;
-        int innerW = card.width - 28;
-        g.setColor(Color.WHITE);
-        g.drawString("Rolling...", x, card.y + 12 + fm.getAscent());
-
-        Font oldFont = g.getFont();
-        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
-        g.setFont(nameFont);
-        FontMetrics nameFm = g.getFontMetrics();
-        String name = computeCurrentLineForRender(current, false, nameFm);
-        List<String> nameLines = TextUtils.wrapText(name, nameFm, innerW);
-        int lineCount = Math.max(1, Math.min(2, nameLines.size()));
-        int blockH = lineCount * nameFm.getHeight();
-        int nameY = card.y + (card.height - blockH) / 2 + nameFm.getAscent();
-
-        g.setColor(P.UI_GOLD);
-        for (int i = 0; i < lineCount; i++) {
-            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, innerW);
-            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
-            g.drawString(line, lineX, nameY);
-            nameY += nameFm.getHeight();
-        }
-        g.setFont(oldFont);
-    }
-
-    private void drawCompactEmptyIdentity(Graphics2D g, FontMetrics fm, Rectangle card) {
-        Font oldFont = g.getFont();
-        Font titleFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f);
-        g.setFont(titleFont);
-        FontMetrics titleFm = g.getFontMetrics();
-        String title = TextUtils.truncateToWidth("No current task", titleFm, card.width - 28);
-        int titleY = card.y + (card.height - titleFm.getHeight()) / 2 + titleFm.getAscent();
-        g.setColor(Color.WHITE);
-        g.drawString(title, card.x + (card.width - titleFm.stringWidth(title)) / 2, titleY);
-        g.setFont(oldFont);
-    }
-
-    private void drawCompactCurrentIdentity(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current, java.awt.Point mousePoint) {
-        int pad = 14;
-        int textW = card.width - pad * 2;
-        int y = card.y + pad;
-
-        y = Math.max(y, drawCompactBadges(g, fm, card, current) + 6);
-        y = drawCompactTaskIcon(g, fm, current, card.x + pad, y, textW, mousePoint, card) + 8;
-
-        Font oldFont = g.getFont();
-        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
-        g.setFont(nameFont);
-        FontMetrics nameFm = g.getFontMetrics();
-        List<String> nameLines = TextUtils.wrapText(compactTaskTitle(current), nameFm, textW);
-        int textY = y + nameFm.getAscent();
-        g.setColor(P.UI_GOLD);
-        for (int i = 0; i < Math.min(2, nameLines.size()); i++) {
-            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, textW);
-            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
-            g.drawString(line, lineX, textY);
-            textY += nameFm.getHeight();
-        }
-
-        g.setFont(oldFont);
-        Long ticks = plugin.getTaskTimeTicks(current);
-        if (ticks != null && ticks > 0) {
-            String time = compactFormatTicks(Math.round(ticks * 0.6));
-            int timeX = card.x + (card.width - fm.stringWidth(time)) / 2;
-            g.setColor(P.UI_TEXT_DIM);
-            g.drawString(time, timeX, textY + 2);
-        }
-    }
-
-    private int drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task) {
-        String sourceText = shortSource(task.getSource());
-        String tierText = tierLabel(task.getTier());
-        int gap = 5;
-        int y = card.y + 8;
-        Font oldFont = g.getFont();
-        g.setFont(FontManager.getRunescapeSmallFont());
-        FontMetrics badgeFm = g.getFontMetrics();
-        int sourceW = Math.max(24, badgeFm.stringWidth(sourceText) + 14);
-        int tierW = Math.max(24, badgeFm.stringWidth(tierText) + 14);
-        int x = card.x + card.width - 12 - sourceW - gap - tierW;
-        g.setFont(oldFont);
-
-        x += TaskRowsRenderer.drawSourceBadge(g, x, y, sourceText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT) + gap;
-        TaskRowsRenderer.drawSourceBadge(g, x, y, tierText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT);
-        return y + 18;
-    }
-
-    private int drawCompactTaskIcon(Graphics2D g, FontMetrics fm, XtremeTask task, int x, int y, int maxW, java.awt.Point mousePoint, Rectangle card) {
-        CollectionLogRequirementPreview preview = compactCollectionLogIconPreview(task);
-        if (preview != null && preview.showItemList()) {
-            Rectangle tooltipBounds = new Rectangle(card.x + 4, card.y + 4, card.width - 8, card.height - 8);
-            int renderX = centeredCompactCollectionLogIconX(x, maxW, preview);
-            return CollectionLogIconGridRenderer.render(
-                    g,
-                    fm,
-                    renderX,
-                    y + fm.getAscent(),
-                    maxW,
-                    preview.getItems(),
-                    this::getCachedItemImage,
-                    mousePoint,
-                    tooltipBounds,
-                    P.UI_TEXT,
-                    P.UI_TEXT_DIM,
-                    P.UI_EDGE_LIGHT,
-                    P.UI_EDGE_DARK,
-                    preview.iconColumns()) - fm.getAscent();
-        }
-
-        int iconSize = 44;
-        int iconX = x + (maxW - iconSize) / 2;
-        BufferedImage taskIcon = resolveTaskIcon(task);
-        if (taskIcon != null) {
-            g.drawImage(taskIcon, iconX, y, iconSize, iconSize, null);
-        }
-        return y + iconSize;
-    }
-
-    private int centeredCompactCollectionLogIconX(int x, int maxW, CollectionLogRequirementPreview preview) {
-        int count = preview == null ? 0 : preview.getItems().size();
-        if (count <= 0) {
-            return x;
-        }
-
-        int columns = Math.max(1, preview.iconColumns());
-        int shownColumns = Math.min(count, columns);
-        int iconSize = compactCollectionLogIconSize(maxW, columns);
-        int rowW = shownColumns * iconSize + Math.max(0, shownColumns - 1) * 3;
-        return x + Math.max(0, (maxW - rowW) / 2);
-    }
-
-    private int compactCollectionLogIconSize(int maxW, int columns) {
-        int normalizedColumns = Math.max(1, columns);
-        int available = Math.max(20 * normalizedColumns, maxW - (normalizedColumns - 1) * 3);
-        int maxIconSize = normalizedColumns < 8 ? 56 : 36;
-        return Math.max(20, Math.min(maxIconSize, available / normalizedColumns));
-    }
-
-    private CollectionLogRequirementPreview compactCollectionLogIconPreview(XtremeTask task) {
-        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG) {
-            return null;
-        }
-
-        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
-        if (preview == null) {
-            return null;
-        }
-
-        if (preview.showTierSections()) {
-            CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
-            return currentSection == null
-                    ? null
-                    : new CollectionLogRequirementPreview("", "", false, true, currentSection.items(), currentSection.iconColumns());
-        }
-        return preview;
-    }
-
-    private String compactTaskTitle(XtremeTask task) {
-        if (task == null) {
-            return "";
-        }
-
-        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
-        if (task.getSource() == TaskSource.COLLECTION_LOG && progress != null && progress.isGrouped()) {
-            if (isDecoratedSequenceTaskName(task.getName())) {
-                return task.getName();
-            }
-
-            String sequenceSuffix = collectionLogSequenceSuffix(task);
-            if (!sequenceSuffix.isEmpty()) {
-                return task.getName() + " (" + sequenceSuffix + ")";
-            }
-
-            int next = Math.max(1, Math.min(progress.getCompleted() + 1, progress.getTotal()));
-            return task.getName() + " (" + next + "/" + progress.getTotal() + ")";
-        }
-        return task.getName();
-    }
-
-    private void drawCompactCenteredText(Graphics2D g, FontMetrics fm, Rectangle card, String text, Color color) {
-        String drawText = TextUtils.truncateToWidth(text, fm, card.width - 28);
-        int x = card.x + (card.width - fm.stringWidth(drawText)) / 2;
-        int y = card.y + (card.height - fm.getHeight()) / 2 + fm.getAscent();
-        g.setColor(color);
-        g.drawString(drawText, x, y);
-    }
-
-    private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {
-        boolean hovered = rlMouse != null && panelModeToggleBounds.contains(rlMouse.getX(), rlMouse.getY());
-        g.setColor(hovered ? new Color(22, 17, 11, 235) : new Color(18, 14, 9, 185));
-        g.fillRoundRect(
-                panelModeToggleBounds.x - 2,
-                panelModeToggleBounds.y - 2,
-                panelModeToggleBounds.width + 4,
-                panelModeToggleBounds.height + 4,
-                4,
-                4
-        );
-        g.setColor(withAlpha(P.UI_EDGE_LIGHT, hovered ? 95 : 55));
-        g.drawRoundRect(
-                panelModeToggleBounds.x - 2,
-                panelModeToggleBounds.y - 2,
-                panelModeToggleBounds.width + 4,
-                panelModeToggleBounds.height + 4,
-                4,
-                4
-        );
-
-        g.setColor(hovered ? Color.WHITE : new Color(200, 200, 200, 180));
-        int cx = panelModeToggleBounds.x + panelModeToggleBounds.width / 2;
-        int cy = panelModeToggleBounds.y + panelModeToggleBounds.height / 2;
-        int arm = panelModeToggleBounds.width / 2 - 2;
-        int x = cx - arm;
-        int y = cy - arm;
-        int w = arm * 2;
-        int h = arm * 2;
-        Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-        Stroke oldStroke = g.getStroke();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-
-        if (compactPanelMode) {
-            // Expand/full-view corners.
-            int leg = Math.max(4, arm - 1);
-            g.drawLine(x, y + leg, x, y);
-            g.drawLine(x, y, x + leg, y);
-            g.drawLine(x + w - leg, y, x + w, y);
-            g.drawLine(x + w, y, x + w, y + leg);
-            g.drawLine(x, y + h - leg, x, y + h);
-            g.drawLine(x, y + h, x + leg, y + h);
-            g.drawLine(x + w - leg, y + h, x + w, y + h);
-            g.drawLine(x + w, y + h, x + w, y + h - leg);
-        } else {
-            // Collapse/compact-view inward corners.
-            int inset = 4;
-            g.drawLine(x, y, x + inset, y);
-            g.drawLine(x, y, x, y + inset);
-            g.drawLine(x + w - inset, y, x + w, y);
-            g.drawLine(x + w, y, x + w, y + inset);
-            g.drawLine(x, y + h - inset, x, y + h);
-            g.drawLine(x, y + h, x + inset, y + h);
-            g.drawLine(x + w - inset, y + h, x + w, y + h);
-            g.drawLine(x + w, y + h - inset, x + w, y + h);
-            g.drawLine(x + inset + 1, y + inset + 1, x + w - inset - 1, y + h - inset - 1);
-            g.drawLine(x + w - inset - 1, y + inset + 1, x + inset + 1, y + h - inset - 1);
-        }
-        g.setStroke(oldStroke);
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
-
-        if (hovered) {
-            drawSmallTooltip(g, fm, compactPanelMode ? "Full\nview" : "Compact view", panelModeToggleBounds);
-        }
-    }
-
-    private void drawSmallTooltip(Graphics2D g, FontMetrics fm, String text, Rectangle anchor) {
-        int padX = 0;
-        int padY = 4;
-        String[] lines = text.split("\\n", -1);
-        int textW = 0;
-        for (String line : lines) {
-            textW = Math.max(textW, fm.stringWidth(line));
-        }
-        int w = textW + padX * 2;
-        int h = fm.getHeight() * lines.length + padY * 2;
-        int x = anchor.x;
-        int y = anchor.y + anchor.height + 5;
-        if (x + w > panelBounds.x + panelBounds.width - PANEL_PADDING) {
-            x = panelBounds.x + panelBounds.width - PANEL_PADDING - w;
-        }
-        if (y + h > panelBounds.y + panelBounds.height - PANEL_PADDING) {
-            y = anchor.y - h - 5;
-        }
-
-        g.setColor(withAlpha(P.UI_TEXT_DIM, 190));
-        int textY = y + padY + fm.getAscent();
-        for (String line : lines) {
-            g.drawString(line, x + padX, textY);
-            textY += fm.getHeight();
-        }
-    }
-
-    private void resetCurrentLayoutBounds() {
-        clearBounds(currentLayout.wikiButtonBounds, currentLayout.rollButtonBounds,
-                currentLayout.completeButtonBounds, currentLayout.undoButtonBounds,
-                currentLayout.rollSourceIconBounds, currentLayout.viewportBounds,
-                currentLayout.scrollbarRailBounds, currentLayout.scrollbarThumbBounds);
-        currentLayout.totalContentPx = 0;
-    }
-
-    private void clearFullPanelTabBounds() {
-        clearBounds(currentTabBounds, tasksTabBounds, rulesTabBounds, taskListViewportBounds,
-                taskScrollbarRailBounds, taskScrollbarThumbBounds);
-    }
-
-    private static String compactFormatTicks(long seconds) {
+    private static String formatShortDuration(long seconds) {
         if (seconds < 60) return seconds + "s";
         long minutes = seconds / 60;
         long remSeconds = seconds % 60;
@@ -4974,9 +4593,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 base,
                 taskQuery,
                 plugin::isTaskCompleted,
-                plugin::isNewTask,
-                this::taskListCompletionInfo,
-                this::taskListTimeTicks);
+                plugin::isNewTask);
         List<XtremeTask> result = useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
         List<XtremeTask> immutableResult = Collections.unmodifiableList(new ArrayList<>(result));
         sortedTaskListCache.put(cacheKey, immutableResult);
@@ -4989,58 +4606,6 @@ public class XtremeTaskerOverlay extends Overlay {
         return plugin.condenseRepeatedTasks();
     }
 
-    private CompletionInfo taskListCompletionInfo(XtremeTask task)
-    {
-        return plugin.getCompletionInfo(useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task);
-    }
-
-    private Long taskListTimeTicks(XtremeTask task)
-    {
-        XtremeTask sortTask = useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task;
-        if (sortTask == null || plugin.getCompletionInfo(sortTask) == null)
-        {
-            return null;
-        }
-        return plugin.getTaskTimeTicks(sortTask);
-    }
-
-    private XtremeTask latestCompletedGroupInstance(XtremeTask task)
-    {
-        if (!useCondensedTaskRows() || task == null)
-        {
-            return task;
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group == null || group.size() <= 1)
-        {
-            return task;
-        }
-
-        XtremeTask latestTimestamped = null;
-        XtremeTask latestUntimestamped = null;
-        long latestTimestamp = Long.MIN_VALUE;
-        for (XtremeTask instance : group)
-        {
-            CompletionInfo info = plugin.getCompletionInfo(instance);
-            if (info == null)
-            {
-                continue;
-            }
-
-            latestUntimestamped = instance;
-            if (info.timestamp > 0 && info.timestamp >= latestTimestamp)
-            {
-                latestTimestamped = instance;
-                latestTimestamp = info.timestamp;
-            }
-        }
-
-        return latestTimestamped != null
-                ? latestTimestamped
-                : latestUntimestamped != null ? latestUntimestamped : task;
-    }
-
     private String sortedTaskListCacheKey(TaskTier tier)
     {
         return "tier=" + tier
@@ -5051,14 +4616,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|cl=" + taskQuery.sourceClogsSelected
                 + "|da=" + taskQuery.sourceDasSelected
                 + "|status=" + taskQuery.statusFilter
-                + "|sortDate=" + taskQuery.sortByDate
-                + "|newestFirst=" + taskQuery.newestFirst
-                + "|sortTicks=" + taskQuery.sortByTimeTicks
-                + "|longestFirst=" + taskQuery.longestFirst
-                + "|sortTier=" + taskQuery.sortByTier
-                + "|easyFirst=" + taskQuery.easyTierFirst
-                + "|sortSource=" + taskQuery.sortBySource
-                + "|sourceFirst=" + taskQuery.sourceFirst
                 + "|newOnly=" + taskQuery.showNewTasksFilter
                 + "|condensed=" + useCondensedTaskRows()
                 + "|state=" + plugin.getTaskListRenderStateHash();
@@ -5098,8 +4655,8 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         lastSlowPanelRenderLogMs = nowMs;
-        log.debug("Slow Xtreme Tasker panel render: tab={}, compact={}, detailsOpen={}, elapsed={}ms",
-                activeTab, compactPanelMode, taskDetailsPopup.isOpen(), elapsedNanos / 1_000_000L);
+        log.debug("Slow Xtreme Tasker panel render: tab={}, detailsOpen={}, elapsed={}ms",
+                activeTab, taskDetailsPopup.isOpen(), elapsedNanos / 1_000_000L);
     }
 
     // -----------------------------
@@ -5135,29 +4692,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void setPanelOpen(boolean open) {
                 panelOpen = open;
-            }
-
-            @Override
-            public boolean isCompactPanelMode() {
-                return compactPanelMode;
-            }
-
-            @Override
-            public void setCompactPanelMode(boolean compact) {
-                recenterPanelForMode(compact);
-                compactPanelMode = compact;
-                taskDetailsPopup.close();
-                syncMismatchReviewOpen = false;
-                syncMismatchDescriptionTask = null;
-                currentScroll.reset();
-                if (compact) {
-                    activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
-                }
-            }
-
-            @Override
-            public Rectangle panelModeToggleBounds() {
-                return panelModeToggleBounds;
             }
 
             @Override
@@ -6053,31 +5587,13 @@ public class XtremeTaskerOverlay extends Overlay {
         }
     }
 
-    private void recenterPanelForMode(boolean targetCompactMode) {
-        if (!panelOpen || panelBounds.width <= 0 || panelBounds.height <= 0) {
-            return;
-        }
-
-        int canvasW = client.getCanvasWidth();
-        int canvasH = client.getCanvasHeight();
-        int targetW = targetCompactMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
-        int targetH = targetCompactMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
-        double targetScale = computePanelScale(canvasW, canvasH, targetW, targetH);
-        int physicalTargetW = Math.max(1, (int) Math.round(targetW * targetScale));
-        int physicalTargetH = Math.max(1, (int) Math.round(targetH * targetScale));
-
-        int centerX = panelBounds.x + panelBounds.width / 2;
-        panelXOverride = Math.max(0, Math.min(centerX - physicalTargetW / 2, Math.max(0, canvasW - physicalTargetW)));
-        panelYOverride = Math.max(0, Math.min(panelBounds.y, Math.max(0, canvasH - physicalTargetH)));
-    }
-
     private void scalePanelInputBounds(int anchorX, int anchorY, double scale) {
         if (scale == 1.0) {
             return;
         }
 
         scaleRects(anchorX, anchorY, scale,
-                panelBounds, panelDragBarBounds, panelCloseBounds, panelModeToggleBounds,
+                panelBounds, panelDragBarBounds, panelCloseBounds,
                 currentTabBounds, tasksTabBounds, rulesTabBounds,
                 taskListViewportBounds, taskScrollbarRailBounds, taskScrollbarThumbBounds,
                 markAllIncompleteConfirmBounds, markAllIncompleteYesBounds, markAllIncompleteNoBounds,
@@ -6122,9 +5638,7 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRects(anchorX, anchorY, scale,
                 layout.searchBox, layout.filtersHeaderBounds, layout.filterSourceAll, layout.filterCA,
                 layout.filterCL, layout.filterDA, layout.filterStatusAll, layout.filterIncomplete,
-                layout.filterComplete, layout.filterTierThis, layout.filterTierAll, layout.columnDate,
-                layout.columnTime, layout.columnTier, layout.columnSource, layout.sortDate,
-                layout.sortTimeTicks, layout.sortTier, layout.sortSource, layout.clearFilters,
+                layout.filterComplete, layout.filterTierThis, layout.filterTierAll, layout.clearFilters,
                 layout.filterNewTasks, layout.filterNewTasksHelp);
         layout.searchTextX = scaleX(layout.searchTextX, anchorX, scale);
         for (int i = 0; i < layout.searchCharXPositions.length; i++) {
@@ -6308,9 +5822,6 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderLogoMaxHeight() {
-        if (compactPanelMode) {
-            return 54;
-        }
         return client.isResized() ? 82 : 70;
     }
 

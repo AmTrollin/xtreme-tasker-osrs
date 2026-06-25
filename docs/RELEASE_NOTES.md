@@ -12,8 +12,6 @@
 
 ### UI
 - New horizontal layout with improved space utilization
-- Added Compact View
-- Simplified sorting with column header controls
 - Added prerequisite and Achievement Diary icons
 - Improved Collection Log obtained indicators
 - Added support for multiple wiki pages per task

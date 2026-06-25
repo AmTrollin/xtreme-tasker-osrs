@@ -303,40 +303,7 @@ public class TaskControlsRenderer
         drawTierScopePill(g, fm, layout.filterTierThis, T_THIS, query.tierScope == TaskListQuery.TierScope.THIS_TIER);
         drawPill(g, fm, layout.filterTierAll, T_ALL, query.tierScope == TaskListQuery.TierScope.ALL_TIERS);
 
-        cursorY += rowH + 31;
-
-        // ================================
-        // Row 6: Column display toggles
-        // ================================
-        g.setFont(sectionHeaderFont);
-        headerFm = g.getFontMetrics();
-        String columnTitle = "Column displays:";
-        g.setColor(uiGold);
-        g.drawString(columnTitle, rowX + leftPad, cursorY);
-        int ruleX1 = rowX + leftPad + headerFm.stringWidth(columnTitle) + 10;
-        int ruleY = cursorY - headerFm.getAscent() + headerFm.getHeight() / 2;
-        drawHeaderRule(g, ruleX1, ruleY, rowX + rowW - rightPad);
-        g.setFont(savedHeaderFont);
-        fm = bodyFm;
-
-        cursorY += headerFm.getHeight() + 6;
-        rowTop = cursorY - fm.getAscent();
-
-        final String COL_DATE = "Date completed";
-        final String COL_TIME = "Time spent";
-        final String COL_TIER = "Tier";
-        final String COL_SRC = "Source";
-
-        int availableColumns = rowW - leftPad - rightPad;
-        drawTwoColumnPillGrid(g, fm, rowX + leftPad, rowTop, rowH, availableColumns, chipGap,
-                new Rectangle[] {layout.columnDate, layout.columnTime, layout.columnTier, layout.columnSource},
-                new String[] {COL_DATE, COL_TIME, COL_TIER, COL_SRC},
-                new boolean[] {layout.showDateColumn, layout.showTimeColumn, layout.showTierColumn, layout.showSourceColumn});
-
-        cursorY += rowH + chipGap;
         cursorY += rowH + 20;
-
-        clearBounds(layout.sortDate, layout.sortTimeTicks, layout.sortTier, layout.sortSource);
 
         return cursorY;
 
