@@ -18566,7 +18566,7 @@
       "id": "collection_log_hard_get-the-alchemist-s-amulet_001_f2473478c5",
       "name": "Get the Alchemist's amulet",
       "source": "COLLECTION_LOG",
-      "tier": "HARD",
+      "tier": "MEDIUM",
       "prereqs": "Children of the Sun quest; 60 Herblore",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Alchemist%27s_amulet",
       "verification": {
@@ -35578,7 +35578,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_001_f9cfae45f2",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35617,7 +35617,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_002_5747724ab3",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35656,7 +35656,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_003_8e55c27f35",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35695,7 +35695,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_004_81b32250c4",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35734,7 +35734,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_005_8b7660b7c6",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35773,7 +35773,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_006_85ca28e345",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35812,7 +35812,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_007_48c6fdc929",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35851,7 +35851,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_008_2291dce7b5",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35890,7 +35890,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_009_d2abd834cc",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35929,7 +35929,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_010_1eff74a166",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -35968,7 +35968,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_011_9685ff0fd1",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36007,7 +36007,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_012_dfcb530a94",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36046,7 +36046,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_013_8791b07bbf",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36085,7 +36085,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_014_44aa58843f",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36124,7 +36124,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_015_4b4c046d9b",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36163,7 +36163,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_016_785f508860",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36202,7 +36202,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_017_018c7822f8",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36241,7 +36241,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_018_22d1ddafbb",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36280,7 +36280,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_019_af1c5a6724",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36319,7 +36319,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_020_e25cf83ba4",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36358,7 +36358,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_021_860f0e48b0",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36397,7 +36397,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_022_50240c1d01",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36436,7 +36436,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_023_f8e315d1c7",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
@@ -36475,7 +36475,7 @@
     },
     {
       "id": "collection_log_master_1-level-99-cape_024_fb7eb92b12",
-      "name": "Obtain any level 99 skillcape",
+      "name": "Get any level 99 skillcape",
       "source": "COLLECTION_LOG",
       "tier": "MASTER",
       "prereqs": "None",
