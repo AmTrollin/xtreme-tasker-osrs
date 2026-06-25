@@ -36,6 +36,15 @@ public interface XtremeTaskerConfig extends Config {
         return RollSourceFilter.ALL;
     }
 
+    @ConfigItem(
+            keyName = "condenseRepeatedTasks",
+            name = "Condense repeated tasks",
+            description = "Group repeated Collection Log tasks into one row on the Tasks tab"
+    )
+    default boolean condenseRepeatedTasks() {
+        return true;
+    }
+
     // Tips config temporarily disabled — always off for now
     // @ConfigItem(
     //         keyName = "showTips",

@@ -265,15 +265,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         // SEARCH box focus (only when panel is open and click is inside panel)
         if (a.activeTab() == OverlayInputAccess.MainTab.TASKS && button == MouseEvent.BUTTON1) {
-            if (a.taskViewModeBounds().contains(p)) {
-                if (!isCondenseRepeatedTasksBlocked()) {
-                    a.plugin().toggleCondenseRepeatedTasks();
-                    a.resetTaskListViewAfterQueryChange();
-                }
-                e.consume();
-                return e;
-            }
-
             if (a.controlsLayout().searchBox.contains(p)) {
                 a.taskQuery().searchFocused = true;
                 a.client().getCanvas().requestFocusInWindow();
@@ -348,20 +339,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     q.selectAllSources();
                     q.statusFilter = TaskListQuery.StatusFilter.ALL;
                     q.tierScope = TaskListQuery.TierScope.ALL_TIERS;
-                    autoDisableCompletionSortIfNeeded();
-                    autoDisableDateSortIfNeeded();
-                    autoDisableTimeTicksSortIfNeeded();
-                    a.resetTaskListViewAfterQueryChange();
-                    e.consume();
-                    return e;
-                }
-                if (a.controlsLayout().clearSort.width > 0
-                        && a.controlsLayout().clearSort.contains(p)) {
-                    TaskListQuery q = a.taskQuery();
-                    q.sortByCompletion = false;
-                    q.sortByTier = false;
-                    q.sortByDate = false;
-                    q.sortByTimeTicks = false;
                     a.resetTaskListViewAfterQueryChange();
                     e.consume();
                     return e;
@@ -381,45 +358,35 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
                 // ----------------------------
                 // 2) STATUS filter (single-select)
-                // + auto-clean completion sort when status != ALL
                 // ----------------------------
                 else if (a.controlsLayout().filterStatusAll.contains(p)) {
                     changed = setStatusFilter(TaskListQuery.StatusFilter.ALL);
-                    changed |= autoDisableDateSortIfNeeded();
-                    changed |= autoDisableTimeTicksSortIfNeeded();
                 } else if (a.controlsLayout().filterIncomplete.contains(p)) {
                     changed = toggleSingleSelectStatus(TaskListQuery.StatusFilter.INCOMPLETE);
-                    changed |= autoDisableCompletionSortIfNeeded();
-                    changed |= autoDisableDateSortIfNeeded();
-                    changed |= autoDisableTimeTicksSortIfNeeded();
                 } else if (a.controlsLayout().filterComplete.contains(p)) {
                     changed = toggleSingleSelectStatus(TaskListQuery.StatusFilter.COMPLETE);
-                    changed |= autoDisableCompletionSortIfNeeded();
                 }
 
                 // ----------------------------
                 // 3) TIER scope (single-select)
-                // + auto-clean tier sort when tierScope != ALL_TIERS
                 // ----------------------------
                 else if (a.controlsLayout().filterTierThis.contains(p)) {
                     changed = setTierScope(TaskListQuery.TierScope.THIS_TIER);
-                    changed |= autoDisableTierSortIfNeeded();
                 } else if (a.controlsLayout().filterTierAll.contains(p)) {
                     changed = setTierScope(TaskListQuery.TierScope.ALL_TIERS);
                 }
 
                 // ----------------------------
-                // 4) SORT pills (3 buttons)
+                // 4) Table sort headers
                 // ----------------------------
-                boolean dateEnabledScope = a.taskQuery().statusFilter == TaskListQuery.StatusFilter.COMPLETE;
-                if (a.controlsLayout().sortCompletion.contains(p)) {
-                    changed = onClickSortCompletion();
-                } else if (a.controlsLayout().sortTier.contains(p)) {
-                    changed = onClickSortTier();
-                } else if (a.controlsLayout().sortDate.contains(p)) {
+                if (a.controlsLayout().sortDate.contains(p)) {
                     changed = onClickSortDate();
-                } else if (dateEnabledScope && a.controlsLayout().sortTimeTicks.width > 0 && a.controlsLayout().sortTimeTicks.contains(p)) {
+                } else if (a.controlsLayout().sortTimeTicks.width > 0 && a.controlsLayout().sortTimeTicks.contains(p)) {
                     changed = onClickSortTimeTicks();
+                } else if (a.controlsLayout().sortTier.width > 0 && a.controlsLayout().sortTier.contains(p)) {
+                    changed = onClickSortTier();
+                } else if (a.controlsLayout().sortSource.width > 0 && a.controlsLayout().sortSource.contains(p)) {
+                    changed = onClickSortSource();
                 }
 
                 // ----------------------------
@@ -1251,11 +1218,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         boolean completeEnabled = (current != null) && !currentCompleted;
         boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
 
-        TaskListQuery tq = a.taskQuery();
-        boolean completionDisabled = tq.statusFilter != TaskListQuery.StatusFilter.ALL;
-        boolean tierEnabledScope = tq.tierScope == TaskListQuery.TierScope.ALL_TIERS;
-        boolean dateEnabledScope = tq.statusFilter == TaskListQuery.StatusFilter.COMPLETE;
-
         TaskControlsLayout cl = a.controlsLayout();
 
         boolean hovering =
@@ -1304,7 +1266,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         containsAny(a.tierTabBounds(), p)
                         || cl.searchBox.contains(p)
                         || (cl.clearFilters.width > 0 && cl.clearFilters.contains(p))
-                        || (cl.clearSort.width > 0 && cl.clearSort.contains(p))
                         // filter pills (always clickable)
                         || cl.filterSourceAll.contains(p)
                         || cl.filterCA.contains(p)
@@ -1315,15 +1276,14 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || cl.filterComplete.contains(p)
                         || cl.filterTierThis.contains(p)
                         || cl.filterTierAll.contains(p)
-                        // sort pills (conditionally enabled)
-                        || (!completionDisabled && cl.sortCompletion.contains(p))
-                        || (tierEnabledScope && cl.sortTier.contains(p))
-                        || (dateEnabledScope && cl.sortDate.contains(p))
-                        || (dateEnabledScope && cl.sortTimeTicks.width > 0 && cl.sortTimeTicks.contains(p))
+                        // table sort headers
+                        || cl.sortDate.contains(p)
+                        || (cl.sortTimeTicks.width > 0 && cl.sortTimeTicks.contains(p))
+                        || (cl.sortTier.width > 0 && cl.sortTier.contains(p))
+                        || (cl.sortSource.width > 0 && cl.sortSource.contains(p))
                         // new tasks button
                         || cl.filterNewTasks.contains(p)
                         || cl.filterNewTasksHelp.contains(p)
-                        || (!isCondenseRepeatedTasksBlocked() && a.taskViewModeBounds().contains(p))
                         // task list scrollbar
                         || (!a.isTaskDetailsOpen() && (
                                 a.taskScrollbarThumbBounds().contains(p)
@@ -1652,140 +1612,86 @@ public final class OverlayMouseHandler extends MouseAdapter {
     }
 
     // =========================
-    // Sort + auto-clean helpers
+    // Sort helpers
     // =========================
-
-    private boolean autoDisableCompletionSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.statusFilter != TaskListQuery.StatusFilter.ALL && q.sortByCompletion) {
-            q.sortByCompletion = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean autoDisableTierSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.tierScope != TaskListQuery.TierScope.ALL_TIERS && q.sortByTier) {
-            q.sortByTier = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean autoDisableDateSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.statusFilter != TaskListQuery.StatusFilter.COMPLETE && q.sortByDate) {
-            q.sortByDate = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean autoDisableTimeTicksSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.statusFilter != TaskListQuery.StatusFilter.COMPLETE && q.sortByTimeTicks) {
-            q.sortByTimeTicks = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean isCondenseRepeatedTasksBlocked() {
-        TaskListQuery q = a.taskQuery();
-        return q.sortByDate || q.sortByTimeTicks;
-    }
-
-    private boolean onClickSortCompletion() {
-        TaskListQuery q = a.taskQuery();
-
-        if (q.statusFilter != TaskListQuery.StatusFilter.ALL) {
-            return false;
-        }
-
-        if (!q.sortByCompletion) {
-            // OFF → Incomplete First
-            q.sortByCompletion = true;
-            q.completedFirst = false;
-            return true;
-        }
-
-        if (!q.completedFirst) {
-            // Incomplete First → Complete First
-            q.completedFirst = true;
-            return true;
-        }
-
-        // Complete First → OFF
-        q.sortByCompletion = false;
-        return true;
-    }
-
-    private boolean onClickSortTier() {
-        TaskListQuery q = a.taskQuery();
-
-        if (q.tierScope != TaskListQuery.TierScope.ALL_TIERS) {
-            return false;
-        }
-
-        if (!q.sortByTier) {
-            // OFF → Easy Tier First
-            q.sortByTier = true;
-            q.easyTierFirst = true;
-            return true;
-        }
-
-        if (q.easyTierFirst) {
-            // Easy Tier First → Master Tier First
-            q.easyTierFirst = false;
-            return true;
-        }
-
-        // Master Tier First → OFF
-        q.sortByTier = false;
-        return true;
-    }
 
     private boolean onClickSortTimeTicks() {
         TaskListQuery q = a.taskQuery();
-        if (!q.sortByTimeTicks) {
-            // OFF → Longest first
+        if (!q.sortByTimeTicks)
+        {
+            q.sortByDate = false;
+            q.sortByTier = false;
+            q.sortBySource = false;
             q.sortByTimeTicks = true;
-            q.longestFirst = true;
-            return true;
-        }
-        if (q.longestFirst) {
-            // Longest first → Shortest first
             q.longestFirst = false;
             return true;
         }
-        // Shortest first → OFF
-        q.sortByTimeTicks = false;
+        if (q.longestFirst)
+        {
+            q.sortByTimeTicks = false;
+            return true;
+        }
+        q.longestFirst = !q.longestFirst;
         return true;
     }
 
     private boolean onClickSortDate() {
         TaskListQuery q = a.taskQuery();
-
-        if (q.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-            return false;
-        }
-
-        if (!q.sortByDate) {
-            // OFF → Newest First
+        if (!q.sortByDate)
+        {
             q.sortByDate = true;
-            q.newestFirst = true;
-            return true;
-        }
-
-        if (q.newestFirst) {
-            // Newest First → Oldest First
+            q.sortByTimeTicks = false;
+            q.sortByTier = false;
+            q.sortBySource = false;
             q.newestFirst = false;
             return true;
         }
+        if (q.newestFirst)
+        {
+            q.sortByDate = false;
+            return true;
+        }
+        q.newestFirst = !q.newestFirst;
+        return true;
+    }
 
-        // Oldest First → OFF
-        q.sortByDate = false;
+    private boolean onClickSortTier() {
+        TaskListQuery q = a.taskQuery();
+        if (!q.sortByTier)
+        {
+            q.sortByDate = false;
+            q.sortByTimeTicks = false;
+            q.sortBySource = false;
+            q.sortByTier = true;
+            q.easyTierFirst = true;
+            return true;
+        }
+        if (!q.easyTierFirst)
+        {
+            q.sortByTier = false;
+            return true;
+        }
+        q.easyTierFirst = false;
+        return true;
+    }
+
+    private boolean onClickSortSource() {
+        TaskListQuery q = a.taskQuery();
+        if (!q.sortBySource)
+        {
+            q.sortByDate = false;
+            q.sortByTimeTicks = false;
+            q.sortByTier = false;
+            q.sortBySource = true;
+            q.sourceFirst = true;
+            return true;
+        }
+        if (!q.sourceFirst)
+        {
+            q.sortBySource = false;
+            return true;
+        }
+        q.sourceFirst = false;
         return true;
     }
 

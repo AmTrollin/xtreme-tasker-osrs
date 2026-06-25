@@ -40,6 +40,7 @@ public final class RulesTabRenderer {
     private static final String LINE_SYNC_RESULT_EMPTY_PREFIX = "[SYNC_RESULT_EMPTY]";
     private static final String LINE_SYNC_RESULT_ERROR_PREFIX = "[SYNC_RESULT_ERROR]";
     private static final String LINE_SYNC_TIMESTAMP_PREFIX = "[SYNC_TIMESTAMP]";
+    private static final String LINE_SYNC_TIMESTAMP_DIVIDER = "[SYNC_TIMESTAMP_DIVIDER]";
     private static final String LINE_SYNC_HELPER_GOLD_PREFIX = "[SYNC_HELPER_GOLD]";
     private static final String LINE_SYNC_HELPER_DIM_PREFIX = "[SYNC_HELPER_DIM]";
     private static final String LINE_SYNC_BUTTON_TOP_SPACER = "[SYNC_BUTTON_TOP_SPACER]";
@@ -190,6 +191,7 @@ public final class RulesTabRenderer {
             }
 
             // Section titles within Rules copy
+            boolean isRulesTitle = line.equals("Rules:");
             boolean isRuleSubheader = line.equals("Xtreme Tasker rules") || line.equals("Official Tasker rules");
             boolean isAllowanceHeader = line.equals("Boss combat training allowance");
             boolean isDataSubtitle = line.equals("Last sync result")
@@ -198,7 +200,10 @@ public final class RulesTabRenderer {
                     || line.equals(REVIEW_NEEDED_TITLE);
 
             // color + font
-            if (isRuleSubheader) {
+            if (isRulesTitle) {
+                g.setColor(white);
+                g.setFont(normalFont);
+            } else if (isRuleSubheader) {
                 g.setColor(uiGold);
                 g.setFont(normalFont);
             } else if (isAllowanceHeader) {
@@ -305,6 +310,7 @@ public final class RulesTabRenderer {
             int totalFound = combatAchievementFoundCount + collectionLogFoundCount;
             String latestTime = hasCaResult ? lastCombatAchievementSyncResultAtLocalTime : lastCollectionLogSyncResultAtLocalTime;
             addSyncTimestampLine(lines, "Last sync", latestTime, fm, maxWidth);
+            lines.add(LINE_SYNC_TIMESTAMP_DIVIDER);
             lines.add(LINE_SYNC_RESULT_TIGHT_SPACER);
             addSyncResultStatusMessageLines(lines, totalFound, fm, maxWidth);
         }
@@ -342,14 +348,14 @@ public final class RulesTabRenderer {
             String line = lines.get(idx);
             if (LINE_SYNC_BUTTON_TOP_SPACER.equals(line))
             {
-                drawY += Math.max(2, rb / 4);
+                drawY += Math.max(4, rb / 3);
                 continue;
             }
 
             if (LINE_SYNC_PROGRESS_BUTTON_ROW.equals(line))
             {
-                int btnW = Math.min(colW - 8, fm.stringWidth("Sync account progress") + 18);
-                int btnH = rowHeight + 10;
+                int btnW = Math.min(colW - 8, Math.max(164, fm.stringWidth("SYNC") + 72));
+                int btnH = rowHeight + 14;
                 int btnX = x + Math.max(0, (colW - btnW) / 2);
                 int by = drawY - fm.getAscent();
                 boolean visible = buttonFitsViewport(by, btnH, viewport);
@@ -357,7 +363,18 @@ public final class RulesTabRenderer {
                 {
                     layout.syncProgressButtonBounds.setBounds(btnX, by, btnW, btnH);
                 }
-                drawY += Math.max(rb, btnH + listRowSpacing);
+                drawY += Math.max(rb, btnH + listRowSpacing) + 3;
+                continue;
+            }
+
+            if (LINE_SYNC_TIMESTAMP_DIVIDER.equals(line))
+            {
+                int dividerW = Math.max(40, colW / 2);
+                int dividerX = x + Math.max(0, (colW - dividerW) / 2);
+                int dividerY = drawY - rb + fm.getDescent() + 8;
+                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 105));
+                g.drawLine(dividerX, dividerY, dividerX + dividerW, dividerY);
+                drawY += Math.max(4, rb / 3);
                 continue;
             }
 
@@ -504,6 +521,7 @@ public final class RulesTabRenderer {
     private List<String> buildRulesLines(FontMetrics fm, int maxWidth) {
         List<String> lines = new ArrayList<>();
         lines.add(LINE_RULES_TOP_SPACER);
+        lines.add("Rules:");
         lines.addAll(TextUtils.wrapText(
                 "Xtreme Tasker adds extra rules on top of official Tasker. See the GitHub README.",
                 fm,
@@ -515,10 +533,15 @@ public final class RulesTabRenderer {
                 "For any task requiring that you kill a boss with a suggested skills section on their "
                         + "\"strategies\" OSRS wiki page, you are allowed to train your combat skills to those "
                         + "suggested skills. You must do this through the Slayer skill, with any slayer master(s) "
-                        + "of your choosing.\n"
-                        + "It's heavily recommended to be strategic when choosing your slayer master(s) for supplies "
+                        + "of your choosing.",
+                fm,
+                maxWidth
+        ));
+        lines.add("");
+        lines.addAll(TextUtils.wrapText(
+                "It's heavily recommended to be strategic when choosing your slayer master(s) for supplies "
                         + "and equipment throughout the grind. For example, Krystilia's slayer list includes mammoths "
-                        + "which drop single-dose prayer potions. This would be especially useful for bosses that "
+                        + "which drop single dose prayer potions. This would be especially useful for bosses that "
                         + "require overhead prayers to kill them.",
                 fm,
                 maxWidth
@@ -526,7 +549,7 @@ public final class RulesTabRenderer {
         lines.add("");
         lines.add("Official Tasker rules");
         lines.addAll(TextUtils.wrapText(
-                "Xtreme Tasker is built on top of official Tasker, a well-established ruleset "
+                "Xtreme Tasker is built on top of official Tasker, a well established ruleset "
                         + "developed by the Tasker community. All official Tasker rules apply in full — "
                         + "refer to the Rules and Overview section of the TaskerFAQ for all tasks, "
                         + "including combat achievements.",

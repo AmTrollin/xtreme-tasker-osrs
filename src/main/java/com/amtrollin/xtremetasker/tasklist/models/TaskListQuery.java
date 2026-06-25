@@ -32,18 +32,15 @@ public class TaskListQuery
     public boolean sourceDasSelected = true;
     public StatusFilter statusFilter = StatusFilter.ALL;
 
-    // TaskListQuery
-    public boolean sortByCompletion = false; // enabled/disabled
-    public boolean completedFirst = false;   // direction (only meaningful if sortByCompletion == true)
-
-    public boolean sortByTier = false;       // enabled/disabled (only allowed when tierScope == ALL_TIERS)
-    public boolean easyTierFirst = true; // direction when sortByTier == true
-
-    public boolean sortByDate = false;       // enabled/disabled (only allowed when statusFilter == COMPLETE)
+    public boolean sortByDate = false;
     public boolean newestFirst = true; // direction when sortByDate == true
 
     public boolean sortByTimeTicks = false;  // enabled/disabled
     public boolean longestFirst = true;      // direction when sortByTimeTicks == true
+    public boolean sortByTier = false;
+    public boolean easyTierFirst = true;
+    public boolean sortBySource = false;
+    public boolean sourceFirst = true;
 
     // =========================
     // Optional: compatibility helpers

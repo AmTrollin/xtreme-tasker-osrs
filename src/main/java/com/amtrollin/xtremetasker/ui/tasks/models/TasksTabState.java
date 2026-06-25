@@ -24,7 +24,6 @@ public final class TasksTabState
     private final Rectangle taskListViewportBounds;
     private final Rectangle taskScrollbarRailBounds;
     private final Rectangle taskScrollbarThumbBounds;
-    private final Rectangle taskViewModeBounds;
 
     public TasksTabState(
             TaskListQuery taskQuery,
@@ -37,8 +36,7 @@ public final class TasksTabState
             Map<XtremeTask, Rectangle> taskCheckboxBounds,
             Rectangle taskListViewportBounds,
             Rectangle taskScrollbarRailBounds,
-            Rectangle taskScrollbarThumbBounds,
-            Rectangle taskViewModeBounds
+            Rectangle taskScrollbarThumbBounds
     )
     {
         this.taskQuery = taskQuery;
@@ -52,7 +50,6 @@ public final class TasksTabState
         this.taskListViewportBounds = taskListViewportBounds;
         this.taskScrollbarRailBounds = taskScrollbarRailBounds;
         this.taskScrollbarThumbBounds = taskScrollbarThumbBounds;
-        this.taskViewModeBounds = taskViewModeBounds;
     }
 
     public TaskListQuery taskQuery()
@@ -110,8 +107,4 @@ public final class TasksTabState
         return taskScrollbarThumbBounds;
     }
 
-    public Rectangle taskViewModeBounds()
-    {
-        return taskViewModeBounds;
-    }
 }

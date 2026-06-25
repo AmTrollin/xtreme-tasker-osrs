@@ -73,9 +73,6 @@ import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CA;
-import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CLOGS;
-import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.DAS;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
@@ -200,7 +197,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle taskDetailsIncompleteConfirmBounds = new Rectangle();
     private final Rectangle taskDetailsIncompleteConfirmYesBounds = new Rectangle();
     private final Rectangle taskDetailsIncompleteConfirmNoBounds = new Rectangle();
-    private final Rectangle taskViewModeBounds = new Rectangle();
 
     private final Map<TaskTier, Rectangle> tierTabBounds = Collections.synchronizedMap(new EnumMap<>(TaskTier.class));
     private final Map<XtremeTask, Rectangle> taskRowBounds = Collections.synchronizedMap(new HashMap<>());
@@ -223,10 +219,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean panelOpen = false;
     private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
-    private static final long KEYBOARD_TRIGGERED_TOOLTIP_MS = 3000L;
-    private String keyboardTriggeredTaskTooltipText = null;
-    private final Rectangle keyboardTriggeredTaskTooltipAnchor = new Rectangle();
-    private long keyboardTriggeredTaskTooltipUntilMs = 0L;
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
     private boolean syncMismatchReviewOpen = false;
@@ -1801,8 +1793,7 @@ public class XtremeTaskerOverlay extends Overlay {
             taskCheckboxBounds,
             taskListViewportBounds,
             taskScrollbarRailBounds,
-            taskScrollbarThumbBounds,
-            taskViewModeBounds
+            taskScrollbarThumbBounds
     );
     private final ButtonRenderer buttonRenderer = new ButtonRenderer(P);
 
@@ -4410,8 +4401,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void renderCompactPanel(Graphics2D g, FontMetrics fm, int panelX, int contentTop) {
         resetCurrentLayoutBounds();
-        taskViewModeBounds.setBounds(0, 0, 0, 0);
-
         int innerX = panelX + PANEL_PADDING;
         int innerW = panelBounds.width - PANEL_PADDING * 2;
         int bottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
@@ -4802,35 +4791,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 activeTierTab,
                 this::getSortedTasksForTier,
                 hoverX,
-                hoverY,
-                currentKeyboardTriggeredTaskTooltipText(),
-                currentKeyboardTriggeredTaskTooltipAnchor()
+                hoverY
         );
-    }
-
-    private void showKeyboardTriggeredTaskTooltip(String text, Rectangle anchor) {
-        keyboardTriggeredTaskTooltipText = text;
-        keyboardTriggeredTaskTooltipAnchor.setBounds(anchor == null ? new Rectangle() : anchor);
-        keyboardTriggeredTaskTooltipUntilMs = System.currentTimeMillis() + KEYBOARD_TRIGGERED_TOOLTIP_MS;
-    }
-
-    private String currentKeyboardTriggeredTaskTooltipText() {
-        if (keyboardTriggeredTaskTooltipText == null) {
-            return null;
-        }
-
-        if (System.currentTimeMillis() > keyboardTriggeredTaskTooltipUntilMs) {
-            keyboardTriggeredTaskTooltipText = null;
-            keyboardTriggeredTaskTooltipAnchor.setBounds(0, 0, 0, 0);
-            keyboardTriggeredTaskTooltipUntilMs = 0L;
-            return null;
-        }
-
-        return keyboardTriggeredTaskTooltipText;
-    }
-
-    private Rectangle currentKeyboardTriggeredTaskTooltipAnchor() {
-        return keyboardTriggeredTaskTooltipText == null ? null : keyboardTriggeredTaskTooltipAnchor;
     }
 
 
@@ -4869,7 +4831,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
 
         if (rulesLayout.syncProgressButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "Sync account progress", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "SYNC", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review",
@@ -4932,165 +4894,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
         if (code == KeyEvent.VK_SPACE || code == KeyEvent.VK_ENTER) {
             return openSelectedTaskDetailsFromKeyboard();
-        }
-
-        // S toggles completion sort (new model)
-        if (code == KeyEvent.VK_S) {
-            if (taskQuery.statusFilter != TaskListQuery.StatusFilter.ALL) {
-                showKeyboardTriggeredTaskTooltip("\"Status\" filter currently applied", controls.sortCompletion);
-                return true;
-            }
-
-            if (!taskQuery.sortByCompletion) {
-                taskQuery.sortByCompletion = true;
-            } else {
-                taskQuery.completedFirst = !taskQuery.completedFirst;
-            }
-
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-
-        // T toggles tier sort
-        if (code == KeyEvent.VK_T) {
-            if (taskQuery.tierScope != TaskListQuery.TierScope.ALL_TIERS) {
-                showKeyboardTriggeredTaskTooltip("\"All Tiers\" filter must be applied", controls.sortTier);
-                return true;
-            }
-
-            if (!taskQuery.sortByTier) {
-                taskQuery.sortByTier = true;
-            } else {
-                taskQuery.easyTierFirst = !taskQuery.easyTierFirst;
-            }
-
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-
-        // D toggles time-completed sort (requires Complete filter)
-        if (code == KeyEvent.VK_D) {
-            if (taskQuery.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-                showKeyboardTriggeredTaskTooltip("\"Complete\" filter must be applied", controls.sortDate);
-                return true;
-            }
-
-            if (!taskQuery.sortByDate) {
-                taskQuery.sortByDate = true;
-                taskQuery.newestFirst = true;
-            } else {
-                taskQuery.newestFirst = !taskQuery.newestFirst;
-            }
-
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-
-        // M toggles time-spent sort (requires Complete filter)
-        if (code == KeyEvent.VK_M) {
-            if (taskQuery.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-                showKeyboardTriggeredTaskTooltip("\"Complete\" filter must be applied", controls.sortTimeTicks);
-                return true;
-            }
-
-            if (!taskQuery.sortByTimeTicks) {
-                taskQuery.sortByTimeTicks = true;
-                taskQuery.longestFirst = true;
-            } else {
-                taskQuery.longestFirst = !taskQuery.longestFirst;
-            }
-
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-
-        // R resets sorts (optional)
-        if (code == KeyEvent.VK_R) {
-            boolean changed = false;
-
-            if (taskQuery.sortByCompletion) {
-                taskQuery.sortByCompletion = false;
-                changed = true;
-            }
-            if (taskQuery.sortByTier) {
-                taskQuery.sortByTier = false;
-                changed = true;
-            }
-            if (taskQuery.sortByDate) {
-                taskQuery.sortByDate = false;
-                changed = true;
-            }
-            if (taskQuery.sortByTimeTicks) {
-                taskQuery.sortByTimeTicks = false;
-                changed = true;
-            }
-
-            if (changed) {
-                resetTaskListViewAfterQueryChange();
-                return true;
-            }
-            return false;
-        }
-
-        if (code == KeyEvent.VK_1) {
-            taskQuery.selectAllSources();
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-
-        if (code == KeyEvent.VK_2) {
-            taskQuery.toggleSource(CA);
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-
-        if (code == KeyEvent.VK_3) {
-            taskQuery.toggleSource(CLOGS);
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-        if (code == KeyEvent.VK_4) {
-            taskQuery.toggleSource(DAS);
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-// Status filter
-        if (code == KeyEvent.VK_Q) {
-            taskQuery.statusFilter = TaskListQuery.StatusFilter.ALL;
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-        if (code == KeyEvent.VK_W) {
-            taskQuery.statusFilter = (taskQuery.statusFilter == TaskListQuery.StatusFilter.INCOMPLETE) ? TaskListQuery.StatusFilter.ALL : TaskListQuery.StatusFilter.INCOMPLETE;
-
-            if (taskQuery.statusFilter != TaskListQuery.StatusFilter.ALL) {
-                taskQuery.sortByCompletion = false;
-            }
-
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-        if (code == KeyEvent.VK_E) {
-            taskQuery.statusFilter = (taskQuery.statusFilter == TaskListQuery.StatusFilter.COMPLETE) ? TaskListQuery.StatusFilter.ALL : TaskListQuery.StatusFilter.COMPLETE;
-
-            if (taskQuery.statusFilter != TaskListQuery.StatusFilter.ALL) {
-                taskQuery.sortByCompletion = false;
-            }
-
-            resetTaskListViewAfterQueryChange();
-            return true;
-        }
-
-        // Tier scope toggle
-        if (code == KeyEvent.VK_A) {
-            taskQuery.tierScope = (taskQuery.tierScope == TaskListQuery.TierScope.ALL_TIERS) ? TaskListQuery.TierScope.THIS_TIER : TaskListQuery.TierScope.ALL_TIERS;
-
-            if (taskQuery.tierScope != TaskListQuery.TierScope.ALL_TIERS) {
-                taskQuery.sortByTier = false;
-            }
-
-            resetTaskListViewAfterQueryChange();
-            return true;
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE && taskDetailsPopup.isOpen()) {
@@ -5201,7 +5004,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void resetTaskListViewAfterQueryChange() {
         List<XtremeTask> tasks = getSortedTasksForTier(activeTierTab);
-        taskListView.resetAfterQueryChange(activeTierTab, tasks, taskQuery.completedFirst, plugin::isTaskCompleted);
+        taskListView.resetAfterQueryChange(activeTierTab, tasks, plugin::isTaskCompleted);
     }
 
     // --------- data + pipeline ---------
@@ -5248,14 +5051,14 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|cl=" + taskQuery.sourceClogsSelected
                 + "|da=" + taskQuery.sourceDasSelected
                 + "|status=" + taskQuery.statusFilter
-                + "|sortCompletion=" + taskQuery.sortByCompletion
-                + "|completedFirst=" + taskQuery.completedFirst
-                + "|sortTier=" + taskQuery.sortByTier
-                + "|easyFirst=" + taskQuery.easyTierFirst
                 + "|sortDate=" + taskQuery.sortByDate
                 + "|newestFirst=" + taskQuery.newestFirst
                 + "|sortTicks=" + taskQuery.sortByTimeTicks
                 + "|longestFirst=" + taskQuery.longestFirst
+                + "|sortTier=" + taskQuery.sortByTier
+                + "|easyFirst=" + taskQuery.easyTierFirst
+                + "|sortSource=" + taskQuery.sortBySource
+                + "|sourceFirst=" + taskQuery.sourceFirst
                 + "|newOnly=" + taskQuery.showNewTasksFilter
                 + "|condensed=" + useCondensedTaskRows()
                 + "|state=" + plugin.getTaskListRenderStateHash();
@@ -5403,7 +5206,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public void setActiveTab(MainTab tab) {
-                taskViewModeBounds.setBounds(0, 0, 0, 0);
                 switch (tab) {
                     case CURRENT:
                         activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
@@ -6217,11 +6019,6 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
-            public Rectangle taskViewModeBounds() {
-                return taskViewModeBounds;
-            }
-
-            @Override
             public boolean isDraggingIcon() {
                 return draggingIcon;
             }
@@ -6364,8 +6161,6 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(taskDetailsIncompleteConfirmBounds, anchorX, anchorY, scale);
         scaleRect(taskDetailsIncompleteConfirmYesBounds, anchorX, anchorY, scale);
         scaleRect(taskDetailsIncompleteConfirmNoBounds, anchorX, anchorY, scale);
-        scaleRect(taskViewModeBounds, anchorX, anchorY, scale);
-
         scaleCurrentLayoutBounds(anchorX, anchorY, scale);
         scaleRulesLayoutBounds(anchorX, anchorY, scale);
         scaleControlsLayoutBounds(controls, anchorX, anchorY, scale);
@@ -6404,7 +6199,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private void scaleControlsLayoutBounds(TaskControlsLayout layout, int anchorX, int anchorY, double scale) {
         scaleRect(layout.searchBox, anchorX, anchorY, scale);
         scaleRect(layout.filtersHeaderBounds, anchorX, anchorY, scale);
-        scaleRect(layout.sortHeaderBounds, anchorX, anchorY, scale);
         scaleRect(layout.filterSourceAll, anchorX, anchorY, scale);
         scaleRect(layout.filterCA, anchorX, anchorY, scale);
         scaleRect(layout.filterCL, anchorX, anchorY, scale);
@@ -6414,14 +6208,11 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(layout.filterComplete, anchorX, anchorY, scale);
         scaleRect(layout.filterTierThis, anchorX, anchorY, scale);
         scaleRect(layout.filterTierAll, anchorX, anchorY, scale);
-        scaleRect(layout.sortCompletion, anchorX, anchorY, scale);
-        scaleRect(layout.sortTier, anchorX, anchorY, scale);
         scaleRect(layout.sortDate, anchorX, anchorY, scale);
         scaleRect(layout.sortTimeTicks, anchorX, anchorY, scale);
-        scaleRect(layout.sortReset, anchorX, anchorY, scale);
+        scaleRect(layout.sortTier, anchorX, anchorY, scale);
+        scaleRect(layout.sortSource, anchorX, anchorY, scale);
         scaleRect(layout.clearFilters, anchorX, anchorY, scale);
-        scaleRect(layout.clearSort, anchorX, anchorY, scale);
-        scaleRect(layout.hoverTooltipAnchor, anchorX, anchorY, scale);
         scaleRect(layout.filterNewTasks, anchorX, anchorY, scale);
         scaleRect(layout.filterNewTasksHelp, anchorX, anchorY, scale);
         layout.searchTextX = scaleX(layout.searchTextX, anchorX, scale);

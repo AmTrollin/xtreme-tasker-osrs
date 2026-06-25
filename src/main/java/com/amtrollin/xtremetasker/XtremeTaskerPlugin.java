@@ -69,7 +69,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
     private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
     private static final String CONFIG_GROUP = "xtremetasker";
-    private static final String CONDENSE_REPEATED_TASKS_KEY = "condenseRepeatedTasks";
     private static final String SKIP_SINGLE_INCOMPLETE_CONFIRM_KEY = "skipSingleIncompleteConfirm";
     private static final String STATE_KEY_PREFIX = "state_";
     private static final int STATE_BACKUP_COUNT = 3;
@@ -4865,14 +4864,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public boolean condenseRepeatedTasks()
     {
-        String value = configManager.getConfiguration(CONFIG_GROUP, CONDENSE_REPEATED_TASKS_KEY);
-        return value == null || Boolean.parseBoolean(value);
-    }
-
-    @Override
-    public void toggleCondenseRepeatedTasks()
-    {
-        configManager.setConfiguration(CONFIG_GROUP, CONDENSE_REPEATED_TASKS_KEY, !condenseRepeatedTasks());
+        return config.condenseRepeatedTasks();
     }
 
     @Override

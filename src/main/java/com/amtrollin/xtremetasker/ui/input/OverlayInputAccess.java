@@ -208,8 +208,6 @@ public interface OverlayInputAccess
     void confirmTaskDetailsIncompleteSelection();
     void closeTaskDetailsIncompleteConfirm();
 
-    Rectangle taskViewModeBounds();
-
     // Icon drag
     boolean isDraggingIcon();
     void setDraggingIcon(boolean dragging);

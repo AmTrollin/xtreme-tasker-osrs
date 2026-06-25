@@ -108,8 +108,6 @@ public interface TaskerService
 
     boolean condenseRepeatedTasks();
 
-    void toggleCondenseRepeatedTasks();
-
     boolean skipSingleIncompleteConfirmation();
 
     void setSkipSingleIncompleteConfirmation(boolean skip);

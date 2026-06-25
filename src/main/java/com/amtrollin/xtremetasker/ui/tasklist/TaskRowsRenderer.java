@@ -137,6 +137,8 @@ public final class TaskRowsRenderer {
             Function<XtremeTask, Boolean> isNewTask,
             Function<XtremeTask, CompletionInfo> completionInfoProvider,
             Function<XtremeTask, Long> taskTicksProvider,
+            Rectangle dateColumnBounds,
+            Rectangle timeColumnBounds,
             boolean showCompletionMeta,
             boolean showTimeMeta
     ) {
@@ -252,19 +254,21 @@ public final class TaskRowsRenderer {
             // Tier pill is fixed to the width of the widest tier ("Grandmaster") so all rows align.
             Font smallFont = FontManager.getRunescapeSmallFont();
             FontMetrics sfm = g.getFontMetrics(smallFont);
-            final int pillPadX = 7;
+            final int pillPadX = 6;
             final int pillH = 14;
             final int pillArc = 4;
-            final int pillGap = 4;
+            final int pillGap = 3;
             int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2; // fixed width for all sources
             int tierW = sfm.stringWidth("Master") + pillPadX * 2; // fixed width for all tiers
             int newW = sfm.stringWidth("NEW") + pillPadX * 2;
             int progressW = (progress != null && progress.isGrouped()) ? sfm.stringWidth(progress.label()) + 6 : 0;
-            String metaText = rowMetaText(task, completionInfoProvider, taskTicksProvider, showCompletionMeta, showTimeMeta);
-            int metaW = metaText == null ? 0 : sfm.stringWidth(metaText) + 6;
-            int rightColW = metaW + (metaW > 0 ? pillGap : 0)
-                    + progressW + (progressW > 0 ? pillGap : 0)
-                    + srcW + pillGap + tierW + (isNew ? pillGap + newW : 0) + 6; // 6px margin from row right edge
+            int metaLeftX = firstColumnX(dateColumnBounds, timeColumnBounds);
+            int columnReserveW = metaLeftX > textX ? Math.max(0, viewportX + rowW - metaLeftX) : 0;
+            int badgeReserveW = progressW + (progressW > 0 ? pillGap : 0)
+                    + srcW + pillGap + tierW + (isNew ? pillGap + newW : 0) + 4; // 4px margin from row right edge
+            int rightColW = columnReserveW > 0
+                    ? columnReserveW + progressW + (progressW > 0 ? pillGap : 0) + (isNew ? pillGap + newW : 0)
+                    : badgeReserveW;
 
             int nameMaxW = Math.max(0, textMaxW - rightColW);
             String fullTaskName = safe(task.getName());
@@ -285,7 +289,7 @@ public final class TaskRowsRenderer {
             g.drawString(taskName, textX, drawY);
 
             // Draw tier pill, then source pill, right-aligned
-            int pillRightEdge = viewportX + rowW - 6;
+            int pillRightEdge = viewportX + rowW - 4;
             int pillTop = drawY - fm.getAscent() + (fm.getHeight() - pillH) / 2 + ROW_BADGE_Y_OFFSET;
 
             // source (rightmost)
@@ -315,7 +319,9 @@ public final class TaskRowsRenderer {
             if (progress != null && progress.isGrouped()) {
                 g.setFont(smallFont);
                 String progressText = progress.label();
-                int progressX = tierX - pillGap - progressW;
+                int progressX = columnReserveW > 0
+                        ? Math.min(tierX - pillGap - progressW, metaLeftX - pillGap - progressW)
+                        : tierX - pillGap - progressW;
                 g.setColor(progress.isComplete()
                         ? new Color(120, 200, 140, 225)
                         : partialGroup
@@ -327,19 +333,15 @@ public final class TaskRowsRenderer {
                 leftBadgeX = progressX;
             }
 
-            if (metaText != null) {
-                g.setFont(smallFont);
-                int metaX = leftBadgeX - pillGap - metaW;
-                g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 210));
-                g.drawString(metaText, metaX + 3,
-                        pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
-                g.setFont(fm.getFont());
-                leftBadgeX = metaX;
-            }
+            drawRowMetaColumns(g, smallFont, sfm, task, completionInfoProvider, taskTicksProvider,
+                    dateColumnBounds, timeColumnBounds, showCompletionMeta, showTimeMeta,
+                    pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
+            g.setFont(fm.getFont());
 
             // NEW marker: subtle gold text, no filled badge.
             if (isNew) {
-                int newX = leftBadgeX - pillGap - newW;
+                int newAnchorX = columnReserveW > 0 ? Math.min(leftBadgeX, metaLeftX) : leftBadgeX;
+                int newX = newAnchorX - pillGap - newW;
                 g.setFont(smallFont);
                 g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 70));
                 g.drawRoundRect(newX, pillTop, newW - 1, pillH - 1, pillArc, pillArc);
@@ -469,53 +471,84 @@ public final class TaskRowsRenderer {
         g.drawLine(x2, y2, x3, y3);
     }
 
-    private static String rowMetaText(
+    private void drawRowMetaColumns(
+            Graphics2D g,
+            Font smallFont,
+            FontMetrics sfm,
             XtremeTask task,
             Function<XtremeTask, CompletionInfo> completionInfoProvider,
             Function<XtremeTask, Long> taskTicksProvider,
+            Rectangle dateColumnBounds,
+            Rectangle timeColumnBounds,
             boolean showCompletionMeta,
-            boolean showTimeMeta)
+            boolean showTimeMeta,
+            int baseline)
     {
         if (task == null)
         {
+            return;
+        }
+
+        g.setFont(smallFont);
+        g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 210));
+        if (showCompletionMeta && dateColumnBounds != null && dateColumnBounds.width > 0)
+        {
+            drawColumnText(g, sfm, dateColumnBounds, rowDateText(task, completionInfoProvider), baseline);
+        }
+
+        if (showTimeMeta && timeColumnBounds != null && timeColumnBounds.width > 0)
+        {
+            drawColumnText(g, sfm, timeColumnBounds, rowTimeText(task, taskTicksProvider), baseline);
+        }
+    }
+
+    private static void drawColumnText(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, int baseline)
+    {
+        if (text == null)
+        {
+            return;
+        }
+        String draw = TextUtils.truncateToWidth(text, fm, bounds.width - 4);
+        int x = bounds.x + Math.max(0, (bounds.width - fm.stringWidth(draw)) / 2);
+        g.drawString(draw, x, baseline);
+    }
+
+    private static String rowDateText(XtremeTask task, Function<XtremeTask, CompletionInfo> completionInfoProvider)
+    {
+        if (completionInfoProvider == null)
+        {
             return null;
         }
+        CompletionInfo info = completionInfoProvider.apply(task);
+        if (info == null)
+        {
+            return "??";
+        }
+        return info.timestamp <= 0 ? "??" : ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
+    }
 
-        String dateText = null;
-        if (showCompletionMeta && completionInfoProvider != null)
+    private static String rowTimeText(XtremeTask task, Function<XtremeTask, Long> taskTicksProvider)
+    {
+        if (taskTicksProvider == null)
         {
-            CompletionInfo info = completionInfoProvider.apply(task);
-            if (info != null)
-            {
-                dateText = info.timestamp <= 0
-                        ? "date ?"
-                        : ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
-            }
+            return null;
         }
+        Long ticks = taskTicksProvider.apply(task);
+        return ticks == null || ticks <= 0 ? "??" : formatDuration(Math.round(ticks * 0.6));
+    }
 
-        String timeText = null;
-        if (showTimeMeta && taskTicksProvider != null)
+    private static int firstColumnX(Rectangle dateColumnBounds, Rectangle timeColumnBounds)
+    {
+        int x = Integer.MAX_VALUE;
+        if (dateColumnBounds != null && dateColumnBounds.width > 0)
         {
-            Long ticks = taskTicksProvider.apply(task);
-            timeText = ticks == null || ticks <= 0
-                    ? "time ?"
-                    : formatDuration(Math.round(ticks * 0.6));
+            x = Math.min(x, dateColumnBounds.x);
         }
-
-        if (dateText != null && timeText != null)
+        if (timeColumnBounds != null && timeColumnBounds.width > 0)
         {
-            return dateText + " | " + timeText;
+            x = Math.min(x, timeColumnBounds.x);
         }
-        if (dateText != null)
-        {
-            return dateText;
-        }
-        if (timeText != null)
-        {
-            return timeText;
-        }
-
-        return null;
+        return x == Integer.MAX_VALUE ? -1 : x;
     }
 
     private static String formatDuration(long seconds)
