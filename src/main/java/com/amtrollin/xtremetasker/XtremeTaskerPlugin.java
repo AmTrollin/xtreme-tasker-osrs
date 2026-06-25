@@ -445,9 +445,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return configManager.getConfig(XtremeTaskerConfig.class);
     }
 
-    // overlay still calls getDummyTasks()
-    public List<XtremeTask> getDummyTasks() {
-        return tasks;
+    @Override
+    public List<XtremeTask> getTasks() {
+        return Collections.unmodifiableList(tasks);
     }
 
     public int getLoadedPackVersion() {

@@ -1170,7 +1170,7 @@ public class XtremeTaskerOverlay extends Overlay {
         List<XtremeTask> sequence = new ArrayList<>();
         int sourceIndex = 0;
         Map<String, Integer> originalIndexById = new HashMap<>();
-        for (XtremeTask candidate : plugin.getDummyTasks())
+        for (XtremeTask candidate : plugin.getTasks())
         {
             if (candidate != null && candidate.getId() != null)
             {
@@ -1487,7 +1487,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         List<XtremeTask> sequence = new ArrayList<>();
-        for (XtremeTask candidate : plugin.getDummyTasks())
+        for (XtremeTask candidate : plugin.getTasks())
         {
             if (sameCollectionLogRequirementSignature(task, candidate, itemIds))
             {
@@ -5732,7 +5732,7 @@ public class XtremeTaskerOverlay extends Overlay {
     // --------- data + pipeline ---------
     private List<XtremeTask> getTasksForTier(TaskTier tier) {
         List<XtremeTask> out = new ArrayList<>();
-        for (XtremeTask t : plugin.getDummyTasks()) {
+        for (XtremeTask t : plugin.getTasks()) {
             if (t.getTier() == tier) {
                 out.add(t);
             }
@@ -7154,7 +7154,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (scope == TaskListQuery.TierScope.ALL_TIERS) {
             // all tiers
             List<XtremeTask> out = new ArrayList<>();
-            for (XtremeTask t : plugin.getDummyTasks()) {
+            for (XtremeTask t : plugin.getTasks()) {
                 if (t.getTier() != null) {
                     out.add(t);
                 }

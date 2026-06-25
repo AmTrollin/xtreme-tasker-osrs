@@ -441,8 +441,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 // 4) SORT pills (3 buttons)
                 // ----------------------------
                 boolean dateEnabledScope = a.taskQuery().statusFilter == TaskListQuery.StatusFilter.COMPLETE;
-                if (false) { /* dummy to keep else-if chain valid */ }
-                else if (a.controlsLayout().sortCompletion.contains(p)) {
+                if (a.controlsLayout().sortCompletion.contains(p)) {
                     changed = onClickSortCompletion();
                 } else if (a.controlsLayout().sortTier.contains(p)) {
                     changed = onClickSortTier();

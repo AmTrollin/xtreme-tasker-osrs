@@ -24,7 +24,7 @@ public interface TaskerService
 
     String getTierProgressLabel(TaskTier tier);
 
-    List<XtremeTask> getDummyTasks();
+    List<XtremeTask> getTasks();
 
     boolean isTaskCompleted(XtremeTask task);
 
