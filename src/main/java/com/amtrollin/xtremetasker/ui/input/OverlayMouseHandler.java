@@ -16,7 +16,6 @@ import net.runelite.client.input.MouseAdapter;
 import net.runelite.client.util.LinkBrowser;
 
 import java.awt.*;
-import java.awt.Cursor;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
@@ -35,20 +34,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private static final int ICON_DRAG_THRESHOLD_SQ = 25; // 5px
     private boolean draggingTaskScrollbar = false;
     private int taskScrollbarGrabOffsetY = 0;
-    private boolean draggingRulesScrollbar = false;
-    private int rulesScrollbarGrabOffsetY = 0;
     private boolean draggingCurrentScrollbar = false;
     private int currentScrollbarGrabOffsetY = 0;
     private boolean draggingTaskDetailsScrollbar = false;
     private int taskDetailsScrollbarGrabOffsetY = 0;
     private boolean draggingSyncMismatchScrollbar = false;
     private int syncMismatchScrollbarGrabOffsetY = 0;
-    private boolean draggingSyncMismatchGuardScrollbar = false;
-    private int syncMismatchGuardScrollbarGrabOffsetY = 0;
-    private boolean draggingCompactCurrentScrollbar = false;
-    private int compactCurrentScrollbarGrabOffsetY = 0;
-    private final Rectangle compactCurrentDragRailBounds = new Rectangle();
-    private final Rectangle compactCurrentDragThumbBounds = new Rectangle();
     private long lastTaskRowClickHandledAt = 0L;
     private int lastTaskRowClickX = Integer.MIN_VALUE;
     private int lastTaskRowClickY = Integer.MIN_VALUE;
@@ -137,10 +128,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (tryHandleTaskSyncResultClick(e, p, button)) {
-            return e;
-        }
-
         if (tryHandleTaskResolveClick(e, p, button)) {
             return e;
         }
@@ -225,22 +212,21 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     return e;
                 }
 
-                if (a.taskDetailsSyncBounds().contains(p)) {
-                    a.handleTaskDetailsSyncButton(a.taskDetailsTask());
-                    e.consume();
-                    return e;
-                }
-
-                if (a.taskDetailsIgnoreBounds().contains(p)) {
-                    a.plugin().dismissTaskSyncMismatchAndPersist(a.taskDetailsTask());
-                    e.consume();
-                    return e;
-                }
-
                 if (a.taskDetailsMarkIncompleteBounds().contains(p)) {
                     a.handleTaskDetailsMarkIncompleteButton(a.taskDetailsTask());
+                    rememberTaskDetailsIncompleteConfirmOpeningClick(e, p, button);
                     e.consume();
                     return e;
+                }
+
+                for (Map.Entry<XtremeTask, Rectangle> entry : a.taskDetailsInstanceRemoveBounds().entrySet()) {
+                    Rectangle bounds = entry.getValue();
+                    if (bounds != null && bounds.contains(p)) {
+                        a.handleTaskDetailsInstanceMarkIncompleteButton(entry.getKey());
+                        rememberTaskDetailsIncompleteConfirmOpeningClick(e, p, button);
+                        e.consume();
+                        return e;
+                    }
                 }
 
                 // General click inside popup — consume and stop
@@ -273,46 +259,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (button == MouseEvent.BUTTON1 && a.isCompactPanelMode() && a.currentLayout().scrollbarRailBounds.width > 0) {
-            if (tryStartCompactCurrentScrollbarDrag(p, e.getY())) {
-                e.consume();
-                return e;
-            }
-        }
-
-        if ((a.activeTab() == OverlayInputAccess.MainTab.TASKS || a.activeTab() == OverlayInputAccess.MainTab.CURRENT)
-                && button == MouseEvent.BUTTON1) {
-            if (a.keyboardHintsButtonBounds().contains(p)) {
-                a.setKeyboardHintsOpen(!a.isKeyboardHintsOpen());
-                e.consume();
-                return e;
-            }
-
-            if (a.isKeyboardHintsOpen()) {
-                if (a.keyboardHintsPopupBounds().contains(p)) {
-                    e.consume();
-                    return e;
-                }
-
-                a.setKeyboardHintsOpen(false);
-            }
-        }
-
         if (tryHandleTaskRowClick(e, p, button)) {
             return e;
         }
 
         // SEARCH box focus (only when panel is open and click is inside panel)
         if (a.activeTab() == OverlayInputAccess.MainTab.TASKS && button == MouseEvent.BUTTON1) {
-            if (a.taskViewModeBounds().contains(p)) {
-                if (!isCondenseRepeatedTasksBlocked()) {
-                    a.plugin().toggleCondenseRepeatedTasks();
-                    a.resetTaskListViewAfterQueryChange();
-                }
-                e.consume();
-                return e;
-            }
-
             if (a.controlsLayout().searchBox.contains(p)) {
                 a.taskQuery().searchFocused = true;
                 a.client().getCanvas().requestFocusInWindow();
@@ -387,20 +339,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     q.selectAllSources();
                     q.statusFilter = TaskListQuery.StatusFilter.ALL;
                     q.tierScope = TaskListQuery.TierScope.ALL_TIERS;
-                    autoDisableCompletionSortIfNeeded();
-                    autoDisableDateSortIfNeeded();
-                    autoDisableTimeTicksSortIfNeeded();
-                    a.resetTaskListViewAfterQueryChange();
-                    e.consume();
-                    return e;
-                }
-                if (a.controlsLayout().clearSort.width > 0
-                        && a.controlsLayout().clearSort.contains(p)) {
-                    TaskListQuery q = a.taskQuery();
-                    q.sortByCompletion = false;
-                    q.sortByTier = false;
-                    q.sortByDate = false;
-                    q.sortByTimeTicks = false;
                     a.resetTaskListViewAfterQueryChange();
                     e.consume();
                     return e;
@@ -420,46 +358,48 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
                 // ----------------------------
                 // 2) STATUS filter (single-select)
-                // + auto-clean completion sort when status != ALL
                 // ----------------------------
                 else if (a.controlsLayout().filterStatusAll.contains(p)) {
                     changed = setStatusFilter(TaskListQuery.StatusFilter.ALL);
-                    changed |= autoDisableDateSortIfNeeded();
-                    changed |= autoDisableTimeTicksSortIfNeeded();
                 } else if (a.controlsLayout().filterIncomplete.contains(p)) {
                     changed = toggleSingleSelectStatus(TaskListQuery.StatusFilter.INCOMPLETE);
-                    changed |= autoDisableCompletionSortIfNeeded();
-                    changed |= autoDisableDateSortIfNeeded();
-                    changed |= autoDisableTimeTicksSortIfNeeded();
                 } else if (a.controlsLayout().filterComplete.contains(p)) {
                     changed = toggleSingleSelectStatus(TaskListQuery.StatusFilter.COMPLETE);
-                    changed |= autoDisableCompletionSortIfNeeded();
                 }
 
                 // ----------------------------
                 // 3) TIER scope (single-select)
-                // + auto-clean tier sort when tierScope != ALL_TIERS
                 // ----------------------------
                 else if (a.controlsLayout().filterTierThis.contains(p)) {
                     changed = setTierScope(TaskListQuery.TierScope.THIS_TIER);
-                    changed |= autoDisableTierSortIfNeeded();
                 } else if (a.controlsLayout().filterTierAll.contains(p)) {
                     changed = setTierScope(TaskListQuery.TierScope.ALL_TIERS);
                 }
+                else if (a.controlsLayout().columnDate.contains(p)) {
+                    a.controlsLayout().showDateColumn = !a.controlsLayout().showDateColumn;
+                    changed = true;
+                } else if (a.controlsLayout().columnTime.contains(p)) {
+                    a.controlsLayout().showTimeColumn = !a.controlsLayout().showTimeColumn;
+                    changed = true;
+                } else if (a.controlsLayout().columnTier.contains(p)) {
+                    a.controlsLayout().showTierColumn = !a.controlsLayout().showTierColumn;
+                    changed = true;
+                } else if (a.controlsLayout().columnSource.contains(p)) {
+                    a.controlsLayout().showSourceColumn = !a.controlsLayout().showSourceColumn;
+                    changed = true;
+                }
 
                 // ----------------------------
-                // 4) SORT pills (3 buttons)
+                // 4) Table sort headers
                 // ----------------------------
-                boolean dateEnabledScope = a.taskQuery().statusFilter == TaskListQuery.StatusFilter.COMPLETE;
-                if (false) { /* dummy to keep else-if chain valid */ }
-                else if (a.controlsLayout().sortCompletion.contains(p)) {
-                    changed = onClickSortCompletion();
-                } else if (a.controlsLayout().sortTier.contains(p)) {
-                    changed = onClickSortTier();
-                } else if (a.controlsLayout().sortDate.contains(p)) {
+                if (a.controlsLayout().sortDate.contains(p)) {
                     changed = onClickSortDate();
-                } else if (dateEnabledScope && a.controlsLayout().sortTimeTicks.width > 0 && a.controlsLayout().sortTimeTicks.contains(p)) {
+                } else if (a.controlsLayout().sortTimeTicks.width > 0 && a.controlsLayout().sortTimeTicks.contains(p)) {
                     changed = onClickSortTimeTicks();
+                } else if (a.controlsLayout().sortTier.width > 0 && a.controlsLayout().sortTier.contains(p)) {
+                    changed = onClickSortTier();
+                } else if (a.controlsLayout().sortSource.width > 0 && a.controlsLayout().sortSource.contains(p)) {
+                    changed = onClickSortSource();
                 }
 
                 // ----------------------------
@@ -560,7 +500,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
             boolean rollEnabled = (current == null) || currentCompleted;
             boolean completeEnabled = (current != null) && !currentCompleted;
-            boolean skipEnabled = completeEnabled && a.plugin().isTaskSkippingEnabled();
             boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
 
             if (completeEnabled && a.currentLayout().completeButtonBounds.contains(p)) {
@@ -569,13 +508,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 }
 
                 a.plugin().completeCurrentTaskAndPersist();
-                e.consume();
-                return e;
-            }
-
-            if (skipEnabled && a.currentLayout().skipButtonBounds.contains(p)) {
-                a.animations().startRoll();
-                a.plugin().skipCurrentTaskAndPersist();
                 e.consume();
                 return e;
             }
@@ -603,99 +535,39 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         // RULES button click
         if (a.activeTab() == OverlayInputAccess.MainTab.RULES && button == MouseEvent.BUTTON1) {
-            if (a.rulesLayout().scrollbarRailBounds.width > 0) {
-                Rectangle thumb = a.rulesLayout().scrollbarThumbBounds;
-                Rectangle rail = a.rulesLayout().scrollbarRailBounds;
-
-                if (thumb.contains(p)) {
-                    draggingRulesScrollbar = true;
-                    rulesScrollbarGrabOffsetY = p.y - thumb.y;
-                    e.consume();
-                    return e;
-                }
-
-                if (rail.contains(p)) {
-                    draggingRulesScrollbar = true;
-                    rulesScrollbarGrabOffsetY = Math.max(0, thumb.height / 2);
-                    updateRulesScrollbarDrag(e.getY());
-                    e.consume();
-                    return e;
-                }
-            }
-
             // Sub-tab toggles
             if (a.rulesLayout().subTabRulesBounds.contains(p)) {
                 a.setRulesSubTab(RulesTabLayout.SubTab.RULES);
-                a.rulesScroll().reset();
                 e.consume();
                 return e;
             }
             if (a.rulesLayout().subTabDataSyncsBounds.contains(p)) {
                 a.setRulesSubTab(RulesTabLayout.SubTab.DATA_SYNCS);
-                a.rulesScroll().reset();
                 e.consume();
                 return e;
             }
-            if (a.rulesLayout().syncClogsButtonBounds.contains(p)) {
-                a.setClogSyncedTasksExpanded(false);
+            if (a.rulesLayout().syncProgressButtonBounds.contains(p)) {
                 a.syncMismatchScroll().reset();
-                a.plugin().syncCollectionLogsAndPersist();
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncCAsButtonBounds.contains(p)) {
-                a.setCaSyncedTasksExpanded(false);
-                a.syncMismatchScroll().reset();
-                a.plugin().syncCombatAchievementsAndPersist();
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncCaMarkedTasksToggleBounds.contains(p)) {
-                a.toggleCaSyncedTasksExpanded();
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncClogMarkedTasksToggleBounds.contains(p)) {
-                a.toggleClogSyncedTasksExpanded();
+                a.plugin().syncAccountProgressAndPersist();
                 e.consume();
                 return e;
             }
             if (a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)) {
-                a.openSyncCompletionCandidateReview(TaskSource.COMBAT_ACHIEVEMENT);
-                syncMismatchReviewOpenedAt = e.getWhen();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncClogFoundReviewButtonBounds.contains(p)) {
-                a.openSyncCompletionCandidateReview(TaskSource.COLLECTION_LOG);
+                a.openSyncCompletionCandidateReview(null);
                 syncMismatchReviewOpenedAt = e.getWhen();
                 rememberSyncMismatchClick(e, p, button);
                 e.consume();
                 return e;
             }
             if (a.rulesLayout().syncCaReviewButtonBounds.contains(p)) {
-                a.openSyncMismatchReview(TaskSource.COMBAT_ACHIEVEMENT);
+                a.openSyncMismatchReview(null);
                 syncMismatchReviewOpenedAt = e.getWhen();
                 rememberSyncMismatchClick(e, p, button);
                 e.consume();
                 return e;
             }
             if (a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)) {
-                a.plugin().dismissSyncMismatchReview(TaskSource.COMBAT_ACHIEVEMENT);
-                a.closeSyncMismatchReview();
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncClogReviewButtonBounds.contains(p)) {
-                a.openSyncMismatchReview(TaskSource.COLLECTION_LOG);
-                syncMismatchReviewOpenedAt = e.getWhen();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncClogReviewIgnoreButtonBounds.contains(p)) {
-                a.plugin().dismissSyncMismatchReview(TaskSource.COLLECTION_LOG);
+                a.plugin().dismissSyncMismatchReview(null);
                 a.closeSyncMismatchReview();
                 e.consume();
                 return e;
@@ -732,10 +604,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
 
         if (tryHandleSyncMismatchClick(e, p, button)) {
-            return e;
-        }
-
-        if (tryHandleTaskSyncResultClick(e, p, button)) {
             return e;
         }
 
@@ -789,7 +657,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
     private boolean isSuppressedTaskDetailsIncompleteConfirmClicked(MouseEvent e, Point p, int button)
     {
-        if (e.getID() != MouseEvent.MOUSE_CLICKED || !suppressNextTaskDetailsIncompleteConfirmClicked)
+        if (!suppressNextTaskDetailsIncompleteConfirmClicked
+                || (e.getID() != MouseEvent.MOUSE_RELEASED && e.getID() != MouseEvent.MOUSE_CLICKED))
         {
             return false;
         }
@@ -801,7 +670,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 && dy <= SYNC_MISMATCH_DUPLICATE_CLICK_TOLERANCE_PX;
         if (samePhysicalClick)
         {
-            suppressNextTaskDetailsIncompleteConfirmClicked = false;
+            suppressNextTaskDetailsIncompleteConfirmClicked = e.getID() != MouseEvent.MOUSE_CLICKED;
         }
         return samePhysicalClick;
     }
@@ -817,31 +686,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         suppressTaskDetailsIncompleteConfirmClickX = p.x;
         suppressTaskDetailsIncompleteConfirmClickY = p.y;
         suppressTaskDetailsIncompleteConfirmClickButton = button;
-    }
-
-    private boolean tryHandleTaskSyncResultClick(MouseEvent e, Point p, int button)
-    {
-        if (!a.isTaskSyncResultOpen() || button != MouseEvent.BUTTON1)
-        {
-            return false;
-        }
-
-        if (a.taskSyncResultCloseBounds().contains(p))
-        {
-            a.closeTaskSyncResult();
-            e.consume();
-            return true;
-        }
-
-        if (a.taskSyncResultBounds().contains(p))
-        {
-            e.consume();
-            return true;
-        }
-
-        a.closeTaskSyncResult();
-        e.consume();
-        return true;
     }
 
     private boolean tryHandleTaskResolveClick(MouseEvent e, Point p, int button)
@@ -1002,54 +846,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
 
             a.closeSyncMismatchDescription();
-            rememberSyncMismatchClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        if (a.isSyncMismatchGuardOpen())
-        {
-            if (a.syncMismatchGuardOkBounds().contains(p))
-            {
-                a.closeSyncMismatchGuard();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            if (a.syncMismatchGuardScrollbarRailBounds().width > 0)
-            {
-                Rectangle thumb = a.syncMismatchGuardScrollbarThumbBounds();
-                Rectangle rail = a.syncMismatchGuardScrollbarRailBounds();
-
-                if (thumb.contains(p))
-                {
-                    draggingSyncMismatchGuardScrollbar = true;
-                    syncMismatchGuardScrollbarGrabOffsetY = p.y - thumb.y;
-                    rememberSyncMismatchClick(e, p, button);
-                    e.consume();
-                    return true;
-                }
-
-                if (rail.contains(p))
-                {
-                    draggingSyncMismatchGuardScrollbar = true;
-                    syncMismatchGuardScrollbarGrabOffsetY = Math.max(0, thumb.height / 2);
-                    updateSyncMismatchGuardScrollbarDrag(e.getY());
-                    rememberSyncMismatchClick(e, p, button);
-                    e.consume();
-                    return true;
-                }
-            }
-
-            if (a.syncMismatchGuardBounds().contains(p))
-            {
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            a.closeSyncMismatchGuard();
             rememberSyncMismatchClick(e, p, button);
             e.consume();
             return true;
@@ -1287,11 +1083,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || a.syncMismatchCancelBounds().contains(p)
                 || a.syncMismatchScrollbarThumbBounds().contains(p)
                 || a.syncMismatchScrollbarRailBounds().contains(p)
-                || (a.isSyncMismatchGuardOpen() && (
-                        a.syncMismatchGuardOkBounds().contains(p)
-                                || a.syncMismatchGuardScrollbarThumbBounds().contains(p)
-                                || a.syncMismatchGuardScrollbarRailBounds().contains(p)
-                ))
                 || syncMismatchTaskAt(p, true) != null
                 || syncMismatchTaskAt(p, false) != null
                 || (a.isSyncMismatchApplyConfirmOpen() && (
@@ -1336,23 +1127,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
         List<XtremeTask> tasksBefore = a.getSortedTasksForTier(a.activeTier());
         a.selectionModel().setSelectionToTask(a.activeTier(), tasksBefore, task);
 
-        if (button == MouseEvent.BUTTON1)
-        {
-            a.openTaskDetails(task);
-            rememberTaskRowClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        if (button == MouseEvent.BUTTON3)
-        {
-            a.openTaskDetails(task);
-            rememberTaskRowClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        return false;
+        a.openTaskDetails(task);
+        rememberTaskRowClick(e, p, button);
+        e.consume();
+        return true;
     }
 
     private boolean isDuplicateTaskRowClick(MouseEvent e, Point p, int button)
@@ -1416,12 +1194,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
         }
 
-        if (a.isTaskSyncResultOpen())
-        {
-            updateHandCursor(a.taskSyncResultCloseBounds().contains(p));
-            return e;
-        }
-
         if (a.isTaskResolveOpen())
         {
             XtremeTask hoveredResolveInstance = taskResolveInstanceAt(p);
@@ -1459,12 +1231,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         boolean completeEnabled = (current != null) && !currentCompleted;
         boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
 
-        TaskListQuery tq = a.taskQuery();
-        boolean completionDisabled = tq.statusFilter != TaskListQuery.StatusFilter.ALL;
-        boolean tierEnabledScope = tq.tierScope == TaskListQuery.TierScope.ALL_TIERS;
-        boolean dateEnabledScope = tq.statusFilter == TaskListQuery.StatusFilter.COMPLETE;
-        boolean hasAnySort = tq.sortByCompletion || tq.sortByTier || tq.sortByDate || tq.sortByTimeTicks;
-
         TaskControlsLayout cl = a.controlsLayout();
 
         boolean hovering =
@@ -1480,9 +1246,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         a.taskDetailsCloseBounds().contains(p)
                         || a.taskDetailsWikiBounds().contains(p)
                         || (a.isTaskDetailsWikiMenuOpen() && a.taskDetailsWikiMenuBounds().contains(p))
-                        || a.taskDetailsSyncBounds().contains(p)
-                        || a.taskDetailsIgnoreBounds().contains(p)
                         || a.taskDetailsMarkIncompleteBounds().contains(p)
+                        || taskDetailsInstanceRemoveContains(p)
                         || a.taskDetailsScrollbarThumbBounds().contains(p)
                         || a.taskDetailsScrollbarRailBounds().contains(p)
                 ))
@@ -1492,32 +1257,21 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().subTabDataSyncsBounds.contains(p)
                         || a.rulesLayout().taskerFaqLinkBounds.contains(p)
                         || a.rulesLayout().githubReadmeLinkBounds.contains(p)
-                        || a.rulesLayout().syncClogsButtonBounds.contains(p)
-                        || a.rulesLayout().syncCAsButtonBounds.contains(p)
-                        || a.rulesLayout().syncCaMarkedTasksToggleBounds.contains(p)
-                        || a.rulesLayout().syncClogMarkedTasksToggleBounds.contains(p)
+                        || a.rulesLayout().syncProgressButtonBounds.contains(p)
                         || a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncClogFoundReviewButtonBounds.contains(p)
                         || a.rulesLayout().syncCaReviewButtonBounds.contains(p)
                         || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
-                        || a.rulesLayout().syncClogReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncClogReviewIgnoreButtonBounds.contains(p)
-                        || a.rulesLayout().scrollbarThumbBounds.contains(p)
-                        || a.rulesLayout().scrollbarRailBounds.contains(p)
                 ))
                 // CURRENT tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && (
                         a.currentLayout().wikiButtonBounds.contains(p)
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
-                        || (completeEnabled && a.plugin().isTaskSkippingEnabled() && a.currentLayout().skipButtonBounds.contains(p))
                         || (canUndoRecentCompletion && a.currentLayout().undoButtonBounds.contains(p))
                         || (!a.isCompactPanelMode() && (
                                 a.currentLayout().scrollbarThumbBounds.contains(p)
                                         || a.currentLayout().scrollbarRailBounds.contains(p)
                         ))
-                        || (a.isCompactPanelMode() && compactScrollbarHitBounds().contains(p))
-                        || a.keyboardHintsButtonBounds().contains(p)
                 ))
                 // TASKS tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.TASKS && (
@@ -1525,7 +1279,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         containsAny(a.tierTabBounds(), p)
                         || cl.searchBox.contains(p)
                         || (cl.clearFilters.width > 0 && cl.clearFilters.contains(p))
-                        || (cl.clearSort.width > 0 && cl.clearSort.contains(p))
                         // filter pills (always clickable)
                         || cl.filterSourceAll.contains(p)
                         || cl.filterCA.contains(p)
@@ -1536,18 +1289,18 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || cl.filterComplete.contains(p)
                         || cl.filterTierThis.contains(p)
                         || cl.filterTierAll.contains(p)
-                        // sort pills (conditionally enabled)
-                        || (!completionDisabled && cl.sortCompletion.contains(p))
-                        || (tierEnabledScope && cl.sortTier.contains(p))
-                        || (dateEnabledScope && cl.sortDate.contains(p))
-                        || (dateEnabledScope && cl.sortTimeTicks.width > 0 && cl.sortTimeTicks.contains(p))
-                        || (hasAnySort && cl.sortReset.contains(p))
+                        || cl.columnDate.contains(p)
+                        || cl.columnTime.contains(p)
+                        || cl.columnTier.contains(p)
+                        || cl.columnSource.contains(p)
+                        // table sort headers
+                        || cl.sortDate.contains(p)
+                        || (cl.sortTimeTicks.width > 0 && cl.sortTimeTicks.contains(p))
+                        || (cl.sortTier.width > 0 && cl.sortTier.contains(p))
+                        || (cl.sortSource.width > 0 && cl.sortSource.contains(p))
                         // new tasks button
                         || cl.filterNewTasks.contains(p)
                         || cl.filterNewTasksHelp.contains(p)
-                        // keyboard hints
-                        || a.keyboardHintsButtonBounds().contains(p)
-                        || (!isCondenseRepeatedTasksBlocked() && a.taskViewModeBounds().contains(p))
                         // task list scrollbar
                         || (!a.isTaskDetailsOpen() && (
                                 a.taskScrollbarThumbBounds().contains(p)
@@ -1575,6 +1328,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
             a.client().getCanvas().setCursor(Cursor.getDefaultCursor());
             handCursorActive = false;
         }
+    }
+
+    private boolean taskDetailsInstanceRemoveContains(Point p)
+    {
+        return containsAny(a.taskDetailsInstanceRemoveBounds(), p);
     }
 
     private static boolean containsAny(Map<?, Rectangle> bounds, Point p) {
@@ -1623,12 +1381,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (draggingRulesScrollbar) {
-            updateRulesScrollbarDrag(e.getY());
-            e.consume();
-            return e;
-        }
-
         if (draggingCurrentScrollbar) {
             updateCurrentScrollbarDrag(e.getY());
             e.consume();
@@ -1643,26 +1395,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         if (draggingSyncMismatchScrollbar) {
             updateSyncMismatchScrollbarDrag(e.getY());
-            e.consume();
-            return e;
-        }
-
-        if (draggingSyncMismatchGuardScrollbar) {
-            updateSyncMismatchGuardScrollbarDrag(e.getY());
-            e.consume();
-            return e;
-        }
-
-        if (draggingCompactCurrentScrollbar) {
-            updateHandCursor(true);
-            updateCompactCurrentScrollbarDrag(e.getY());
-            e.consume();
-            return e;
-        }
-
-        if (a.isCompactPanelMode()
-                && (e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) != 0
-                && tryStartCompactCurrentScrollbarDrag(e.getPoint(), e.getY())) {
             e.consume();
             return e;
         }
@@ -1710,10 +1442,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             draggingTaskScrollbar = false;
             e.consume();
         }
-        if (draggingRulesScrollbar) {
-            draggingRulesScrollbar = false;
-            e.consume();
-        }
         if (draggingCurrentScrollbar) {
             draggingCurrentScrollbar = false;
             e.consume();
@@ -1724,17 +1452,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
         if (draggingSyncMismatchScrollbar) {
             draggingSyncMismatchScrollbar = false;
-            e.consume();
-        }
-        if (draggingSyncMismatchGuardScrollbar) {
-            draggingSyncMismatchGuardScrollbar = false;
-            e.consume();
-        }
-        if (draggingCompactCurrentScrollbar) {
-            draggingCompactCurrentScrollbar = false;
-            compactCurrentDragRailBounds.setBounds(0, 0, 0, 0);
-            compactCurrentDragThumbBounds.setBounds(0, 0, 0, 0);
-            updateHandCursor(compactScrollbarHitBounds().contains(e.getPoint()));
             e.consume();
         }
         if (pressedOnIcon) {
@@ -1758,11 +1475,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
     @Override
     public MouseEvent mouseExited(MouseEvent e) {
-        if (draggingCompactCurrentScrollbar) {
-            draggingCompactCurrentScrollbar = false;
-            compactCurrentDragRailBounds.setBounds(0, 0, 0, 0);
-            compactCurrentDragThumbBounds.setBounds(0, 0, 0, 0);
-        }
         updateHandCursor(false);
         return e;
     }
@@ -1842,30 +1554,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         a.client().getCanvas().repaint();
     }
 
-    private void updateRulesScrollbarDrag(int mouseY) {
-        Rectangle rail = a.rulesLayout().scrollbarRailBounds;
-        Rectangle thumb = a.rulesLayout().scrollbarThumbBounds;
-        if (rail.height <= 0 || thumb.height <= 0) {
-            return;
-        }
-
-        int totalRows = a.rulesLayout().totalContentRows;
-        int rowBlock = a.rulesRowBlock();
-        int viewportH = a.rulesViewportBounds().height;
-        int visible = a.rulesScroll().visibleRows(viewportH, rowBlock);
-        int maxOffset = Math.max(0, totalRows - visible);
-        int trackH = Math.max(0, rail.height - thumb.height);
-        if (totalRows <= 0 || visible <= 0 || maxOffset <= 0 || trackH <= 0) {
-            a.rulesScroll().setOffsetRows(0, viewportH, rowBlock, totalRows);
-            return;
-        }
-
-        int thumbY = Math.max(rail.y, Math.min(mouseY - rulesScrollbarGrabOffsetY, rail.y + trackH));
-        double frac = (double) (thumbY - rail.y) / (double) trackH;
-        int nextOffset = (int) Math.round(frac * maxOffset);
-        a.rulesScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
-    }
-
     private void updateSyncMismatchScrollbarDrag(int mouseY) {
         Rectangle rail = a.syncMismatchScrollbarRailBounds();
         Rectangle thumb = a.syncMismatchScrollbarThumbBounds();
@@ -1888,74 +1576,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         double frac = (double) (thumbY - rail.y) / (double) trackH;
         int nextOffset = (int) Math.round(frac * maxOffset);
         a.syncMismatchScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
-    }
-
-    private void updateSyncMismatchGuardScrollbarDrag(int mouseY) {
-        Rectangle rail = a.syncMismatchGuardScrollbarRailBounds();
-        Rectangle thumb = a.syncMismatchGuardScrollbarThumbBounds();
-        if (rail.height <= 0 || thumb.height <= 0) {
-            return;
-        }
-
-        int totalRows = Math.max(1, a.syncMismatchGuardTotalRows());
-        int rowBlock = a.syncMismatchGuardRowBlock();
-        int viewportH = a.syncMismatchGuardViewportBounds().height;
-        int visible = a.syncMismatchGuardScroll().visibleRows(viewportH, rowBlock);
-        int maxOffset = Math.max(0, totalRows - visible);
-        int trackH = Math.max(0, rail.height - thumb.height);
-        if (totalRows <= 0 || visible <= 0 || maxOffset <= 0 || trackH <= 0) {
-            a.syncMismatchGuardScroll().setOffsetRows(0, viewportH, rowBlock, totalRows);
-            return;
-        }
-
-        int thumbY = Math.max(rail.y, Math.min(mouseY - syncMismatchGuardScrollbarGrabOffsetY, rail.y + trackH));
-        double frac = (double) (thumbY - rail.y) / (double) trackH;
-        int nextOffset = (int) Math.round(frac * maxOffset);
-        a.syncMismatchGuardScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
-    }
-
-    private void updateCompactCurrentScrollbarDrag(int mouseY) {
-        Rectangle rail = compactCurrentDragRailBounds.width > 0 ? compactCurrentDragRailBounds : a.currentLayout().scrollbarRailBounds;
-        if (rail.height <= 0) {
-            return;
-        }
-
-        int trackH = Math.max(1, rail.height - 1);
-        int y = Math.max(rail.y, Math.min(mouseY - compactCurrentScrollbarGrabOffsetY, rail.y + trackH));
-        double frac = (double) (y - rail.y) / (double) trackH;
-        a.setCompactCurrentScrollFraction(frac);
-        a.client().getCanvas().repaint();
-    }
-
-    private boolean tryStartCompactCurrentScrollbarDrag(Point p, int mouseY) {
-        if (!a.isCompactPanelMode() || !compactScrollbarHitBounds().contains(p)) {
-            return false;
-        }
-
-        Rectangle rail = a.currentLayout().scrollbarRailBounds;
-        Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
-        if (rail.width <= 0 || rail.height <= 0) {
-            return false;
-        }
-
-        draggingCompactCurrentScrollbar = true;
-        compactCurrentDragRailBounds.setBounds(rail);
-        compactCurrentDragThumbBounds.setBounds(thumb);
-        compactCurrentScrollbarGrabOffsetY = 0;
-        updateHandCursor(true);
-        updateCompactCurrentScrollbarDrag(mouseY);
-        return true;
-    }
-
-    private Rectangle compactScrollbarHitBounds() {
-        Rectangle rail = a.currentLayout().scrollbarRailBounds;
-        if (rail == null || rail.width <= 0 || rail.height <= 0) {
-            return new Rectangle();
-        }
-
-        Rectangle hit = new Rectangle(rail);
-        hit.grow(8, 3);
-        return hit;
     }
 
     // =========================
@@ -2009,157 +1629,87 @@ public final class OverlayMouseHandler extends MouseAdapter {
     }
 
     // =========================
-    // Sort + auto-clean helpers
+    // Sort helpers
     // =========================
-
-    private boolean autoDisableCompletionSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.statusFilter != TaskListQuery.StatusFilter.ALL && q.sortByCompletion) {
-            q.sortByCompletion = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean autoDisableTierSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.tierScope != TaskListQuery.TierScope.ALL_TIERS && q.sortByTier) {
-            q.sortByTier = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean autoDisableDateSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.statusFilter != TaskListQuery.StatusFilter.COMPLETE && q.sortByDate) {
-            q.sortByDate = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean autoDisableTimeTicksSortIfNeeded() {
-        TaskListQuery q = a.taskQuery();
-        if (q.statusFilter != TaskListQuery.StatusFilter.COMPLETE && q.sortByTimeTicks) {
-            q.sortByTimeTicks = false;
-            return true;
-        }
-        return false;
-    }
-
-    private boolean isCondenseRepeatedTasksBlocked() {
-        TaskListQuery q = a.taskQuery();
-        return q.sortByDate || q.sortByTimeTicks;
-    }
-
-    private boolean onClickSortCompletion() {
-        TaskListQuery q = a.taskQuery();
-
-        if (q.statusFilter != TaskListQuery.StatusFilter.ALL) {
-            return false;
-        }
-
-        if (!q.sortByCompletion) {
-            // OFF → Incomplete First
-            q.sortByCompletion = true;
-            q.completedFirst = false;
-            return true;
-        }
-
-        if (!q.completedFirst) {
-            // Incomplete First → Complete First
-            q.completedFirst = true;
-            return true;
-        }
-
-        // Complete First → OFF
-        q.sortByCompletion = false;
-        return true;
-    }
-
-    private boolean onClickSortTier() {
-        TaskListQuery q = a.taskQuery();
-
-        if (q.tierScope != TaskListQuery.TierScope.ALL_TIERS) {
-            return false;
-        }
-
-        if (!q.sortByTier) {
-            // OFF → Easy Tier First
-            q.sortByTier = true;
-            q.easyTierFirst = true;
-            return true;
-        }
-
-        if (q.easyTierFirst) {
-            // Easy Tier First → Master Tier First
-            q.easyTierFirst = false;
-            return true;
-        }
-
-        // Master Tier First → OFF
-        q.sortByTier = false;
-        return true;
-    }
 
     private boolean onClickSortTimeTicks() {
         TaskListQuery q = a.taskQuery();
-        if (!q.sortByTimeTicks) {
-            // OFF → Longest first
+        if (!q.sortByTimeTicks)
+        {
+            q.sortByDate = false;
+            q.sortByTier = false;
+            q.sortBySource = false;
             q.sortByTimeTicks = true;
-            q.longestFirst = true;
-            return true;
-        }
-        if (q.longestFirst) {
-            // Longest first → Shortest first
             q.longestFirst = false;
             return true;
         }
-        // Shortest first → OFF
-        q.sortByTimeTicks = false;
+        if (q.longestFirst)
+        {
+            q.sortByTimeTicks = false;
+            return true;
+        }
+        q.longestFirst = !q.longestFirst;
         return true;
     }
 
     private boolean onClickSortDate() {
         TaskListQuery q = a.taskQuery();
-
-        if (q.statusFilter != TaskListQuery.StatusFilter.COMPLETE) {
-            return false;
-        }
-
-        if (!q.sortByDate) {
-            // OFF → Newest First
+        if (!q.sortByDate)
+        {
             q.sortByDate = true;
-            q.newestFirst = true;
-            return true;
-        }
-
-        if (q.newestFirst) {
-            // Newest First → Oldest First
+            q.sortByTimeTicks = false;
+            q.sortByTier = false;
+            q.sortBySource = false;
             q.newestFirst = false;
             return true;
         }
-
-        // Oldest First → OFF
-        q.sortByDate = false;
+        if (q.newestFirst)
+        {
+            q.sortByDate = false;
+            return true;
+        }
+        q.newestFirst = !q.newestFirst;
         return true;
     }
 
-    private boolean onClickSortReset() {
+    private boolean onClickSortTier() {
         TaskListQuery q = a.taskQuery();
-        boolean changed = false;
-
-        if (q.sortByCompletion) {
-            q.sortByCompletion = false;
-            changed = true;
+        if (!q.sortByTier)
+        {
+            q.sortByDate = false;
+            q.sortByTimeTicks = false;
+            q.sortBySource = false;
+            q.sortByTier = true;
+            q.easyTierFirst = true;
+            return true;
         }
-        if (q.sortByTier) {
+        if (!q.easyTierFirst)
+        {
             q.sortByTier = false;
-            changed = true;
+            return true;
         }
+        q.easyTierFirst = false;
+        return true;
+    }
 
-        return changed;
+    private boolean onClickSortSource() {
+        TaskListQuery q = a.taskQuery();
+        if (!q.sortBySource)
+        {
+            q.sortByDate = false;
+            q.sortByTimeTicks = false;
+            q.sortByTier = false;
+            q.sortBySource = true;
+            q.sourceFirst = true;
+            return true;
+        }
+        if (!q.sourceFirst)
+        {
+            q.sortBySource = false;
+            return true;
+        }
+        q.sourceFirst = false;
+        return true;
     }
 
     /** Returns the character index in {@code text} closest to pixel {@code clickX}. */

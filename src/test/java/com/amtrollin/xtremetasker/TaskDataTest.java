@@ -74,7 +74,7 @@ public class TaskDataTest
     public void taskSearchMatchesTwoCharacterTermsInAnyOrder()
     {
         List<XtremeTask> tasks = Arrays.asList(
-                new XtremeTask("cape", "Obtain any level 99 skillcape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
+                new XtremeTask("cape", "1 level 99 cape", TaskSource.COLLECTION_LOG, TaskTier.MASTER),
                 new XtremeTask("other", "Get bolt racks from Barrows", TaskSource.COLLECTION_LOG, TaskTier.EASY)
         );
 
@@ -92,31 +92,6 @@ public class TaskDataTest
         query.searchText = "level 99";
         List<XtremeTask> orderedResults = TaskListPipeline.apply(tasks, query, task -> false);
         assertEquals(reversedResults.get(0).getId(), orderedResults.get(0).getId());
-    }
-
-    @Test
-    public void sourceFilterSupportsMultipleSelectedSources()
-    {
-        List<XtremeTask> tasks = Arrays.asList(
-                new XtremeTask("ca", "A Combat Achievement", TaskSource.COMBAT_ACHIEVEMENT, TaskTier.EASY),
-                new XtremeTask("cl", "A Collection Log task", TaskSource.COLLECTION_LOG, TaskTier.EASY),
-                new XtremeTask("ad", "An Achievement Diary task", TaskSource.DIARY_ACHIEVEMENT, TaskTier.EASY)
-        );
-
-        TaskListQuery query = new TaskListQuery();
-        query.toggleSource(TaskListQuery.SourceFilter.CA);
-        query.toggleSource(TaskListQuery.SourceFilter.CLOGS);
-
-        Set<String> ids = TaskListPipeline.apply(tasks, query, task -> false).stream()
-                .map(XtremeTask::getId)
-                .collect(Collectors.toSet());
-        assertEquals(Set.of("ca", "cl"), ids);
-
-        query.toggleSource(TaskListQuery.SourceFilter.DAS);
-
-        assertTrue("Selecting all three source filters should normalize to All", query.isSourceAllSelected());
-        List<XtremeTask> allResults = TaskListPipeline.apply(tasks, query, task -> false);
-        assertEquals(3, allResults.size());
     }
 
     @Test
@@ -176,40 +151,6 @@ public class TaskDataTest
         assertTrue(
                 "KNOWN_CLOG_VERIFICATION_GAPS has stale IDs (remove these): " + staleAllowlist,
                 staleAllowlist.isEmpty());
-    }
-
-    @Test
-    public void giantsFoundryHardTaskRequiresNinthUnique()
-    {
-        JsonObject pack = loadTaskPack();
-        JsonArray tasks = pack.getAsJsonArray("tasks");
-
-        JsonObject foundryTask = null;
-        for (JsonElement taskElement : tasks)
-        {
-            JsonObject task = taskElement.getAsJsonObject();
-            if ("collection_log_hard_get-a-colossal-blade_001_71dc9faeec".equals(optionalString(task, "id")))
-            {
-                foundryTask = task;
-                break;
-            }
-        }
-
-        assertNotNull("Hard Giants' Foundry task must exist", foundryTask);
-        assertEquals("Get last unique from Giants' Foundry", optionalString(foundryTask, "name"));
-        assertEquals("Giants' Foundry", optionalString(foundryTask, "wikiTitle"));
-        assertEquals("https://oldschool.runescape.wiki/w/Giants%27_Foundry", optionalString(foundryTask, "wikiUrl"));
-
-        JsonObject verification = foundryTask.getAsJsonObject("verification");
-        assertEquals("collection-log", optionalString(verification, "method"));
-        assertEquals(9, verification.get("count").getAsInt());
-
-        List<Integer> itemIds = new ArrayList<>();
-        for (JsonElement itemId : verification.getAsJsonArray("itemIds"))
-        {
-            itemIds.add(itemId.getAsInt());
-        }
-        assertEquals(Arrays.asList(27012, 27014, 27017, 27019, 27021, 27023, 27025, 27027, 27029), itemIds);
     }
 
     @Test

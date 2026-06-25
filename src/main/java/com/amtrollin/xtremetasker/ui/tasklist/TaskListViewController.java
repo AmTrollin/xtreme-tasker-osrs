@@ -29,11 +29,10 @@ public final class TaskListViewController
 
     public void resetAfterQueryChange(TaskTier activeTier,
                                       List<XtremeTask> tasksForTier,
-                                      boolean completedFirst,
                                       Function<XtremeTask, Boolean> isCompleted)
     {
         scroll.reset();
-        selection.normalizeForTier(activeTier, tasksForTier, completedFirst, isCompleted);
+        selection.normalizeForTier(activeTier, tasksForTier, isCompleted);
     }
 
     public void onWheel(double preciseWheelRotation,

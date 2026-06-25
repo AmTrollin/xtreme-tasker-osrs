@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.tasklist.TaskListPipeline.safe;
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class TaskRowsRenderer {
-    private final int panelWidth;
     private final int panelPadding;
     private final int rowHeight;
     private final int listRowSpacing;
@@ -32,14 +32,10 @@ public final class TaskRowsRenderer {
     private final Color rowHoverBg;
     private final Color rowSelectedBg;
     private final Color rowSelectedOutline;
-    private final Color rowDoneBg;
-    private final Color rowLine;
     private final Color strikeColor;
     private final Color uiText;
     private final Color uiTextDim;
     private final Color pipRing;
-    private final Color pipDoneFill;
-    private final Color pipDoneRing;
     private final Color uiGold;
     private final Color edgeLight;
     private final Color edgeDark;
@@ -48,15 +44,14 @@ public final class TaskRowsRenderer {
     // Increase this to make the circle larger. Keep small so it doesn't collide with text.
     private static final int PIP_VISUAL_BOOST_PX = 4; // try 2–6; 4 is a nice "more prominent" bump
 
-    private static final int VIEWPORT_TOP_PAD = 4;
+    private static final int VIEWPORT_TOP_PAD = 2;
     private static final int SCROLLBAR_WIDTH = 6;
     private static final int SCROLLBAR_GAP = 3;
     private static final int ROW_BADGE_Y_OFFSET = 2;
     private static final DateTimeFormatter ROW_DATE_FORMAT =
-            DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault());
+            DateTimeFormatter.ofPattern("MMM d, yy").withZone(ZoneId.systemDefault());
 
     public TaskRowsRenderer(
-            int panelWidth,
             int panelPadding,
             int rowHeight,
             int listRowSpacing,
@@ -66,19 +61,14 @@ public final class TaskRowsRenderer {
             Color rowHoverBg,
             Color rowSelectedBg,
             Color rowSelectedOutline,
-            Color rowDoneBg,
-            Color rowLine,
             Color strikeColor,
             Color uiText,
             Color uiTextDim,
             Color pipRing,
-            Color pipDoneFill,
-            Color pipDoneRing,
             Color uiGold,
             Color edgeLight,
             Color edgeDark
     ) {
-        this.panelWidth = panelWidth;
         this.panelPadding = panelPadding;
         this.rowHeight = rowHeight;
         this.listRowSpacing = listRowSpacing;
@@ -89,21 +79,17 @@ public final class TaskRowsRenderer {
         this.rowHoverBg = rowHoverBg;
         this.rowSelectedBg = rowSelectedBg;
         this.rowSelectedOutline = rowSelectedOutline;
-        this.rowDoneBg = rowDoneBg;
-        this.rowLine = rowLine;
         this.strikeColor = strikeColor;
         this.uiText = uiText;
         this.uiTextDim = uiTextDim;
         this.pipRing = pipRing;
-        this.pipDoneFill = pipDoneFill;
-        this.pipDoneRing = pipDoneRing;
         this.uiGold = uiGold;
         this.edgeLight = edgeLight;
         this.edgeDark = edgeDark;
     }
 
     public int rowBlock() {
-        return rowHeight + listRowSpacing + 2;
+        return rowHeight + listRowSpacing + 1;
     }
 
     private static String prettyTier(TaskTier t)
@@ -137,8 +123,12 @@ public final class TaskRowsRenderer {
             Function<XtremeTask, Boolean> isNewTask,
             Function<XtremeTask, CompletionInfo> completionInfoProvider,
             Function<XtremeTask, Long> taskTicksProvider,
+            Rectangle dateColumnBounds,
+            Rectangle timeColumnBounds,
             boolean showCompletionMeta,
-            boolean showTimeMeta
+            boolean showTimeMeta,
+            boolean showTierMeta,
+            boolean showSourceMeta
     ) {
         TaskRowsLayout layout = new TaskRowsLayout();
         layout.rowBounds.clear();
@@ -154,6 +144,10 @@ public final class TaskRowsRenderer {
 
         int rb = rowBlock();
         int visibleRows = (rb <= 0) ? 0 : Math.max(0, viewportH / rb);
+        if (visibleRows > 0)
+        {
+            layout.viewportBounds.height = visibleRows * rb;
+        }
         boolean needsScrollbar = tasks.size() > visibleRows && visibleRows > 0 && viewportH > 0;
         int rowW = Math.max(0, viewportW - (needsScrollbar ? SCROLLBAR_WIDTH + SCROLLBAR_GAP : 0));
 
@@ -180,7 +174,7 @@ public final class TaskRowsRenderer {
                     viewportX,
                     (drawY - fm.getAscent()) - 2,
                     rowW,
-                    rowHeight + 4
+                    rowHeight + 3
             );
             layout.rowBounds.put(task, rowBounds);
 
@@ -202,7 +196,7 @@ public final class TaskRowsRenderer {
             if (partialGroup || completed) {
                 Color rail = completed
                         ? new Color(105, 205, 128, 175)
-                        : new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 150);
+                        : withAlpha(uiGold, 150);
                 g.setColor(rail);
                 g.fillRect(rowBounds.x, rowBounds.y + 1, 2, rowBounds.height - 2);
             }
@@ -252,19 +246,27 @@ public final class TaskRowsRenderer {
             // Tier pill is fixed to the width of the widest tier ("Grandmaster") so all rows align.
             Font smallFont = FontManager.getRunescapeSmallFont();
             FontMetrics sfm = g.getFontMetrics(smallFont);
-            final int pillPadX = 7;
+            final int pillPadX = 6;
             final int pillH = 14;
             final int pillArc = 4;
-            final int pillGap = 4;
-            int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2; // fixed width for all sources
-            int tierW = sfm.stringWidth("Master") + pillPadX * 2; // fixed width for all tiers
+            final int pillGap = 3;
+            int srcW = showSourceMeta
+                    ? Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2
+                    : 0; // fixed width for all sources
+            int tierW = showTierMeta
+                    ? sfm.stringWidth("Master") + pillPadX * 2
+                    : 0; // fixed width for all tiers
             int newW = sfm.stringWidth("NEW") + pillPadX * 2;
             int progressW = (progress != null && progress.isGrouped()) ? sfm.stringWidth(progress.label()) + 6 : 0;
-            String metaText = rowMetaText(task, completionInfoProvider, taskTicksProvider, showCompletionMeta, showTimeMeta);
-            int metaW = metaText == null ? 0 : sfm.stringWidth(metaText) + 6;
-            int rightColW = metaW + (metaW > 0 ? pillGap : 0)
-                    + progressW + (progressW > 0 ? pillGap : 0)
-                    + srcW + pillGap + tierW + (isNew ? pillGap + newW : 0) + 6; // 6px margin from row right edge
+            int metaLeftX = firstColumnX(dateColumnBounds, timeColumnBounds);
+            int columnReserveW = metaLeftX > textX ? Math.max(0, viewportX + rowW - metaLeftX) : 0;
+            int visibleBadgeW = (showSourceMeta ? srcW : 0)
+                    + (showTierMeta ? (showSourceMeta ? pillGap : 0) + tierW : 0);
+            int badgeReserveW = progressW + (progressW > 0 ? pillGap : 0)
+                    + visibleBadgeW + (visibleBadgeW > 0 ? 4 : 0) + (isNew ? pillGap + newW : 0) + 4; // 4px margin from row right edge
+            int rightColW = columnReserveW > 0
+                    ? columnReserveW + progressW + (progressW > 0 ? pillGap : 0) + (isNew ? pillGap + newW : 0)
+                    : badgeReserveW;
 
             int nameMaxW = Math.max(0, textMaxW - rightColW);
             String fullTaskName = safe(task.getName());
@@ -280,70 +282,62 @@ public final class TaskRowsRenderer {
             }
 
             g.setColor(completed
-                    ? new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 220)
+                    ? withAlpha(uiTextDim, 220)
                     : uiText);
             g.drawString(taskName, textX, drawY);
 
             // Draw tier pill, then source pill, right-aligned
-            int pillRightEdge = viewportX + rowW - 6;
+            int pillRightEdge = viewportX + rowW - 4;
             int pillTop = drawY - fm.getAscent() + (fm.getHeight() - pillH) / 2 + ROW_BADGE_Y_OFFSET;
 
-            // source (rightmost)
-            int srcX = pillRightEdge - srcW;
             g.setFont(smallFont);
-            g.setColor(new Color(40, 30, 15, 190));
-            g.fillRoundRect(srcX, pillTop, srcW, pillH, pillArc, pillArc);
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 60));
-            g.drawRoundRect(srcX, pillTop, srcW - 1, pillH - 1, pillArc, pillArc);
-            g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 210));
-            g.drawString(srcText, srcX + (srcW - sfm.stringWidth(srcText)) / 2,
-                    pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
+            int nextBadgeRight = pillRightEdge;
 
-            // tier (left of source)
-            int tierX = srcX - pillGap - tierW;
-            g.setColor(new Color(40, 30, 15, 190));
-            g.fillRoundRect(tierX, pillTop, tierW, pillH, pillArc, pillArc);
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 60));
-            g.drawRoundRect(tierX, pillTop, tierW - 1, pillH - 1, pillArc, pillArc);
-            g.setColor(tierTextColor(task.getTier()));
-            g.drawString(tierText, tierX + (tierW - sfm.stringWidth(tierText)) / 2,
-                    pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
+            if (showSourceMeta) {
+                int srcX = nextBadgeRight - srcW;
+                drawRowPill(g, sfm, srcText, srcX, pillTop, srcW, pillH, pillArc, withAlpha(uiTextDim, 210));
+                nextBadgeRight = srcX - pillGap;
+            }
+
+            if (showTierMeta) {
+                int tierX = nextBadgeRight - tierW;
+                drawRowPill(g, sfm, tierText, tierX, pillTop, tierW, pillH, pillArc, tierTextColor(task.getTier()));
+                nextBadgeRight = tierX - pillGap;
+            }
 
             g.setFont(fm.getFont()); // restore row font
 
-            int leftBadgeX = tierX;
+            int leftBadgeX = visibleBadgeW > 0 ? nextBadgeRight + pillGap : pillRightEdge;
             if (progress != null && progress.isGrouped()) {
                 g.setFont(smallFont);
                 String progressText = progress.label();
-                int progressX = tierX - pillGap - progressW;
+                int progressX = columnReserveW > 0
+                        ? Math.min(leftBadgeX - pillGap - progressW, metaLeftX - pillGap - progressW)
+                        : leftBadgeX - pillGap - progressW;
                 g.setColor(progress.isComplete()
                         ? new Color(120, 200, 140, 225)
                         : partialGroup
-                        ? new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 230)
-                        : new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 225));
+                        ? withAlpha(uiGold, 230)
+                        : withAlpha(uiTextDim, 225));
                 g.drawString(progressText, progressX + 3,
                         pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
                 g.setFont(fm.getFont());
                 leftBadgeX = progressX;
             }
 
-            if (metaText != null) {
-                g.setFont(smallFont);
-                int metaX = leftBadgeX - pillGap - metaW;
-                g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 210));
-                g.drawString(metaText, metaX + 3,
-                        pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
-                g.setFont(fm.getFont());
-                leftBadgeX = metaX;
-            }
+            drawRowMetaColumns(g, smallFont, sfm, task, completionInfoProvider, taskTicksProvider,
+                    dateColumnBounds, timeColumnBounds, showCompletionMeta, showTimeMeta,
+                    pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
+            g.setFont(fm.getFont());
 
             // NEW marker: subtle gold text, no filled badge.
             if (isNew) {
-                int newX = leftBadgeX - pillGap - newW;
+                int newAnchorX = columnReserveW > 0 ? Math.min(leftBadgeX, metaLeftX) : leftBadgeX;
+                int newX = newAnchorX - pillGap - newW;
                 g.setFont(smallFont);
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 70));
+                g.setColor(withAlpha(uiGold, 70));
                 g.drawRoundRect(newX, pillTop, newW - 1, pillH - 1, pillArc, pillArc);
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 210));
+                g.setColor(withAlpha(uiGold, 210));
                 g.drawString("NEW", newX + (newW - sfm.stringWidth("NEW")) / 2,
                         pillTop + ((pillH - sfm.getHeight()) / 2) + sfm.getAscent());
                 g.setFont(fm.getFont());
@@ -360,17 +354,7 @@ public final class TaskRowsRenderer {
             drawY += rb;
         }
 
-        // Shrink viewportBounds to actual content height so no empty gap shows below last row
-        if (end > start)
-        {
-            int lastRowBottom = (drawY - rb) - fm.getAscent() + rowHeight + 4;
-            int contentH = Math.max(0, lastRowBottom - viewportY);
-            if (contentH < layout.viewportBounds.height)
-            {
-                layout.viewportBounds.height = contentH;
-            }
-        }
-        else if (end == start)
+        if (end == start)
         {
             layout.viewportBounds.height = 0;
         }
@@ -400,6 +384,16 @@ public final class TaskRowsRenderer {
         }
     }
 
+    private void drawRowPill(Graphics2D g, FontMetrics fm, String text, int x, int y, int w, int h, int arc, Color textColor)
+    {
+        g.setColor(new Color(40, 30, 15, 190));
+        g.fillRoundRect(x, y, w, h, arc, arc);
+        g.setColor(withAlpha(uiGold, 60));
+        g.drawRoundRect(x, y, w - 1, h - 1, arc, arc);
+        g.setColor(textColor);
+        g.drawString(text, x + (w - fm.stringWidth(text)) / 2, y + ((h - fm.getHeight()) / 2) + fm.getAscent());
+    }
+
     private void drawStatusPip(Graphics2D g, int cx, int cy, boolean done, boolean partial, float animProgress) {
         // Visual size boost (does not change layout spacing)
         int drawSize = Math.max(6, statusPipSize + PIP_VISUAL_BOOST_PX);
@@ -411,18 +405,18 @@ public final class TaskRowsRenderer {
         // Slightly thicker ring for readability: draw twice (offset by 1px)
         Color doneRing = new Color(120, 200, 140, 230);
         Color doneFill = new Color(78, 160, 96, 235);
-        g.setColor(done ? doneRing : (partial ? new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 190) : pipRing));
+        g.setColor(done ? doneRing : (partial ? withAlpha(uiGold, 190) : pipRing));
         g.drawOval(x, y, drawSize, drawSize);
         g.drawOval(x + 1, y + 1, drawSize - 2, drawSize - 2);
 
         // Add a faint inner ring when not done (makes "toggle target" feel more obvious)
         if (!done) {
             if (partial) {
-                g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 120));
+                g.setColor(withAlpha(uiGold, 120));
                 g.fillArc(x + 3, y + 3, drawSize - 6, drawSize - 6, 90, -180);
                 return;
             }
-            g.setColor(new Color(pipRing.getRed(), pipRing.getGreen(), pipRing.getBlue(), 60));
+            g.setColor(withAlpha(pipRing, 60));
             g.drawOval(x + 2, y + 2, drawSize - 4, drawSize - 4);
             return;
         }
@@ -469,53 +463,84 @@ public final class TaskRowsRenderer {
         g.drawLine(x2, y2, x3, y3);
     }
 
-    private static String rowMetaText(
+    private void drawRowMetaColumns(
+            Graphics2D g,
+            Font smallFont,
+            FontMetrics sfm,
             XtremeTask task,
             Function<XtremeTask, CompletionInfo> completionInfoProvider,
             Function<XtremeTask, Long> taskTicksProvider,
+            Rectangle dateColumnBounds,
+            Rectangle timeColumnBounds,
             boolean showCompletionMeta,
-            boolean showTimeMeta)
+            boolean showTimeMeta,
+            int baseline)
     {
         if (task == null)
         {
+            return;
+        }
+
+        g.setFont(smallFont);
+        g.setColor(withAlpha(uiTextDim, 210));
+        CompletionInfo completionInfo = completionInfoProvider == null ? null : completionInfoProvider.apply(task);
+        if (showCompletionMeta && dateColumnBounds != null && dateColumnBounds.width > 0)
+        {
+            drawColumnText(g, sfm, dateColumnBounds, rowDateText(completionInfo), baseline);
+        }
+
+        if (showTimeMeta && timeColumnBounds != null && timeColumnBounds.width > 0)
+        {
+            drawColumnText(g, sfm, timeColumnBounds, rowTimeText(task, completionInfo, taskTicksProvider), baseline);
+        }
+    }
+
+    private static void drawColumnText(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, int baseline)
+    {
+        if (text == null)
+        {
+            return;
+        }
+        String draw = TextUtils.truncateToWidth(text, fm, bounds.width - 4);
+        int x = bounds.x + Math.max(0, (bounds.width - fm.stringWidth(draw)) / 2);
+        g.drawString(draw, x, baseline);
+    }
+
+    private static String rowDateText(CompletionInfo info)
+    {
+        if (info == null)
+        {
+            return "??";
+        }
+        return info.timestamp <= 0 ? "??" : ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
+    }
+
+    private static String rowTimeText(XtremeTask task, CompletionInfo completionInfo, Function<XtremeTask, Long> taskTicksProvider)
+    {
+        if (completionInfo == null)
+        {
+            return "??";
+        }
+        if (taskTicksProvider == null)
+        {
             return null;
         }
+        Long ticks = taskTicksProvider.apply(task);
+        return ticks == null || ticks <= 0 ? "??" : formatDuration(Math.round(ticks * 0.6));
+    }
 
-        String dateText = null;
-        if (showCompletionMeta && completionInfoProvider != null)
+    private static int firstColumnX(Rectangle dateColumnBounds, Rectangle timeColumnBounds)
+    {
+        int x = Integer.MAX_VALUE;
+        if (dateColumnBounds != null && dateColumnBounds.width > 0)
         {
-            CompletionInfo info = completionInfoProvider.apply(task);
-            if (info != null)
-            {
-                dateText = info.timestamp <= 0
-                        ? "date ?"
-                        : ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
-            }
+            x = Math.min(x, dateColumnBounds.x);
         }
-
-        String timeText = null;
-        if (showTimeMeta && taskTicksProvider != null)
+        if (timeColumnBounds != null && timeColumnBounds.width > 0)
         {
-            Long ticks = taskTicksProvider.apply(task);
-            timeText = ticks == null || ticks <= 0
-                    ? "time ?"
-                    : formatDuration(Math.round(ticks * 0.6));
+            x = Math.min(x, timeColumnBounds.x);
         }
-
-        if (dateText != null && timeText != null)
-        {
-            return dateText + " | " + timeText;
-        }
-        if (dateText != null)
-        {
-            return dateText;
-        }
-        if (timeText != null)
-        {
-            return timeText;
-        }
-
-        return null;
+        return x == Integer.MAX_VALUE ? -1 : x;
     }
 
     private static String formatDuration(long seconds)
@@ -544,7 +569,7 @@ public final class TaskRowsRenderer {
         Rectangle thumb = scrollbarThumbBounds(totalRows, visibleRows, offsetRows, viewport);
         drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));
+        g.setColor(withAlpha(uiGold, 140));
         g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
@@ -596,10 +621,10 @@ public final class TaskRowsRenderer {
         g.setColor(new Color(60, 48, 28, 200));
         g.fillRoundRect(x, yTop, w, h, arc, arc);
         // Single thin dim border
-        g.setColor(new Color(gold.getRed(), gold.getGreen(), gold.getBlue(), 70));
+        g.setColor(withAlpha(gold, 70));
         g.drawRoundRect(x, yTop, w - 1, h - 1, arc, arc);
         // Label text
-        g.setColor(new Color(uiText.getRed(), uiText.getGreen(), uiText.getBlue(), 210));
+        g.setColor(withAlpha(uiText, 210));
         g.drawString(text, x + (w - textW) / 2, yTop + ((h - fm.getHeight()) / 2) + fm.getAscent());
         g.setFont(savedFont);
         return w;

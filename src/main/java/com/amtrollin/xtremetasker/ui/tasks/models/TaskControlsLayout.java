@@ -8,9 +8,7 @@ public class TaskControlsLayout
 
     // Static section labels; bounds stay empty so headers are not clickable.
     public final Rectangle filtersHeaderBounds = new Rectangle();
-    public final Rectangle sortHeaderBounds = new Rectangle();
     public boolean filtersExpanded = true;
-    public boolean sortExpanded = true;
 
     // Source (single select): ALL / CA / CLOGs / ADs
     public final Rectangle filterSourceAll = new Rectangle();
@@ -26,15 +24,20 @@ public class TaskControlsLayout
     public final Rectangle filterTierThis = new Rectangle();
     public final Rectangle filterTierAll = new Rectangle();
 
-    public final Rectangle sortCompletion = new Rectangle();
-    public final Rectangle sortTier = new Rectangle();
+    public boolean showDateColumn = true;
+    public boolean showTimeColumn = true;
+    public boolean showTierColumn = true;
+    public boolean showSourceColumn = true;
+    public final Rectangle columnDate = new Rectangle();
+    public final Rectangle columnTime = new Rectangle();
+    public final Rectangle columnTier = new Rectangle();
+    public final Rectangle columnSource = new Rectangle();
+
     public final Rectangle sortDate = new Rectangle();
     public final Rectangle sortTimeTicks = new Rectangle();
-    public final Rectangle sortReset = new Rectangle();
+    public final Rectangle sortTier = new Rectangle();
+    public final Rectangle sortSource = new Rectangle();
     public final Rectangle clearFilters = new Rectangle();
-    public final Rectangle clearSort = new Rectangle();
-    public String hoverTooltipText = null;
-    public final Rectangle hoverTooltipAnchor = new Rectangle(); // optional
 
     // Session-only: visible only when there are new tasks this session
     public final Rectangle filterNewTasks = new Rectangle();

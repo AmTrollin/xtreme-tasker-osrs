@@ -24,7 +24,7 @@ public interface TaskerService
 
     String getTierProgressLabel(TaskTier tier);
 
-    List<XtremeTask> getDummyTasks();
+    List<XtremeTask> getTasks();
 
     boolean isTaskCompleted(XtremeTask task);
 
@@ -52,13 +52,9 @@ public interface TaskerService
 
     void rollRandomTaskAndPersist();
 
-    void skipCurrentTaskAndPersist();
-
     void reloadTaskPack();
 
-    void syncCombatAchievementsAndPersist();
-
-    void syncCollectionLogsAndPersist();
+    void syncAccountProgressAndPersist();
 
     void syncCollectionLogTaskAndPersist(XtremeTask task);
 
@@ -73,14 +69,6 @@ public interface TaskerService
     String getLastCollectionLogSyncResult();
 
     String getLastCollectionLogSyncResultAtLocalTime();
-
-    List<String> getLastCombatAchievementSyncedTaskNames();
-
-    List<String> getLastCollectionLogSyncedTaskNames();
-
-    boolean isCombatAchievementSyncedTasksExpanded();
-
-    boolean isCollectionLogSyncedTasksExpanded();
 
     boolean isCollectionLogSyncPending();
 
@@ -97,8 +85,6 @@ public interface TaskerService
     String getSyncMismatchTitle();
 
     String getSyncMismatchGameProgressLabel(XtremeTask task);
-
-    String getSyncMismatchIncompleteGuardMessage(List<XtremeTask> tasks);
 
     void dismissSyncMismatchReview();
 
@@ -122,17 +108,11 @@ public interface TaskerService
 
     boolean condenseRepeatedTasks();
 
-    void toggleCondenseRepeatedTasks();
-
     boolean skipSingleIncompleteConfirmation();
 
     void setSkipSingleIncompleteConfirmation(boolean skip);
 
     XtremeTaskerConfig.RollSourceFilter getRollSourceFilter();
-
-    boolean isTaskSkippingEnabled();
-
-    int getSkippedTaskCount();
 
     String getRollSkipNotice();
 

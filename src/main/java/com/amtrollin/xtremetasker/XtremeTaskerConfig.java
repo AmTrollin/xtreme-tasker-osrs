@@ -39,19 +39,10 @@ public interface XtremeTaskerConfig extends Config {
     @ConfigItem(
             keyName = "condenseRepeatedTasks",
             name = "Condense repeated tasks",
-            description = "Condense repeated task rolls into one row with grouped completion controls. You can also separate repeated tasks from the Tasks tab."
+            description = "Group repeated Collection Log tasks into one row on the Tasks tab"
     )
     default boolean condenseRepeatedTasks() {
         return true;
-    }
-
-    @ConfigItem(
-            keyName = "enableTaskSkipping",
-            name = "Enable task skipping",
-            description = "Show a Skip button on the Current task page. Skipping rerolls your current task and increments your skipped task count."
-    )
-    default boolean enableTaskSkipping() {
-        return false;
     }
 
     // Tips config temporarily disabled — always off for now

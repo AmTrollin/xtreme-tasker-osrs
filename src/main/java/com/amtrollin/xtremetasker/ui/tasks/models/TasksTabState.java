@@ -24,9 +24,6 @@ public final class TasksTabState
     private final Rectangle taskListViewportBounds;
     private final Rectangle taskScrollbarRailBounds;
     private final Rectangle taskScrollbarThumbBounds;
-    private final Rectangle keyboardHintsButtonBounds;
-    private final Rectangle keyboardHintsPopupBounds;
-    private final Rectangle taskViewModeBounds;
 
     public TasksTabState(
             TaskListQuery taskQuery,
@@ -39,10 +36,7 @@ public final class TasksTabState
             Map<XtremeTask, Rectangle> taskCheckboxBounds,
             Rectangle taskListViewportBounds,
             Rectangle taskScrollbarRailBounds,
-            Rectangle taskScrollbarThumbBounds,
-            Rectangle keyboardHintsButtonBounds,
-            Rectangle keyboardHintsPopupBounds,
-            Rectangle taskViewModeBounds
+            Rectangle taskScrollbarThumbBounds
     )
     {
         this.taskQuery = taskQuery;
@@ -56,9 +50,6 @@ public final class TasksTabState
         this.taskListViewportBounds = taskListViewportBounds;
         this.taskScrollbarRailBounds = taskScrollbarRailBounds;
         this.taskScrollbarThumbBounds = taskScrollbarThumbBounds;
-        this.keyboardHintsButtonBounds = keyboardHintsButtonBounds;
-        this.keyboardHintsPopupBounds = keyboardHintsPopupBounds;
-        this.taskViewModeBounds = taskViewModeBounds;
     }
 
     public TaskListQuery taskQuery()
@@ -116,18 +107,4 @@ public final class TasksTabState
         return taskScrollbarThumbBounds;
     }
 
-    public Rectangle keyboardHintsButtonBounds()
-    {
-        return keyboardHintsButtonBounds;
-    }
-
-    public Rectangle keyboardHintsPopupBounds()
-    {
-        return keyboardHintsPopupBounds;
-    }
-
-    public Rectangle taskViewModeBounds()
-    {
-        return taskViewModeBounds;
-    }
 }

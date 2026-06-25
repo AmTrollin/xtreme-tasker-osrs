@@ -22,7 +22,7 @@ public final class TaskListSorter
 
     public interface TicksLookup
     {
-        /** Returns accumulated in-game ticks for a task, or null if none. */
+        /** Returns accumulated in game ticks for a task, or null if none. */
         Long getTicks(XtremeTask task);
     }
 
@@ -45,54 +45,30 @@ public final class TaskListSorter
             CompletionInfoLookup infoLookup,
             TicksLookup ticksLookup)
     {
-        final boolean sortByCompletion = q.sortByCompletion;
-        final boolean completedFirst = q.completedFirst;
-
-        // Only meaningful when all tiers are shown
-        final boolean sortByTier = q.sortByTier && q.tierScope == TaskListQuery.TierScope.ALL_TIERS;
-
-        // Only meaningful when status filter == COMPLETE
-        final boolean sortByDate = q.sortByDate
-                && q.statusFilter == TaskListQuery.StatusFilter.COMPLETE
-                && infoLookup != null;
+        final boolean sortByDate = q.sortByDate && infoLookup != null;
 
         final boolean sortByTimeTicks = q.sortByTimeTicks && ticksLookup != null;
+        final boolean sortByTier = q.sortByTier;
+        final boolean sortBySource = q.sortBySource;
 
         return (a, b) ->
         {
-            // 1) Completion sort (optional)
-            if (sortByCompletion)
-            {
-                boolean aDone = completed.isCompleted(a);
-                boolean bDone = completed.isCompleted(b);
-
-                int aKey = aDone ? 1 : 0;
-                int bKey = bDone ? 1 : 0;
-
-                if (completedFirst)
-                {
-                    aKey = 1 - aKey;
-                    bKey = 1 - bKey;
-                }
-
-                int cmp = Integer.compare(aKey, bKey);
-                if (cmp != 0) return cmp;
-            }
-
-            // 2) Tier sort
             if (sortByTier)
             {
-                int aTier = tierRank(a);
-                int bTier = tierRank(b);
-
                 int cmp = q.easyTierFirst
-                        ? Integer.compare(aTier, bTier)
-                        : Integer.compare(bTier, aTier);
-
+                        ? Integer.compare(tierRank(a), tierRank(b))
+                        : Integer.compare(tierRank(b), tierRank(a));
                 if (cmp != 0) return cmp;
             }
 
-            // 3) Date completed sort
+            if (sortBySource)
+            {
+                int cmp = q.sourceFirst
+                        ? Integer.compare(sourceRank(a), sourceRank(b))
+                        : Integer.compare(sourceRank(b), sourceRank(a));
+                if (cmp != 0) return cmp;
+            }
+
             if (sortByDate)
             {
                 CompletionInfo aInfo = infoLookup.getInfo(a);
@@ -104,7 +80,7 @@ public final class TaskListSorter
                 // Unknown timestamps go last regardless of sort direction
                 if (aTs < 0 && bTs < 0)
                 {
-                    // both unknown — fall through to alpha
+                    return 0;
                 }
                 else if (aTs < 0)
                 {
@@ -123,15 +99,14 @@ public final class TaskListSorter
                 }
             }
 
-            // 4) Time spent (ticks) sort
             if (sortByTimeTicks)
             {
                 Long aTicks = ticksLookup.getTicks(a);
                 Long bTicks = ticksLookup.getTicks(b);
-                long aT = aTicks != null ? aTicks : -1L;
-                long bT = bTicks != null ? bTicks : -1L;
+                long aT = sortableTicks(aTicks);
+                long bT = sortableTicks(bTicks);
                 // Tasks with no ticks go last
-                if (aT < 0 && bT < 0) { /* fall through */ }
+                if (aT < 0 && bT < 0) return 0;
                 else if (aT < 0) return 1;
                 else if (bT < 0) return -1;
                 else
@@ -143,21 +118,28 @@ public final class TaskListSorter
                 }
             }
 
-            // 5) Counted collection-log sequences stay in progression order.
             int sequenceCmp = compareCountedCollectionLogSequence(a, b);
             if (sequenceCmp != 0) return sequenceCmp;
 
-            // 6) Always alphabetical fallback
             String an = a.getName() == null ? "" : a.getName();
             String bn = b.getName() == null ? "" : b.getName();
             return an.compareToIgnoreCase(bn);
         };
     }
 
-    private static int tierRank(XtremeTask t)
+    private static long sortableTicks(Long ticks)
     {
-        if (t.getTier() == null) return Integer.MAX_VALUE;
-        return t.getTier().ordinal();
+        return ticks != null && ticks > 0 ? ticks : -1L;
+    }
+
+    private static int tierRank(XtremeTask task)
+    {
+        return task == null || task.getTier() == null ? Integer.MAX_VALUE : task.getTier().ordinal();
+    }
+
+    private static int sourceRank(XtremeTask task)
+    {
+        return task == null || task.getSource() == null ? Integer.MAX_VALUE : task.getSource().ordinal();
     }
 
     private static int compareCountedCollectionLogSequence(XtremeTask a, XtremeTask b)

@@ -14,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import net.runelite.client.ui.FontManager;
 
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 
 /**
@@ -29,11 +30,9 @@ public class TaskControlsRenderer
 {
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
 
-    private final int panelWidth;
     private final int panelPadding;
     private final int rowHeight;
 
-    private final Color tabInactiveBg;
     private final Color uiEdgeLight;
     private final Color uiEdgeDark;
     private final Color uiGold;
@@ -46,10 +45,8 @@ public class TaskControlsRenderer
     private final Color pillOffBg;
 
     public TaskControlsRenderer(
-            int panelWidth,
             int panelPadding,
             int rowHeight,
-            Color tabInactiveBg,
             Color uiEdgeLight,
             Color uiEdgeDark,
             Color uiGold,
@@ -61,11 +58,9 @@ public class TaskControlsRenderer
             Color pillOffBg
     )
     {
-        this.panelWidth = panelWidth;
         this.panelPadding = panelPadding;
         this.rowHeight = rowHeight;
 
-        this.tabInactiveBg = tabInactiveBg;
         this.uiEdgeLight = uiEdgeLight;
         this.uiEdgeDark = uiEdgeDark;
         this.uiGold = uiGold;
@@ -93,9 +88,7 @@ public class TaskControlsRenderer
             int panelW,
             int mouseX,
             int mouseY,
-            boolean hasNewTasks,
-            String forcedTooltipText,
-            Rectangle forcedTooltipAnchor
+            boolean hasNewTasks
     )
     {
         // Shared geometry
@@ -105,28 +98,12 @@ public class TaskControlsRenderer
         final String SOURCE_LABEL = "Source:";
         final String STATUS_LABEL = "Status:";
         final String TIER_LABEL = "Tier:";
-        final String SORT_LABEL = "Sort by:";
-
         final int leftPad = 8;
         final int rightPad = 8;
-        final int labelGap = 8;
 
-        // Visual spacing (these control the look you want)
-        final int labelToPillsGap = 8;   // blank space between label column and first chip
         final int chipGap = 6;           // blank space between chips
+        final int labelToChipOverlap = 3;
         final int pillPadX = 10;          // inside-pill horizontal padding
-
-        // Fixed label column width so labels align and do NOT stretch unexpectedly
-        final int labelColW = Math.max(
-                fm.stringWidth(SOURCE_LABEL),
-                Math.max(
-                        fm.stringWidth(STATUS_LABEL),
-                        Math.max(fm.stringWidth(TIER_LABEL), fm.stringWidth(SORT_LABEL))
-                )
-        ) + labelGap;
-
-        // Chips start after label column + blank gap
-        final int pillsStartX = rowX + leftPad + labelColW + labelToPillsGap;
 
         // ================================
         // Row 1: Search (full width)
@@ -177,7 +154,7 @@ public class TaskControlsRenderer
             int ex = textX + charPositions[selEnd];
             int selTop = layout.searchBox.y + 3;
             int selH = layout.searchBox.height - 6;
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 90));
+            g.setColor(withAlpha(uiGold, 90));
             g.fillRect(sx, selTop, Math.max(1, ex - sx), selH);
         }
 
@@ -245,30 +222,32 @@ public class TaskControlsRenderer
         g.setFont(savedHeaderFont);
         fm = bodyFm;
 
-        cursorY += headerFm.getHeight() + 3;
+        cursorY += headerFm.getHeight() - 5;
 
         // ================================
-        // Rows 3-5: Filter chips (only shown when expanded)
+        // Rows 3-5: Filter chips
         // ================================
         int rowH = rowHeight + 6;
         int rowTop = 0;
         rowTop = cursorY - fm.getAscent();
 
-        drawLabelCell(g, fm, rowX, rowTop, labelColW, rowH, SOURCE_LABEL, leftPad);
+        drawLabelCell(g, fm, rowX, rowTop, rowW, rowH, SOURCE_LABEL, leftPad);
+        cursorY += rowH - labelToChipOverlap;
+        rowTop = cursorY - fm.getAscent();
 
         final String SRC_ALL = "All";
         final String SRC_CA = "CAs";
         final String SRC_CL = "CLOGs";
         final String SRC_DA = "ADs";
 
-        int availableSource = (rowX + rowW - rightPad) - pillsStartX;
+        int availableSource = rowW - leftPad - rightPad;
 
         int wAll = pillWidth(fm, SRC_ALL, pillPadX, 42, availableSource);
         int wCA = pillWidth(fm, SRC_CA, pillPadX, 42, availableSource);
         int wCL = pillWidth(fm, SRC_CL, pillPadX, 52, availableSource);
         int wDA = pillWidth(fm, SRC_DA, pillPadX, 42, availableSource);
 
-        int sx = pillsStartX;
+        int sx = rightAlignedX(rowX, rowW, rightPad, chipGap, wAll, wCA, wCL, wDA);
         layout.filterSourceAll.setBounds(sx, rowTop, wAll, rowH);
         sx += wAll + chipGap;
 
@@ -286,25 +265,27 @@ public class TaskControlsRenderer
         drawPill(g, fm, layout.filterCL, SRC_CL, !sourceAll && query.sourceClogsSelected);
         drawPill(g, fm, layout.filterDA, SRC_DA, !sourceAll && query.sourceDasSelected);
 
-        cursorY += rowH + 6;
+        cursorY += rowH + 3;
 
         // ================================
         // Row 4: Status chips
         // ================================
         rowTop = cursorY - fm.getAscent();
-        drawLabelCell(g, fm, rowX, rowTop, labelColW, rowH, STATUS_LABEL, leftPad);
+        drawLabelCell(g, fm, rowX, rowTop, rowW, rowH, STATUS_LABEL, leftPad);
+        cursorY += rowH - labelToChipOverlap;
+        rowTop = cursorY - fm.getAscent();
 
         final String ST_ALL = "All";
         final String ST_INC = "Incomplete";
         final String ST_COMP = "Complete";
 
-        int availableStatus = (rowX + rowW - rightPad) - pillsStartX;
+        int availableStatus = rowW - leftPad - rightPad;
 
         int wAllS = pillWidth(fm, ST_ALL, pillPadX, 42, availableStatus);
         int wIncS = pillWidth(fm, ST_INC, pillPadX, 70, availableStatus);
         int wCompS = pillWidth(fm, ST_COMP, pillPadX, 70, availableStatus);
 
-        int stx = pillsStartX;
+        int stx = rightAlignedX(rowX, rowW, rightPad, chipGap, wAllS, wIncS, wCompS);
         layout.filterStatusAll.setBounds(stx, rowTop, wAllS, rowH);
         stx += wAllS + chipGap;
 
@@ -317,23 +298,26 @@ public class TaskControlsRenderer
         drawPill(g, fm, layout.filterIncomplete, ST_INC, query.statusFilter == TaskListQuery.StatusFilter.INCOMPLETE);
         drawPill(g, fm, layout.filterComplete, ST_COMP, query.statusFilter == TaskListQuery.StatusFilter.COMPLETE);
 
-        cursorY += rowH + 6;
+        cursorY += rowH + 3;
 
         // ================================
         // Row 5: Tier scope chips
         // ================================
         rowTop = cursorY - fm.getAscent();
-        drawLabelCell(g, fm, rowX, rowTop, labelColW, rowH, TIER_LABEL, leftPad);
+        drawLabelCell(g, fm, rowX, rowTop, rowW, rowH, TIER_LABEL, leftPad);
+        cursorY += rowH - labelToChipOverlap;
+        rowTop = cursorY - fm.getAscent();
 
         final String T_THIS = "This Tier [" + activeTierLabel + "]";
         final String T_ALL = "All Tiers";
 
-        int availableTier = (rowX + rowW - rightPad) - pillsStartX;
+        int availableTier = rowW - leftPad - rightPad;
 
-        int wThis = pillWidth(fm, T_THIS, pillPadX, 70, availableTier);
-        int wAllT = pillWidth(fm, T_ALL, pillPadX, 70, availableTier);
+        int halfTierW = Math.max(70, (availableTier - chipGap) / 2);
+        int wThis = halfTierW;
+        int wAllT = halfTierW;
 
-        int tx = pillsStartX;
+        int tx = rowX + leftPad;
         layout.filterTierThis.setBounds(tx, rowTop, wThis, rowH);
         tx += wThis + chipGap;
 
@@ -342,117 +326,63 @@ public class TaskControlsRenderer
         drawTierScopePill(g, fm, layout.filterTierThis, T_THIS, query.tierScope == TaskListQuery.TierScope.THIS_TIER);
         drawPill(g, fm, layout.filterTierAll, T_ALL, query.tierScope == TaskListQuery.TierScope.ALL_TIERS);
 
-        cursorY += rowH + 20;
+        cursorY += rowH + 31;
 
-// ================================
-// Row 6: Sort header + applied state
-// ================================
-        cursorY += 8;
-        layout.sortExpanded = true;
-        layout.sortHeaderBounds.setBounds(0, 0, 0, 0);
-        savedHeaderFont = g.getFont();
+        // ================================
+        // Row 6: Column display toggles
+        // ================================
         g.setFont(sectionHeaderFont);
         headerFm = g.getFontMetrics();
+        String columnTitle = "Column displays:";
         g.setColor(uiGold);
-        g.drawString("Sort", rowX + leftPad, cursorY);
-        drawHeaderClearLink(g, headerFm, bodyFm, layout.clearSort, rowX, rowW, leftPad, cursorY, "Sort", mouseX, mouseY);
+        g.drawString(columnTitle, rowX + leftPad, cursorY);
+        int ruleX1 = rowX + leftPad + headerFm.stringWidth(columnTitle) + 10;
+        int ruleY = cursorY - headerFm.getAscent() + headerFm.getHeight() / 2;
+        drawHeaderRule(g, ruleX1, ruleY, rowX + rowW - rightPad);
         g.setFont(savedHeaderFont);
         fm = bodyFm;
 
-        cursorY += headerFm.getHeight() + 3;
-
-// ================================
-// Row 7: Sort chips (filters-style: label cell + chips only)
-// ================================
+        cursorY += headerFm.getHeight() + 6;
         rowTop = cursorY - fm.getAscent();
-        drawLabelCell(g, fm, rowX, rowTop, labelColW, rowH, SORT_LABEL, leftPad);
 
-        String completionText = query.sortByCompletion
-                ? (query.completedFirst ? "Completed first" : "Incomplete first")
-                : "Status";
+        final String COL_DATE = "Date completed";
+        final String COL_TIME = "Time spent";
+        final String COL_TIER = "Tier";
+        final String COL_SRC = "Source";
 
-        String tierText = query.sortByTier
-                ? (query.easyTierFirst ? "Easy tier first" : "Master tier first")
-                : "Tier";
+        int availableColumns = rowW - leftPad - rightPad;
+        int halfColumnW = Math.max(48, (availableColumns - chipGap) / 2);
+        int wDate = halfColumnW;
+        int wTime = halfColumnW;
+        int wTier = halfColumnW;
+        int wSrc = halfColumnW;
 
-        String dateText = query.sortByDate
-                ? (query.newestFirst ? "Most recent first" : "Oldest first")
-                : "Completion date";
+        int cx = rowX + leftPad;
+        layout.columnDate.setBounds(cx, rowTop, wDate, rowH);
+        cx += wDate + chipGap;
 
-// enabled rules
-        final boolean completionDisabled = query.statusFilter != TaskListQuery.StatusFilter.ALL;
-        final boolean tierEnabledScope = query.tierScope == TaskListQuery.TierScope.ALL_TIERS;
-        final boolean dateEnabledScope = query.statusFilter == TaskListQuery.StatusFilter.COMPLETE;
+        layout.columnTime.setBounds(cx, rowTop, wTime, rowH);
 
-        layout.hoverTooltipText = null;
+        cursorY += rowH + chipGap;
+        rowTop = cursorY - fm.getAscent();
+        cx = rowX + leftPad;
 
-        if (mouseX >= 0 && mouseY >= 0)
-        {
-            if (completionDisabled && layout.sortCompletion.contains(mouseX, mouseY))
-            {
-                layout.hoverTooltipText = "\"Status\" filter currently applied";
-                layout.hoverTooltipAnchor.setBounds(layout.sortCompletion);
-            }
-            else if (!tierEnabledScope && layout.sortTier.contains(mouseX, mouseY))
-            {
-                layout.hoverTooltipText = "\"All Tiers\" filter must be applied";
-                layout.hoverTooltipAnchor.setBounds(layout.sortTier);
-            }
-            else if (!dateEnabledScope && layout.sortDate.contains(mouseX, mouseY))
-            {
-                layout.hoverTooltipText = "\"Complete\" filter must be applied";
-                layout.hoverTooltipAnchor.setBounds(layout.sortDate);
-            }
-            else if (!dateEnabledScope && layout.sortTimeTicks.contains(mouseX, mouseY))
-            {
-                layout.hoverTooltipText = "\"Complete\" filter must be applied";
-                layout.hoverTooltipAnchor.setBounds(layout.sortTimeTicks);
-            }
-        }
+        layout.columnTier.setBounds(cx, rowTop, wTier, rowH);
+        cx += wTier + chipGap;
 
-        int availableSort = (rowX + rowW - rightPad) - pillsStartX;
-        final int minW = 80;
+        layout.columnSource.setBounds(cx, rowTop, wSrc, rowH);
 
-        String timeTicksText = !query.sortByTimeTicks
-                ? "Time spent"
-                : (query.longestFirst ? "Longest first" : "Shortest first");
+        drawPill(g, fm, layout.columnDate, COL_DATE, layout.showDateColumn);
+        drawPill(g, fm, layout.columnTime, COL_TIME, layout.showTimeColumn);
+        drawPill(g, fm, layout.columnTier, COL_TIER, layout.showTierColumn);
+        drawPill(g, fm, layout.columnSource, COL_SRC, layout.showSourceColumn);
 
-        int columnW = Math.max(minW, (availableSort - chipGap) / 2);
-        int wCompletion = columnW;
-        int wTier = columnW;
-        int wDate = columnW;
-        int wTimeTicks = columnW;
+        cursorY += rowH + 20;
 
-        int sx2 = pillsStartX;
-        layout.sortCompletion.setBounds(sx2, rowTop, wCompletion, rowH);
-        sx2 += columnW + chipGap;
-
-        layout.sortTier.setBounds(sx2, rowTop, wTier, rowH);
-
-        int secondSortRowTop = rowTop + rowH + 6;
-        layout.sortDate.setBounds(pillsStartX, secondSortRowTop, wDate, rowH);
-
-        layout.sortTimeTicks.setBounds(pillsStartX + columnW + chipGap, secondSortRowTop, wTimeTicks, rowH);
-        layout.sortReset.setBounds(0, 0, 0, 0);
-
-        drawBracketMetaPill(g, fm, layout.sortCompletion, completionText, query.sortByCompletion, !completionDisabled);
-        drawPill(g, fm, layout.sortTier, tierText, query.sortByTier, tierEnabledScope);
-        drawPill(g, fm, layout.sortDate, dateText, query.sortByDate, dateEnabledScope);
-        drawPill(g, fm, layout.sortTimeTicks, timeTicksText, query.sortByTimeTicks, dateEnabledScope);
-
-        cursorY += (rowH * 2) + 12;
-
-        if (layout.hoverTooltipText != null)
-        {
-            drawTooltip(g, fm, layout.hoverTooltipText, layout.hoverTooltipAnchor);
-        }
-        else if (forcedTooltipText != null
-                && forcedTooltipAnchor != null
-                && forcedTooltipAnchor.width > 0
-                && forcedTooltipAnchor.height > 0)
-        {
-            drawTooltip(g, fm, forcedTooltipText, forcedTooltipAnchor);
-        }
+        layout.sortDate.setBounds(0, 0, 0, 0);
+        layout.sortTimeTicks.setBounds(0, 0, 0, 0);
+        layout.sortTier.setBounds(0, 0, 0, 0);
+        layout.sortSource.setBounds(0, 0, 0, 0);
 
         return cursorY;
 
@@ -461,22 +391,6 @@ public class TaskControlsRenderer
     // ================================
     // Helpers
     // ================================
-    private static final class Row
-    {
-        final int top;
-        final int h;
-        final int baseline;
-        final int nextY;
-
-        private Row(int top, int h, int baseline, int nextY)
-        {
-            this.top = top;
-            this.h = h;
-            this.baseline = baseline;
-            this.nextY = nextY;
-        }
-    }
-
     private void drawLabelCell(Graphics2D g, FontMetrics fm, int rowX, int rowTop, int labelColW, int rowH, String label, int leftPad)
     {
         // Plain label — no box, no bevel, just subdued text
@@ -487,29 +401,15 @@ public class TaskControlsRenderer
 
     private void drawPill(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean on)
     {
-        drawPill(g, fm, bounds, text, on, true);
-    }
-
-    private void drawPill(Graphics2D g, FontMetrics fm, Rectangle bounds, String text, boolean on, boolean enabled)
-    {
-        Color bg;
-        if (!enabled)
-        {
-            // “disabled” look: use off bg but dimmer
-            bg = withAlpha(pillOffBg, 160);
-        }
-        else
-        {
-            bg = on ? pillOnBg : pillOffBg;
-        }
+        Color bg = on ? pillOnBg : pillOffBg;
 
         drawBevelBox(g, bounds, bg, uiEdgeLight, uiEdgeDark);
 
-        int outlineAlpha = !enabled ? 30 : (on ? 200 : 60);
+        int outlineAlpha = on ? 200 : 60;
         g.setColor(withAlpha(uiGold, outlineAlpha));
         g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
 
-        g.setColor(!enabled ? withAlpha(uiTextDim, 160) : (on ? uiText : uiTextDim));
+        g.setColor(on ? uiText : uiTextDim);
 
         String drawText = truncateToWidth(text, fm, bounds.width - 10);
         int tw = fm.stringWidth(drawText);
@@ -530,16 +430,6 @@ public class TaskControlsRenderer
         return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
     }
 
-    private Color withAlpha(Color c, int a)
-    {
-        return new Color(c.getRed(), c.getGreen(), c.getBlue(), clamp(a));
-    }
-
-    private int clamp(int v)
-    {
-        return Math.max(0, Math.min(255, v));
-    }
-
     // Blink timing: 500ms on, 500ms off
     private static final long CARET_BLINK_MS = 500L;
 
@@ -554,6 +444,20 @@ public class TaskControlsRenderer
         w = Math.max(minW, w);
         w = Math.min(maxW, w);
         return w;
+    }
+
+    private int rightAlignedX(int rowX, int rowW, int rightPad, int chipGap, int... widths)
+    {
+        int total = 0;
+        for (int i = 0; i < widths.length; i++)
+        {
+            total += widths[i];
+            if (i > 0)
+            {
+                total += chipGap;
+            }
+        }
+        return Math.max(rowX, rowX + rowW - rightPad - total);
     }
 
     private void drawTierScopePill(Graphics2D g, FontMetrics fm, Rectangle bounds, String fullText, boolean on)
@@ -577,6 +481,15 @@ public class TaskControlsRenderer
         int mainW = fm.stringWidth(main);
         int metaW = fm.stringWidth(meta);
         int totalW = mainW + metaW;
+        int maxTextW = Math.max(0, bounds.width - 8);
+        if (totalW > maxTextW)
+        {
+            String drawText = truncateToWidth(fullText, fm, maxTextW);
+            g.setColor(on ? uiText : uiTextDim);
+            g.drawString(drawText, bounds.x + Math.max(0, (bounds.width - fm.stringWidth(drawText)) / 2),
+                    centeredTextBaseline(bounds, fm));
+            return;
+        }
 
         int tx = bounds.x + (bounds.width - totalW) / 2;
         int ty = centeredTextBaseline(bounds, fm);
@@ -587,106 +500,6 @@ public class TaskControlsRenderer
         Color metaColor = on ? withAlpha(uiText, 150) : withAlpha(uiTextDim, 160);
         g.setColor(metaColor);
         g.drawString(meta, tx + mainW, ty);
-    }
-
-    private void drawBracketMetaPill(Graphics2D g, FontMetrics fm, Rectangle bounds, String fullText, boolean on, boolean enabled)
-    {
-        int bracketIdx = fullText.indexOf('[');
-        if (bracketIdx < 0)
-        {
-            drawPill(g, fm, bounds, fullText, on, enabled);
-            return;
-        }
-
-        String main = fullText.substring(0, bracketIdx);
-        String meta = fullText.substring(bracketIdx);
-
-        // background + outline mimic drawPill(enabled)
-        Color bg;
-        if (!enabled)
-        {
-            bg = withAlpha(pillOffBg, 160);
-        }
-        else
-        {
-            bg = on ? pillOnBg : pillOffBg;
-        }
-
-        drawBevelBox(g, bounds, bg, uiEdgeLight, uiEdgeDark);
-
-        int outlineAlpha = !enabled ? 30 : (on ? 200 : 60);
-        g.setColor(withAlpha(uiGold, outlineAlpha));
-        g.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
-
-        // centered main+meta
-        int mainW = fm.stringWidth(main);
-        int metaW = fm.stringWidth(meta);
-        int totalW = mainW + metaW;
-
-        int tx = bounds.x + (bounds.width - totalW) / 2;
-        int ty = centeredTextBaseline(bounds, fm);
-
-        // main text color follows enabled/on
-        Color mainColor = !enabled ? withAlpha(uiTextDim, 160) : (on ? uiText : uiTextDim);
-        g.setColor(mainColor);
-        g.drawString(main, tx, ty);
-
-        // meta is always dimmer than main (and extra dim when disabled)
-        Color metaColor;
-        if (!enabled)
-        {
-            metaColor = withAlpha(uiTextDim, 150);
-        }
-        else
-        {
-            metaColor = on ? withAlpha(uiText, 150) : withAlpha(uiTextDim, 160);
-        }
-
-        g.setColor(metaColor);
-        g.drawString(meta, tx + mainW, ty);
-    }
-
-    private void drawTooltip(Graphics2D g, FontMetrics fm, String text, Rectangle anchor)
-    {
-        int padX = 8;
-        int padY = 3;
-
-        int tw = fm.stringWidth(text);
-        int th = fm.getHeight();
-
-        int w = tw + padX * 2;
-        int h = th + padY * 2;
-
-        // Position: straddle the pill edge so disabled-sort hints stay attached to the button.
-        int x = anchor.x + (anchor.width - w) / 2;
-        int y = anchor.y + anchor.height - Math.max(6, h / 2);
-
-        // Clamp inside panel a bit (optional)
-        x = Math.max(4, x);
-
-        Rectangle r = new Rectangle(x, y, w, h);
-
-        g.setColor(uiTextDim);
-        int baseline = centeredTextBaseline(r, fm);
-        g.drawString(text, r.x + padX, baseline);
-    }
-
-    private void drawTooltipRight(Graphics2D g, FontMetrics fm, String text, Rectangle anchor)
-    {
-        int padX = 8;
-        int padY = 3;
-
-        int tw = fm.stringWidth(text);
-        int th = fm.getHeight();
-        Rectangle r = new Rectangle(
-                anchor.x + anchor.width + 5,
-                anchor.y + (anchor.height - (th + padY * 2)) / 2,
-                tw + padX * 2,
-                th + padY * 2);
-
-        g.setColor(uiTextDim);
-        int baseline = centeredTextBaseline(r, fm);
-        g.drawString(text, r.x + padX, baseline);
     }
 
     private void drawTooltipBelowRightAligned(Graphics2D g, FontMetrics fm, String text, Rectangle anchor, int textRightX)
@@ -715,7 +528,7 @@ public class TaskControlsRenderer
             return;
         }
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(x1, y, x2, y);
     }
 
@@ -745,12 +558,7 @@ public class TaskControlsRenderer
         drawHeaderRule(g, ruleX1, baselineY - headerFm.getAscent() + headerFm.getHeight() / 2, ruleX2);
 
         boolean hovered = clearBounds.contains(mouseX, mouseY);
-        g.setColor(new Color(
-                uiTextDim.getRed(),
-                uiTextDim.getGreen(),
-                uiTextDim.getBlue(),
-                hovered ? 230 : 180
-        ));
+        g.setColor(withAlpha(uiTextDim, hovered ? 230 : 180));
         if (rowW > clearW)
         {
             Font savedFont = g.getFont();

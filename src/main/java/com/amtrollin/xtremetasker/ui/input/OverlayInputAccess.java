@@ -45,7 +45,6 @@ public interface OverlayInputAccess
 
     // rowBlock accessors for wheel
     int tasksRowBlock();
-    int rulesRowBlock();
 
     // tabs
     enum MainTab { CURRENT, TASKS, RULES }
@@ -68,7 +67,6 @@ public interface OverlayInputAccess
     Rectangle taskListViewportBounds();
     Rectangle taskScrollbarRailBounds();
     Rectangle taskScrollbarThumbBounds();
-    Rectangle rulesViewportBounds();
 
     Map<TaskTier, Rectangle> tierTabBounds();
     Map<XtremeTask, Rectangle> taskRowBounds();
@@ -78,10 +76,6 @@ public interface OverlayInputAccess
     RulesTabLayout rulesLayout();
     RulesTabLayout.SubTab rulesSubTab();
     void setRulesSubTab(RulesTabLayout.SubTab subTab);
-    void toggleCaSyncedTasksExpanded();
-    void toggleClogSyncedTasksExpanded();
-    void setCaSyncedTasksExpanded(boolean expanded);
-    void setClogSyncedTasksExpanded(boolean expanded);
     void openSyncCompletionCandidateReview(TaskSource source);
     void openSyncMismatchReview();
     void openSyncMismatchReview(TaskSource source);
@@ -92,10 +86,7 @@ public interface OverlayInputAccess
     TaskListQuery taskQuery();
     TaskSelectionModel selectionModel();
     TaskListScrollController tasksScroll();
-    TaskListScrollController rulesScroll();
     TaskListScrollController currentScroll();
-    void scrollCompactCurrent(double preciseWheelRotation);
-    void setCompactCurrentScrollFraction(double fraction);
     Rectangle currentViewportBounds();
     int currentRowBlock();
     TaskListViewController taskListView();
@@ -132,18 +123,12 @@ public interface OverlayInputAccess
     void closeTaskDetailsWikiMenu();
     WikiLink taskDetailsWikiLinkAt(Point point);
     List<WikiLink> taskDetailsWikiLinks(XtremeTask task);
-    Rectangle taskDetailsSyncBounds();
-    Rectangle taskDetailsIgnoreBounds();
     Rectangle taskDetailsMarkIncompleteBounds();
-    Rectangle taskDetailsToggleBounds();
     Rectangle taskDetailsScrollbarRailBounds();
     Rectangle taskDetailsScrollbarThumbBounds();
-    Rectangle taskDetailsDecrementGroupBounds();
-    Rectangle taskDetailsIncrementGroupBounds();
     Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds();
-    String taskDetailsSyncButtonLabel(XtremeTask task);
-    void handleTaskDetailsSyncButton(XtremeTask task);
     void handleTaskDetailsMarkIncompleteButton(XtremeTask task);
+    void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task);
 
     boolean isMarkAllIncompleteConfirmOpen();
     void requestMarkAllIncompleteConfirmation(XtremeTask task);
@@ -170,16 +155,6 @@ public interface OverlayInputAccess
     Rectangle syncMismatchConfirmBounds();
     Rectangle syncMismatchConfirmYesBounds();
     Rectangle syncMismatchConfirmNoBounds();
-    boolean isSyncMismatchGuardOpen();
-    Rectangle syncMismatchGuardBounds();
-    Rectangle syncMismatchGuardOkBounds();
-    Rectangle syncMismatchGuardViewportBounds();
-    Rectangle syncMismatchGuardScrollbarRailBounds();
-    Rectangle syncMismatchGuardScrollbarThumbBounds();
-    TaskListScrollController syncMismatchGuardScroll();
-    int syncMismatchGuardRowBlock();
-    int syncMismatchGuardTotalRows();
-    void closeSyncMismatchGuard();
     Rectangle syncMismatchScrollbarRailBounds();
     Rectangle syncMismatchScrollbarThumbBounds();
     Map<XtremeTask, Rectangle> syncMismatchTaskBounds();
@@ -215,10 +190,6 @@ public interface OverlayInputAccess
     void closeSyncMismatchApplyConfirm();
 
     boolean isTaskResolveOpen();
-    boolean isTaskSyncResultOpen();
-    Rectangle taskSyncResultBounds();
-    Rectangle taskSyncResultCloseBounds();
-    void closeTaskSyncResult();
     Rectangle taskResolveBounds();
     Rectangle taskResolveCloseBounds();
     Rectangle taskResolveSaveBounds();
@@ -236,12 +207,6 @@ public interface OverlayInputAccess
     Rectangle taskDetailsIncompleteConfirmNoBounds();
     void confirmTaskDetailsIncompleteSelection();
     void closeTaskDetailsIncompleteConfirm();
-
-    boolean isKeyboardHintsOpen();
-    void setKeyboardHintsOpen(boolean open);
-    Rectangle keyboardHintsButtonBounds();
-    Rectangle keyboardHintsPopupBounds();
-    Rectangle taskViewModeBounds();
 
     // Icon drag
     boolean isDraggingIcon();

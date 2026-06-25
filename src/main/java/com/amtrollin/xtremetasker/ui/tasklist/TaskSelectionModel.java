@@ -39,7 +39,6 @@ public final class TaskSelectionModel implements SelectionModel
 
     public void normalizeForTier(TaskTier tier,
                                  List<XtremeTask> tasks,
-                                 boolean completedFirst,
                                  Function<XtremeTask, Boolean> isCompleted)
     {
         if (tier == null)
@@ -57,9 +56,8 @@ public final class TaskSelectionModel implements SelectionModel
         Integer existing = selectedIndexByTier.get(tier);
         if (existing == null)
         {
-            // default: first incomplete if incomplete-first sorting; otherwise first row
             int start = 0;
-            if (!completedFirst && isCompleted != null)
+            if (isCompleted != null)
             {
                 for (int i = 0; i < tasks.size(); i++)
                 {

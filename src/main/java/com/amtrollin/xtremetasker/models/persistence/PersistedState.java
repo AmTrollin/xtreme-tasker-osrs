@@ -1,6 +1,5 @@
 package com.amtrollin.xtremetasker.models.persistence;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -13,7 +12,6 @@ import java.util.Set;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class PersistedState {
     private int schemaVersion = 1;
     private long savedAtEpochMillis = 0L;
@@ -27,7 +25,6 @@ public class PersistedState {
     private Set<String> retiredTaskIds = new HashSet<>();
     private String currentTaskId;
     private String undoableCompletedTaskId;
-    private int skippedTaskCount = 0;
     private String currentTaskCollectionLogBaselineSignature;
     private Integer currentTaskCollectionLogBaselineCount;
     private int lastSeenPackVersion = 0;
@@ -41,10 +38,6 @@ public class PersistedState {
     private String lastCollectionLogSyncResult;
     private long lastCollectionLogSyncResultAtEpochMillis = 0L;
     private String lastCollectionLogSyncResultAtLocalTime;
-    private List<String> lastCombatAchievementSyncedTaskNames = new ArrayList<>();
-    private List<String> lastCollectionLogSyncedTaskNames = new ArrayList<>();
-    private boolean combatAchievementSyncedTasksExpanded = false;
-    private boolean collectionLogSyncedTasksExpanded = false;
     private List<String> syncCompletionCandidateTaskIds = new ArrayList<>();
     private List<String> syncMismatchTaskIds = new ArrayList<>();
     private String syncMismatchTitle;
@@ -54,9 +47,9 @@ public class PersistedState {
     private Map<String, Long> manualCompletionTimestamps = new HashMap<>();
     /** epoch-millis timestamps for tasks marked complete via sync. */
     private Map<String, Long> syncedCompletionTimestamps = new HashMap<>();
-    /** accumulated in-game ticks spent on each task while logged in. */
+    /** accumulated in game ticks spent on each task while logged in. */
     private Map<String, Long> taskTimeTicksById = new HashMap<>();
-    /** accumulated in-game ticks captured at the moment each task was completed. */
+    /** accumulated in game ticks captured at the moment each task was completed. */
     private Map<String, Long> completedTaskTimeTicksById = new HashMap<>();
     /** Collection log item IDs RuneLite has exposed for this account. */
     private Set<Integer> collectionLogItemIds = new HashSet<>();

@@ -25,6 +25,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.sourceLabel;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
@@ -54,11 +55,8 @@ public final class CurrentTabRenderer
     private final Color uiGold;
     private final Color uiText;
     private final Color uiTextDim;
-    private final Color tabActiveBg;
     private final Color edgeLight;
     private final Color edgeDark;
-
-    private final String wikiButtonText;
 
     public CurrentTabRenderer(
             int panelWidth,
@@ -67,10 +65,8 @@ public final class CurrentTabRenderer
             Color uiGold,
             Color uiText,
             Color uiTextDim,
-            Color tabActiveBg,
             Color edgeLight,
-            Color edgeDark,
-            String wikiButtonText
+            Color edgeDark
     )
     {
         this.panelWidth = panelWidth;
@@ -79,10 +75,8 @@ public final class CurrentTabRenderer
         this.uiGold = uiGold;
         this.uiText = uiText;
         this.uiTextDim = uiTextDim;
-        this.tabActiveBg = tabActiveBg;
         this.edgeLight = edgeLight;
         this.edgeDark = edgeDark;
-        this.wikiButtonText = wikiButtonText;
     }
 
     /**
@@ -102,14 +96,12 @@ public final class CurrentTabRenderer
             boolean currentCompleted,
             boolean rolling,
             Function<TaskTier, String> tierProgressLabel,
-            Function<TaskTier, Integer> tierPercent, // optional, can be null
             Function<XtremeTask, String> currentLineProvider,
             Function<XtremeTask, List<PrerequisiteStatus>> prerequisiteStatusProvider,
             Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
             Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
-            Function<TaskTier, List<XtremeTask>> tasksForTierProvider,
             TaskTier tierForProgress,
             TaskSource currentSource,
             XtremeTaskerConfig.RollSourceFilter rollSourceFilter,
@@ -123,9 +115,7 @@ public final class CurrentTabRenderer
             XtremeTask recentCompletedTask,
             CompletionInfo recentCompletionInfo,
             Long recentTaskTimeTicks,
-            boolean canUndoRecentCompletion,
-            boolean skipEnabled,
-            int skippedTaskCount
+            boolean canUndoRecentCompletion
     )
     {
         CurrentTabLayout layout = new CurrentTabLayout();
@@ -133,10 +123,8 @@ public final class CurrentTabRenderer
         layout.wikiButtonBounds.setBounds(0, 0, 0, 0);
         layout.rollButtonBounds.setBounds(0, 0, 0, 0);
         layout.completeButtonBounds.setBounds(0, 0, 0, 0);
-        layout.skipButtonBounds.setBounds(0, 0, 0, 0);
         layout.undoButtonBounds.setBounds(0, 0, 0, 0);
         layout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
-        layout.skippedTasksIconBounds.setBounds(0, 0, 0, 0);
         layout.viewportBounds.setBounds(0, 0, 0, 0);
         layout.totalContentPx = 0;
 
@@ -154,30 +142,11 @@ public final class CurrentTabRenderer
 
         // ── Tier progress line (always outside scroll) ─────────────────────────
         String progress = prettyTier(tierForProgress) + " tier progress: " + (tierProgressLabel == null ? "" : tierProgressLabel.apply(tierForProgress));
-        String skipped = "Skipped tasks: " + Math.max(0, skippedTaskCount);
         int progressMaxW = panelWidth - 2 * panelPadding;
-        int skippedIconSize = fm.getAscent() + 2;
-        int skippedIconGap = 4;
-        int skippedW = fm.stringWidth(skipped);
-        int skippedBlockW = skippedIconSize + skippedIconGap + skippedW;
-        int gap = 12;
-        progress = truncateToWidth(progress, fm, Math.max(20, progressMaxW - skippedBlockW - gap));
+        progress = truncateToWidth(progress, fm, progressMaxW);
 
         g.setColor(uiTextDim);
         g.drawString(progress, panelX + panelPadding, cursorYBaseline);
-        int skippedX = panelX + panelWidth - panelPadding - skippedW;
-        int skippedIconX = skippedX - skippedIconGap - skippedIconSize;
-        int skippedIconY = cursorYBaseline - fm.getAscent();
-        drawQuestionIcon(g, skippedIconX, skippedIconY, skippedIconSize);
-        layout.skippedTasksIconBounds.setBounds(skippedIconX, skippedIconY, skippedIconSize, skippedIconSize);
-        g.setColor(uiTextDim);
-        g.drawString(skipped, skippedX, cursorYBaseline);
-        if (mousePoint != null && layout.skippedTasksIconBounds.contains(mousePoint))
-        {
-            String tip = "Skipping tasks can be " + (skipEnabled ? "disabled" : "enabled") + " in config settings";
-            drawHeaderTooltip(g, fm, tip, skippedIconX, skippedIconY, skippedIconSize,
-                    panelX + panelPadding, panelX + panelWidth - panelPadding);
-        }
         cursorYBaseline += rowHeight + 14;
 
         // ── Current task area starts below progress ────────────────────────────
@@ -222,7 +191,6 @@ public final class CurrentTabRenderer
                     showTips,
                     taskIcon,
                     taskTimeTicks,
-                    skipEnabled,
                     layout
             );
         }
@@ -272,7 +240,7 @@ public final class CurrentTabRenderer
         drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
 
         int dividerX = rightX - gap / 2;
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
 
         drawRollingIdentityColumn(g, leftCard, current, currentLineProvider);
@@ -314,7 +282,7 @@ public final class CurrentTabRenderer
         drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
 
         int dividerX = rightX - gap / 2;
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
 
         drawEmptyCurrentIdentityColumn(
@@ -357,7 +325,6 @@ public final class CurrentTabRenderer
             boolean showTips,
             java.awt.image.BufferedImage taskIcon,
             Long taskTimeTicks,
-            boolean skipEnabled,
             CurrentTabLayout layout
     )
     {
@@ -377,7 +344,7 @@ public final class CurrentTabRenderer
         drawBevelBox(g, leftCard, new Color(26, 17, 10, 225));
 
         int dividerX = rightX - gap / 2;
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 55));
+        g.setColor(withAlpha(uiGold, 55));
         g.drawLine(dividerX, leftCard.y, dividerX, leftCard.y + leftCard.height);
 
         int wikiTop = leftCard.y + 10;
@@ -394,7 +361,6 @@ public final class CurrentTabRenderer
                 mousePoint,
                 taskIcon,
                 taskTimeTicks,
-                skipEnabled,
                 layout
         );
 
@@ -555,7 +521,7 @@ public final class CurrentTabRenderer
         if (rollSkipNotice != null && !rollSkipNotice.isEmpty())
         {
             List<String> noticeLines = wrapText(rollSkipNotice, smallFm, innerW);
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 210));
+            g.setColor(withAlpha(uiGold, 210));
             for (String line : noticeLines)
             {
                 int lineX = x + Math.max(0, (innerW - smallFm.stringWidth(line)) / 2);
@@ -573,7 +539,7 @@ public final class CurrentTabRenderer
             int rowW = noticeW + iconGap + iconSize;
             int noticeX = x + Math.max(0, (innerW - rowW) / 2);
 
-            g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 200));
+            g.setColor(withAlpha(uiGold, 200));
             g.drawString(notice, noticeX, noticeBaselineY);
 
             int iconX = noticeX + noticeW + iconGap;
@@ -648,7 +614,6 @@ public final class CurrentTabRenderer
             java.awt.Point mousePoint,
             java.awt.image.BufferedImage taskIcon,
             Long taskTimeTicks,
-            boolean skipEnabled,
             CurrentTabLayout layout
     )
     {
@@ -719,18 +684,7 @@ public final class CurrentTabRenderer
         int buttonY = Math.min(card.y + card.height - buttonH - 18, y + Math.max(36, card.height / 10));
         if (!currentCompleted)
         {
-            if (skipEnabled)
-            {
-                int buttonGap = 6;
-                int skipW = Math.min(64, Math.max(48, fm.stringWidth("Skip") + 22));
-                int completeW = Math.max(90, buttonW - skipW - buttonGap);
-                layout.completeButtonBounds.setBounds(buttonX, buttonY, completeW, buttonH);
-                layout.skipButtonBounds.setBounds(buttonX + completeW + buttonGap, buttonY, skipW, buttonH);
-            }
-            else
-            {
-                layout.completeButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
-            }
+            layout.completeButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
         }
         else
         {
@@ -958,18 +912,6 @@ public final class CurrentTabRenderer
         return tierLabel(t);
     }
 
-    private void drawEmptyCurrentHeader(Graphics2D g, FontMetrics fm, int panelX, int maxW, int baselineY)
-    {
-        String title = "No active task";
-        g.setColor(uiText);
-        g.drawString(title, panelX + panelPadding, baselineY);
-
-        String prompt = "Roll a task when you're ready.";
-        prompt = truncateToWidth(prompt, fm, maxW);
-        g.setColor(uiTextDim);
-        g.drawString(prompt, panelX + panelPadding, baselineY + fm.getHeight());
-    }
-
     private void drawCenteredQuestionMark(Graphics2D g, int x, int y, int size)
     {
         java.awt.font.GlyphVector glyph = g.getFont().createGlyphVector(g.getFontRenderContext(), "?");
@@ -987,20 +929,10 @@ public final class CurrentTabRenderer
             return;
         }
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));
+        g.setColor(withAlpha(uiGold, 140));
         g.fillOval(x, y, size, size);
         g.setColor(new Color(20, 15, 10, 220));
         drawCenteredQuestionMark(g, x, y, size);
-    }
-
-    private void drawHeaderTooltip(Graphics2D g, FontMetrics fm, String tip, int iconX, int iconY, int iconSize, int minX, int maxX)
-    {
-        int tipW = fm.stringWidth(tip) + 10;
-        int tipX = iconX + (iconSize - tipW) / 2;
-        if (tipX < minX) tipX = minX;
-        if (tipX + tipW > maxX) tipX = maxX - tipW;
-        g.setColor(uiTextDim);
-        g.drawString(tip, tipX + 5, iconY + iconSize + fm.getAscent() + 2);
     }
 
     private static BufferedImage loadQuestionIconSafe()
@@ -1565,7 +1497,7 @@ public final class CurrentTabRenderer
         layout.scrollbarThumbBounds.setBounds(thumb);
         drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 140));
+        g.setColor(withAlpha(uiGold, 140));
         g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
     }
 
@@ -1585,7 +1517,7 @@ public final class CurrentTabRenderer
             return;
         }
 
-        g.setColor(new Color(uiGold.getRed(), uiGold.getGreen(), uiGold.getBlue(), 62));
+        g.setColor(withAlpha(uiGold, 62));
         g.drawLine(x, y, x + w, y);
         g.drawLine(x, y + h, x + w, y + h);
     }
@@ -1599,28 +1531,6 @@ public final class CurrentTabRenderer
         return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
                 ? "Collection Log Progress"
                 : "Eligible Collection Log items";
-    }
-
-    private void drawBadgesLeftAligned(Graphics2D g, FontMetrics fm, int panelX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
-    {
-        if (src == null && tier == null) return;
-        int x = panelX + panelPadding;
-        final int badgeGap = 4;
-        if (src != null)
-        {
-            String srcText = shortSource(src);
-            int w = TaskRowsRenderer.drawSourceBadge(g, x, yTop, srcText, edgeDark, edgeLight, uiGold, uiText);
-            Rectangle srcBounds = new Rectangle(x, yTop, w, rowHeight + 4);
-            if (mousePoint != null && srcBounds.contains(mousePoint))
-            {
-                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds, panelX + panelWidth - panelPadding);
-            }
-            x += w + badgeGap;
-        }
-        if (tier != null)
-        {
-            TaskRowsRenderer.drawSourceBadge(g, x, yTop, tierLabel(tier), edgeDark, edgeLight, uiGold, uiText);
-        }
     }
 
     private void drawBadgesRightAligned(Graphics2D g, FontMetrics fm, int rightX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
@@ -1658,52 +1568,11 @@ public final class CurrentTabRenderer
         g.drawString(text, x, badgeBounds.y - 4);
     }
 
-    private void drawBadgesNearText(
-            Graphics2D g, FontMetrics fm,
-            int panelX, int rowBaselineY,
-            TaskSource src,
-            TaskTier tier,
-            String lineText
-    )
-    {
-        if (src == null && tier == null) return;
-
-        final int h = 20;
-        final int gap = 8;
-        final int badgeGap = 4;
-
-        FontMetrics sfm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
-        String srcText = src != null ? shortSource(src) : null;
-        String tierText = tier != null ? tierLabel(tier) : null;
-
-        int srcW = srcText != null ? Math.max(26, sfm.stringWidth(srcText) + 16) : 0;
-        int tierW = tierText != null ? Math.max(26, sfm.stringWidth(tierText) + 16) : 0;
-        int totalW = srcW + (srcText != null && tierText != null ? badgeGap : 0) + tierW;
-
-        int contentLeft = panelX + panelPadding;
-        int contentRight = panelX + panelWidth - panelPadding;
-        int lineW = (lineText == null) ? 0 : fm.stringWidth(lineText);
-        int x = Math.min(contentLeft + lineW + gap, contentRight - totalW);
-
-        final int verticalNudge = -2;
-        int y = (rowBaselineY - fm.getAscent())
-                + (rowHeight - h) / 2
-                + verticalNudge;
-
-        if (srcText != null) {
-            srcW = TaskRowsRenderer.drawSourceBadge(g, x, y, srcText, edgeDark, edgeLight, uiGold, uiText);
-            x += srcW + badgeGap;
-        }
-        if (tierText != null) {
-            TaskRowsRenderer.drawSourceBadge(g, x, y, tierText, edgeDark, edgeLight, uiGold, uiText);
-        }
-    }
-
     private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)
     {
         int lineW = fm.stringWidth(text);
         int strikeY = baselineY - (fm.getAscent() * 3 / 5);
-        g.setColor(new Color(uiTextDim.getRed(), uiTextDim.getGreen(), uiTextDim.getBlue(), 170));
+        g.setColor(withAlpha(uiTextDim, 170));
         g.drawLine(x, strikeY, x + lineW, strikeY);
     }
 

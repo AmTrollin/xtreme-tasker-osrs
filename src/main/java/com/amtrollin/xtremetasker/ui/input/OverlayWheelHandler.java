@@ -30,25 +30,6 @@ public final class OverlayWheelHandler implements MouseWheelListener
             return e;
         }
 
-        if (a.isSyncMismatchReviewOpen() && a.isSyncMismatchGuardOpen()
-                && (a.syncMismatchGuardBounds().contains(p) || a.syncMismatchReviewBounds().contains(p)))
-        {
-            a.syncMismatchGuardScroll().onWheel(
-                    precise,
-                    a.syncMismatchGuardViewportBounds().height,
-                    a.syncMismatchGuardRowBlock(),
-                    Math.max(1, a.syncMismatchGuardTotalRows()),
-                    null
-            );
-            return e;
-        }
-
-        if (a.isCompactPanelMode())
-        {
-            a.scrollCompactCurrent(precise);
-            return e;
-        }
-
         if (a.isSyncMismatchReviewOpen() && a.syncMismatchViewportBounds().contains(p))
         {
             int taskCount = a.syncMismatchVisibleTaskCount();
@@ -115,27 +96,6 @@ public final class OverlayWheelHandler implements MouseWheelListener
             int logicalRowBlock = com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
             int totalRows = (a.currentLayout().totalContentPx + logicalRowBlock - 1) / logicalRowBlock;
             a.currentScroll().onWheel(precise, cvp.height, a.currentRowBlock(), totalRows <= 0 ? 1 : totalRows, null);
-            return e;
-        }
-
-        // RULES scroll
-        if (a.activeTab() == OverlayInputAccess.MainTab.RULES && a.rulesViewportBounds().contains(p))
-        {
-            Rectangle vp = a.rulesViewportBounds();
-            if (vp.height <= 0)
-            {
-                return e;
-            }
-
-            int total = a.rulesLayout().totalContentRows;
-            a.rulesScroll().onWheel(
-                    precise,
-                    vp.height,
-                    a.rulesRowBlock(),
-                    total <= 0 ? 1 : total,
-                    null
-            );
-
             return e;
         }
 

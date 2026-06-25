@@ -5,13 +5,12 @@ import com.amtrollin.xtremetasker.ui.text.TextUtils;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class CollectionLogIconGridRenderer
 {
@@ -24,15 +23,6 @@ public final class CollectionLogIconGridRenderer
     private static final long SLOW_RENDER_LOG_THRESHOLD_NANOS = 8_000_000L;
     private static final long SLOW_RENDER_LOG_INTERVAL_MS = 2_000L;
     private static long lastSlowRenderLogMs = 0L;
-    private static final Map<String, LabelFit> LABEL_FIT_CACHE = Collections.synchronizedMap(
-            new LinkedHashMap<String, LabelFit>(256, 0.75f, true)
-            {
-                @Override
-                protected boolean removeEldestEntry(Map.Entry<String, LabelFit> eldest)
-                {
-                    return size() > 256;
-                }
-            });
 
     private CollectionLogIconGridRenderer()
     {
@@ -127,7 +117,6 @@ public final class CollectionLogIconGridRenderer
             if (clipBounds == null || iconBounds.intersects(clipBounds) || hovered)
             {
                 drawItemImage(g, iconBounds, item, imageProvider, dimTextColor);
-                drawBadgeText(g, iconBounds, item.getBadgeText(), textColor);
 
                 if (item.isObtained())
                 {
@@ -210,115 +199,6 @@ public final class CollectionLogIconGridRenderer
         g.drawImage(image, drawX, drawY, drawSize, drawSize, null);
     }
 
-    private static void drawBadgeText(Graphics2D g, Rectangle bounds, String text, Color textColor)
-    {
-        if (text == null || text.trim().isEmpty())
-        {
-            return;
-        }
-
-        String badge = text.trim();
-        if (badge.length() > 3)
-        {
-            drawFittedIconLabel(g, bounds, badge);
-            return;
-        }
-
-        drawFittedIconLabel(g, bounds, badge);
-    }
-
-    private static void drawFittedIconLabel(Graphics2D g, Rectangle bounds, String text)
-    {
-        Font oldFont = g.getFont();
-        int labelW = Math.max(1, bounds.width - 2);
-        int labelH = Math.max(10, bounds.height - 4);
-        LabelFit fit = fitLabel(g, oldFont, text, labelW, labelH);
-        g.setFont(fit.font);
-        FontMetrics fm = g.getFontMetrics();
-        int totalTextH = fit.lines.size() * fm.getHeight();
-        int lineY = bounds.y + (bounds.height - totalTextH) / 2 + fm.getAscent();
-        boolean shortNumericLabel = text.matches("\\d{1,2}");
-        for (String line : fit.lines)
-        {
-            int lineX = bounds.x + (bounds.width - fm.stringWidth(line)) / 2;
-            if (shortNumericLabel)
-            {
-                lineX -= Math.max(1, bounds.width / 14);
-            }
-            drawOutlinedText(g, line, lineX, lineY);
-            lineY += fm.getHeight();
-        }
-
-        g.setFont(oldFont);
-    }
-
-    private static void drawOutlinedText(Graphics2D g, String text, int x, int y)
-    {
-        g.setColor(new Color(0, 0, 0, 230));
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0)
-                {
-                    continue;
-                }
-                g.drawString(text, x + dx, y + dy);
-            }
-        }
-
-        g.setColor(new Color(24, 54, 135, 255));
-        g.drawString(text, x, y);
-    }
-
-    private static LabelFit fitLabel(Graphics2D g, Font baseFont, String text, int maxWidth, int maxHeight)
-    {
-        String cacheKey = labelFitCacheKey(baseFont, text, maxWidth, maxHeight);
-        LabelFit cached = LABEL_FIT_CACHE.get(cacheKey);
-        if (cached != null)
-        {
-            return cached;
-        }
-
-        boolean shortNumericLabel = text != null && text.matches("\\d{1,2}");
-        float maxSize = shortNumericLabel
-                ? Math.min(20f, Math.max(12f, maxHeight * 0.82f))
-                : Math.min(15f, Math.max(10f, maxHeight * 0.62f));
-        for (float size = maxSize; size >= 7f; size -= 0.5f)
-        {
-            Font font = baseFont.deriveFont(Font.BOLD, size);
-            g.setFont(font);
-            FontMetrics fm = g.getFontMetrics();
-            List<String> lines = TextUtils.wrapText(text, fm, maxWidth);
-            if (lines.size() > 2)
-            {
-                lines = List.of(
-                        TextUtils.truncateToWidth(lines.get(0), fm, maxWidth),
-                        TextUtils.truncateToWidth(String.join(" ", lines.subList(1, lines.size())), fm, maxWidth));
-            }
-            if (!lines.isEmpty() && lines.size() * fm.getHeight() <= maxHeight + 2)
-            {
-                LabelFit fit = new LabelFit(font, lines);
-                LABEL_FIT_CACHE.put(cacheKey, fit);
-                return fit;
-            }
-        }
-
-        Font font = baseFont.deriveFont(Font.BOLD, 7f);
-        g.setFont(font);
-        FontMetrics fm = g.getFontMetrics();
-        LabelFit fit = new LabelFit(font, List.of(TextUtils.truncateToWidth(text, fm, maxWidth)));
-        LABEL_FIT_CACHE.put(cacheKey, fit);
-        return fit;
-    }
-
-    private static String labelFitCacheKey(Font font, String text, int maxWidth, int maxHeight)
-    {
-        String fontName = font == null ? "" : font.getFontName();
-        int fontStyle = font == null ? 0 : font.getStyle();
-        return fontName + "|" + fontStyle + "|" + maxWidth + "x" + maxHeight + "|" + String.valueOf(text);
-    }
-
     private static void logSlowRender(long renderStartNanos, int itemCount, int columns, int maxWidth)
     {
         if (renderStartNanos <= 0L)
@@ -341,18 +221,6 @@ public final class CollectionLogIconGridRenderer
         lastSlowRenderLogMs = nowMs;
         log.debug("Slow collection-log icon grid render: {} icons, {} columns, maxWidth={}, elapsed={}ms",
                 itemCount, columns, maxWidth, elapsedNanos / 1_000_000L);
-    }
-
-    private static final class LabelFit
-    {
-        private final Font font;
-        private final List<String> lines;
-
-        private LabelFit(Font font, List<String> lines)
-        {
-            this.font = font;
-            this.lines = lines;
-        }
     }
 
     private static void drawObtainedCheck(Graphics2D g, Rectangle bounds)
@@ -433,9 +301,9 @@ public final class CollectionLogIconGridRenderer
 
         g.setColor(new Color(25, 18, 10, 245));
         g.fillRect(x, y, w, h);
-        g.setColor(new Color(edgeLight.getRed(), edgeLight.getGreen(), edgeLight.getBlue(), 100));
+        g.setColor(withAlpha(edgeLight, 100));
         g.drawRect(x, y, w - 1, h - 1);
-        g.setColor(new Color(edgeDark.getRed(), edgeDark.getGreen(), edgeDark.getBlue(), 180));
+        g.setColor(withAlpha(edgeDark, 180));
         g.drawLine(x + 1, y + h - 1, x + w - 1, y + h - 1);
 
         g.setColor(textColor);

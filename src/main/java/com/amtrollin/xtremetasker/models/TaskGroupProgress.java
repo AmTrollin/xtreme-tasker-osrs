@@ -1,5 +1,8 @@
 package com.amtrollin.xtremetasker.models;
 
+import lombok.Getter;
+
+@Getter
 public final class TaskGroupProgress
 {
     private final int completed;
@@ -9,16 +12,6 @@ public final class TaskGroupProgress
     {
         this.completed = Math.max(0, completed);
         this.total = Math.max(1, total);
-    }
-
-    public int getCompleted()
-    {
-        return completed;
-    }
-
-    public int getTotal()
-    {
-        return total;
     }
 
     public boolean isGrouped()

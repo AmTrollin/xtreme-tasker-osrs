@@ -50,5 +50,10 @@ public final class UiPalette
     public static final Color TIER_COMPLETE_GLOW =
             new Color(120, 200, 140);
 
+    public static Color withAlpha(Color color, int alpha)
+    {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, Math.min(255, alpha)));
+    }
+
     private UiPalette() {}
 }

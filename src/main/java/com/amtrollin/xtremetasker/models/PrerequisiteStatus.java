@@ -1,10 +1,12 @@
 package com.amtrollin.xtremetasker.models;
 
 import net.runelite.api.Skill;
+import lombok.Getter;
 
 import java.util.Collections;
 import java.util.List;
 
+@Getter
 public class PrerequisiteStatus
 {
     private final String text;
@@ -42,34 +44,9 @@ public class PrerequisiteStatus
         this.markerIcons = markerIcons == null ? List.of() : Collections.unmodifiableList(markerIcons);
     }
 
-    public String getText()
-    {
-        return text;
-    }
-
-    public boolean isCompleted()
-    {
-        return completed;
-    }
-
-    public List<CheckSpan> getCheckSpans()
-    {
-        return checkSpans;
-    }
-
-    public List<Skill> getSkillIcons()
-    {
-        return skillIcons;
-    }
-
     public boolean hasQuestIcon()
     {
         return markerIcons.contains(MarkerIcon.QUEST) || markerIcons.contains(MarkerIcon.START_QUEST);
-    }
-
-    public List<MarkerIcon> getMarkerIcons()
-    {
-        return markerIcons;
     }
 
     public enum MarkerIcon
@@ -79,56 +56,18 @@ public class PrerequisiteStatus
         ACHIEVEMENT_DIARY,
         COMBAT,
         TOTAL,
-        FAVOUR,
+        BULLET,
         BARBARIAN_MINIQUEST,
         LAIR_OF_TARN_RAZORLOR,
         MAGE_ARENA_1,
         ENTER_THE_ABYSS,
         VALE_TOTEMS,
         ALFRED_GRIMHANDS_BARCRAWL,
-        JAGEX_ACCOUNT,
-        THERMONUCLEAR_SMOKE_DEVIL,
-        RAID_WIKI,
-        GIANT_MOLE,
-        PROSPECTOR_HELMET,
-        LIZARDMAN_SHAMAN,
-        BONES_TO_PEACHES,
-        ZULRAH,
-        CHAOS_ELEMENTAL,
-        CHOMPY_BIRD,
-        KALPHITE_QUEEN,
-        PENANCE_QUEEN,
-        PYRAMID_PLUNDER,
-        SKOTIZO,
-        HYDRA,
-        WHITE_KNIGHT,
-        KET_ZEK,
-        TZHAAR_FIGHT_CAVE,
-        BARROWS_CHEST,
-        CHAMBERS_OF_XERIC,
-        CRAZY_ARCHAEOLOGIST,
-        CHAOS_FANATIC,
-        SCORPIA,
-        SARADOMIN_STRIKE,
-        CLAWS_OF_GUTHIX,
-        FLAMES_OF_ZAMORAK,
-        DAGANNOTH_REX,
-        DAGANNOTH_SUPREME,
-        DAGANNOTH_PRIME,
-        CALLISTO,
-        VENENATIS,
-        VETION,
-        KRIL_TSUTSAROTH,
-        KREEARRA,
-        COMMANDER_ZILYANA,
-        GENERAL_GRAARDOR,
-        VOID_TOP,
-        VOID_ROBE,
-        VOID_GLOVES,
         WILDERNESS,
         CURRENCY
     }
 
+    @Getter
     public static class CheckSpan
     {
         private final int start;
@@ -142,19 +81,5 @@ public class PrerequisiteStatus
             this.completed = completed;
         }
 
-        public int getStart()
-        {
-            return start;
-        }
-
-        public int getEnd()
-        {
-            return end;
-        }
-
-        public boolean isCompleted()
-        {
-            return completed;
-        }
     }
 }

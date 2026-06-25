@@ -2,6 +2,7 @@ package com.amtrollin.xtremetasker.ui.tasks;
 
 import com.amtrollin.xtremetasker.TaskerService;
 import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.anim.OverlayAnimations;
@@ -20,9 +21,10 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
+import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class TasksTabRenderer {
-    private static final int TASKS_CONTROLS_COLUMN_W = 298;
+    private static final int TASKS_CONTROLS_COLUMN_W = 228;
     private static final long TASK_NAME_TOOLTIP_DELAY_MS = 1000L;
 
     private final UiPalette palette;
@@ -48,10 +50,7 @@ public final class TasksTabRenderer {
             TaskTier activeTier,
             Function<TaskTier, List<XtremeTask>> sortedTasksProvider,
             int hoverX,
-            int hoverY,
-            boolean keyboardHintsOpen,
-            String keyboardTriggeredTooltipText,
-            Rectangle keyboardTriggeredTooltipAnchor
+            int hoverY
     ) {
         if (!plugin.hasTaskPackLoaded()) {
             g.setColor(palette.UI_TEXT_DIM);
@@ -61,7 +60,6 @@ public final class TasksTabRenderer {
 
         final int panelW = panelBounds.width;
         final int innerW = Math.max(0, panelW - 2 * PANEL_PADDING);
-        state.taskViewModeBounds().setBounds(0, 0, 0, 0);
 
         // -----------------------------
         // Tier tabs row
@@ -92,11 +90,11 @@ public final class TasksTabRenderer {
         cursorYBaseline += tierTabH + 12;
 
             final int contentTopBaseline = cursorYBaseline;
-            final int columnsGap = 10;
-            final int controlsColumnW = Math.min(TASKS_CONTROLS_COLUMN_W, Math.max(250, innerW - columnsGap - 220));
-            final int listColumnW = Math.max(220, innerW - controlsColumnW - columnsGap);
-            final int controlsColumnX = panelX + PANEL_PADDING;
-            final int listColumnX = controlsColumnX + controlsColumnW + columnsGap;
+            final int columnsGap = 8;
+            final int controlsColumnW = Math.min(TASKS_CONTROLS_COLUMN_W, Math.max(224, innerW - columnsGap - 280));
+            final int controlsColumnX = panelX;
+            final int listColumnX = controlsColumnX + controlsColumnW + Math.max(2, columnsGap - 4);
+            final int listColumnW = Math.max(220, panelBounds.x + panelBounds.width - PANEL_PADDING - listColumnX);
 
             controlsRenderer.render(
                 g,
@@ -109,16 +107,17 @@ public final class TasksTabRenderer {
                 controlsColumnW,
                 hoverX,
                 hoverY,
-                plugin.hasNewTasks(),
-                keyboardTriggeredTooltipText,
-                keyboardTriggeredTooltipAnchor
+                plugin.hasNewTasks()
             );
 
             int dividerTop = contentTopBaseline - fm.getAscent();
-            int dividerBottom = panelBounds.y + panelBounds.height - PANEL_PADDING - fm.getHeight() - 8;
+            int dividerBottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
             if (dividerBottom > dividerTop + 10) {
-                int dividerX = listColumnX - (columnsGap / 2);
-                g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 45));
+                int controlsContentRight = state.controlsLayout().searchBox.width > 0
+                        ? state.controlsLayout().searchBox.x + state.controlsLayout().searchBox.width
+                        : controlsColumnX + controlsColumnW;
+                int dividerX = controlsContentRight + Math.max(0, (listColumnX - controlsContentRight) / 2);
+                g.setColor(withAlpha(palette.UI_GOLD, 45));
                 g.drawLine(dividerX, dividerTop, dividerX, dividerBottom);
             }
 
@@ -149,41 +148,15 @@ public final class TasksTabRenderer {
 
         listCursorBaseline += barH + progressPadBottom + 6;
 
-        g.setColor(new Color(
-                palette.UI_TEXT_DIM.getRed(),
-                palette.UI_TEXT_DIM.getGreen(),
-                palette.UI_TEXT_DIM.getBlue(),
-                170
-        ));
+        g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
 
-        int hintVisualOffset = -5;
-        String taskHint = "Task list: ";
-        boolean condenseBlocked = state.taskQuery().sortByDate || state.taskQuery().sortByTimeTicks;
-        boolean condensedView = plugin.condenseRepeatedTasks()
-                && !condenseBlocked;
-        int modeReserve = drawTaskViewModeHint(
-                g,
-                fm,
-            listColumnX,
-            listCursorBaseline + hintVisualOffset,
-            listColumnW,
-                condensedView,
-                condenseBlocked,
-                hoverX,
-                hoverY,
-                state.taskViewModeBounds()
-        );
-        g.setColor(new Color(
-                palette.UI_TEXT_DIM.getRed(),
-                palette.UI_TEXT_DIM.getGreen(),
-                palette.UI_TEXT_DIM.getBlue(),
-                170
-        ));
-        g.drawString(
-            TextUtils.truncateToWidth(taskHint, fm, Math.max(0, listColumnW - modeReserve - 12)),
-            listColumnX,
-            listCursorBaseline + hintVisualOffset
-        );
+        drawTaskTableHeader(g, fm, state.taskQuery(), state.controlsLayout().sortDate, state.controlsLayout().sortTimeTicks,
+                state.controlsLayout().sortTier, state.controlsLayout().sortSource,
+                listColumnX, listCursorBaseline - 5, listColumnW,
+                state.controlsLayout().showDateColumn,
+                state.controlsLayout().showTimeColumn,
+                state.controlsLayout().showTierColumn,
+                state.controlsLayout().showSourceColumn);
 
         listCursorBaseline += fm.getHeight() - 1;
 
@@ -192,11 +165,7 @@ public final class TasksTabRenderer {
         // -----------------------------
         List<XtremeTask> tasks = sortedTasksProvider.apply(activeTier);
 
-        int hintPaddingBottom = 10;
-
-        int hintBaselineY = panelBounds.y + panelBounds.height - hintPaddingBottom;
-        int keyboardButtonTop = hintBaselineY - fm.getAscent() - 3;
-        int listMaxBottom = keyboardButtonTop - 3;
+        int listMaxBottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
 
         Rectangle listPanelBounds = new Rectangle(
                 listColumnX - PANEL_PADDING,
@@ -230,17 +199,11 @@ public final class TasksTabRenderer {
                 g.drawString(TextUtils.truncateToWidth(filterMsg, fm, emptyViewport.width), emptyViewport.x, textY + fm.getHeight() + 2);
             }
 
-            displayKeyboardHintsButton(g, fm, panelX, hintBaselineY, innerW, state.keyboardHintsButtonBounds(), hoverX, hoverY);
-            if (keyboardHintsOpen) {
-                displayKeyboardHintsPopup(g, fm, panelBounds, state.keyboardHintsButtonBounds(), state.keyboardHintsPopupBounds());
-            } else {
-                state.keyboardHintsPopupBounds().setBounds(0, 0, 0, 0);
-            }
             return;
         }
 
         int listTop = listCursorBaseline - fm.getAscent();
-        final int LIST_TOP_INSET = 5;
+        final int LIST_TOP_INSET = 2;
         listTop += LIST_TOP_INSET;
 
         int viewportH = Math.max(0, listMaxBottom - listTop);
@@ -263,9 +226,13 @@ public final class TasksTabRenderer {
             sel = tasks.size() - 1;
         }
 
-        boolean useCondensedRows = plugin.condenseRepeatedTasks()
-                && !state.taskQuery().sortByDate
-                && !state.taskQuery().sortByTimeTicks;
+        boolean useCondensedRows = plugin.condenseRepeatedTasks();
+        Function<XtremeTask, CompletionInfo> completionInfoProvider = useCondensedRows
+                ? task -> latestGroupCompletionInfo(plugin, task)
+                : plugin::getCompletionInfo;
+        Function<XtremeTask, Long> taskTicksProvider = useCondensedRows
+                ? task -> latestCompletedGroupTimeTicks(plugin, task)
+                : task -> completedTaskTimeTicks(plugin, task);
 
         TaskRowsLayout layout = rowsRenderer.render(
                 g,
@@ -282,10 +249,14 @@ public final class TasksTabRenderer {
                 plugin::isTaskCompleted,
                 useCondensedRows ? plugin::getTaskGroupProgress : null,
                 useCondensedRows ? plugin::isTaskGroupNew : plugin::isNewTask,
-                plugin::getCompletionInfo,
-                plugin::getTaskTimeTicks,
-                state.taskQuery().sortByDate,
-                state.taskQuery().sortByTimeTicks
+                completionInfoProvider,
+                taskTicksProvider,
+                state.controlsLayout().sortDate,
+                state.controlsLayout().sortTimeTicks,
+                state.controlsLayout().showDateColumn,
+                state.controlsLayout().showTimeColumn,
+                state.controlsLayout().showTierColumn,
+                state.controlsLayout().showSourceColumn
         );
 
         state.taskListViewportBounds().setBounds(layout.viewportBounds);
@@ -294,14 +265,15 @@ public final class TasksTabRenderer {
 
         Rectangle v = layout.viewportBounds;
         if (v.width > 0 && v.height > 0) {
-            g.setColor(new Color(palette.UI_GOLD.getRed(), palette.UI_GOLD.getGreen(), palette.UI_GOLD.getBlue(), 70));
-            g.drawRect(v.x - 2, v.y - 2, v.width + 4, v.height + 4);
+            g.setColor(withAlpha(palette.UI_GOLD, 70));
+            g.drawLine(v.x - 2, v.y - 2, v.x + v.width + 2, v.y - 2);
+            g.drawLine(v.x + v.width + 2, v.y - 2, v.x + v.width + 2, v.y + v.height + 2);
+            g.drawLine(v.x - 2, v.y + v.height + 2, v.x + v.width + 2, v.y + v.height + 2);
 
-            g.setColor(new Color(palette.UI_EDGE_LIGHT.getRed(), palette.UI_EDGE_LIGHT.getGreen(), palette.UI_EDGE_LIGHT.getBlue(), 55));
+            g.setColor(withAlpha(palette.UI_EDGE_LIGHT, 55));
             g.drawLine(v.x - 1, v.y - 1, v.x + v.width + 2, v.y - 1);
-            g.drawLine(v.x - 1, v.y - 1, v.x - 1, v.y + v.height + 2);
 
-            g.setColor(new Color(palette.UI_EDGE_DARK.getRed(), palette.UI_EDGE_DARK.getGreen(), palette.UI_EDGE_DARK.getBlue(), 85));
+            g.setColor(withAlpha(palette.UI_EDGE_DARK, 85));
             g.drawLine(v.x + v.width + 2, v.y - 1, v.x + v.width + 2, v.y + v.height + 2);
             g.drawLine(v.x - 1, v.y + v.height + 2, v.x + v.width + 2, v.y + v.height + 2);
         }
@@ -318,12 +290,64 @@ public final class TasksTabRenderer {
 
         drawTaskNameHoverTooltip(g, fm, panelBounds, layout, hoverX, hoverY);
 
-        displayKeyboardHintsButton(g, fm, panelX, hintBaselineY, innerW, state.keyboardHintsButtonBounds(), hoverX, hoverY);
-        if (keyboardHintsOpen) {
-            displayKeyboardHintsPopup(g, fm, panelBounds, state.keyboardHintsButtonBounds(), state.keyboardHintsPopupBounds());
-        } else {
-            state.keyboardHintsPopupBounds().setBounds(0, 0, 0, 0);
+    }
+
+    private static CompletionInfo latestGroupCompletionInfo(TaskerService plugin, XtremeTask task)
+    {
+        XtremeTask instance = latestCompletedGroupInstance(plugin, task);
+        return plugin == null ? null : plugin.getCompletionInfo(instance);
+    }
+
+    private static Long latestCompletedGroupTimeTicks(TaskerService plugin, XtremeTask task)
+    {
+        XtremeTask instance = latestCompletedGroupInstance(plugin, task);
+        return completedTaskTimeTicks(plugin, instance);
+    }
+
+    private static Long completedTaskTimeTicks(TaskerService plugin, XtremeTask task)
+    {
+        if (plugin == null || task == null || plugin.getCompletionInfo(task) == null)
+        {
+            return null;
         }
+        return plugin.getTaskTimeTicks(task);
+    }
+
+    private static XtremeTask latestCompletedGroupInstance(TaskerService plugin, XtremeTask task)
+    {
+        if (plugin == null || task == null)
+        {
+            return task;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.size() <= 1)
+        {
+            return task;
+        }
+
+        XtremeTask latestTimestamped = null;
+        XtremeTask latestUntimestamped = null;
+        long latestTimestamp = Long.MIN_VALUE;
+        for (XtremeTask instance : group)
+        {
+            CompletionInfo info = plugin.getCompletionInfo(instance);
+            if (info == null)
+            {
+                continue;
+            }
+
+            latestUntimestamped = instance;
+            if (info.timestamp > 0 && info.timestamp >= latestTimestamp)
+            {
+                latestTimestamped = instance;
+                latestTimestamp = info.timestamp;
+            }
+        }
+
+        return latestTimestamped != null
+                ? latestTimestamped
+                : latestUntimestamped != null ? latestUntimestamped : task;
     }
 
     private void drawTierTabWithPercent(Graphics2D g, Rectangle bounds, String leftText, String rightText, int pctValue, boolean active) {
@@ -353,7 +377,7 @@ public final class TasksTabRenderer {
         boolean complete = pctValue >= 100;
         Color pctColor = complete
                 ? new Color(120, 200, 140, active ? 230 : 190)
-                : (active ? palette.UI_TEXT_DIM : new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 180));
+                : (active ? palette.UI_TEXT_DIM : withAlpha(palette.UI_TEXT_DIM, 180));
         g.setColor(pctColor);
         g.drawString(pct, pctX, ty);
     }
@@ -410,6 +434,139 @@ public final class TasksTabRenderer {
         g.drawString(text, textX, textY);
     }
 
+    private void drawTaskTableHeader(
+            Graphics2D g,
+            FontMetrics fm,
+            TaskListQuery query,
+            Rectangle dateBounds,
+            Rectangle timeBounds,
+            Rectangle tierBounds,
+            Rectangle sourceBounds,
+            int x,
+            int baselineY,
+            int width,
+            boolean showDate,
+            boolean showTime,
+            boolean showTier,
+            boolean showSource
+    ) {
+        int gap = 4;
+        String dateLabel = "Date " + (!query.sortByDate ? "-" : (query.newestFirst ? "v" : "^"));
+        String timeLabel = "Spent " + (!query.sortByTimeTicks ? "-" : (query.longestFirst ? "v" : "^"));
+        FontMetrics badgeFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
+        int badgeReserveW = badgeHeaderReserveWidth(badgeFm, showTier, showSource);
+        int timeW = showTime ? Math.max(48, fm.stringWidth(timeLabel) + 10) : 0;
+        int dateW = showDate ? Math.max(76, fm.stringWidth("Jun 25, 26") + 8) : 0;
+        int nextRight = x + width - badgeReserveW;
+        int timeX = 0;
+        if (showTime)
+        {
+            timeX = nextRight - timeW;
+            nextRight = timeX - gap;
+        }
+        int dateX = 0;
+        if (showDate)
+        {
+            dateX = nextRight - dateW;
+            nextRight = dateX - gap;
+        }
+        int top = baselineY - fm.getAscent() - 2;
+        int h = fm.getHeight() + 4;
+
+        dateBounds.setBounds(showDate ? dateX : 0, showDate ? top : 0, showDate ? dateW : 0, showDate ? h : 0);
+        timeBounds.setBounds(showTime ? timeX : 0, showTime ? top : 0, showTime ? timeW : 0, showTime ? h : 0);
+
+        g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
+        g.drawString(TextUtils.truncateToWidth("Task", fm, Math.max(0, nextRight - x)), x, baselineY);
+        drawHeaderSortLabel(g, fm, dateBounds, dateLabel);
+        drawHeaderSortLabel(g, fm, timeBounds, timeLabel);
+        drawBadgeColumnHeaders(g, query, tierBounds, sourceBounds, baselineY, x, width, showTier, showSource);
+    }
+
+    private void drawHeaderSortLabel(Graphics2D g, FontMetrics fm, Rectangle bounds, String text) {
+        if (bounds == null || bounds.width <= 0)
+        {
+            return;
+        }
+        g.setColor(withAlpha(palette.UI_TEXT_DIM, 175));
+        String draw = TextUtils.truncateToWidth(text, fm, Math.max(0, bounds.width - 4));
+        g.drawString(draw, bounds.x + Math.max(0, (bounds.width - fm.stringWidth(draw)) / 2),
+                bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent());
+    }
+
+    private void drawBadgeColumnHeaders(Graphics2D g, TaskListQuery query, Rectangle tierBounds, Rectangle sourceBounds,
+                                        int baselineY, int x, int width, boolean showTier, boolean showSource) {
+        Font oldFont = g.getFont();
+        g.setFont(FontManager.getRunescapeSmallFont());
+        FontMetrics sfm = g.getFontMetrics();
+        int pillPadX = 6;
+        int pillGap = 3;
+        int top = baselineY - sfm.getAscent() - 2;
+        int h = sfm.getHeight() + 4;
+        int nextRight = x + width - 13;
+
+        if (showSource)
+        {
+            int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2;
+            int srcX = nextRight - srcW;
+            sourceBounds.setBounds(srcX, top, srcW, h);
+            drawSmallHeaderSortLabel(g, sfm, sourceBounds,
+                    "Src " + (!query.sortBySource ? "-" : (query.sourceFirst ? "^" : "v")));
+            nextRight = srcX - pillGap;
+        }
+        else
+        {
+            sourceBounds.setBounds(0, 0, 0, 0);
+        }
+
+        if (showTier)
+        {
+            int tierW = sfm.stringWidth("Master") + pillPadX * 2;
+            int tierX = nextRight - tierW;
+            tierBounds.setBounds(tierX, top, tierW, h);
+            drawSmallHeaderSortLabel(g, sfm, tierBounds,
+                    "Tier " + (!query.sortByTier ? "-" : (query.easyTierFirst ? "^" : "v")));
+        }
+        else
+        {
+            tierBounds.setBounds(0, 0, 0, 0);
+        }
+        g.setFont(oldFont);
+    }
+
+    private void drawSmallHeaderSortLabel(Graphics2D g, FontMetrics fm, Rectangle bounds, String text) {
+        if (bounds == null || bounds.width <= 0)
+        {
+            return;
+        }
+        g.setColor(withAlpha(palette.UI_TEXT_DIM, 160));
+        String draw = TextUtils.truncateToWidth(text, fm, bounds.width);
+        g.drawString(draw, bounds.x + Math.max(0, (bounds.width - fm.stringWidth(draw)) / 2),
+                bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent());
+    }
+
+    private static int badgeHeaderReserveWidth(FontMetrics fm, boolean showTier, boolean showSource)
+    {
+        if (!showTier && !showSource)
+        {
+            return 0;
+        }
+        int reserve = 13;
+        if (showTier)
+        {
+            reserve += fm.stringWidth("Master") + 12;
+        }
+        if (showSource)
+        {
+            reserve += Math.max(fm.stringWidth("CA"), Math.max(fm.stringWidth("CL"), fm.stringWidth("AD"))) + 12;
+        }
+        if (showTier && showSource)
+        {
+            reserve += 3;
+        }
+        return reserve;
+    }
+
     private void drawTaskNameHoverTooltip(
             Graphics2D g,
             FontMetrics fm,
@@ -424,17 +581,15 @@ public final class TasksTabRenderer {
         }
 
         XtremeTask hoveredTask = null;
-        Rectangle nameBounds = null;
         for (Map.Entry<XtremeTask, Rectangle> entry : layout.truncatedNameBounds.entrySet()) {
             Rectangle bounds = entry.getValue();
             if (bounds != null && bounds.contains(hoverX, hoverY)) {
                 hoveredTask = entry.getKey();
-                nameBounds = bounds;
                 break;
             }
         }
 
-        if (hoveredTask == null || nameBounds == null) {
+        if (hoveredTask == null) {
             resetTaskNameTooltipHover();
             return;
         }
@@ -478,9 +633,9 @@ public final class TasksTabRenderer {
         }
         tooltipX = Math.max(panelBounds.x + PANEL_PADDING, tooltipX);
 
-        int tooltipY = nameBounds.y - tooltipH - 6;
+        int tooltipY = hoverY - tooltipH - 8;
         if (tooltipY < panelBounds.y + PANEL_PADDING) {
-            tooltipY = nameBounds.y + nameBounds.height + 6;
+            tooltipY = hoverY + 12;
         }
         int bottomLimit = panelBounds.y + panelBounds.height - PANEL_PADDING;
         if (tooltipY + tooltipH > bottomLimit) {
@@ -515,84 +670,6 @@ public final class TasksTabRenderer {
 
         String name = task.getName();
         return name == null ? "" : name;
-    }
-
-    private void displayKeyboardHintsButton(
-            Graphics2D g,
-            FontMetrics fm,
-            int panelX,
-            int hintBaselineY,
-            int innerW,
-            Rectangle buttonBounds,
-            int hoverX,
-            int hoverY
-    ) {
-        String label = "[Keyboard hints]";
-        int padX = 9;
-        int buttonH = fm.getHeight() + 6;
-        int buttonW = padX * 2 + fm.stringWidth(label);
-        int buttonX = panelX + PANEL_PADDING + (innerW - buttonW) / 2;
-        int buttonY = hintBaselineY - fm.getAscent() - 3;
-        buttonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
-
-        boolean hovered = buttonBounds.contains(hoverX, hoverY);
-        g.setColor(hovered
-                ? new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 230)
-                : new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 180));
-        g.drawString(label, buttonX + padX, hintBaselineY);
-    }
-
-    private void displayKeyboardHintsPopup(
-            Graphics2D g,
-            FontMetrics fm,
-            Rectangle panelBounds,
-            Rectangle buttonBounds,
-            Rectangle popupBounds
-    ) {
-        String title = "Keyboard hints";
-        String[][] sections = {
-                {"Tasks:", "Space/Enter - open selected task details", "Esc - close task details", "Up/Down - move through task list", "PageUp/PageDown - jump 10 tasks", "Left/Right - switch tier tab"},
-                {"Filter:", "1/2/3/4 - toggle source (all, CAs, CLs, ADs)", "Q - show all statuses", "W - toggle incomplete", "E - toggle complete", "A - toggle tier"},
-                {"Sorts:", "S - completion", "T - tier", "D - completion date", "M - time spent", "R - reset sorting"}
-        };
-
-        int pad = 10;
-        int contentW = fm.stringWidth(title);
-        int lineCount = 1;
-        for (String[] section : sections) {
-            lineCount += section.length;
-            for (String line : section) {
-                contentW = Math.max(contentW, fm.stringWidth(line));
-            }
-        }
-
-        int w = Math.min(panelBounds.width - (PANEL_PADDING * 2), contentW + pad * 2);
-        int sectionGap = 5;
-        int h = pad * 2 + fm.getHeight() * lineCount + sectionGap * (sections.length - 1) + 5;
-        int x = panelBounds.x + (panelBounds.width - w) / 2;
-        int y = buttonBounds.y - h - 8;
-        popupBounds.setBounds(x, y, w, h);
-
-        drawBevelBox(g, popupBounds, new Color(45, 36, 24, 248));
-
-        int textX = x + pad;
-        int textY = y + pad + fm.getAscent();
-        g.setColor(palette.UI_GOLD);
-        g.drawString(TextUtils.truncateToWidth(title, fm, w - pad * 2), textX, textY);
-        textY += fm.getHeight() + 5;
-
-        for (String[] section : sections) {
-            g.setColor(palette.UI_TEXT);
-            g.drawString(TextUtils.truncateToWidth(section[0], fm, w - pad * 2), textX, textY);
-            textY += fm.getHeight();
-
-            g.setColor(new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 190));
-            for (int i = 1; i < section.length; i++) {
-                g.drawString(TextUtils.truncateToWidth(section[i], fm, w - pad * 2), textX, textY);
-                textY += fm.getHeight();
-            }
-            textY += sectionGap;
-        }
     }
 
     private static String emptyStateFilterMessage(TaskListQuery q, String activeTierLabel) {
@@ -631,86 +708,6 @@ public final class TasksTabRenderer {
         }
 
         return "Applied filter(s): " + String.join(" + ", filters);
-    }
-
-    private int drawTaskViewModeHint(
-            Graphics2D g,
-            FontMetrics fm,
-            int x,
-            int baselineY,
-            int width,
-            boolean condensedView,
-            boolean disabled,
-            int hoverX,
-            int hoverY,
-            Rectangle viewModeBounds
-    ) {
-        final int iconGap = 5;
-        final int iconSize = fm.getAscent() + 2;
-        String label = disabled ? "Condense repeated tasks" : (condensedView ? "Separate repeated tasks" : "Condense repeated tasks");
-        int labelW = fm.stringWidth(label);
-        int totalW = labelW + iconGap + iconSize;
-        int startX = x + Math.max(0, width - totalW);
-        int top = baselineY - fm.getAscent();
-        viewModeBounds.setBounds(startX - 4, top - 2, totalW + 8, Math.max(iconSize, fm.getHeight()) + 4);
-        boolean hovered = viewModeBounds.contains(hoverX, hoverY);
-
-        g.setColor(new Color(
-                palette.UI_TEXT_DIM.getRed(),
-                palette.UI_TEXT_DIM.getGreen(),
-                palette.UI_TEXT_DIM.getBlue(),
-                disabled ? (hovered ? 145 : 105) : (hovered ? 230 : 170)
-        ));
-        g.drawString(label, startX, baselineY);
-
-        if (disabled && hovered)
-        {
-            String tooltip = "Cannot condense with date and/or time spent filters";
-            String shown = TextUtils.truncateToWidth(tooltip, fm, width);
-            int tipX = x + Math.max(0, width - fm.stringWidth(shown));
-            int tipY = top - 4;
-            g.setColor(new Color(
-                    palette.UI_TEXT_DIM.getRed(),
-                    palette.UI_TEXT_DIM.getGreen(),
-                    palette.UI_TEXT_DIM.getBlue(),
-                    190
-            ));
-            g.drawString(shown, tipX, tipY);
-        }
-
-        int iconX = startX + labelW + iconGap;
-        int iconY = baselineY - fm.getAscent() - 2;
-
-        Color iconFill = disabled ? palette.UI_TEXT_DIM : palette.UI_GOLD;
-        int iconAlpha = disabled ? (hovered ? 80 : 55) : 120;
-        g.setColor(new Color(iconFill.getRed(), iconFill.getGreen(), iconFill.getBlue(), iconAlpha));
-        g.fillOval(iconX, iconY, iconSize, iconSize);
-        drawToggleIcon(g, iconX, iconY, iconSize);
-
-        return totalW;
-    }
-
-    private void drawToggleIcon(Graphics2D g, int x, int y, int size)
-    {
-        Color iconColor = new Color(20, 15, 10, 220);
-        Stroke oldStroke = g.getStroke();
-        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.setColor(iconColor);
-
-        int midY = y + size / 2;
-        int left = x + 4;
-        int right = x + size - 4;
-        int arrow = 3;
-
-        g.drawLine(left, midY - 2, right, midY - 2);
-        g.drawLine(right, midY - 2, right - arrow, midY - 5);
-        g.drawLine(right, midY - 2, right - arrow, midY + 1);
-
-        g.drawLine(right, midY + 3, left, midY + 3);
-        g.drawLine(left, midY + 3, left + arrow, midY);
-        g.drawLine(left, midY + 3, left + arrow, midY + 6);
-
-        g.setStroke(oldStroke);
     }
 
 }
