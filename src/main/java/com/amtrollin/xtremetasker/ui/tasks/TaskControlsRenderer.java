@@ -313,9 +313,8 @@ public class TaskControlsRenderer
 
         int availableTier = rowW - leftPad - rightPad;
 
-        int halfTierW = Math.max(70, (availableTier - chipGap) / 2);
-        int wThis = halfTierW;
-        int wAllT = halfTierW;
+        int wAllT = pillWidth(fm, T_ALL, pillPadX, 70, availableTier);
+        int wThis = Math.max(70, availableTier - chipGap - wAllT);
 
         int tx = rowX + leftPad;
         layout.filterTierThis.setBounds(tx, rowTop, wThis, rowH);
