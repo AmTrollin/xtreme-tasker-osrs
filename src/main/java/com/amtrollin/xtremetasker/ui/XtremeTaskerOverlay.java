@@ -1843,6 +1843,13 @@ public class XtremeTaskerOverlay extends Overlay {
         iconLayoutResized = null;
     }
 
+    public void refreshTaskListViewMode()
+    {
+        sortedTaskListCache.clear();
+        resetTaskListViewAfterQueryChange();
+        taskDetailsPopup.close();
+    }
+
     /** Returns a snapshot of the current icon bounds for use in menu entry checks. */
     public Rectangle getIconBounds() {
         return new Rectangle(iconBounds);
@@ -3348,18 +3355,24 @@ public class XtremeTaskerOverlay extends Overlay {
         Rectangle listFrame = new Rectangle(x + pad, 0, w - pad * 2, 0);
         int actionColumnW = 28;
         int actionColumnX = listFrame.x + listFrame.width - actionColumnW;
+        int reviewRowHeight = ROW_HEIGHT + 8;
+        int rowCheckboxSize = Math.min(20, reviewRowHeight - 4);
         g.setColor(P.UI_TEXT_DIM);
         g.drawString("Task", listFrame.x, headerTop + fm.getAscent());
 
-        int headerCheckboxSize = 16;
         int selectedVisibleCount = selectedVisibleSyncMismatchCount(mismatches);
         int selectableVisibleCount = selectableVisibleSyncMismatchCount(mismatches);
         boolean allMismatchTasksSelected = selectableVisibleCount > 0 && selectedVisibleCount >= selectableVisibleCount;
+        String actionHeader = reviewingCompletionCandidates ? "Mark complete?" : "Mark incomplete?";
+        int actionHeaderRight = actionColumnX + (actionColumnW - rowCheckboxSize) / 2 - 6;
+        int actionHeaderMaxW = Math.max(0, actionHeaderRight - listFrame.x - 8);
+        String actionHeaderText = TextUtils.truncateToWidth(actionHeader, fm, actionHeaderMaxW);
+        g.drawString(actionHeaderText, actionHeaderRight - fm.stringWidth(actionHeaderText), headerTop + fm.getAscent());
         syncMismatchMarkAllBounds.setBounds(
-                actionColumnX + (actionColumnW - headerCheckboxSize) / 2,
-                headerTop + Math.max(0, (fm.getHeight() - headerCheckboxSize) / 2) - 4,
-                headerCheckboxSize,
-                headerCheckboxSize);
+                actionColumnX + (actionColumnW - rowCheckboxSize) / 2,
+                headerTop + Math.max(0, (fm.getHeight() - rowCheckboxSize) / 2) - 4,
+                rowCheckboxSize,
+                rowCheckboxSize);
         drawSyncMismatchCheckbox(g, syncMismatchMarkAllBounds, allMismatchTasksSelected);
 
         net.runelite.api.Point mouse = mouseCanvasPositionForPanelRender();
@@ -3389,7 +3402,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
         Shape oldClip = g.getClip();
         g.setClip(syncMismatchViewportBounds);
-        int reviewRowHeight = ROW_HEIGHT + 8;
         int rowBlock = reviewRowHeight + LIST_ROW_SPACING;
         int visible = Math.max(1, syncMismatchViewportBounds.height / rowBlock);
         int maxOffset = Math.max(0, mismatches.size() - visible);
@@ -3440,12 +3452,11 @@ public class XtremeTaskerOverlay extends Overlay {
                     g.drawLine(rowTextX, underlineY, rowTextX + fm.stringWidth(label), underlineY);
                 }
             }
-            int smallBtn = Math.min(20, row.height - 4);
             Rectangle btn = new Rectangle(
-                    actionColumnX + (actionColumnW - smallBtn) / 2,
-                    row.y + (row.height - smallBtn) / 2,
-                    smallBtn,
-                    smallBtn);
+                    actionColumnX + (actionColumnW - rowCheckboxSize) / 2,
+                    row.y + (row.height - rowCheckboxSize) / 2,
+                    rowCheckboxSize,
+                    rowCheckboxSize);
             Rectangle hitTarget = new Rectangle(actionColumnX, row.y, actionColumnW, row.height);
             synchronized (syncMismatchTaskBounds) {
                 syncMismatchTaskBounds.put(task, hitTarget);
@@ -4470,7 +4481,15 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private void drawCompactEmptyIdentity(Graphics2D g, FontMetrics fm, Rectangle card) {
-        drawCompactCenteredText(g, fm, card, "Roll for new task", P.UI_TEXT_DIM);
+        Font oldFont = g.getFont();
+        Font titleFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f);
+        g.setFont(titleFont);
+        FontMetrics titleFm = g.getFontMetrics();
+        String title = TextUtils.truncateToWidth("No current task", titleFm, card.width - 28);
+        int titleY = card.y + (card.height - titleFm.getHeight()) / 2 + titleFm.getAscent();
+        g.setColor(Color.WHITE);
+        g.drawString(title, card.x + (card.width - titleFm.stringWidth(title)) / 2, titleY);
+        g.setFont(oldFont);
     }
 
     private void drawCompactCurrentIdentity(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current, java.awt.Point mousePoint) {
@@ -5017,7 +5036,13 @@ public class XtremeTaskerOverlay extends Overlay {
 
         long startNanos = System.nanoTime();
         List<XtremeTask> base = getTasksForScope(taskQuery.tierScope, tier);
-        List<XtremeTask> sorted = TaskListPipeline.apply(base, taskQuery, plugin::isTaskCompleted, plugin::isNewTask, plugin::getCompletionInfo, plugin::getTaskTimeTicks);
+        List<XtremeTask> sorted = TaskListPipeline.apply(
+                base,
+                taskQuery,
+                plugin::isTaskCompleted,
+                plugin::isNewTask,
+                this::taskListCompletionInfo,
+                this::taskListTimeTicks);
         List<XtremeTask> result = useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
         List<XtremeTask> immutableResult = Collections.unmodifiableList(new ArrayList<>(result));
         sortedTaskListCache.put(cacheKey, immutableResult);
@@ -5027,7 +5052,54 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private boolean useCondensedTaskRows()
     {
-        return plugin.condenseRepeatedTasks() && !taskQuery.sortByDate && !taskQuery.sortByTimeTicks;
+        return plugin.condenseRepeatedTasks();
+    }
+
+    private CompletionInfo taskListCompletionInfo(XtremeTask task)
+    {
+        return plugin.getCompletionInfo(useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task);
+    }
+
+    private Long taskListTimeTicks(XtremeTask task)
+    {
+        return plugin.getTaskTimeTicks(useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task);
+    }
+
+    private XtremeTask latestCompletedGroupInstance(XtremeTask task)
+    {
+        if (!useCondensedTaskRows() || task == null)
+        {
+            return task;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.size() <= 1)
+        {
+            return task;
+        }
+
+        XtremeTask latestTimestamped = null;
+        XtremeTask latestUntimestamped = null;
+        long latestTimestamp = Long.MIN_VALUE;
+        for (XtremeTask instance : group)
+        {
+            CompletionInfo info = plugin.getCompletionInfo(instance);
+            if (info == null)
+            {
+                continue;
+            }
+
+            latestUntimestamped = instance;
+            if (info.timestamp > 0 && info.timestamp >= latestTimestamp)
+            {
+                latestTimestamped = instance;
+                latestTimestamp = info.timestamp;
+            }
+        }
+
+        return latestTimestamped != null
+                ? latestTimestamped
+                : latestUntimestamped != null ? latestUntimestamped : task;
     }
 
     private String sortedTaskListCacheKey(TaskTier tier)

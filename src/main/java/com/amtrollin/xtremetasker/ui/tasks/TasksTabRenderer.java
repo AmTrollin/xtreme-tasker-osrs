@@ -2,6 +2,7 @@ package com.amtrollin.xtremetasker.ui.tasks;
 
 import com.amtrollin.xtremetasker.TaskerService;
 import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.anim.OverlayAnimations;
@@ -222,9 +223,13 @@ public final class TasksTabRenderer {
             sel = tasks.size() - 1;
         }
 
-        boolean useCondensedRows = plugin.condenseRepeatedTasks()
-                && !state.taskQuery().sortByDate
-                && !state.taskQuery().sortByTimeTicks;
+        boolean useCondensedRows = plugin.condenseRepeatedTasks();
+        Function<XtremeTask, CompletionInfo> completionInfoProvider = useCondensedRows
+                ? task -> latestGroupCompletionInfo(plugin, task)
+                : plugin::getCompletionInfo;
+        Function<XtremeTask, Long> taskTicksProvider = useCondensedRows
+                ? task -> latestGroupTimeTicks(plugin, task)
+                : plugin::getTaskTimeTicks;
 
         TaskRowsLayout layout = rowsRenderer.render(
                 g,
@@ -241,8 +246,8 @@ public final class TasksTabRenderer {
                 plugin::isTaskCompleted,
                 useCondensedRows ? plugin::getTaskGroupProgress : null,
                 useCondensedRows ? plugin::isTaskGroupNew : plugin::isNewTask,
-                plugin::getCompletionInfo,
-                plugin::getTaskTimeTicks,
+                completionInfoProvider,
+                taskTicksProvider,
                 state.controlsLayout().sortDate,
                 state.controlsLayout().sortTimeTicks,
                 true,
@@ -279,6 +284,55 @@ public final class TasksTabRenderer {
 
         drawTaskNameHoverTooltip(g, fm, panelBounds, layout, hoverX, hoverY);
 
+    }
+
+    private static CompletionInfo latestGroupCompletionInfo(TaskerService plugin, XtremeTask task)
+    {
+        XtremeTask instance = latestCompletedGroupInstance(plugin, task);
+        return plugin == null ? null : plugin.getCompletionInfo(instance);
+    }
+
+    private static Long latestGroupTimeTicks(TaskerService plugin, XtremeTask task)
+    {
+        XtremeTask instance = latestCompletedGroupInstance(plugin, task);
+        return plugin == null ? null : plugin.getTaskTimeTicks(instance);
+    }
+
+    private static XtremeTask latestCompletedGroupInstance(TaskerService plugin, XtremeTask task)
+    {
+        if (plugin == null || task == null)
+        {
+            return task;
+        }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
+        if (group == null || group.size() <= 1)
+        {
+            return task;
+        }
+
+        XtremeTask latestTimestamped = null;
+        XtremeTask latestUntimestamped = null;
+        long latestTimestamp = Long.MIN_VALUE;
+        for (XtremeTask instance : group)
+        {
+            CompletionInfo info = plugin.getCompletionInfo(instance);
+            if (info == null)
+            {
+                continue;
+            }
+
+            latestUntimestamped = instance;
+            if (info.timestamp > 0 && info.timestamp >= latestTimestamp)
+            {
+                latestTimestamped = instance;
+                latestTimestamp = info.timestamp;
+            }
+        }
+
+        return latestTimestamped != null
+                ? latestTimestamped
+                : latestUntimestamped != null ? latestUntimestamped : task;
     }
 
     private void drawTierTabWithPercent(Graphics2D g, Rectangle bounds, String leftText, String rightText, int pctValue, boolean active) {

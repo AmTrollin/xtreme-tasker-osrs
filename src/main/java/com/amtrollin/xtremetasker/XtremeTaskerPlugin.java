@@ -402,6 +402,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         updateOverlayState();
         updateTaskHudState();
+        if ("condenseRepeatedTasks".equals(event.getKey()))
+        {
+            overlay.refreshTaskListViewMode();
+        }
     }
 
     @Subscribe

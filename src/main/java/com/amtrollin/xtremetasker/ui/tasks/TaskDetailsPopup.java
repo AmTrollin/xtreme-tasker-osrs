@@ -965,10 +965,9 @@ public final class TaskDetailsPopup
     )
     {
         g.setColor(new Color(245, 92, 82, 245));
-        g.drawString(TextUtils.truncateToWidth("Not enough CLOG(s) obtained. Go to the Sync page or mark incomplete.",
-                fm, contentW),
-                contentLeft,
-                y);
+        g.drawString(TextUtils.truncateToWidth("Not enough CLOG(s) obtained", fm, contentW), contentLeft, y);
+        y += ROW_HEIGHT;
+        g.drawString(TextUtils.truncateToWidth("Go to the Sync page or mark incomplete.", fm, contentW), contentLeft, y);
         return y + ROW_HEIGHT + 6;
     }
 
@@ -1331,10 +1330,9 @@ public final class TaskDetailsPopup
         if (!sections.isEmpty())
         {
             y += SECONDARY_SECTION_GAP;
-            g.setColor(palette.UI_TEXT_DIM);
-            g.drawString(OTHER_SEQUENCE_CLOGS_DIVIDER, x, y);
             y += ROW_HEIGHT;
             y += OTHER_SEQUENCE_LABEL_TOP_GAP;
+            g.setColor(palette.UI_TEXT_DIM);
             for (String line : TextUtils.wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
             {
                 g.drawString(TextUtils.truncateToWidth(line, fm, maxWidth), x, y);
