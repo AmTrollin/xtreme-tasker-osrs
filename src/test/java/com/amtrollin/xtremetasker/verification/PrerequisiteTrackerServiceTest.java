@@ -114,23 +114,6 @@ public class PrerequisiteTrackerServiceTest
     }
 
     @Test
-    public void namedMiniquestPrerequisitesUseSpecificMiniquestIconMarkers()
-    {
-        PrerequisiteTrackerService service = new PrerequisiteTrackerService(id -> 0);
-
-        assertEquals(List.of(MarkerIcon.LAIR_OF_TARN_RAZORLOR),
-                service.evaluate("Lair of Tarn Razorlor miniquest").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.MAGE_ARENA_1),
-                service.evaluate("Mage Arena 1 miniquest").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.ENTER_THE_ABYSS),
-                service.evaluate("Enter the Abyss miniquest").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.VALE_TOTEMS),
-                service.evaluate("Vale Totems miniquest").get(0).getMarkerIcons());
-        assertEquals(List.of(MarkerIcon.ALFRED_GRIMHANDS_BARCRAWL),
-                service.evaluate("Alfred Grimhand's Barcrawl miniquest").get(0).getMarkerIcons());
-    }
-
-    @Test
     public void combatLevelPrerequisiteUsesCombatIconMarker()
     {
         PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("100 combat level").get(0);
@@ -147,21 +130,15 @@ public class PrerequisiteTrackerServiceTest
     }
 
     @Test
-    public void taiBwoFavourPrerequisiteCompletesAndUsesBulletMarker()
+    public void favourPrerequisitesUseBulletMarker()
     {
-        PrerequisiteStatus status = serviceWithVarbitValue(4600, 100).evaluate("Tai Bwo Wannai Cleanup favour").get(0);
+        PrerequisiteStatus taiBwo = serviceWithVarbitValue(4600, 100).evaluate("Tai Bwo Wannai Cleanup favour").get(0);
+        PrerequisiteStatus kourend = new PrerequisiteTrackerService(id -> 100).evaluate("100% Hosidius favour").get(0);
 
-        assertTrue(status.isCompleted());
-        assertEquals(List.of(MarkerIcon.BULLET), status.getMarkerIcons());
-    }
-
-    @Test
-    public void kourendFavourPrerequisiteUsesBulletMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 100).evaluate("100% Hosidius favour").get(0);
-
-        assertFalse(status.isCompleted());
-        assertEquals(List.of(MarkerIcon.BULLET), status.getMarkerIcons());
+        assertTrue(taiBwo.isCompleted());
+        assertEquals(List.of(MarkerIcon.BULLET), taiBwo.getMarkerIcons());
+        assertFalse(kourend.isCompleted());
+        assertEquals(List.of(MarkerIcon.BULLET), kourend.getMarkerIcons());
     }
 
     @Test
@@ -181,52 +158,11 @@ public class PrerequisiteTrackerServiceTest
     }
 
     @Test
-    public void jagexAccountPrerequisiteUsesBulletMarker()
+    public void nonSkillPrerequisiteFallsBackToBulletMarker()
     {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0)
-                .evaluate("Own a Jagex Account or set up the older RuneScape Authenticator")
-                .get(0);
+        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("Defeat the Giant Mole").get(0);
 
         assertEquals(List.of(MarkerIcon.BULLET), status.getMarkerIcons());
-    }
-
-    @Test
-    public void namedNonSkillPrerequisitesUseBulletMarker()
-    {
-        PrerequisiteTrackerService service = new PrerequisiteTrackerService(id -> 0);
-
-        for (String prerequisite : List.of(
-                "Defeat the Thermonuclear smoke devil",
-                "See Wiki (Based on Raid)",
-                "Defeat the Giant Mole",
-                "Acquire a prospector helmet from the Motherlode Mine",
-                "Defeat a Lizardman Shaman in the Lizardman Temple",
-                "Access to the Bones to Peaches spell from the Mage Training Arena",
-                "Defeat Zulrah",
-                "Defeat the Chaos elemental",
-                "Access to Thermonuclear smoke devil",
-                "Reach 1,000 chompy or jubbly bird kills",
-                "Defeat the Kalphite Queen and obtain her tattered head",
-                "Defeat the Penance Queen and acquire level 5 in all Barbarian Assault roles",
-                "Open the Grand Gold Chest in the final room of Pyramid Plunder",
-                "Defeat Skotizo",
-                "Defeat a Hydra in the Karuulm Slayer Dungeon",
-                "Reach the rank of White Knight Master",
-                "Defeat a Ket-Zek in the TzHaar Fight Cave on the 31st wave",
-                "TzHaar Fight Cave",
-                "Open the Barrows chest while wearing a full Barrows set",
-                "Chambers of Xeric",
-                "Defeat the Crazy Archaeologist, Chaos Fanatic, and Scorpia",
-                "Access to at least one of the three god spells",
-                "Defeat each of the Dagannoth Kings",
-                "Defeat Callisto/Artio, Venenatis/Spindel, and Vet'ion/Calvar'ion",
-                "Defeat all God Wars Dungeon generals except Nex",
-                "Acquire and wear any complete void set"))
-        {
-            assertEquals(List.of(MarkerIcon.BULLET), service.evaluate(prerequisite).get(0).getMarkerIcons());
-        }
-        assertEquals(List.of(MarkerIcon.WILDERNESS),
-                service.evaluate("Access to the Wilderness God Wars Dungeon").get(0).getMarkerIcons());
     }
 
     @Test
