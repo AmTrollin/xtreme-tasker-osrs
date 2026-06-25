@@ -4424,8 +4424,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin.getCompletionInfo(recentCompleted),
                 plugin.getTaskTimeTicks(recentCompleted),
                 plugin.canUndoRecentTaskCompletion(),
-                plugin.isTaskSkippingEnabled(),
-                plugin.getSkippedTaskCount(),
                 plugin.isCurrentTaskCompletionCriteriaMet(),
                 keyboardHintsOpen,
                 keyboardHintsButtonBounds,
@@ -4460,12 +4458,8 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         String progress = tierLabel(tierForProgress) + ": " + plugin.getTierProgressLabel(tierForProgress);
-        String skipped = "Skipped tasks: " + plugin.getSkippedTaskCount();
-        int skippedW = fm.stringWidth(skipped);
-        int progressW = Math.max(20, innerW - skippedW - 8);
         g.setColor(P.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(progress, fm, progressW), innerX, y + fm.getAscent());
-        g.drawString(skipped, innerX + innerW - skippedW, y + fm.getAscent());
+        g.drawString(TextUtils.truncateToWidth(progress, fm, innerW), innerX, y + fm.getAscent());
         y += fm.getHeight() + 3;
 
         int actionH = ROW_HEIGHT + 6;
@@ -4488,7 +4482,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
         boolean rollEnabled = current == null || currentCompleted;
         boolean completeEnabled = current != null && !currentCompleted;
-        boolean skipEnabled = plugin.isTaskSkippingEnabled();
         boolean canUndoRecentCompletion = plugin.canUndoRecentTaskCompletion();
         boolean currentCompletionCriteriaMet = plugin.isCurrentTaskCompletionCriteriaMet();
         int buttonGap = 6;
@@ -4497,22 +4490,12 @@ public class XtremeTaskerOverlay extends Overlay {
                 : 0;
         int actionW = wikiW > 0 ? innerW - wikiW - buttonGap : innerW;
         if (completeEnabled) {
-            if (skipEnabled) {
-                int skipW = Math.min(64, Math.max(48, fm.stringWidth("Skip") + 22));
-                int completeW = Math.max(90, actionW - skipW - buttonGap);
-                currentLayout.completeButtonBounds.setBounds(innerX, y, completeW, actionH);
-                currentLayout.skipButtonBounds.setBounds(innerX + completeW + buttonGap, y, skipW, actionH);
-            } else {
-                currentLayout.completeButtonBounds.setBounds(innerX, y, actionW, actionH);
-            }
+            currentLayout.completeButtonBounds.setBounds(innerX, y, actionW, actionH);
             buttonRenderer.drawPrimaryButton(
                     g,
                     currentLayout.completeButtonBounds,
                     "Mark complete",
                     currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
-            if (skipEnabled) {
-                buttonRenderer.drawPlainButton(g, currentLayout.skipButtonBounds, "Skip");
-            }
         } else if (rollEnabled) {
             if (canUndoRecentCompletion) {
                 int undoW = Math.min(70, Math.max(48, fm.stringWidth("Undo") + 22));
@@ -5142,10 +5125,8 @@ public class XtremeTaskerOverlay extends Overlay {
         currentLayout.wikiButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.rollButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.completeButtonBounds.setBounds(0, 0, 0, 0);
-        currentLayout.skipButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.undoButtonBounds.setBounds(0, 0, 0, 0);
         currentLayout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
-        currentLayout.skippedTasksIconBounds.setBounds(0, 0, 0, 0);
         currentLayout.viewportBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
         currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
@@ -6962,10 +6943,8 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(currentLayout.wikiButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.rollButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.completeButtonBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.skipButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.undoButtonBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.rollSourceIconBounds, anchorX, anchorY, scale);
-        scaleRect(currentLayout.skippedTasksIconBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.viewportBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.scrollbarRailBounds, anchorX, anchorY, scale);
         scaleRect(currentLayout.scrollbarThumbBounds, anchorX, anchorY, scale);

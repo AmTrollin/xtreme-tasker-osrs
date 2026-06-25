@@ -154,7 +154,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private long loadedStateAtMillis = 0L;
     private String currentTaskId = null;
     private String undoableCompletedTaskId = null;
-    private int skippedTaskCount = 0;
     private String currentTaskCollectionLogBaselineSignature = null;
     private Integer currentTaskCollectionLogBaselineCount = null;
 
@@ -1239,7 +1238,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setRetiredTaskIds(new HashSet<>(retiredTaskIds));
         state.setCurrentTaskId(currentTaskId);
         state.setUndoableCompletedTaskId(undoableCompletedTaskId);
-        state.setSkippedTaskCount(skippedTaskCount);
         state.setCurrentTaskCollectionLogBaselineSignature(currentTaskCollectionLogBaselineSignature);
         state.setCurrentTaskCollectionLogBaselineCount(currentTaskCollectionLogBaselineCount);
         state.setLastSeenPackVersion(lastSeenPackVersion);
@@ -1310,7 +1308,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 && isValidPositiveIntegerSet(state.getCollectionLogItemIds())
                 && (state.getCurrentTaskCollectionLogBaselineCount() == null
                 || state.getCurrentTaskCollectionLogBaselineCount() >= 0)
-                && state.getSkippedTaskCount() >= 0
                 && state.getLastSeenPackVersion() >= 0
                 && state.getLastKnownTaskCount() >= 0;
     }
@@ -1384,7 +1381,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private boolean isRecoveryRelevantStateChange(PersistedState previous, PersistedState next) {
         return !Objects.equals(safeTrim(previous.getCurrentTaskId()), safeTrim(next.getCurrentTaskId()))
-                || previous.getSkippedTaskCount() != next.getSkippedTaskCount()
                 || !Objects.equals(safeTrim(previous.getAccountKey()), safeTrim(next.getAccountKey()))
                 || !Objects.equals(safeTrim(previous.getAccountDisplayName()), safeTrim(next.getAccountDisplayName()))
                 || previous.getLastSeenPackVersion() != next.getLastSeenPackVersion()
@@ -1641,7 +1637,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         currentTaskId = safeTrim(state.getCurrentTaskId());
         undoableCompletedTaskId = safeTrim(state.getUndoableCompletedTaskId());
-        skippedTaskCount = Math.max(0, state.getSkippedTaskCount());
         currentTaskCollectionLogBaselineSignature = safeTrim(state.getCurrentTaskCollectionLogBaselineSignature());
         currentTaskCollectionLogBaselineCount = state.getCurrentTaskCollectionLogBaselineCount();
         lastSeenPackVersion = state.getLastSeenPackVersion();
@@ -1700,7 +1695,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTask = null;
         currentTaskId = null;
         undoableCompletedTaskId = null;
-        skippedTaskCount = 0;
         currentTaskCollectionLogBaselineSignature = null;
         currentTaskCollectionLogBaselineCount = null;
         loadedStateAccountKey = null;
@@ -2625,44 +2619,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTaskId = (currentTask != null) ? currentTask.getId() : null;
         captureCurrentTaskCollectionLogBaseline();
         markDirtyAndPersist(); // writes immediately if activeAccountKey != null
-    }
-
-    @Override
-    public void skipCurrentTaskAndPersist()
-    {
-        if (!config.enableTaskSkipping())
-        {
-            return;
-        }
-
-        if (!hasTaskPackLoaded())
-        {
-            chat("No tasks loaded. Load tasks in Rules tab");
-            return;
-        }
-
-        XtremeTask cur = getCurrentTask();
-        if (cur == null)
-        {
-            return;
-        }
-
-        if (undoableCompletedTaskId != null)
-        {
-            freezeCompletedTaskTime(undoableCompletedTaskId);
-            undoableCompletedTaskId = null;
-        }
-
-        String skippedId = cur.getId();
-        skippedTaskCount++;
-
-        XtremeTask newTask = rollRandomTaskExcluding(skippedId);
-        currentTask = decorateCurrentSequenceTask(newTask);
-        rollAnimEndMs = System.currentTimeMillis() + com.amtrollin.xtremetasker.ui.style.UiConstants.ROLL_ANIM_MS;
-
-        currentTaskId = (currentTask != null) ? currentTask.getId() : null;
-        captureCurrentTaskCollectionLogBaseline();
-        markDirtyAndPersist();
     }
 
     public void completeCurrentTaskAndPersist()
@@ -4903,18 +4859,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public XtremeTaskerConfig.RollSourceFilter getRollSourceFilter()
     {
         return config.rollSourceFilter();
-    }
-
-    @Override
-    public boolean isTaskSkippingEnabled()
-    {
-        return config.enableTaskSkipping();
-    }
-
-    @Override
-    public int getSkippedTaskCount()
-    {
-        return skippedTaskCount;
     }
 
     @Override

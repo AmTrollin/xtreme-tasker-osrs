@@ -45,15 +45,6 @@ public interface XtremeTaskerConfig extends Config {
         return true;
     }
 
-    @ConfigItem(
-            keyName = "enableTaskSkipping",
-            name = "Enable task skipping",
-            description = "Show a Skip button on the Current task page. Skipping rerolls your current task and increments your skipped task count."
-    )
-    default boolean enableTaskSkipping() {
-        return false;
-    }
-
     // Tips config temporarily disabled — always off for now
     // @ConfigItem(
     //         keyName = "showTips",

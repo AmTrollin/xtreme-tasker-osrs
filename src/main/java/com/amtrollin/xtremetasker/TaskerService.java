@@ -52,8 +52,6 @@ public interface TaskerService
 
     void rollRandomTaskAndPersist();
 
-    void skipCurrentTaskAndPersist();
-
     void reloadTaskPack();
 
     void syncAccountProgressAndPersist();
@@ -117,10 +115,6 @@ public interface TaskerService
     void setSkipSingleIncompleteConfirmation(boolean skip);
 
     XtremeTaskerConfig.RollSourceFilter getRollSourceFilter();
-
-    boolean isTaskSkippingEnabled();
-
-    int getSkippedTaskCount();
 
     String getRollSkipNotice();
 

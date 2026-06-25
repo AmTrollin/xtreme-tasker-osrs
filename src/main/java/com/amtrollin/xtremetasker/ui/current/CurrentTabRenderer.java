@@ -114,9 +114,7 @@ public final class CurrentTabRenderer
             XtremeTask recentCompletedTask,
             CompletionInfo recentCompletionInfo,
             Long recentTaskTimeTicks,
-            boolean canUndoRecentCompletion,
-            boolean skipEnabled,
-            int skippedTaskCount
+            boolean canUndoRecentCompletion
     )
     {
         CurrentTabLayout layout = new CurrentTabLayout();
@@ -124,10 +122,8 @@ public final class CurrentTabRenderer
         layout.wikiButtonBounds.setBounds(0, 0, 0, 0);
         layout.rollButtonBounds.setBounds(0, 0, 0, 0);
         layout.completeButtonBounds.setBounds(0, 0, 0, 0);
-        layout.skipButtonBounds.setBounds(0, 0, 0, 0);
         layout.undoButtonBounds.setBounds(0, 0, 0, 0);
         layout.rollSourceIconBounds.setBounds(0, 0, 0, 0);
-        layout.skippedTasksIconBounds.setBounds(0, 0, 0, 0);
         layout.viewportBounds.setBounds(0, 0, 0, 0);
         layout.totalContentPx = 0;
 
@@ -145,30 +141,11 @@ public final class CurrentTabRenderer
 
         // ── Tier progress line (always outside scroll) ─────────────────────────
         String progress = prettyTier(tierForProgress) + " tier progress: " + (tierProgressLabel == null ? "" : tierProgressLabel.apply(tierForProgress));
-        String skipped = "Skipped tasks: " + Math.max(0, skippedTaskCount);
         int progressMaxW = panelWidth - 2 * panelPadding;
-        int skippedIconSize = fm.getAscent() + 2;
-        int skippedIconGap = 4;
-        int skippedW = fm.stringWidth(skipped);
-        int skippedBlockW = skippedIconSize + skippedIconGap + skippedW;
-        int gap = 12;
-        progress = truncateToWidth(progress, fm, Math.max(20, progressMaxW - skippedBlockW - gap));
+        progress = truncateToWidth(progress, fm, progressMaxW);
 
         g.setColor(uiTextDim);
         g.drawString(progress, panelX + panelPadding, cursorYBaseline);
-        int skippedX = panelX + panelWidth - panelPadding - skippedW;
-        int skippedIconX = skippedX - skippedIconGap - skippedIconSize;
-        int skippedIconY = cursorYBaseline - fm.getAscent();
-        drawQuestionIcon(g, skippedIconX, skippedIconY, skippedIconSize);
-        layout.skippedTasksIconBounds.setBounds(skippedIconX, skippedIconY, skippedIconSize, skippedIconSize);
-        g.setColor(uiTextDim);
-        g.drawString(skipped, skippedX, cursorYBaseline);
-        if (mousePoint != null && layout.skippedTasksIconBounds.contains(mousePoint))
-        {
-            String tip = "Skipping tasks can be " + (skipEnabled ? "disabled" : "enabled") + " in config settings";
-            drawHeaderTooltip(g, fm, tip, skippedIconX, skippedIconY, skippedIconSize,
-                    panelX + panelPadding, panelX + panelWidth - panelPadding);
-        }
         cursorYBaseline += rowHeight + 14;
 
         // ── Current task area starts below progress ────────────────────────────
@@ -213,7 +190,6 @@ public final class CurrentTabRenderer
                     showTips,
                     taskIcon,
                     taskTimeTicks,
-                    skipEnabled,
                     layout
             );
         }
@@ -348,7 +324,6 @@ public final class CurrentTabRenderer
             boolean showTips,
             java.awt.image.BufferedImage taskIcon,
             Long taskTimeTicks,
-            boolean skipEnabled,
             CurrentTabLayout layout
     )
     {
@@ -385,7 +360,6 @@ public final class CurrentTabRenderer
                 mousePoint,
                 taskIcon,
                 taskTimeTicks,
-                skipEnabled,
                 layout
         );
 
@@ -639,7 +613,6 @@ public final class CurrentTabRenderer
             java.awt.Point mousePoint,
             java.awt.image.BufferedImage taskIcon,
             Long taskTimeTicks,
-            boolean skipEnabled,
             CurrentTabLayout layout
     )
     {
@@ -710,18 +683,7 @@ public final class CurrentTabRenderer
         int buttonY = Math.min(card.y + card.height - buttonH - 18, y + Math.max(36, card.height / 10));
         if (!currentCompleted)
         {
-            if (skipEnabled)
-            {
-                int buttonGap = 6;
-                int skipW = Math.min(64, Math.max(48, fm.stringWidth("Skip") + 22));
-                int completeW = Math.max(90, buttonW - skipW - buttonGap);
-                layout.completeButtonBounds.setBounds(buttonX, buttonY, completeW, buttonH);
-                layout.skipButtonBounds.setBounds(buttonX + completeW + buttonGap, buttonY, skipW, buttonH);
-            }
-            else
-            {
-                layout.completeButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
-            }
+            layout.completeButtonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
         }
         else
         {
