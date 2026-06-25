@@ -126,7 +126,9 @@ public final class TaskRowsRenderer {
             Rectangle dateColumnBounds,
             Rectangle timeColumnBounds,
             boolean showCompletionMeta,
-            boolean showTimeMeta
+            boolean showTimeMeta,
+            boolean showTierMeta,
+            boolean showSourceMeta
     ) {
         TaskRowsLayout layout = new TaskRowsLayout();
         layout.rowBounds.clear();
@@ -248,14 +250,20 @@ public final class TaskRowsRenderer {
             final int pillH = 14;
             final int pillArc = 4;
             final int pillGap = 3;
-            int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2; // fixed width for all sources
-            int tierW = sfm.stringWidth("Master") + pillPadX * 2; // fixed width for all tiers
+            int srcW = showSourceMeta
+                    ? Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2
+                    : 0; // fixed width for all sources
+            int tierW = showTierMeta
+                    ? sfm.stringWidth("Master") + pillPadX * 2
+                    : 0; // fixed width for all tiers
             int newW = sfm.stringWidth("NEW") + pillPadX * 2;
             int progressW = (progress != null && progress.isGrouped()) ? sfm.stringWidth(progress.label()) + 6 : 0;
             int metaLeftX = firstColumnX(dateColumnBounds, timeColumnBounds);
             int columnReserveW = metaLeftX > textX ? Math.max(0, viewportX + rowW - metaLeftX) : 0;
+            int visibleBadgeW = (showSourceMeta ? srcW : 0)
+                    + (showTierMeta ? (showSourceMeta ? pillGap : 0) + tierW : 0);
             int badgeReserveW = progressW + (progressW > 0 ? pillGap : 0)
-                    + srcW + pillGap + tierW + (isNew ? pillGap + newW : 0) + 4; // 4px margin from row right edge
+                    + visibleBadgeW + (visibleBadgeW > 0 ? 4 : 0) + (isNew ? pillGap + newW : 0) + 4; // 4px margin from row right edge
             int rightColW = columnReserveW > 0
                     ? columnReserveW + progressW + (progressW > 0 ? pillGap : 0) + (isNew ? pillGap + newW : 0)
                     : badgeReserveW;
@@ -282,24 +290,30 @@ public final class TaskRowsRenderer {
             int pillRightEdge = viewportX + rowW - 4;
             int pillTop = drawY - fm.getAscent() + (fm.getHeight() - pillH) / 2 + ROW_BADGE_Y_OFFSET;
 
-            // source (rightmost)
-            int srcX = pillRightEdge - srcW;
             g.setFont(smallFont);
-            drawRowPill(g, sfm, srcText, srcX, pillTop, srcW, pillH, pillArc, withAlpha(uiTextDim, 210));
+            int nextBadgeRight = pillRightEdge;
 
-            // tier (left of source)
-            int tierX = srcX - pillGap - tierW;
-            drawRowPill(g, sfm, tierText, tierX, pillTop, tierW, pillH, pillArc, tierTextColor(task.getTier()));
+            if (showSourceMeta) {
+                int srcX = nextBadgeRight - srcW;
+                drawRowPill(g, sfm, srcText, srcX, pillTop, srcW, pillH, pillArc, withAlpha(uiTextDim, 210));
+                nextBadgeRight = srcX - pillGap;
+            }
+
+            if (showTierMeta) {
+                int tierX = nextBadgeRight - tierW;
+                drawRowPill(g, sfm, tierText, tierX, pillTop, tierW, pillH, pillArc, tierTextColor(task.getTier()));
+                nextBadgeRight = tierX - pillGap;
+            }
 
             g.setFont(fm.getFont()); // restore row font
 
-            int leftBadgeX = tierX;
+            int leftBadgeX = visibleBadgeW > 0 ? nextBadgeRight + pillGap : pillRightEdge;
             if (progress != null && progress.isGrouped()) {
                 g.setFont(smallFont);
                 String progressText = progress.label();
                 int progressX = columnReserveW > 0
-                        ? Math.min(tierX - pillGap - progressW, metaLeftX - pillGap - progressW)
-                        : tierX - pillGap - progressW;
+                        ? Math.min(leftBadgeX - pillGap - progressW, metaLeftX - pillGap - progressW)
+                        : leftBadgeX - pillGap - progressW;
                 g.setColor(progress.isComplete()
                         ? new Color(120, 200, 140, 225)
                         : partialGroup
@@ -469,14 +483,15 @@ public final class TaskRowsRenderer {
 
         g.setFont(smallFont);
         g.setColor(withAlpha(uiTextDim, 210));
+        CompletionInfo completionInfo = completionInfoProvider == null ? null : completionInfoProvider.apply(task);
         if (showCompletionMeta && dateColumnBounds != null && dateColumnBounds.width > 0)
         {
-            drawColumnText(g, sfm, dateColumnBounds, rowDateText(task, completionInfoProvider), baseline);
+            drawColumnText(g, sfm, dateColumnBounds, rowDateText(completionInfo), baseline);
         }
 
         if (showTimeMeta && timeColumnBounds != null && timeColumnBounds.width > 0)
         {
-            drawColumnText(g, sfm, timeColumnBounds, rowTimeText(task, taskTicksProvider), baseline);
+            drawColumnText(g, sfm, timeColumnBounds, rowTimeText(task, completionInfo, taskTicksProvider), baseline);
         }
     }
 
@@ -491,13 +506,8 @@ public final class TaskRowsRenderer {
         g.drawString(draw, x, baseline);
     }
 
-    private static String rowDateText(XtremeTask task, Function<XtremeTask, CompletionInfo> completionInfoProvider)
+    private static String rowDateText(CompletionInfo info)
     {
-        if (completionInfoProvider == null)
-        {
-            return null;
-        }
-        CompletionInfo info = completionInfoProvider.apply(task);
         if (info == null)
         {
             return "??";
@@ -505,8 +515,12 @@ public final class TaskRowsRenderer {
         return info.timestamp <= 0 ? "??" : ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
-    private static String rowTimeText(XtremeTask task, Function<XtremeTask, Long> taskTicksProvider)
+    private static String rowTimeText(XtremeTask task, CompletionInfo completionInfo, Function<XtremeTask, Long> taskTicksProvider)
     {
+        if (completionInfo == null)
+        {
+            return "??";
+        }
         if (taskTicksProvider == null)
         {
             return null;

@@ -2,7 +2,7 @@
 
 Xtreme Tasker is a RuneLite plugin that turns Old School RuneScape into a long-term progression challenge using randomized Combat Achievements, Collection Log goals, and Achievement Diaries.
 
-Latest release: **v2.1** - **06.25.2026** ([Release Notes](docs/RELEASE_NOTES.md))
+**Latest release:** **v2.0** - **06.25.2026** ([Release Notes](docs/RELEASE_NOTES.md))
 
 Inspired by Tedious' Collection Log Master game mode, Xtreme Tasker combines multiple progression systems into one randomized journey.
 
@@ -12,7 +12,7 @@ Want to see it in action? Check out [@amtrollin](https://www.youtube.com/@AmTrol
 
 * Roll randomized Combat Achievement, Collection Log, and Achievement Diary tasks
 * Progress through Easy, Medium, Hard, Elite, and Master tiers
-* Track your current task, timer, requirements, wiki links, and tier progress
+* Track your current task, timer, requirements, and tier progress
 * Search, filter, and sort the complete task list
 * Sync existing account progress with review before applying changes
 * Store progress locally per RuneLite character profile
@@ -23,21 +23,29 @@ Open the Xtreme Tasker overlay. If importing an existing account, go to **Help �
 
 > **Collection Log syncing only includes entries RuneLite has seen.** For best results, open your in game Collection Log before syncing.
 
-<img src="docs/gifs/OpenCompleteRollTask_Current.gif" alt="Open overlay, complete task, and roll a new task" width="420">
+<img src="docs/gifs/RollTask.gif" alt="Open overlay, complete a task, and roll a new one" width="550">
 
-## Overlay Tabs
+## Features
 
-* **Current** – Current task, timer, requirements, completion controls, and wiki links
-* **Tasks** – Browse, search, filter, sort, and review every task
-* **Help** – Rules, FAQs, documentation, and account sync
+### Current Task
 
-## Progress Sync
+Track your active task, view requirements, open relevant wiki pages, and roll your next challenge after completion.
 
-The **Sync** action imports supported Combat Achievement, Collection Log, Achievement Diary, and skill progress. Changes are staged for review before being applied.
+<img src="docs/images/CurrentTab.png" alt="Current Task" width="550">
+
+### Task List
+
+Browse every task with powerful search, filtering, sorting, progress tracking, and detailed task information.
+
+<img src="docs/images/TasksTab.png" alt="Task list" width="550">
+
+### Account Sync
+
+Import supported Combat Achievement, Collection Log, Achievement Diary, and skill progress. Changes are staged for review before being applied.
 
 When plugin updates add new tasks, they'll appear in the **Tasks** tab for review separately from account sync.
 
-<img src="docs/images/CAlistreview_help_datasync.png" alt="Help Sync review note" width="380">
+<img src="docs/images/SyncTab.png" alt="Sync review" width="550">
 
 ## Rules
 
@@ -49,4 +57,4 @@ Grandmaster Combat Achievements are included in the **Master** tier.
 
 Xtreme Tasker stores progress locally in your RuneLite profile and mirrors it to RuneLite config for compatibility. No account progress or gameplay data is sent to external services.
 
-Sync only reads data already available to RuneLite, such as Combat Achievements, cached Collection Log entries, and Achievement Diaries. External websites are only opened when you click a link.
+Sync only reads data already available to RuneLite, such as Combat Achievements, cached Collection Log entries, and Achievement Diaries. External links are only opened when you click them.

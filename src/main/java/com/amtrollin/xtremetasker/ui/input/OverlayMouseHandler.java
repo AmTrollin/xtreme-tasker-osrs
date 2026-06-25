@@ -375,6 +375,19 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 } else if (a.controlsLayout().filterTierAll.contains(p)) {
                     changed = setTierScope(TaskListQuery.TierScope.ALL_TIERS);
                 }
+                else if (a.controlsLayout().columnDate.contains(p)) {
+                    a.controlsLayout().showDateColumn = !a.controlsLayout().showDateColumn;
+                    changed = true;
+                } else if (a.controlsLayout().columnTime.contains(p)) {
+                    a.controlsLayout().showTimeColumn = !a.controlsLayout().showTimeColumn;
+                    changed = true;
+                } else if (a.controlsLayout().columnTier.contains(p)) {
+                    a.controlsLayout().showTierColumn = !a.controlsLayout().showTierColumn;
+                    changed = true;
+                } else if (a.controlsLayout().columnSource.contains(p)) {
+                    a.controlsLayout().showSourceColumn = !a.controlsLayout().showSourceColumn;
+                    changed = true;
+                }
 
                 // ----------------------------
                 // 4) Table sort headers
@@ -1276,6 +1289,10 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || cl.filterComplete.contains(p)
                         || cl.filterTierThis.contains(p)
                         || cl.filterTierAll.contains(p)
+                        || cl.columnDate.contains(p)
+                        || cl.columnTime.contains(p)
+                        || cl.columnTier.contains(p)
+                        || cl.columnSource.contains(p)
                         // table sort headers
                         || cl.sortDate.contains(p)
                         || (cl.sortTimeTicks.width > 0 && cl.sortTimeTicks.contains(p))

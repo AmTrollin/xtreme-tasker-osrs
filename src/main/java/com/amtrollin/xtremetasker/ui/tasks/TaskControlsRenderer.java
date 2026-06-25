@@ -102,6 +102,7 @@ public class TaskControlsRenderer
         final int rightPad = 8;
 
         final int chipGap = 6;           // blank space between chips
+        final int labelToChipOverlap = 3;
         final int pillPadX = 10;          // inside-pill horizontal padding
 
         // ================================
@@ -221,7 +222,7 @@ public class TaskControlsRenderer
         g.setFont(savedHeaderFont);
         fm = bodyFm;
 
-        cursorY += headerFm.getHeight() + 3;
+        cursorY += headerFm.getHeight() - 5;
 
         // ================================
         // Rows 3-5: Filter chips
@@ -231,7 +232,7 @@ public class TaskControlsRenderer
         rowTop = cursorY - fm.getAscent();
 
         drawLabelCell(g, fm, rowX, rowTop, rowW, rowH, SOURCE_LABEL, leftPad);
-        cursorY += rowH - 2;
+        cursorY += rowH - labelToChipOverlap;
         rowTop = cursorY - fm.getAscent();
 
         final String SRC_ALL = "All";
@@ -264,14 +265,14 @@ public class TaskControlsRenderer
         drawPill(g, fm, layout.filterCL, SRC_CL, !sourceAll && query.sourceClogsSelected);
         drawPill(g, fm, layout.filterDA, SRC_DA, !sourceAll && query.sourceDasSelected);
 
-        cursorY += rowH + 8;
+        cursorY += rowH + 3;
 
         // ================================
         // Row 4: Status chips
         // ================================
         rowTop = cursorY - fm.getAscent();
         drawLabelCell(g, fm, rowX, rowTop, rowW, rowH, STATUS_LABEL, leftPad);
-        cursorY += rowH - 2;
+        cursorY += rowH - labelToChipOverlap;
         rowTop = cursorY - fm.getAscent();
 
         final String ST_ALL = "All";
@@ -297,14 +298,14 @@ public class TaskControlsRenderer
         drawPill(g, fm, layout.filterIncomplete, ST_INC, query.statusFilter == TaskListQuery.StatusFilter.INCOMPLETE);
         drawPill(g, fm, layout.filterComplete, ST_COMP, query.statusFilter == TaskListQuery.StatusFilter.COMPLETE);
 
-        cursorY += rowH + 8;
+        cursorY += rowH + 3;
 
         // ================================
         // Row 5: Tier scope chips
         // ================================
         rowTop = cursorY - fm.getAscent();
         drawLabelCell(g, fm, rowX, rowTop, rowW, rowH, TIER_LABEL, leftPad);
-        cursorY += rowH - 2;
+        cursorY += rowH - labelToChipOverlap;
         rowTop = cursorY - fm.getAscent();
 
         final String T_THIS = "This Tier [" + activeTierLabel + "]";
@@ -312,9 +313,9 @@ public class TaskControlsRenderer
 
         int availableTier = rowW - leftPad - rightPad;
 
-        int wThis = pillWidth(fm, T_THIS, pillPadX, 70, availableTier);
-        int wAllT = pillWidth(fm, T_ALL, pillPadX, 70, availableTier);
-        wThis = Math.min(wThis, Math.max(70, availableTier - chipGap - wAllT));
+        int halfTierW = Math.max(70, (availableTier - chipGap) / 2);
+        int wThis = halfTierW;
+        int wAllT = halfTierW;
 
         int tx = rowX + leftPad;
         layout.filterTierThis.setBounds(tx, rowTop, wThis, rowH);
@@ -324,6 +325,57 @@ public class TaskControlsRenderer
 
         drawTierScopePill(g, fm, layout.filterTierThis, T_THIS, query.tierScope == TaskListQuery.TierScope.THIS_TIER);
         drawPill(g, fm, layout.filterTierAll, T_ALL, query.tierScope == TaskListQuery.TierScope.ALL_TIERS);
+
+        cursorY += rowH + 31;
+
+        // ================================
+        // Row 6: Column display toggles
+        // ================================
+        g.setFont(sectionHeaderFont);
+        headerFm = g.getFontMetrics();
+        String columnTitle = "Column displays:";
+        g.setColor(uiGold);
+        g.drawString(columnTitle, rowX + leftPad, cursorY);
+        int ruleX1 = rowX + leftPad + headerFm.stringWidth(columnTitle) + 10;
+        int ruleY = cursorY - headerFm.getAscent() + headerFm.getHeight() / 2;
+        drawHeaderRule(g, ruleX1, ruleY, rowX + rowW - rightPad);
+        g.setFont(savedHeaderFont);
+        fm = bodyFm;
+
+        cursorY += headerFm.getHeight() + 6;
+        rowTop = cursorY - fm.getAscent();
+
+        final String COL_DATE = "Date completed";
+        final String COL_TIME = "Time spent";
+        final String COL_TIER = "Tier";
+        final String COL_SRC = "Source";
+
+        int availableColumns = rowW - leftPad - rightPad;
+        int halfColumnW = Math.max(48, (availableColumns - chipGap) / 2);
+        int wDate = halfColumnW;
+        int wTime = halfColumnW;
+        int wTier = halfColumnW;
+        int wSrc = halfColumnW;
+
+        int cx = rowX + leftPad;
+        layout.columnDate.setBounds(cx, rowTop, wDate, rowH);
+        cx += wDate + chipGap;
+
+        layout.columnTime.setBounds(cx, rowTop, wTime, rowH);
+
+        cursorY += rowH + chipGap;
+        rowTop = cursorY - fm.getAscent();
+        cx = rowX + leftPad;
+
+        layout.columnTier.setBounds(cx, rowTop, wTier, rowH);
+        cx += wTier + chipGap;
+
+        layout.columnSource.setBounds(cx, rowTop, wSrc, rowH);
+
+        drawPill(g, fm, layout.columnDate, COL_DATE, layout.showDateColumn);
+        drawPill(g, fm, layout.columnTime, COL_TIME, layout.showTimeColumn);
+        drawPill(g, fm, layout.columnTier, COL_TIER, layout.showTierColumn);
+        drawPill(g, fm, layout.columnSource, COL_SRC, layout.showSourceColumn);
 
         cursorY += rowH + 20;
 

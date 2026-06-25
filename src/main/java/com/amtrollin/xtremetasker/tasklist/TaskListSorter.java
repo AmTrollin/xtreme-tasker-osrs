@@ -103,8 +103,8 @@ public final class TaskListSorter
             {
                 Long aTicks = ticksLookup.getTicks(a);
                 Long bTicks = ticksLookup.getTicks(b);
-                long aT = aTicks != null ? aTicks : -1L;
-                long bT = bTicks != null ? bTicks : -1L;
+                long aT = sortableTicks(aTicks);
+                long bT = sortableTicks(bTicks);
                 // Tasks with no ticks go last
                 if (aT < 0 && bT < 0) return 0;
                 else if (aT < 0) return 1;
@@ -125,6 +125,11 @@ public final class TaskListSorter
             String bn = b.getName() == null ? "" : b.getName();
             return an.compareToIgnoreCase(bn);
         };
+    }
+
+    private static long sortableTicks(Long ticks)
+    {
+        return ticks != null && ticks > 0 ? ticks : -1L;
     }
 
     private static int tierRank(XtremeTask task)

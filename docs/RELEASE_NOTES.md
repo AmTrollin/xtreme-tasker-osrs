@@ -1,6 +1,6 @@
 # Xtreme Tasker Release Notes
 
-## v2.0 — 06.25.2026
+## v2.1 — 06.25.2026
 
 ### Sync & Task Completion
 - Combined Combat Achievement, Collection Log, and Achievement Diary syncing into a single action

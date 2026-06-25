@@ -3421,6 +3421,11 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             syncMismatchScroll.offsetRows = maxOffset;
         }
+        int scrollBarW = 6;
+        int scrollBarGap = 3;
+        boolean needsScrollbar = mismatches.size() > visible;
+        int scrollLaneW = needsScrollbar ? scrollBarW + scrollBarGap : 0;
+        int rowW = Math.max(0, syncMismatchViewportBounds.width - scrollLaneW);
 
         int end = Math.min(mismatches.size(), syncMismatchScroll.offsetRows + visible + 1);
         int rowY = syncMismatchViewportBounds.y + 2;
@@ -3428,7 +3433,7 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             XtremeTask task = mismatches.get(i);
             Rectangle row = new Rectangle(syncMismatchViewportBounds.x, rowY,
-                    syncMismatchViewportBounds.width, reviewRowHeight);
+                    rowW, reviewRowHeight);
 
             Color rowFill = i % 2 == 0 ? new Color(62, 50, 34, 235) : new Color(53, 43, 31, 235);
             g.setColor(rowFill);
@@ -3493,9 +3498,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
         syncMismatchScrollbarRailBounds.setBounds(0, 0, 0, 0);
         syncMismatchScrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        if (mismatches.size() > visible)
+        if (needsScrollbar)
         {
-            int scrollBarW = 6;
             int sbX = syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW;
             syncMismatchScrollbarRailBounds.setBounds(sbX, syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height);
             g.setColor(new Color(0, 0, 0, 60));
@@ -5080,7 +5084,12 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private Long taskListTimeTicks(XtremeTask task)
     {
-        return plugin.getTaskTimeTicks(useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task);
+        XtremeTask sortTask = useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task;
+        if (sortTask == null || plugin.getCompletionInfo(sortTask) == null)
+        {
+            return null;
+        }
+        return plugin.getTaskTimeTicks(sortTask);
     }
 
     private XtremeTask latestCompletedGroupInstance(XtremeTask task)
@@ -6287,6 +6296,10 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(layout.filterComplete, anchorX, anchorY, scale);
         scaleRect(layout.filterTierThis, anchorX, anchorY, scale);
         scaleRect(layout.filterTierAll, anchorX, anchorY, scale);
+        scaleRect(layout.columnDate, anchorX, anchorY, scale);
+        scaleRect(layout.columnTime, anchorX, anchorY, scale);
+        scaleRect(layout.columnTier, anchorX, anchorY, scale);
+        scaleRect(layout.columnSource, anchorX, anchorY, scale);
         scaleRect(layout.sortDate, anchorX, anchorY, scale);
         scaleRect(layout.sortTimeTicks, anchorX, anchorY, scale);
         scaleRect(layout.sortTier, anchorX, anchorY, scale);
