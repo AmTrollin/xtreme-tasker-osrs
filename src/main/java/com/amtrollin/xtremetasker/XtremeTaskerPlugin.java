@@ -138,7 +138,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private int syncMismatchTasksCacheTaskCount = 0;
     private int syncMismatchTasksCacheCapturedItemCount = -1;
     private boolean collectionLogCompletionCandidateRefreshQueued = false;
-    private final EnumMap<TaskSource, List<String>> lastSyncedTaskNames = new EnumMap<>(TaskSource.class);
     private String syncMismatchTitle = "";
 
     private final EnumMap<TaskTier, Integer> totalByTier = new EnumMap<>(TaskTier.class);
@@ -189,9 +188,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private String lastCollectionLogSyncResult = null;
     private long lastCollectionLogSyncResultAtEpochMillis = 0L;
     private String lastCollectionLogSyncResultAtLocalTime = null;
-    private boolean combatAchievementSyncedTasksExpanded = false;
-    private boolean collectionLogSyncedTasksExpanded = false;
-
     List<XtremeTask> tasksForTesting()
     {
         return tasks;
@@ -1254,10 +1250,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setLastCollectionLogSyncResult(lastCollectionLogSyncResult);
         state.setLastCollectionLogSyncResultAtEpochMillis(lastCollectionLogSyncResultAtEpochMillis);
         state.setLastCollectionLogSyncResultAtLocalTime(lastCollectionLogSyncResultAtLocalTime);
-        state.setLastCombatAchievementSyncedTaskNames(getLastSyncedTaskNames(TaskSource.COMBAT_ACHIEVEMENT));
-        state.setLastCollectionLogSyncedTaskNames(getLastSyncedTaskNames(TaskSource.COLLECTION_LOG));
-        state.setCombatAchievementSyncedTasksExpanded(combatAchievementSyncedTasksExpanded);
-        state.setCollectionLogSyncedTasksExpanded(collectionLogSyncedTasksExpanded);
         state.setSyncCompletionCandidateTaskIds(new ArrayList<>(syncCompletionCandidateTaskIds));
         state.setSyncMismatchTaskIds(new ArrayList<>(syncMismatchTaskIds));
         state.setSyncMismatchTitle(syncMismatchTitle);
@@ -1675,10 +1667,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             lastCollectionLogSyncResultAtLocalTime = formatSaveTime(lastCollectionLogSyncResultAtEpochMillis);
         }
-        setLastSyncedTaskNames(TaskSource.COMBAT_ACHIEVEMENT, state.getLastCombatAchievementSyncedTaskNames());
-        setLastSyncedTaskNames(TaskSource.COLLECTION_LOG, state.getLastCollectionLogSyncedTaskNames());
-        combatAchievementSyncedTasksExpanded = state.isCombatAchievementSyncedTasksExpanded();
-        collectionLogSyncedTasksExpanded = state.isCollectionLogSyncedTasksExpanded();
         migrateLegacyLastSyncResultIfNeeded(
                 legacyLastSyncResult,
                 legacyLastSyncResultAtEpochMillis,
@@ -1725,100 +1713,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         lastCollectionLogSyncResult = null;
         lastCollectionLogSyncResultAtEpochMillis = 0L;
         lastCollectionLogSyncResultAtLocalTime = null;
-        combatAchievementSyncedTasksExpanded = false;
-        collectionLogSyncedTasksExpanded = false;
         knownTaskIds.clear();
-        lastSyncedTaskNames.clear();
         collectionLogService.resetCachedItemIds();
         collectionLogStateVersion++;
         syncCompletionCandidateTaskIds.clear();
         clearSyncMismatchReviewState();
-    }
-
-    public List<String> getLastSyncedTaskNames(TaskSource source)
-    {
-        if (source == null)
-        {
-            return Collections.emptyList();
-        }
-
-        List<String> names = lastSyncedTaskNames.get(source);
-        if (names == null || names.isEmpty())
-        {
-            return Collections.emptyList();
-        }
-        return new ArrayList<>(names);
-    }
-
-    private void setLastSyncedTaskNames(TaskSource source, List<String> newlySyncedTaskIds)
-    {
-        if (source == null)
-        {
-            return;
-        }
-
-        if (newlySyncedTaskIds == null || newlySyncedTaskIds.isEmpty())
-        {
-            lastSyncedTaskNames.put(source, Collections.emptyList());
-            return;
-        }
-
-        Map<String, XtremeTask> byId = tasksById();
-        List<String> names = new ArrayList<>();
-        Set<String> seen = new HashSet<>();
-        for (String id : newlySyncedTaskIds)
-        {
-            if (id == null || !seen.add(id))
-            {
-                continue;
-            }
-
-            XtremeTask task = byId.get(id);
-            if (task != null && task.getName() != null)
-            {
-                names.add(sequenceDisplayName(task));
-            }
-            else
-            {
-                names.add(id);
-            }
-        }
-
-        lastSyncedTaskNames.put(source, names);
-    }
-
-    @Override
-    public List<String> getLastCombatAchievementSyncedTaskNames()
-    {
-        return getLastSyncedTaskNames(TaskSource.COMBAT_ACHIEVEMENT);
-    }
-
-    @Override
-    public List<String> getLastCollectionLogSyncedTaskNames()
-    {
-        return getLastSyncedTaskNames(TaskSource.COLLECTION_LOG);
-    }
-
-    @Override
-    public boolean isCombatAchievementSyncedTasksExpanded()
-    {
-        return combatAchievementSyncedTasksExpanded;
-    }
-
-    @Override
-    public boolean isCollectionLogSyncedTasksExpanded()
-    {
-        return collectionLogSyncedTasksExpanded;
-    }
-
-    public void setCombatAchievementSyncedTasksExpanded(boolean expanded)
-    {
-        combatAchievementSyncedTasksExpanded = expanded;
-    }
-
-    public void setCollectionLogSyncedTasksExpanded(boolean expanded)
-    {
-        collectionLogSyncedTasksExpanded = expanded;
     }
 
     private void migrateLegacyLastSyncResultIfNeeded(
@@ -3075,76 +2974,77 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     @Override
-    public void syncCombatAchievementsAndPersist()
+    public void syncAccountProgressAndPersist()
     {
         if (!hasTaskPackLoaded())
         {
-            setSyncResultAndChat(TaskSource.COMBAT_ACHIEVEMENT, "No tasks loaded. Load tasks first.");
+            setCombinedSyncResultAndChat("No tasks loaded. Load tasks first.");
             return;
         }
 
-        setLastSyncedTaskNames(TaskSource.COMBAT_ACHIEVEMENT, null);
         clientThread.invokeLater(() -> {
-            // Re-load mappings if empty (e.g. struct cache was cold at login).
-            if (caTaskIdsByName.isEmpty())
+            int combatAchievementCandidates = refreshCombatAchievementSyncState();
+            CollectionLogSyncSummary collectionLogSummary = refreshCollectionLogSyncState();
+            int completionCandidates = combatAchievementCandidates + collectionLogSummary.completionCandidates;
+            String msg;
+            if (completionCandidates > 0)
             {
-                loadCombatAchievementMappings();
+                msg = "Account progress sync done! " + completionCandidates
+                        + " new completed task(s) found. Tasks are not marked complete automatically, open review to update task(s).";
             }
-
-            int completionCandidates = 0;
-            List<String> completionCandidateTaskIds = new ArrayList<>();
-
-            for (XtremeTask task : tasks)
+            else if (collectionLogSummary.capturedItems == 0)
             {
-                if (task.getSource() != TaskSource.COMBAT_ACHIEVEMENT)
-                {
-                    continue;
-                }
-
-                if (isTaskCompleted(task))
-                {
-                    continue;
-                }
-
-                Integer taskId = resolveCombatAchievementTaskId(task);
-                if (taskId == null)
-                {
-                    continue;
-                }
-
-                if (combatAchievementService.isTaskComplete(taskId))
-                {
-                    String id = task.getId();
-                    if (id != null && !id.trim().isEmpty())
-                    {
-                        completionCandidateTaskIds.add(id);
-                        completionCandidates++;
-                    }
-                }
+                msg = "Account progress sync done! No new completions found. No CLOG items are cached yet this session - open your Collection Log, then sync again. Combat Achievements and Achievement Diaries were checked from in-game progress.";
             }
-
-            setLastSyncedTaskNames(TaskSource.COMBAT_ACHIEVEMENT, completionCandidateTaskIds);
-            setSyncCompletionCandidatesForSource(TaskSource.COMBAT_ACHIEVEMENT, completionCandidateTaskIds);
-
-            setSyncMismatchTasksForSource(TaskSource.COMBAT_ACHIEVEMENT,
-                    findCombatAchievementSyncMismatches());
-
-            if (completionCandidates > 0) {
-                setSyncResultAndChat(TaskSource.COMBAT_ACHIEVEMENT, "Combat Achievement sync done! " + completionCandidates + " new completed task(s) found. Tasks are not marked complete automatically, open review to update task(s)."
-                        + syncMismatchResultSuffix(TaskSource.COMBAT_ACHIEVEMENT));
-            } else {
-                setSyncResultAndChat(TaskSource.COMBAT_ACHIEVEMENT, "Combat Achievement sync done! No new completions found."
-                        + syncMismatchResultSuffix(TaskSource.COMBAT_ACHIEVEMENT));
-            }
-
-            rebuildTierCounts();
-            dirty = true;
-            if (activeAccountKey != null)
+            else
             {
-                saveStateForAccount(activeAccountKey);
-                dirty = false;
+                msg = "Account progress sync done! No new completions found.";
             }
+
+            setCombinedSyncResultAndChat(msg + syncMismatchResultSuffix(null));
+            finishCollectionLogSync(collectionLogSummary.capturedItems);
+            finishSyncStateUpdate();
         });
+    }
+
+    private int refreshCombatAchievementSyncState()
+    {
+        if (caTaskIdsByName.isEmpty())
+        {
+            loadCombatAchievementMappings();
+        }
+
+        List<String> completionCandidateTaskIds = new ArrayList<>();
+        int completionCandidates = findCombatAchievementCompletionCandidates(completionCandidateTaskIds);
+        setSyncCompletionCandidatesForSource(TaskSource.COMBAT_ACHIEVEMENT, completionCandidateTaskIds);
+        setSyncMismatchTasksForSource(TaskSource.COMBAT_ACHIEVEMENT, findCombatAchievementSyncMismatches());
+        return completionCandidates;
+    }
+
+    private int findCombatAchievementCompletionCandidates(List<String> completionCandidateTaskIds)
+    {
+        int completionCandidates = 0;
+        for (XtremeTask task : tasks)
+        {
+            if (task.getSource() != TaskSource.COMBAT_ACHIEVEMENT || isTaskCompleted(task))
+            {
+                continue;
+            }
+
+            Integer taskId = resolveCombatAchievementTaskId(task);
+            if (taskId == null || !combatAchievementService.isTaskComplete(taskId))
+            {
+                continue;
+            }
+
+            String id = task.getId();
+            if (id != null && !id.trim().isEmpty())
+            {
+                completionCandidateTaskIds.add(id);
+                completionCandidates++;
+            }
+        }
+        return completionCandidates;
     }
 
     private List<XtremeTask> findCombatAchievementSyncMismatches()
@@ -3584,12 +3484,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return inferred;
     }
 
-    @Override
-    public void syncCollectionLogsAndPersist()
-    {
-        syncCollectionLogsAndPersist(false);
-    }
-
     private void syncCollectionLogsAndPersist(boolean fromTaskDescription)
     {
         if (!hasTaskPackLoaded())
@@ -3598,7 +3492,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        setLastSyncedTaskNames(TaskSource.COLLECTION_LOG, null);
         clientThread.invokeLater(() -> runCollectionLogSyncFromCache(fromTaskDescription));
     }
 
@@ -3610,24 +3503,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void runCollectionLogSyncFromCache(boolean fromTaskDescription)
     {
-        List<String> completionCandidateTaskIds = new ArrayList<>();
-        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds);
-        setLastSyncedTaskNames(TaskSource.COLLECTION_LOG, completionCandidateTaskIds);
-        setSyncCompletionCandidatesForSource(TaskSource.COLLECTION_LOG, completionCandidateTaskIds);
-        int capturedItems = collectionLogService.getCapturedItemCount();
-        List<XtremeTask> syncMismatchTasks = findCollectionLogSyncMismatches(capturedItems > 0);
-        setSyncMismatchTasksForSource(TaskSource.COLLECTION_LOG, syncMismatchTasks);
+        CollectionLogSyncSummary summary = refreshCollectionLogSyncState();
         String taskDescriptionReviewHint = fromTaskDescription
-                && (completionCandidates > 0 || !syncMismatchTasks.isEmpty())
+                && (summary.completionCandidates > 0 || !summary.mismatchTasks.isEmpty())
                 ? " Head to Help > Sync tab to review."
                 : "";
 
-        if (completionCandidates > 0)
+        if (summary.completionCandidates > 0)
         {
-            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! " + completionCandidates + " new completed task(s) found. Tasks are not marked complete automatically, open review to update task(s)."
+            setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! " + summary.completionCandidates + " new completed task(s) found. Tasks are not marked complete automatically, open review to update task(s)."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG) + taskDescriptionReviewHint);
         }
-        else if (capturedItems == 0)
+        else if (summary.capturedItems == 0)
         {
             setSyncResultAndChat(TaskSource.COLLECTION_LOG, "CLOG/AD sync done! No CLOG items are cached yet this session - open your Collection Log, then sync again. Achievement Diaries were checked from in game diary progress."
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG) + taskDescriptionReviewHint);
@@ -3638,19 +3525,53 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG) + taskDescriptionReviewHint);
         }
 
+        finishCollectionLogSync(summary.capturedItems);
+        finishSyncStateUpdate();
+    }
+
+    private CollectionLogSyncSummary refreshCollectionLogSyncState()
+    {
+        List<String> completionCandidateTaskIds = new ArrayList<>();
+        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds);
+        setSyncCompletionCandidatesForSource(TaskSource.COLLECTION_LOG, completionCandidateTaskIds);
+        int capturedItems = collectionLogService.getCapturedItemCount();
+        List<XtremeTask> syncMismatchTasks = findCollectionLogSyncMismatches(capturedItems > 0);
+        setSyncMismatchTasksForSource(TaskSource.COLLECTION_LOG, syncMismatchTasks);
+        return new CollectionLogSyncSummary(completionCandidates, capturedItems, syncMismatchTasks);
+    }
+
+    private void finishCollectionLogSync(int capturedItems)
+    {
         if (capturedItems > 0)
         {
             collectionLogService.clearPendingAncientPageDropCountSinceLastSync();
             collectionLogService.clearPendingMedallionFragmentDropCountSinceLastSync();
             collectionLogStateVersion++;
         }
+    }
 
+    private void finishSyncStateUpdate()
+    {
         rebuildTierCounts();
         dirty = true;
         if (activeAccountKey != null)
         {
             saveStateForAccount(activeAccountKey);
             dirty = false;
+        }
+    }
+
+    private static final class CollectionLogSyncSummary
+    {
+        private final int completionCandidates;
+        private final int capturedItems;
+        private final List<XtremeTask> mismatchTasks;
+
+        private CollectionLogSyncSummary(int completionCandidates, int capturedItems, List<XtremeTask> mismatchTasks)
+        {
+            this.completionCandidates = completionCandidates;
+            this.capturedItems = capturedItems;
+            this.mismatchTasks = mismatchTasks == null ? Collections.emptyList() : mismatchTasks;
         }
     }
 
@@ -3928,6 +3849,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (count <= 0)
         {
             return "";
+        }
+        if (source == null)
+        {
+            return " Review " + count + " plugin completion(s) not found in game data.";
         }
         String label = source == TaskSource.COMBAT_ACHIEVEMENT ? "CA" : "CLOG/AD";
         return " Review " + count + " " + label + " plugin completion(s) not found in game data.";
@@ -4924,6 +4849,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             lastCollectionLogSyncResultAtEpochMillis = now;
             lastCollectionLogSyncResultAtLocalTime = localTime;
         }
+        chat(msg);
+    }
+
+    private void setCombinedSyncResultAndChat(String msg)
+    {
+        long now = System.currentTimeMillis();
+        String localTime = formatSaveTime(now);
+        lastCombatAchievementSyncResult = msg;
+        lastCombatAchievementSyncResultAtEpochMillis = now;
+        lastCombatAchievementSyncResultAtLocalTime = localTime;
+        lastCollectionLogSyncResult = msg;
+        lastCollectionLogSyncResultAtEpochMillis = now;
+        lastCollectionLogSyncResultAtLocalTime = localTime;
         chat(msg);
     }
 

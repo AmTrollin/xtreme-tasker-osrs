@@ -56,9 +56,7 @@ public interface TaskerService
 
     void reloadTaskPack();
 
-    void syncCombatAchievementsAndPersist();
-
-    void syncCollectionLogsAndPersist();
+    void syncAccountProgressAndPersist();
 
     void syncCollectionLogTaskAndPersist(XtremeTask task);
 
@@ -73,14 +71,6 @@ public interface TaskerService
     String getLastCollectionLogSyncResult();
 
     String getLastCollectionLogSyncResultAtLocalTime();
-
-    List<String> getLastCombatAchievementSyncedTaskNames();
-
-    List<String> getLastCollectionLogSyncedTaskNames();
-
-    boolean isCombatAchievementSyncedTasksExpanded();
-
-    boolean isCollectionLogSyncedTasksExpanded();
 
     boolean isCollectionLogSyncPending();
 

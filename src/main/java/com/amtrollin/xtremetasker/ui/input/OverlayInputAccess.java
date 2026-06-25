@@ -45,7 +45,6 @@ public interface OverlayInputAccess
 
     // rowBlock accessors for wheel
     int tasksRowBlock();
-    int rulesRowBlock();
 
     // tabs
     enum MainTab { CURRENT, TASKS, RULES }
@@ -68,7 +67,6 @@ public interface OverlayInputAccess
     Rectangle taskListViewportBounds();
     Rectangle taskScrollbarRailBounds();
     Rectangle taskScrollbarThumbBounds();
-    Rectangle rulesViewportBounds();
 
     Map<TaskTier, Rectangle> tierTabBounds();
     Map<XtremeTask, Rectangle> taskRowBounds();
@@ -78,10 +76,6 @@ public interface OverlayInputAccess
     RulesTabLayout rulesLayout();
     RulesTabLayout.SubTab rulesSubTab();
     void setRulesSubTab(RulesTabLayout.SubTab subTab);
-    void toggleCaSyncedTasksExpanded();
-    void toggleClogSyncedTasksExpanded();
-    void setCaSyncedTasksExpanded(boolean expanded);
-    void setClogSyncedTasksExpanded(boolean expanded);
     void openSyncCompletionCandidateReview(TaskSource source);
     void openSyncMismatchReview();
     void openSyncMismatchReview(TaskSource source);
@@ -92,7 +86,6 @@ public interface OverlayInputAccess
     TaskListQuery taskQuery();
     TaskSelectionModel selectionModel();
     TaskListScrollController tasksScroll();
-    TaskListScrollController rulesScroll();
     TaskListScrollController currentScroll();
     void scrollCompactCurrent(double preciseWheelRotation);
     void setCompactCurrentScrollFraction(double fraction);

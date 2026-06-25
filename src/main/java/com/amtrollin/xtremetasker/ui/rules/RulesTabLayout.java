@@ -8,24 +8,12 @@ public final class RulesTabLayout
 
     public final Rectangle viewportBounds = new Rectangle();
     public final Rectangle reloadButtonBounds = new Rectangle();
-    public int totalContentRows = 0;
     public final Rectangle taskerFaqLinkBounds = new Rectangle();
-    public final Rectangle taskerFaqButtonBounds = new Rectangle();
     public final Rectangle githubReadmeLinkBounds = new Rectangle();
-    public final Rectangle syncClogsButtonBounds = new Rectangle();
-    public final Rectangle syncCAsButtonBounds = new Rectangle();
+    public final Rectangle syncProgressButtonBounds = new Rectangle();
     public final Rectangle syncCaFoundReviewButtonBounds = new Rectangle();
-    public final Rectangle syncCaFoundIgnoreButtonBounds = new Rectangle();
-    public final Rectangle syncClogFoundReviewButtonBounds = new Rectangle();
-    public final Rectangle syncClogFoundIgnoreButtonBounds = new Rectangle();
     public final Rectangle syncCaReviewButtonBounds = new Rectangle();
     public final Rectangle syncCaReviewIgnoreButtonBounds = new Rectangle();
-    public final Rectangle syncClogReviewButtonBounds = new Rectangle();
-    public final Rectangle syncClogReviewIgnoreButtonBounds = new Rectangle();
-    public final Rectangle syncCaMarkedTasksToggleBounds = new Rectangle();
-    public final Rectangle syncClogMarkedTasksToggleBounds = new Rectangle();
-    public final Rectangle scrollbarRailBounds = new Rectangle();
-    public final Rectangle scrollbarThumbBounds = new Rectangle();
 
     // Sub-tab toggles (rendered at top of help panel)
     public final Rectangle subTabRulesBounds = new Rectangle();

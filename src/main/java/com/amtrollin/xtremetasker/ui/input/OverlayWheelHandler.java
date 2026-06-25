@@ -105,27 +105,6 @@ public final class OverlayWheelHandler implements MouseWheelListener
             return e;
         }
 
-        // RULES scroll
-        if (a.activeTab() == OverlayInputAccess.MainTab.RULES && a.rulesViewportBounds().contains(p))
-        {
-            Rectangle vp = a.rulesViewportBounds();
-            if (vp.height <= 0)
-            {
-                return e;
-            }
-
-            int total = a.rulesLayout().totalContentRows;
-            a.rulesScroll().onWheel(
-                    precise,
-                    vp.height,
-                    a.rulesRowBlock(),
-                    total <= 0 ? 1 : total,
-                    null
-            );
-
-            return e;
-        }
-
         return e;
     }
 }

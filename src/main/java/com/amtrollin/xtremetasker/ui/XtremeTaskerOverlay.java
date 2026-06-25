@@ -77,6 +77,7 @@ import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFil
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.CLOGS;
 import static com.amtrollin.xtremetasker.tasklist.models.TaskListQuery.SourceFilter.DAS;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
+import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
 
 public class XtremeTaskerOverlay extends Overlay {
@@ -182,7 +183,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle taskListViewportBounds = new Rectangle();
     private final Rectangle taskScrollbarRailBounds = new Rectangle();
     private final Rectangle taskScrollbarThumbBounds = new Rectangle();
-    private final Rectangle rulesViewportBounds = new Rectangle();
     private final Rectangle markAllIncompleteConfirmBounds = new Rectangle();
     private final Rectangle markAllIncompleteYesBounds = new Rectangle();
     private final Rectangle markAllIncompleteNoBounds = new Rectangle();
@@ -1790,7 +1790,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final TaskListScrollController tasksScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListViewController taskListView = new TaskListViewController(selectionModel, tasksScroll);
 
-    private final TaskListScrollController rulesScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController currentScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController syncMismatchScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private int compactCurrentScrollPx = 0;
@@ -1850,7 +1849,6 @@ public class XtremeTaskerOverlay extends Overlay {
             activeTab = MainTab.CURRENT;
 
             tasksScroll.reset();
-            rulesScroll.reset();
 
             taskQuery.searchFocused = false;
         });
@@ -1895,11 +1893,6 @@ public class XtremeTaskerOverlay extends Overlay {
     // -----------------------------
     int tasksRowBlock() {
         return scaleInputValue(taskRowsRendererTasks.rowBlock());
-    }
-
-
-    int rulesRowBlock() {
-        return scaleInputValue(rulesTabRenderer.rowBlock());
     }
 
     private int currentRowBlock() {
@@ -3393,23 +3386,17 @@ public class XtremeTaskerOverlay extends Overlay {
         int footerH = buttonH + fm.getHeight() + 10;
         int listBottom = y + h - pad - footerH;
         Rectangle listFrame = new Rectangle(x + pad, 0, w - pad * 2, 0);
-        int actionColumnW = 112;
+        int actionColumnW = 28;
         int actionColumnX = listFrame.x + listFrame.width - actionColumnW;
         g.setColor(P.UI_TEXT_DIM);
         g.drawString("Task", listFrame.x, headerTop + fm.getAscent());
 
-        String actionHeader = reviewingCompletionCandidates ? "Mark complete?" : "Mark incomplete?";
         int headerCheckboxSize = 16;
-        int actionHeaderW = fm.stringWidth(actionHeader);
-        int actionHeaderContentW = actionHeaderW + 5 + headerCheckboxSize;
-        int actionHeaderX = actionColumnX + Math.max(0, (actionColumnW - actionHeaderContentW) / 2);
-        g.drawString(actionHeader, actionHeaderX, headerTop + fm.getAscent());
-
         int selectedVisibleCount = selectedVisibleSyncMismatchCount(mismatches);
         int selectableVisibleCount = selectableVisibleSyncMismatchCount(mismatches);
         boolean allMismatchTasksSelected = selectableVisibleCount > 0 && selectedVisibleCount >= selectableVisibleCount;
         syncMismatchMarkAllBounds.setBounds(
-                actionHeaderX + actionHeaderW + 5,
+                actionColumnX + (actionColumnW - headerCheckboxSize) / 2,
                 headerTop + Math.max(0, (fm.getHeight() - headerCheckboxSize) / 2) - 4,
                 headerCheckboxSize,
                 headerCheckboxSize);
@@ -3427,7 +3414,7 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString(hint, hintX, hintY);
         }
 
-        int listTop = headerTop + fm.getHeight() + 5;
+        int listTop = headerTop + fm.getHeight() + 7;
         syncMismatchViewportBounds.setBounds(listFrame.x, listTop, listFrame.width, Math.max(0, listBottom - listTop));
         g.setColor(P.ROW_LINE);
         g.drawLine(syncMismatchViewportBounds.x, listTop - 3,
@@ -3442,7 +3429,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
         Shape oldClip = g.getClip();
         g.setClip(syncMismatchViewportBounds);
-        int rowBlock = ROW_HEIGHT + LIST_ROW_SPACING;
+        int reviewRowHeight = ROW_HEIGHT + 8;
+        int rowBlock = reviewRowHeight + LIST_ROW_SPACING;
         int visible = Math.max(1, syncMismatchViewportBounds.height / rowBlock);
         int maxOffset = Math.max(0, mismatches.size() - visible);
         if (syncMismatchScroll.offsetRows > maxOffset)
@@ -3451,12 +3439,12 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         int end = Math.min(mismatches.size(), syncMismatchScroll.offsetRows + visible + 1);
-        int rowY = syncMismatchViewportBounds.y;
+        int rowY = syncMismatchViewportBounds.y + 2;
         for (int i = syncMismatchScroll.offsetRows; i < end; i++)
         {
             XtremeTask task = mismatches.get(i);
             Rectangle row = new Rectangle(syncMismatchViewportBounds.x, rowY,
-                    syncMismatchViewportBounds.width, ROW_HEIGHT + 2);
+                    syncMismatchViewportBounds.width, reviewRowHeight);
 
             Color rowFill = i % 2 == 0 ? new Color(62, 50, 34, 235) : new Color(53, 43, 31, 235);
             g.setColor(rowFill);
@@ -3467,18 +3455,29 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawRect(row.x, row.y, row.width, row.height);
             g.drawLine(actionColumnX, row.y, actionColumnX, row.y + row.height);
 
-            String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm, actionColumnX - row.x - 16);
+            FontMetrics badgeFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
+            int rowTextX = row.x + 8;
+            int badgeY = row.y + (row.height - (ROW_HEIGHT + 4)) / 2;
+            int sourceBadgeW = drawSyncReviewRowBadge(g, badgeFm, rowTextX, badgeY, shortSource(task.getSource()));
+            rowTextX += sourceBadgeW + 4;
+            if (task.getTier() != null)
+            {
+                int tierBadgeW = drawSyncReviewRowBadge(g, badgeFm, rowTextX, badgeY, tierLabel(task.getTier()));
+                rowTextX += tierBadgeW + 6;
+            }
+
+            String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm, actionColumnX - rowTextX - 8);
             Rectangle taskNameArea = new Rectangle(row.x, row.y, Math.max(0, actionColumnX - row.x), row.height);
             boolean hoverTaskName = taskNameArea.contains(mouseX, mouseY);
             boolean clickableTaskName = hasSyncReviewPopup(task);
             g.setColor(clickableTaskName && hoverTaskName ? P.UI_GOLD : P.UI_TEXT);
-            g.drawString(label, row.x + 8, row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent());
+            g.drawString(label, rowTextX, row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent());
             if (hoverTaskName)
             {
                 if (clickableTaskName)
                 {
                     int underlineY = row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent() + 2;
-                    g.drawLine(row.x + 8, underlineY, row.x + 8 + fm.stringWidth(label), underlineY);
+                    g.drawLine(rowTextX, underlineY, rowTextX + fm.stringWidth(label), underlineY);
                 }
             }
             int smallBtn = Math.min(20, row.height - 4);
@@ -3815,7 +3814,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void drawSyncMismatchGroupAction(Graphics2D g, FontMetrics fm, Rectangle bounds, XtremeTask task)
     {
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
         int total = Math.max(1, syncMismatchGroupActionTasks(task).size());
         int selectedCount = selectedSyncMismatchGroupCount(task);
         String label = selectedCount + "/" + total;
@@ -3827,6 +3825,14 @@ public class XtremeTaskerOverlay extends Overlay {
         int textY = bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
         g.drawString(label, textX, textY);
         g.drawLine(textX, textY + 2, textX + fm.stringWidth(label), textY + 2);
+    }
+
+    private int drawSyncReviewRowBadge(Graphics2D g, FontMetrics fm, int x, int y, String text)
+    {
+        String label = text == null || text.trim().isEmpty() ? "?" : text.trim();
+        int width = Math.max(24, fm.stringWidth(label) + 14);
+        TaskRowsRenderer.drawSourceBadge(g, x, y, label, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT);
+        return width;
     }
 
     private boolean hasSyncReviewPopup(XtremeTask task)
@@ -3848,28 +3854,6 @@ public class XtremeTaskerOverlay extends Overlay {
             title = task == null ? "" : task.getName();
         }
         return title == null || title.trim().isEmpty() ? "Task" : title.trim();
-    }
-
-    private String syncReviewPopupHelperText(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return "";
-        }
-
-        if (syncMismatchUsesGroupResolver(task))
-        {
-            return syncMismatchGroupResolveSummary(task);
-        }
-
-        return syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
-                ? "Sync found this completed in game, not marked in plugin"
-                : "Sync did not find this completed in game, marked in plugin";
-    }
-
-    private boolean shouldShowSyncReviewPopupHelper(XtremeTask task)
-    {
-        return false;
     }
 
     private boolean hasCollectionLogReviewItems(XtremeTask task)
@@ -3910,39 +3894,19 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         int pad = 12;
-        int iconSize = 32;
-        int tierPillGap = 4;
-        int tierPillH = 18;
         int closeW = 28;
-        int w = Math.min(syncMismatchReviewBounds.width - 44, 360);
-        String tierPillText = (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT
-                || task.getSource() == TaskSource.DIARY_ACHIEVEMENT) && task.getTier() != null
-                ? tierLabel(task.getTier())
-                : null;
-        FontMetrics smallFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
-        int tierPillW = tierPillText == null ? 0 : Math.max(24, smallFm.stringWidth(tierPillText) + 14);
-        int iconColumnW = Math.max(iconSize, tierPillW);
-        int iconStackH = iconSize + (tierPillText == null ? 0 : tierPillGap + tierPillH);
-        int textXOffset = pad + iconColumnW + pad;
-        int textW = w - textXOffset - closeW - pad;
+        int w = Math.min(syncMismatchReviewBounds.width - 44, 380);
+        int textW = w - (pad * 2) - closeW;
         List<String> titleLines = TextUtils.wrapText(syncReviewPopupTitle(task), fm, textW);
-        List<String> helperLines = shouldShowSyncReviewPopupHelper(task)
-                ? TextUtils.wrapText(syncReviewPopupHelperText(task), fm, textW)
-                : List.of();
         List<String> lines = TextUtils.wrapText(description.trim(), fm, textW);
         boolean achievementDiaryTask = task.getSource() == TaskSource.DIARY_ACHIEVEMENT;
         int visibleLines = achievementDiaryTask ? Math.max(1, lines.size()) : Math.max(1, Math.min(lines.size(), 5));
         int titleLineCount = Math.max(1, Math.min(titleLines.size(), 2));
-        int helperLineCount = Math.min(helperLines.size(), 2);
         int titleGap = Math.max(9, fm.getHeight() / 2);
-        int helperGap = helperLineCount > 0 ? 5 : 0;
         int textBlockH = titleLineCount * fm.getHeight()
-                + helperLineCount * fm.getHeight()
                 + titleGap
-                + helperGap
                 + visibleLines * fm.getHeight();
-        int contentH = Math.max(iconStackH, textBlockH);
-        int requestedH = Math.max(96, pad * 2 + contentH);
+        int requestedH = Math.max(86, pad * 2 + textBlockH);
         int maxH = achievementDiaryTask ? Math.max(96, syncMismatchReviewBounds.height - 36) : 184;
         int h = Math.min(requestedH, maxH);
         int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
@@ -3957,35 +3921,9 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
         drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
 
-        BufferedImage icon = resolveTaskIcon(task);
-        int contentY = y + (h - contentH) / 2;
-        int iconStackY = contentY + Math.max(0, (contentH - iconStackH) / 2);
-        int iconX = x + pad + Math.max(0, (iconColumnW - iconSize) / 2);
-        int iconY = iconStackY;
-        if (icon != null)
-        {
-            g.drawImage(icon, iconX, iconY, iconSize, iconSize, null);
-        }
-        else
-        {
-            drawBevelBox(g, new Rectangle(iconX, iconY, iconSize, iconSize), P.INPUT_BG);
-        }
-        if (tierPillText != null)
-        {
-            TaskRowsRenderer.drawSourceBadge(
-                    g,
-                    x + pad + Math.max(0, (iconColumnW - tierPillW) / 2),
-                    iconY + iconSize + tierPillGap,
-                    tierPillText,
-                    P.UI_EDGE_DARK,
-                    P.UI_EDGE_LIGHT,
-                    P.UI_GOLD,
-                    P.UI_TEXT);
-        }
-
         Shape oldClip = g.getClip();
-        int textTop = contentY + Math.max(0, (contentH - textBlockH) / 2);
-        Rectangle textBounds = new Rectangle(x + textXOffset, textTop, textW, textBlockH);
+        int textTop = y + pad;
+        Rectangle textBounds = new Rectangle(x + pad, textTop, textW, h - pad * 2);
         g.setClip(textBounds);
         int textY = textBounds.y + fm.getAscent();
         g.setColor(P.UI_GOLD);
@@ -3995,13 +3933,6 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString(TextUtils.truncateToWidth(line, fm, textBounds.width), textBounds.x, textY);
             textY += fm.getHeight();
         }
-        g.setColor(P.UI_TEXT_DIM);
-        for (int i = 0; i < helperLineCount; i++)
-        {
-            g.drawString(TextUtils.truncateToWidth(helperLines.get(i), fm, textBounds.width), textBounds.x, textY);
-            textY += fm.getHeight();
-        }
-        textY += helperGap;
         textY += titleGap;
         g.setColor(P.UI_TEXT);
         for (String line : lines)
@@ -4026,65 +3957,28 @@ public class XtremeTaskerOverlay extends Overlay {
             CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
             items = currentSection == null ? List.of() : currentSection.items();
         }
-        boolean simpleSingleItemTask = !showTierSections
-                && items.size() == 1
-                && !isMultiInstanceTask(task)
-                && (preview == null || !preview.showSecondaryItemList());
         if (items.isEmpty())
         {
             return;
         }
 
         int pad = 12;
-        int iconSize = 32;
-        int itemIconSize = 18;
-        int tierPillGap = 4;
-        int tierPillH = 18;
         int closeW = 28;
-        int rowGap = 3;
-        int rowH = Math.max(fm.getHeight(), itemIconSize) + rowGap;
-        int w = Math.min(syncMismatchReviewBounds.width - 48, 360);
-        String tierPillText = task.getTier() == null ? null : tierLabel(task.getTier());
-        FontMetrics smallFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
-        int tierPillW = tierPillText == null ? 0 : Math.max(24, smallFm.stringWidth(tierPillText) + 14);
-        int iconColumnW = Math.max(iconSize, tierPillW);
-        int iconStackH = iconSize + (tierPillText == null ? 0 : tierPillGap + tierPillH);
-        int listXOffset = pad + iconColumnW + pad;
-        int listW = w - listXOffset - closeW - pad;
-        int columnGap = 12;
-        int columns = items.size() > 1 && listW >= 210 ? 2 : 1;
-        int columnW = columns == 1 ? listW : Math.max(90, (listW - columnGap) / 2);
+        int itemIconSize = 28;
+        int iconGap = 7;
+        int columns = 5;
+        int gridW = columns * itemIconSize + (columns - 1) * iconGap;
+        int w = Math.min(syncMismatchReviewBounds.width - 48, Math.max(250, gridW + pad * 2 + closeW));
+        int listW = w - pad * 2 - closeW;
         int rows = (items.size() + columns - 1) / columns;
-        int listH = simpleSingleItemTask
-                ? 0
-                : rows * rowH;
+        int listH = rows * itemIconSize + Math.max(0, rows - 1) * iconGap;
         List<String> titleLines = TextUtils.wrapText(syncReviewPopupTitle(task), fm, listW);
-        List<String> helperLines = !simpleSingleItemTask && shouldShowSyncReviewPopupHelper(task)
-                ? TextUtils.wrapText(syncReviewPopupHelperText(task), fm, listW)
-                : List.of();
-        List<String> summaryLines = !simpleSingleItemTask && preview.showSummaryText() && !showTierSections
-                ? TextUtils.wrapText(preview.summaryText(), fm, listW)
-                : List.of();
         int titleLineCount = Math.max(1, Math.min(titleLines.size(), 2));
-        int helperLineCount = Math.min(helperLines.size(), 2);
-        int summaryLineCount = Math.min(summaryLines.size(), 2);
-        String listHeader = simpleSingleItemTask ? "" : collectionLogRequirementTitle(preview);
-        boolean hasListContent = !listHeader.isEmpty() || summaryLineCount > 0 || listH > 0;
-        int titleGap = helperLineCount > 0 ? 3 : hasListContent ? Math.max(9, fm.getHeight() / 2) : 0;
-        int sectionGap = hasListContent ? Math.max(9, fm.getHeight() / 2) : 0;
-        int summaryGap = showTierSections && summaryLineCount > 0 ? TIER_SECTION_ICON_GAP : 0;
-        int headerGap = 0;
+        int titleIconGap = 4;
         int listBlockH = titleLineCount * fm.getHeight()
-                + titleGap
-                + helperLineCount * fm.getHeight()
-                + sectionGap
-                + (listHeader.isEmpty() ? 0 : fm.getHeight())
-                + summaryLineCount * fm.getHeight()
-                + summaryGap
-                + headerGap
+                + titleIconGap
                 + listH;
-        int contentH = Math.max(iconStackH, listBlockH);
-        int h = Math.max(106, Math.min(syncMismatchReviewBounds.height - 34, pad * 2 + contentH));
+        int h = Math.max(86, Math.min(syncMismatchReviewBounds.height - 34, pad * 2 + listBlockH));
         int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
         int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
         syncMismatchDescriptionBounds.setBounds(x, y, w, h);
@@ -4097,38 +3991,10 @@ public class XtremeTaskerOverlay extends Overlay {
         syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
         drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
 
-        int availableContentH = Math.max(0, h - pad * 2);
-        int contentY = y + pad + Math.max(0, (availableContentH - Math.min(contentH, availableContentH)) / 2);
-        int iconStackY = contentY + Math.max(0, (Math.min(contentH, availableContentH) - iconStackH) / 2);
-        int iconX = x + pad + Math.max(0, (iconColumnW - iconSize) / 2);
-        int iconY = iconStackY;
-        BufferedImage icon = resolveTaskIcon(task);
-        if (icon != null)
-        {
-            g.drawImage(icon, iconX, iconY, iconSize, iconSize, null);
-        }
-        else
-        {
-            drawBevelBox(g, new Rectangle(iconX, iconY, iconSize, iconSize), P.INPUT_BG);
-        }
-        if (tierPillText != null)
-        {
-            TaskRowsRenderer.drawSourceBadge(
-                    g,
-                    x + pad + Math.max(0, (iconColumnW - tierPillW) / 2),
-                    iconY + iconSize + tierPillGap,
-                    tierPillText,
-                    P.UI_EDGE_DARK,
-                    P.UI_EDGE_LIGHT,
-                    P.UI_GOLD,
-                    P.UI_TEXT);
-        }
-
         Shape oldClip = g.getClip();
-        Rectangle listBounds = new Rectangle(x + listXOffset, y + pad, listW, availableContentH);
+        Rectangle listBounds = new Rectangle(x + pad, y + pad, listW, h - pad * 2);
         g.setClip(listBounds);
-        int listBlockTop = contentY + Math.max(0, (Math.min(contentH, availableContentH) - Math.min(listBlockH, availableContentH)) / 2);
-        int textY = listBlockTop + fm.getAscent();
+        int textY = listBounds.y + fm.getAscent();
         g.setColor(P.UI_GOLD);
         for (int i = 0; i < titleLineCount; i++)
         {
@@ -4136,65 +4002,27 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString(TextUtils.truncateToWidth(line, fm, listBounds.width), listBounds.x, textY);
             textY += fm.getHeight();
         }
-        textY += titleGap;
-        g.setColor(P.UI_TEXT_DIM);
-        for (int i = 0; i < helperLineCount; i++)
+        int listTop = textY + titleIconGap;
+        int gridX = listBounds.x;
+        for (int i = 0; i < items.size(); i++)
         {
-            g.drawString(TextUtils.truncateToWidth(helperLines.get(i), fm, listBounds.width), listBounds.x, textY);
-            textY += fm.getHeight();
-        }
-        textY += sectionGap;
-        if (!listHeader.isEmpty())
-        {
-            g.setColor(P.UI_TEXT);
-            g.drawString(TextUtils.truncateToWidth(listHeader, fm, listBounds.width), listBounds.x, textY);
-            textY += fm.getHeight();
-        }
-        g.setColor(P.UI_TEXT_DIM);
-        for (int i = 0; i < summaryLineCount; i++)
-        {
-            g.drawString(TextUtils.truncateToWidth(summaryLines.get(i), fm, listBounds.width), listBounds.x, textY);
-            textY += fm.getHeight();
-        }
-        textY += summaryGap;
-        int listTop = textY + headerGap;
-        if (simpleSingleItemTask)
-        {
-            // The single required CLOG item is already represented by the icon column.
-        }
-        else
-        {
-            for (int i = 0; i < items.size(); i++)
+            CollectionLogRequirementItem item = items.get(i);
+            if (item == null)
             {
-                CollectionLogRequirementItem item = items.get(i);
-                if (item == null)
-                {
-                    continue;
-                }
-
-                int col = i / rows;
-                int row = i % rows;
-                int itemX = listBounds.x + col * (columnW + columnGap);
-                int itemY = listTop + row * rowH;
-                if (itemY > listBounds.y + listBounds.height)
-                {
-                    break;
-                }
-                drawSyncReviewCollectionLogItem(g, fm, item, itemX, itemY, columnW, itemIconSize);
+                continue;
             }
+
+            int col = i % columns;
+            int row = i / columns;
+            int itemX = gridX + col * (itemIconSize + iconGap);
+            int itemY = listTop + row * (itemIconSize + iconGap);
+            if (itemY > listBounds.y + listBounds.height)
+            {
+                break;
+            }
+            drawSyncReviewCollectionLogItemIcon(g, item, itemX, itemY, itemIconSize);
         }
         g.setClip(oldClip);
-    }
-
-    private static String collectionLogRequirementTitle(CollectionLogRequirementPreview preview)
-    {
-        if (preview != null && preview.titleText() != null && !preview.titleText().trim().isEmpty())
-        {
-            return preview.titleText();
-        }
-        return preview != null && preview.showSummaryText() && !preview.showItemList()
-                ? "Collection Log Progress"
-                : "Eligible Collection Log items";
     }
 
     private List<CollectionLogRequirementItem> syncReviewCollectionLogItems(CollectionLogRequirementPreview preview)
@@ -4216,16 +4044,14 @@ public class XtremeTaskerOverlay extends Overlay {
         return out;
     }
 
-    private void drawSyncReviewCollectionLogItem(
+    private void drawSyncReviewCollectionLogItemIcon(
             Graphics2D g,
-            FontMetrics fm,
             CollectionLogRequirementItem item,
             int x,
             int y,
-            int maxW,
             int iconSize)
     {
-        Rectangle iconBounds = new Rectangle(x, y + Math.max(0, (fm.getHeight() - iconSize) / 2), iconSize, iconSize);
+        Rectangle iconBounds = new Rectangle(x, y, iconSize, iconSize);
         BufferedImage image = item.getItemId() > 0 ? getCachedItemImage(item.getItemId()) : null;
         if (image != null)
         {
@@ -4237,13 +4063,17 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString("?", iconBounds.x + 5, iconBounds.y + iconBounds.height - 4);
         }
 
-        String name = item.getName() == null ? "" : item.getName();
-        int textX = iconBounds.x + iconSize + 5;
-        int textW = Math.max(0, maxW - iconSize - 5);
-        String text = TextUtils.truncateToWidth(name, fm, textW);
-        int textY = y + fm.getAscent();
-        g.setColor(P.UI_TEXT_DIM);
-        g.drawString(text, textX, textY);
+        if (item.isObtained())
+        {
+            int checkSize = Math.max(9, iconSize / 3);
+            int checkX = iconBounds.x + iconBounds.width - checkSize - 1;
+            int checkY = iconBounds.y + iconBounds.height - checkSize - 1;
+            g.setColor(new Color(20, 16, 10, 210));
+            g.fillOval(checkX - 2, checkY - 2, checkSize + 4, checkSize + 4);
+            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+            g.drawLine(checkX, checkY + checkSize / 2, checkX + checkSize / 3, checkY + checkSize - 1);
+            g.drawLine(checkX + checkSize / 3, checkY + checkSize - 1, checkX + checkSize, checkY);
+        }
     }
 
     private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked)
@@ -5329,7 +5159,6 @@ public class XtremeTaskerOverlay extends Overlay {
         taskListViewportBounds.setBounds(0, 0, 0, 0);
         taskScrollbarRailBounds.setBounds(0, 0, 0, 0);
         taskScrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        rulesViewportBounds.setBounds(0, 0, 0, 0);
     }
 
     private String compactSourceLabel(TaskSource source) {
@@ -5559,16 +5388,11 @@ public class XtremeTaskerOverlay extends Overlay {
                 panelX,
                 cursorYBaseline,
                 panelBounds,
-                rulesScroll.offsetRows,
                 rulesSubTab,
-                plugin.getLastCombatAchievementSyncResult(),
-                plugin.getLastCombatAchievementSyncResultAtLocalTime(),
-                plugin.getLastCollectionLogSyncResult(),
-                plugin.getLastCollectionLogSyncResultAtLocalTime(),
-                plugin.getLastCombatAchievementSyncedTaskNames(),
-                plugin.getLastCollectionLogSyncedTaskNames(),
-                plugin.isCombatAchievementSyncedTasksExpanded(),
-                plugin.isCollectionLogSyncedTasksExpanded(),
+                plugin.getLastSyncResult(),
+                plugin.getLastSyncResultAtLocalTime(),
+                null,
+                null,
                 plugin.isCollectionLogSyncPending(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size(),
@@ -5578,93 +5402,28 @@ public class XtremeTaskerOverlay extends Overlay {
 
         rulesLayout.viewportBounds.setBounds(layout.viewportBounds);
         rulesLayout.reloadButtonBounds.setBounds(layout.reloadButtonBounds);
-        rulesLayout.totalContentRows = layout.totalContentRows;
         rulesLayout.taskerFaqLinkBounds.setBounds(layout.taskerFaqLinkBounds);
         rulesLayout.githubReadmeLinkBounds.setBounds(layout.githubReadmeLinkBounds);
-        rulesLayout.syncClogsButtonBounds.setBounds(layout.syncClogsButtonBounds);
-        rulesLayout.syncCAsButtonBounds.setBounds(layout.syncCAsButtonBounds);
+        rulesLayout.syncProgressButtonBounds.setBounds(layout.syncProgressButtonBounds);
         rulesLayout.syncCaFoundReviewButtonBounds.setBounds(layout.syncCaFoundReviewButtonBounds);
-        rulesLayout.syncCaFoundIgnoreButtonBounds.setBounds(layout.syncCaFoundIgnoreButtonBounds);
-        rulesLayout.syncClogFoundReviewButtonBounds.setBounds(layout.syncClogFoundReviewButtonBounds);
-        rulesLayout.syncClogFoundIgnoreButtonBounds.setBounds(layout.syncClogFoundIgnoreButtonBounds);
         rulesLayout.syncCaReviewButtonBounds.setBounds(layout.syncCaReviewButtonBounds);
         rulesLayout.syncCaReviewIgnoreButtonBounds.setBounds(layout.syncCaReviewIgnoreButtonBounds);
-        rulesLayout.syncClogReviewButtonBounds.setBounds(layout.syncClogReviewButtonBounds);
-        rulesLayout.syncClogReviewIgnoreButtonBounds.setBounds(layout.syncClogReviewIgnoreButtonBounds);
-        rulesLayout.syncCaMarkedTasksToggleBounds.setBounds(layout.syncCaMarkedTasksToggleBounds);
-        rulesLayout.syncClogMarkedTasksToggleBounds.setBounds(layout.syncClogMarkedTasksToggleBounds);
-        rulesLayout.scrollbarRailBounds.setBounds(layout.scrollbarRailBounds);
-        rulesLayout.scrollbarThumbBounds.setBounds(layout.scrollbarThumbBounds);
         rulesLayout.subTabRulesBounds.setBounds(layout.subTabRulesBounds);
         rulesLayout.subTabDataSyncsBounds.setBounds(layout.subTabDataSyncsBounds);
 
-        rulesViewportBounds.setBounds(layout.viewportBounds);
 
-        if (rulesLayout.syncClogsButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogsButtonBounds, "SYNC CLOGs + ADs", P.BTN_DISABLED_BG);
-        }
-        if (rulesLayout.syncCAsButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCAsButtonBounds, "SYNC CAs", P.BTN_DISABLED_BG);
+        if (rulesLayout.syncProgressButtonBounds.width > 0) {
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "Sync account progress", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Update tasks", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        }
-        if (rulesLayout.syncClogFoundReviewButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogFoundReviewButtonBounds, "Update tasks", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review",
+                    P.BTN_ENABLED_BG, P.UI_TEXT, new Color(111, 190, 92));
         }
         if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
         }
         if (rulesLayout.syncCaReviewIgnoreButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
-        }
-        if (rulesLayout.syncClogReviewButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        }
-        if (rulesLayout.syncClogReviewIgnoreButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncClogReviewIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
-        }
-        if (rulesLayout.taskerFaqLinkBounds.width > 0) {
-            Rectangle lb = rulesLayout.taskerFaqLinkBounds;
-            FontMetrics lfm = g.getFontMetrics();
-            String linkLabel = "TaskerFAQ";
-            int textW = lfm.stringWidth(linkLabel);
-            int textX = lb.x;
-            int textY = lb.y + ((lb.height - lfm.getHeight()) / 2) + lfm.getAscent();
-            g.setColor(P.UI_TEXT);
-            g.drawString(linkLabel, textX, textY);
-            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 180));
-            g.drawLine(textX, textY + 2, textX + textW, textY + 2);
-        }
-        if (rulesLayout.githubReadmeLinkBounds.width > 0) {
-            Rectangle lb = rulesLayout.githubReadmeLinkBounds;
-            FontMetrics lfm = g.getFontMetrics();
-            String linkLabel = "Github README";
-            int textW = lfm.stringWidth(linkLabel);
-            int textX = lb.x;
-            int textY = lb.y + ((lb.height - lfm.getHeight()) / 2) + lfm.getAscent();
-            g.setColor(P.UI_TEXT);
-            g.drawString(linkLabel, textX, textY);
-            g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 180));
-            g.drawLine(textX, textY + 2, textX + textW, textY + 2);
-        }
-
-        int rb = rulesTabRenderer.rowBlock();
-        int visible = rulesScroll.visibleRows(rulesLayout.viewportBounds.height, rb);
-
-        if (rulesLayout.totalContentRows > visible && visible > 0 && rulesLayout.viewportBounds.height > 0) {
-            // Use the 520-width rows renderer for consistent scrollbar styling/placement
-            taskRowsRendererTasks.drawScrollbar(g, rulesLayout.totalContentRows, visible, rulesScroll.offsetRows, rulesLayout.viewportBounds);
-            rulesLayout.scrollbarRailBounds.setBounds(taskRowsRendererTasks.scrollbarRailBounds(rulesLayout.viewportBounds));
-            rulesLayout.scrollbarThumbBounds.setBounds(taskRowsRendererTasks.scrollbarThumbBounds(
-                    rulesLayout.totalContentRows,
-                    visible,
-                    rulesScroll.offsetRows,
-                    rulesLayout.viewportBounds
-            ));
-        } else {
-            rulesLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
-            rulesLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
         }
     }
 
@@ -6300,11 +6059,6 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
-            public Rectangle rulesViewportBounds() {
-                return rulesViewportBounds;
-            }
-
-            @Override
             public Map<TaskTier, Rectangle> tierTabBounds() {
                 return tierTabBounds;
             }
@@ -6333,28 +6087,7 @@ public class XtremeTaskerOverlay extends Overlay {
             public void setRulesSubTab(RulesTabLayout.SubTab subTab) {
                 if (subTab != rulesSubTab) {
                     rulesSubTab = subTab;
-                    rulesScroll.reset();
                 }
-            }
-
-            @Override
-            public void toggleCaSyncedTasksExpanded() {
-                plugin.setCombatAchievementSyncedTasksExpanded(!plugin.isCombatAchievementSyncedTasksExpanded());
-            }
-
-            @Override
-            public void toggleClogSyncedTasksExpanded() {
-                plugin.setCollectionLogSyncedTasksExpanded(!plugin.isCollectionLogSyncedTasksExpanded());
-            }
-
-            @Override
-            public void setCaSyncedTasksExpanded(boolean expanded) {
-                plugin.setCombatAchievementSyncedTasksExpanded(expanded);
-            }
-
-            @Override
-            public void setClogSyncedTasksExpanded(boolean expanded) {
-                plugin.setCollectionLogSyncedTasksExpanded(expanded);
             }
 
             @Override
@@ -6417,11 +6150,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public TaskListScrollController tasksScroll() {
                 return tasksScroll;
-            }
-
-            @Override
-            public TaskListScrollController rulesScroll() {
-                return rulesScroll;
             }
 
             @Override
@@ -6502,11 +6230,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public int tasksRowBlock() {
                 return XtremeTaskerOverlay.this.tasksRowBlock();
-            }
-
-            @Override
-            public int rulesRowBlock() {
-                return XtremeTaskerOverlay.this.rulesRowBlock();
             }
 
             @Override
@@ -7193,7 +6916,6 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(taskListViewportBounds, anchorX, anchorY, scale);
         scaleRect(taskScrollbarRailBounds, anchorX, anchorY, scale);
         scaleRect(taskScrollbarThumbBounds, anchorX, anchorY, scale);
-        scaleRect(rulesViewportBounds, anchorX, anchorY, scale);
         scaleRect(markAllIncompleteConfirmBounds, anchorX, anchorY, scale);
         scaleRect(markAllIncompleteYesBounds, anchorX, anchorY, scale);
         scaleRect(markAllIncompleteNoBounds, anchorX, anchorY, scale);
@@ -7253,22 +6975,11 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(rulesLayout.viewportBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.reloadButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.taskerFaqLinkBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.taskerFaqButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.githubReadmeLinkBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncClogsButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncCAsButtonBounds, anchorX, anchorY, scale);
+        scaleRect(rulesLayout.syncProgressButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaFoundReviewButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncCaFoundIgnoreButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncClogFoundReviewButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncClogFoundIgnoreButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaReviewButtonBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.syncCaReviewIgnoreButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncClogReviewButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncClogReviewIgnoreButtonBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncCaMarkedTasksToggleBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.syncClogMarkedTasksToggleBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.scrollbarRailBounds, anchorX, anchorY, scale);
-        scaleRect(rulesLayout.scrollbarThumbBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.subTabRulesBounds, anchorX, anchorY, scale);
         scaleRect(rulesLayout.subTabDataSyncsBounds, anchorX, anchorY, scale);
     }
