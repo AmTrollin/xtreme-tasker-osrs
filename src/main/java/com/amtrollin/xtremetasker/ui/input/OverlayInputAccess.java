@@ -87,8 +87,6 @@ public interface OverlayInputAccess
     TaskSelectionModel selectionModel();
     TaskListScrollController tasksScroll();
     TaskListScrollController currentScroll();
-    void scrollCompactCurrent(double preciseWheelRotation);
-    void setCompactCurrentScrollFraction(double fraction);
     Rectangle currentViewportBounds();
     int currentRowBlock();
     TaskListViewController taskListView();
@@ -210,10 +208,6 @@ public interface OverlayInputAccess
     void confirmTaskDetailsIncompleteSelection();
     void closeTaskDetailsIncompleteConfirm();
 
-    boolean isKeyboardHintsOpen();
-    void setKeyboardHintsOpen(boolean open);
-    Rectangle keyboardHintsButtonBounds();
-    Rectangle keyboardHintsPopupBounds();
     Rectangle taskViewModeBounds();
 
     // Icon drag

@@ -36,15 +36,6 @@ public interface XtremeTaskerConfig extends Config {
         return RollSourceFilter.ALL;
     }
 
-    @ConfigItem(
-            keyName = "condenseRepeatedTasks",
-            name = "Condense repeated tasks",
-            description = "Condense repeated task rolls into one row with grouped completion controls. You can also separate repeated tasks from the Tasks tab."
-    )
-    default boolean condenseRepeatedTasks() {
-        return true;
-    }
-
     // Tips config temporarily disabled — always off for now
     // @ConfigItem(
     //         keyName = "showTips",

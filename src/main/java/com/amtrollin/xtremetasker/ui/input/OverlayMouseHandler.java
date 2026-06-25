@@ -40,10 +40,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private int taskDetailsScrollbarGrabOffsetY = 0;
     private boolean draggingSyncMismatchScrollbar = false;
     private int syncMismatchScrollbarGrabOffsetY = 0;
-    private boolean draggingCompactCurrentScrollbar = false;
-    private int compactCurrentScrollbarGrabOffsetY = 0;
-    private final Rectangle compactCurrentDragRailBounds = new Rectangle();
-    private final Rectangle compactCurrentDragThumbBounds = new Rectangle();
     private long lastTaskRowClickHandledAt = 0L;
     private int lastTaskRowClickX = Integer.MIN_VALUE;
     private int lastTaskRowClickY = Integer.MIN_VALUE;
@@ -261,31 +257,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             a.setActiveTab(OverlayInputAccess.MainTab.CURRENT);
             e.consume();
             return e;
-        }
-
-        if (button == MouseEvent.BUTTON1 && a.isCompactPanelMode() && a.currentLayout().scrollbarRailBounds.width > 0) {
-            if (tryStartCompactCurrentScrollbarDrag(p, e.getY())) {
-                e.consume();
-                return e;
-            }
-        }
-
-        if ((a.activeTab() == OverlayInputAccess.MainTab.TASKS || a.activeTab() == OverlayInputAccess.MainTab.CURRENT)
-                && button == MouseEvent.BUTTON1) {
-            if (a.keyboardHintsButtonBounds().contains(p)) {
-                a.setKeyboardHintsOpen(!a.isKeyboardHintsOpen());
-                e.consume();
-                return e;
-            }
-
-            if (a.isKeyboardHintsOpen()) {
-                if (a.keyboardHintsPopupBounds().contains(p)) {
-                    e.consume();
-                    return e;
-                }
-
-                a.setKeyboardHintsOpen(false);
-            }
         }
 
         if (tryHandleTaskRowClick(e, p, button)) {
@@ -1326,8 +1297,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                                 a.currentLayout().scrollbarThumbBounds.contains(p)
                                         || a.currentLayout().scrollbarRailBounds.contains(p)
                         ))
-                        || (a.isCompactPanelMode() && compactScrollbarHitBounds().contains(p))
-                        || a.keyboardHintsButtonBounds().contains(p)
                 ))
                 // TASKS tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.TASKS && (
@@ -1354,8 +1323,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         // new tasks button
                         || cl.filterNewTasks.contains(p)
                         || cl.filterNewTasksHelp.contains(p)
-                        // keyboard hints
-                        || a.keyboardHintsButtonBounds().contains(p)
                         || (!isCondenseRepeatedTasksBlocked() && a.taskViewModeBounds().contains(p))
                         // task list scrollbar
                         || (!a.isTaskDetailsOpen() && (
@@ -1455,20 +1422,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (draggingCompactCurrentScrollbar) {
-            updateHandCursor(true);
-            updateCompactCurrentScrollbarDrag(e.getY());
-            e.consume();
-            return e;
-        }
-
-        if (a.isCompactPanelMode()
-                && (e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) != 0
-                && tryStartCompactCurrentScrollbarDrag(e.getPoint(), e.getY())) {
-            e.consume();
-            return e;
-        }
-
         // Panel drag
         if (!a.isPanelOpen() || !a.isDraggingPanel()) {
             return e;
@@ -1524,13 +1477,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             draggingSyncMismatchScrollbar = false;
             e.consume();
         }
-        if (draggingCompactCurrentScrollbar) {
-            draggingCompactCurrentScrollbar = false;
-            compactCurrentDragRailBounds.setBounds(0, 0, 0, 0);
-            compactCurrentDragThumbBounds.setBounds(0, 0, 0, 0);
-            updateHandCursor(compactScrollbarHitBounds().contains(e.getPoint()));
-            e.consume();
-        }
         if (pressedOnIcon) {
             if (a.isDraggingIcon()) {
                 // Drag ended — save position.
@@ -1552,11 +1498,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
     @Override
     public MouseEvent mouseExited(MouseEvent e) {
-        if (draggingCompactCurrentScrollbar) {
-            draggingCompactCurrentScrollbar = false;
-            compactCurrentDragRailBounds.setBounds(0, 0, 0, 0);
-            compactCurrentDragThumbBounds.setBounds(0, 0, 0, 0);
-        }
         updateHandCursor(false);
         return e;
     }
@@ -1658,50 +1599,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         double frac = (double) (thumbY - rail.y) / (double) trackH;
         int nextOffset = (int) Math.round(frac * maxOffset);
         a.syncMismatchScroll().setOffsetRows(nextOffset, viewportH, rowBlock, totalRows);
-    }
-
-    private void updateCompactCurrentScrollbarDrag(int mouseY) {
-        Rectangle rail = compactCurrentDragRailBounds.width > 0 ? compactCurrentDragRailBounds : a.currentLayout().scrollbarRailBounds;
-        if (rail.height <= 0) {
-            return;
-        }
-
-        int trackH = Math.max(1, rail.height - 1);
-        int y = Math.max(rail.y, Math.min(mouseY - compactCurrentScrollbarGrabOffsetY, rail.y + trackH));
-        double frac = (double) (y - rail.y) / (double) trackH;
-        a.setCompactCurrentScrollFraction(frac);
-        a.client().getCanvas().repaint();
-    }
-
-    private boolean tryStartCompactCurrentScrollbarDrag(Point p, int mouseY) {
-        if (!a.isCompactPanelMode() || !compactScrollbarHitBounds().contains(p)) {
-            return false;
-        }
-
-        Rectangle rail = a.currentLayout().scrollbarRailBounds;
-        Rectangle thumb = a.currentLayout().scrollbarThumbBounds;
-        if (rail.width <= 0 || rail.height <= 0) {
-            return false;
-        }
-
-        draggingCompactCurrentScrollbar = true;
-        compactCurrentDragRailBounds.setBounds(rail);
-        compactCurrentDragThumbBounds.setBounds(thumb);
-        compactCurrentScrollbarGrabOffsetY = 0;
-        updateHandCursor(true);
-        updateCompactCurrentScrollbarDrag(mouseY);
-        return true;
-    }
-
-    private Rectangle compactScrollbarHitBounds() {
-        Rectangle rail = a.currentLayout().scrollbarRailBounds;
-        if (rail == null || rail.width <= 0 || rail.height <= 0) {
-            return new Rectangle();
-        }
-
-        Rectangle hit = new Rectangle(rail);
-        hit.grow(8, 3);
-        return hit;
     }
 
     // =========================

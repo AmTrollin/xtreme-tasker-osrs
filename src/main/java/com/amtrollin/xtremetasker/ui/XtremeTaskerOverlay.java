@@ -94,15 +94,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int SPRITE_CACHE_LIMIT = 32;
     private static final int SORTED_TASK_LIST_CACHE_LIMIT = 48;
     private static final int PREREQUISITE_STATUS_CACHE_LIMIT = 512;
-    private static final int COMPACT_LINES_CACHE_LIMIT = 128;
     private static final int SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT = 8;
-    private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
-    private static final int COMPACT_MEDALLION_ASSEMBLY_TITLE_GAP = 6;
-    private static final int COMPACT_SECONDARY_SECTION_GAP = 6;
-    private static final int TIER_SECTION_ICON_GAP = 5;
-    private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
-    private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
-    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final int TASK_RESOLVE_TOGGLE_SIZE = 18;
     private static final int TASK_RESOLVE_TOGGLE_GAP = 6;
     private static final long SLOW_PREVIEW_LOG_THRESHOLD_NANOS = 8_000_000L;
@@ -117,8 +109,6 @@ public class XtremeTaskerOverlay extends Overlay {
     );
     private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_ID = createTaskDetailsWikiLinksById();
     private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_NAME = createTaskDetailsWikiLinksByName();
-    private static final DateTimeFormatter COMPACT_COMPLETION_DATE_TIME_FORMAT =
-            DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter TASK_RESOLVE_COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
 
@@ -210,8 +200,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle taskDetailsIncompleteConfirmBounds = new Rectangle();
     private final Rectangle taskDetailsIncompleteConfirmYesBounds = new Rectangle();
     private final Rectangle taskDetailsIncompleteConfirmNoBounds = new Rectangle();
-    private final Rectangle keyboardHintsButtonBounds = new Rectangle();
-    private final Rectangle keyboardHintsPopupBounds = new Rectangle();
     private final Rectangle taskViewModeBounds = new Rectangle();
 
     private final Map<TaskTier, Rectangle> tierTabBounds = Collections.synchronizedMap(new EnumMap<>(TaskTier.class));
@@ -235,7 +223,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private boolean panelOpen = false;
     private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
-    private boolean keyboardHintsOpen = false;
     private static final long KEYBOARD_TRIGGERED_TOOLTIP_MS = 3000L;
     private String keyboardTriggeredTaskTooltipText = null;
     private final Rectangle keyboardTriggeredTaskTooltipAnchor = new Rectangle();
@@ -285,7 +272,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int PANEL_W_TASKS = 690;
     private static final int PANEL_H_TASKS = 460;
     private static final int PANEL_W_COMPACT = 370;
-    private static final int PANEL_H_COMPACT = 370;
+    private static final int PANEL_H_COMPACT = 260;
     private static final double PANEL_SCALE_MIN = 0.82;
     private static final double PANEL_SCALE_AUTO_START_W = 1400.0;
     private static final double PANEL_SCALE_AUTO_START_H = 900.0;
@@ -308,7 +295,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Map<Integer, BufferedImage> spriteCache = lruCache(SPRITE_CACHE_LIMIT);
     private final Map<String, List<XtremeTask>> sortedTaskListCache = lruCache(SORTED_TASK_LIST_CACHE_LIMIT);
     private final Map<String, List<PrerequisiteStatus>> prerequisiteStatusCache = lruCache(PREREQUISITE_STATUS_CACHE_LIMIT);
-    private final Map<String, List<CompactLine>> compactLinesCache = lruCache(COMPACT_LINES_CACHE_LIMIT);
     private final Map<String, List<XtremeTask>> syncReviewVisibleTasksCache = lruCache(SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT);
     private long lastSlowPreviewLogMs = 0L;
     private long lastSlowTaskListLogMs = 0L;
@@ -1792,10 +1778,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private final TaskListScrollController currentScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
     private final TaskListScrollController syncMismatchScroll = new TaskListScrollController(SCROLL_ROWS_PER_NOTCH);
-    private int compactCurrentScrollPx = 0;
-    private int compactCurrentMaxOffsetPx = 0;
-    private double compactCurrentWheelRemainderPx = 0.0;
-    private double compactCurrentPendingWheelRotation = 0.0;
 
     private final CurrentTabRenderer currentTabRenderer = new CurrentTabRenderer(PANEL_W_TASKS, PANEL_PADDING, ROW_HEIGHT, P.UI_GOLD, P.UI_TEXT, P.UI_TEXT_DIM, P.UI_EDGE_LIGHT, P.UI_EDGE_DARK);
     private final CurrentTabViewRenderer currentTabViewRenderer = new CurrentTabViewRenderer(currentTabRenderer, P);
@@ -1820,8 +1802,6 @@ public class XtremeTaskerOverlay extends Overlay {
             taskListViewportBounds,
             taskScrollbarRailBounds,
             taskScrollbarThumbBounds,
-            keyboardHintsButtonBounds,
-            keyboardHintsPopupBounds,
             taskViewModeBounds
     );
     private final ButtonRenderer buttonRenderer = new ButtonRenderer(P);
@@ -4424,232 +4404,111 @@ public class XtremeTaskerOverlay extends Overlay {
                 plugin.getCompletionInfo(recentCompleted),
                 plugin.getTaskTimeTicks(recentCompleted),
                 plugin.canUndoRecentTaskCompletion(),
-                plugin.isCurrentTaskCompletionCriteriaMet(),
-                keyboardHintsOpen,
-                keyboardHintsButtonBounds,
-                keyboardHintsPopupBounds,
-                mousePoint == null ? -1 : mousePoint.x,
-                mousePoint == null ? -1 : mousePoint.y
+                plugin.isCurrentTaskCompletionCriteriaMet()
         );
     }
 
     private void renderCompactPanel(Graphics2D g, FontMetrics fm, int panelX, int contentTop) {
         resetCurrentLayoutBounds();
-        keyboardHintsButtonBounds.setBounds(0, 0, 0, 0);
-        keyboardHintsPopupBounds.setBounds(0, 0, 0, 0);
         taskViewModeBounds.setBounds(0, 0, 0, 0);
 
         int innerX = panelX + PANEL_PADDING;
         int innerW = panelBounds.width - PANEL_PADDING * 2;
-        int y = contentTop;
+        int bottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
+        int cardH = Math.max(120, bottom - contentTop);
+        Rectangle card = new Rectangle(innerX, contentTop, innerW, cardH);
+        drawBevelBox(g, card, new Color(26, 17, 10, 225));
 
         if (!plugin.hasTaskPackLoaded()) {
-            g.setColor(P.UI_TEXT_DIM);
-            g.drawString("No tasks loaded.", innerX, y + fm.getAscent());
+            drawCompactCenteredText(g, fm, card, "No tasks loaded.", P.UI_TEXT_DIM);
             return;
         }
 
         XtremeTask current = plugin.getCurrentTask();
-        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
         boolean rolling = animations.isRolling();
-        TaskTier tierForProgress = current != null ? current.getTier() : plugin.getCurrentTier();
-        if (tierForProgress == null) {
-            tierForProgress = TaskTier.EASY;
-        }
-
-        String progress = tierLabel(tierForProgress) + ": " + plugin.getTierProgressLabel(tierForProgress);
-        g.setColor(P.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(progress, fm, innerW), innerX, y + fm.getAscent());
-        y += fm.getHeight() + 3;
-
-        int actionH = ROW_HEIGHT + 6;
-        int cardH = 110;
-        Rectangle card = new Rectangle(innerX, y, innerW, cardH);
-        drawBevelBox(g, card, new Color(26, 17, 10, 225));
+        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        boolean showCurrentTask = current != null && !currentCompleted && !rolling;
 
         net.runelite.api.Point rlMouse = mouseCanvasPositionForPanelRender();
         java.awt.Point mousePoint = rlMouse == null ? null : new java.awt.Point(rlMouse.getX(), rlMouse.getY());
 
+        Shape oldClip = g.getClip();
+        g.setClip(new Rectangle(card.x + 2, card.y + 2, card.width - 4, card.height - 4));
         if (rolling) {
-            drawCompactRolling(g, fm, card);
-        } else if (current != null) {
-            drawCompactCurrentIdentity(g, fm, card, current, currentCompleted, mousePoint);
+            drawCompactRolling(g, fm, card, current);
+        } else if (showCurrentTask) {
+            drawCompactCurrentIdentity(g, fm, card, current, mousePoint);
         } else {
             drawCompactEmptyIdentity(g, fm, card);
         }
+        g.setClip(oldClip);
 
-        y += cardH + 4;
+        if (rolling) {
+            return;
+        }
 
-        boolean rollEnabled = current == null || currentCompleted;
-        boolean completeEnabled = current != null && !currentCompleted;
-        boolean canUndoRecentCompletion = plugin.canUndoRecentTaskCompletion();
-        boolean currentCompletionCriteriaMet = plugin.isCurrentTaskCompletionCriteriaMet();
-        int buttonGap = 6;
-        int wikiW = current != null && current.getWikiUrl() != null && !current.getWikiUrl().trim().isEmpty()
-                ? Math.max(48, fm.stringWidth("Wiki") + 18)
-                : 0;
-        int actionW = wikiW > 0 ? innerW - wikiW - buttonGap : innerW;
-        if (completeEnabled) {
-            currentLayout.completeButtonBounds.setBounds(innerX, y, actionW, actionH);
+        int actionH = ROW_HEIGHT + 8;
+        int actionW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Mark complete") + 58));
+        int actionX = card.x + (card.width - actionW) / 2;
+        int actionY = card.y + card.height - actionH - 14;
+        if (showCurrentTask) {
+            currentLayout.completeButtonBounds.setBounds(actionX, actionY, actionW, actionH);
             buttonRenderer.drawPrimaryButton(
                     g,
                     currentLayout.completeButtonBounds,
                     "Mark complete",
-                    currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
-        } else if (rollEnabled) {
-            if (canUndoRecentCompletion) {
-                int undoW = Math.min(70, Math.max(48, fm.stringWidth("Undo") + 22));
-                int rollW = Math.max(90, actionW - undoW - buttonGap);
-                currentLayout.rollButtonBounds.setBounds(innerX, y, rollW, actionH);
-                currentLayout.undoButtonBounds.setBounds(innerX + rollW + buttonGap, y, undoW, actionH);
-                buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
-                buttonRenderer.drawPlainButton(g, currentLayout.undoButtonBounds, "Undo");
-            } else {
-                Rectangle actionBounds = new Rectangle(innerX, y, actionW, actionH);
-                currentLayout.rollButtonBounds.setBounds(actionBounds);
-                buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
-            }
+                    plugin.isCurrentTaskCompletionCriteriaMet() ? UiPalette.TIER_COMPLETE_GLOW : null);
+        } else {
+            int rollW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Roll task") + 58));
+            currentLayout.rollButtonBounds.setBounds(card.x + (card.width - rollW) / 2, actionY, rollW, actionH);
+            buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
         }
-
-        if (wikiW > 0) {
-            currentLayout.wikiButtonBounds.setBounds(innerX + actionW + buttonGap, y, wikiW, actionH);
-            buttonRenderer.drawPlainButton(g, currentLayout.wikiButtonBounds, "Wiki", new Color(30, 25, 18, 220));
-        }
-
-        y += actionH + 5;
-
-        int detailBottom = panelBounds.y + panelBounds.height - PANEL_PADDING - 2;
-        int detailH = Math.max(0, detailBottom - y);
-        Rectangle viewport = new Rectangle(innerX, y, innerW, detailH);
-        currentLayout.viewportBounds.setBounds(viewport);
-
-        List<CompactLine> lines = compactLines(current, rolling);
-        int textW = Math.max(0, viewport.width - 8 - 14);
-        int totalPx = 0;
-        for (CompactLine line : lines) {
-            totalPx += compactLineHeight(line, textW);
-        }
-        currentLayout.totalContentPx = totalPx;
-
-        drawBevelBox(g, viewport, new Color(32, 24, 15, 160));
-        Shape oldClip = g.getClip();
-        Rectangle textClip = new Rectangle(viewport.x + 4, viewport.y + 4, Math.max(0, viewport.width - 8), Math.max(0, viewport.height - 8));
-        int visiblePx = Math.max(0, textClip.height);
-        int maxOffsetPx = Math.max(0, totalPx - visiblePx);
-        compactCurrentMaxOffsetPx = maxOffsetPx;
-        applyCompactScrollInputs(maxOffsetPx);
-        int scrollPx = compactCurrentScrollPx;
-
-        g.setClip(textClip);
-        int textY = textClip.y + fm.getAscent() + 2 - scrollPx;
-        int textX = textClip.x + 4;
-        for (CompactLine line : lines) {
-            if (line.collectionLogPreview != null) {
-                Composite oldComposite = g.getComposite();
-                if (line.dimCollectionLogIcons) {
-                    g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
-                }
-                textY = CollectionLogIconGridRenderer.render(
-                        g,
-                        fm,
-                        textX,
-                        textY,
-                        textW,
-                        line.collectionLogPreview.getItems(),
-                        this::getCachedItemImage,
-                        mousePoint,
-                        textClip,
-                        P.UI_TEXT,
-                        P.UI_TEXT_DIM,
-                        P.UI_EDGE_LIGHT,
-                        P.UI_EDGE_DARK,
-                        line.collectionLogPreview.iconColumns());
-                g.setComposite(oldComposite);
-            } else if (line.tierSection != null) {
-                drawCompactTierLabel(g, fm, line.tierSection, textX, textY);
-                textY += compactLineHeight(line, textW);
-            } else {
-                drawCompactLine(g, fm, line, textX, textY, textW);
-                textY += compactLineHeight(line, textW);
-            }
-        }
-        g.setClip(oldClip);
-
-        drawCompactScrollbar(g, viewport, totalPx, visiblePx, scrollPx);
     }
 
-    private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card) {
+    private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current) {
+        int x = card.x + 14;
+        int innerW = card.width - 28;
         g.setColor(Color.WHITE);
-        g.drawString("Rolling...", card.x + 14, card.y + 10 + fm.getAscent());
+        g.drawString("Rolling...", x, card.y + 12 + fm.getAscent());
 
-        XtremeTask current = plugin.getCurrentTask();
         Font oldFont = g.getFont();
         Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
         g.setFont(nameFont);
         FontMetrics nameFm = g.getFontMetrics();
         String name = computeCurrentLineForRender(current, false, nameFm);
-        String drawName = TextUtils.truncateToWidth(name, nameFm, card.width - 28);
-        int nameX = card.x + (card.width - nameFm.stringWidth(drawName)) / 2;
-        int nameY = card.y + (card.height - nameFm.getHeight()) / 2 + nameFm.getAscent();
+        List<String> nameLines = TextUtils.wrapText(name, nameFm, innerW);
+        int lineCount = Math.max(1, Math.min(2, nameLines.size()));
+        int blockH = lineCount * nameFm.getHeight();
+        int nameY = card.y + (card.height - blockH) / 2 + nameFm.getAscent();
+
         g.setColor(P.UI_GOLD);
-        g.drawString(drawName, nameX, nameY);
+        for (int i = 0; i < lineCount; i++) {
+            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, innerW);
+            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
+            g.drawString(line, lineX, nameY);
+            nameY += nameFm.getHeight();
+        }
         g.setFont(oldFont);
     }
 
     private void drawCompactEmptyIdentity(Graphics2D g, FontMetrics fm, Rectangle card) {
-        g.setColor(Color.WHITE);
-        g.drawString("No current task", card.x + 14, card.y + 10 + fm.getAscent());
-
-        XtremeTask recent = plugin.getMostRecentCompletedTask();
-        CompletionInfo info = plugin.getCompletionInfo(recent);
-        if (recent != null && info != null) {
-            drawCompactRecentCompletionSummary(g, fm, card, recent, info, plugin.getTaskTimeTicks(recent));
-        }
+        drawCompactCenteredText(g, fm, card, "Roll for new task", P.UI_TEXT_DIM);
     }
 
-    private void drawCompactRecentCompletionSummary(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task, CompletionInfo info, Long ticks) {
-        int x = card.x + 14;
-        int y = card.y + 33 + fm.getAscent();
-        int maxW = card.width - 28;
-        int lineH = fm.getHeight() + 1;
-
-        g.setColor(P.UI_GOLD);
-        g.drawString(TextUtils.truncateToWidth("Most recent completed:", fm, maxW), x, y);
-        y += lineH;
-
-        g.setColor(P.UI_TEXT);
-        g.drawString(TextUtils.truncateToWidth(task.getName() + compactCompletionSourceSuffix(info), fm, maxW), x, y);
-        y += lineH;
-
-        g.setColor(P.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(compactCompletionSummary(info), fm, maxW), x, y);
-        y += lineH;
-
-        if (ticks != null && ticks > 0) {
-            String time = "Time spent: " + compactFormatTicks(Math.round(ticks * 0.6));
-            g.drawString(TextUtils.truncateToWidth(time, fm, maxW), x, y);
-        }
-    }
-
-    private void drawCompactCurrentIdentity(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current, boolean completed, java.awt.Point mousePoint) {
-        int pad = 12;
-        drawCompactBadges(g, fm, card, current, mousePoint);
-
-        int iconSize = 36;
-        int iconX = card.x + (card.width - iconSize) / 2;
-        int iconY = card.y + 9;
-        BufferedImage taskIcon = resolveTaskIcon(current);
-        if (taskIcon != null) {
-            g.drawImage(taskIcon, iconX, iconY, iconSize, iconSize, null);
-        }
-
+    private void drawCompactCurrentIdentity(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current, java.awt.Point mousePoint) {
+        int pad = 14;
         int textW = card.width - pad * 2;
+        int y = card.y + pad;
+
+        y = Math.max(y, drawCompactBadges(g, fm, card, current) + 6);
+        y = drawCompactTaskIcon(g, fm, current, card.x + pad, y, textW, mousePoint, card) + 8;
+
         Font oldFont = g.getFont();
         Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
         g.setFont(nameFont);
         FontMetrics nameFm = g.getFontMetrics();
-        List<String> nameLines = TextUtils.wrapText(current.getName(), nameFm, textW);
-        int textY = iconY + iconSize + 5 + nameFm.getAscent();
+        List<String> nameLines = TextUtils.wrapText(compactTaskTitle(current), nameFm, textW);
+        int textY = y + nameFm.getAscent();
         g.setColor(P.UI_GOLD);
         for (int i = 0; i < Math.min(2, nameLines.size()); i++) {
             String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, textW);
@@ -4666,365 +4525,124 @@ public class XtremeTaskerOverlay extends Overlay {
             g.setColor(P.UI_TEXT_DIM);
             g.drawString(time, timeX, textY + 2);
         }
-
     }
 
-    private void drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task, java.awt.Point mousePoint) {
-        int totalW = compactBadgeWidth(fm, compactSourceLabel(task.getSource()))
-                + 5
-                + compactBadgeWidth(fm, tierLabel(task.getTier()));
-        int x = card.x + card.width - 12 - totalW;
-        int y = card.y + 7;
-        Rectangle sourceBadge = new Rectangle(x, y, compactBadgeWidth(fm, compactSourceLabel(task.getSource())), ROW_HEIGHT + 2);
-        x = drawCompactBadge(g, fm, compactSourceLabel(task.getSource()), x, y);
-        if (mousePoint != null && sourceBadge.contains(mousePoint)) {
-            g.setColor(P.UI_TEXT_DIM);
-            g.drawString(compactSourceHoverLabel(task.getSource()), sourceBadge.x, sourceBadge.y - 4);
-        }
-        drawCompactBadge(g, fm, tierLabel(task.getTier()), x + 5, y);
+    private int drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task) {
+        String sourceText = shortSource(task.getSource());
+        String tierText = tierLabel(task.getTier());
+        int gap = 5;
+        int y = card.y + 8;
+        Font oldFont = g.getFont();
+        g.setFont(FontManager.getRunescapeSmallFont());
+        FontMetrics badgeFm = g.getFontMetrics();
+        int sourceW = Math.max(24, badgeFm.stringWidth(sourceText) + 14);
+        int tierW = Math.max(24, badgeFm.stringWidth(tierText) + 14);
+        int x = card.x + card.width - 12 - sourceW - gap - tierW;
+        g.setFont(oldFont);
+
+        x += TaskRowsRenderer.drawSourceBadge(g, x, y, sourceText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT) + gap;
+        TaskRowsRenderer.drawSourceBadge(g, x, y, tierText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT);
+        return y + 18;
     }
 
-    private int compactBadgeWidth(FontMetrics fm, String text) {
-        return Math.max(32, fm.stringWidth(text) + 14);
+    private int drawCompactTaskIcon(Graphics2D g, FontMetrics fm, XtremeTask task, int x, int y, int maxW, java.awt.Point mousePoint, Rectangle card) {
+        CollectionLogRequirementPreview preview = compactCollectionLogIconPreview(task);
+        if (preview != null && preview.showItemList()) {
+            Rectangle tooltipBounds = new Rectangle(card.x + 4, card.y + 4, card.width - 8, card.height - 8);
+            int renderX = centeredCompactCollectionLogIconX(x, maxW, preview);
+            return CollectionLogIconGridRenderer.render(
+                    g,
+                    fm,
+                    renderX,
+                    y + fm.getAscent(),
+                    maxW,
+                    preview.getItems(),
+                    this::getCachedItemImage,
+                    mousePoint,
+                    tooltipBounds,
+                    P.UI_TEXT,
+                    P.UI_TEXT_DIM,
+                    P.UI_EDGE_LIGHT,
+                    P.UI_EDGE_DARK,
+                    preview.iconColumns()) - fm.getAscent();
+        }
+
+        int iconSize = 44;
+        int iconX = x + (maxW - iconSize) / 2;
+        BufferedImage taskIcon = resolveTaskIcon(task);
+        if (taskIcon != null) {
+            g.drawImage(taskIcon, iconX, y, iconSize, iconSize, null);
+        }
+        return y + iconSize;
     }
 
-    private int drawCompactBadge(Graphics2D g, FontMetrics fm, String text, int x, int y) {
-        int w = compactBadgeWidth(fm, text);
-        Rectangle r = new Rectangle(x, y, w, ROW_HEIGHT + 2);
-        drawBevelBox(g, r, new Color(42, 34, 22, 220));
-        g.setColor(P.UI_TEXT_DIM);
-        g.drawString(text, r.x + (r.width - fm.stringWidth(text)) / 2, r.y + ((r.height - fm.getHeight()) / 2) + fm.getAscent());
-        return x + w;
+    private int centeredCompactCollectionLogIconX(int x, int maxW, CollectionLogRequirementPreview preview) {
+        int count = preview == null ? 0 : preview.getItems().size();
+        if (count <= 0) {
+            return x;
+        }
+
+        int columns = Math.max(1, preview.iconColumns());
+        int shownColumns = Math.min(count, columns);
+        int iconSize = compactCollectionLogIconSize(maxW, columns);
+        int rowW = shownColumns * iconSize + Math.max(0, shownColumns - 1) * 3;
+        return x + Math.max(0, (maxW - rowW) / 2);
     }
 
-    private List<CompactLine> compactLines(XtremeTask current, boolean rolling) {
-        String cacheKey = compactLinesCacheKey(current, rolling);
-        List<CompactLine> cached = compactLinesCache.get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-
-        List<CompactLine> lines = new ArrayList<>();
-        if (rolling) {
-            lines.add(new CompactLine("Rolling a new task...", false, true));
-            return cacheCompactLines(cacheKey, lines);
-        }
-        if (current == null) {
-            String notice = Optional.ofNullable(plugin.getPendingRollSkipNotice()).orElse(plugin.getRollSkipNotice());
-            if (notice != null && !notice.trim().isEmpty()) {
-                lines.add(new CompactLine("Notice", true, false));
-                for (String line : TextUtils.wrapText(notice.trim(), fontMetrics(), PANEL_W_COMPACT - PANEL_PADDING * 2 - 18)) {
-                    lines.add(new CompactLine(line, false, false));
-                }
-            } else {
-                lines.add(new CompactLine("No active task.", false, true));
-            }
-            return cacheCompactLines(cacheKey, lines);
-        }
-
-        String desc = current.getDescription();
-        String tip = plugin.showTips() ? current.getTip() : null;
-        boolean hasTip = tip != null && !tip.trim().isEmpty();
-        if (hasTip) {
-            tip = tip.trim();
-        }
-        if (desc != null && !desc.trim().isEmpty()) {
-            lines.add(new CompactLine("Description", true, false));
-            lines.addAll(wrappedCompactLines(desc.trim(), false));
-            if (hasTip && current.getSource() != TaskSource.COLLECTION_LOG) {
-                lines.add(CompactLine.spacer());
-                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
-            }
-            lines.add(CompactLine.spacer());
-        }
-
-        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(current);
-        if (preview != null && preview.hasItems()) {
-            if (hasTip) {
-                lines.addAll(wrappedCompactLines("Tip: " + tip, true));
-                lines.add(CompactLine.spacer());
-            }
-            lines.add(new CompactLine(compactCollectionLogRequirementTitle(preview), true, false));
-            if (preview.showSummaryText()) {
-                lines.addAll(wrappedCompactLines(preview.summaryText(), true));
-                if (preview.showTierSections()) {
-                    lines.add(CompactLine.verticalGap(TIER_SECTION_ICON_GAP));
-                }
-            }
-            if (preview.showTierSections()) {
-                CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
-                if (currentSection != null) {
-                    lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
-                            currentSection.items(),
-                            currentSection.iconColumns())));
-                }
-                List<CollectionLogRequirementPreview.TierSection> otherSections = preview.otherTierSectionsHardestFirst();
-                if (!otherSections.isEmpty()) {
-                    lines.add(CompactLine.verticalGap(COMPACT_SECONDARY_SECTION_GAP));
-                    lines.addAll(wrappedCompactLines(OTHER_SEQUENCE_CLOGS_DIVIDER, true));
-                    lines.addAll(wrappedCompactLines(OTHER_SEQUENCE_CLOGS_LABEL, true));
-                }
-                for (int i = 0; i < otherSections.size(); i++) {
-                    CollectionLogRequirementPreview.TierSection section = otherSections.get(i);
-                    if (i > 0) {
-                        lines.add(CompactLine.verticalGap(6));
-                    }
-                    lines.add(CompactLine.verticalGap(TIER_SECTION_LABEL_TOP_GAP));
-                    lines.add(CompactLine.tierLabel(section));
-                    lines.add(CompactLine.verticalGap(TIER_SECTION_ICON_GAP));
-                    lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
-                            section.items(),
-                            section.iconColumns()), true));
-                }
-            } else if (preview.showItemList()) {
-                lines.add(CompactLine.collectionLogIcons(preview));
-            }
-            if (preview.showSecondaryItemList()) {
-                if (isMedallionAssemblyTitle(preview.secondaryTitleText())) {
-                    lines.add(CompactLine.verticalGap(COMPACT_MEDALLION_ASSEMBLY_TITLE_GAP));
-                }
-                lines.addAll(wrappedCompactLines(preview.secondaryTitleText(), true));
-                lines.add(CompactLine.collectionLogIcons(singleSectionPreview(
-                        preview.secondaryItems(),
-                        preview.secondaryIconColumns())));
-            }
-            lines.add(CompactLine.spacer());
-        }
-
-        lines.add(new CompactLine("Prereqs", true, false));
-        List<PrerequisiteStatus> statuses = getCachedPrerequisiteStatuses(current);
-        String prereqs = normalizeCompactPrereqs(current.getPrereqs());
-        if (statuses != null && !statuses.isEmpty()) {
-            for (PrerequisiteStatus status : statuses) {
-                lines.addAll(wrappedCompactPrereqLines(status));
-            }
-        } else if (!prereqs.isEmpty()) {
-            String formatted = prereqs.replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
-            for (String prereq : formatted.split("\n")) {
-                lines.addAll(wrappedCompactLines("- " + prereq, true));
-            }
-        } else {
-            lines.add(new CompactLine("None", false, true));
-        }
-
-        return cacheCompactLines(cacheKey, lines);
+    private int compactCollectionLogIconSize(int maxW, int columns) {
+        int normalizedColumns = Math.max(1, columns);
+        int available = Math.max(20 * normalizedColumns, maxW - (normalizedColumns - 1) * 3);
+        int maxIconSize = normalizedColumns < 8 ? 56 : 36;
+        return Math.max(20, Math.min(maxIconSize, available / normalizedColumns));
     }
 
-    private String compactLinesCacheKey(XtremeTask current, boolean rolling) {
-        return "task=" + safeTaskId(current)
-                + "|rolling=" + rolling
-                + "|notice=" + Optional.ofNullable(plugin.getPendingRollSkipNotice()).orElse(plugin.getRollSkipNotice())
-                + "|tips=" + plugin.showTips()
-                + "|tick=" + client.getTickCount()
-                + "|taskState=" + plugin.getTaskListRenderStateHash()
-                + "|clState=" + plugin.getCollectionLogStateVersion()
-                + "|width=" + (PANEL_W_COMPACT - PANEL_PADDING * 2 - 26);
-    }
-
-    private List<CompactLine> cacheCompactLines(String cacheKey, List<CompactLine> lines) {
-        List<CompactLine> immutableLines = Collections.unmodifiableList(new ArrayList<>(lines));
-        compactLinesCache.put(cacheKey, immutableLines);
-        return immutableLines;
-    }
-
-    private static String compactCollectionLogRequirementTitle(CollectionLogRequirementPreview preview) {
-        if (preview != null && preview.titleText() != null && !preview.titleText().trim().isEmpty()) {
-            return preview.titleText();
-        }
-        return "Eligible Collection Log items";
-    }
-
-    private static boolean isMedallionAssemblyTitle(String title) {
-        String normalized = title == null ? "" : title.trim();
-        return normalized.startsWith(MEDALLION_ASSEMBLY_TITLE_PREFIX)
-                && normalized.toLowerCase().contains("fragments to assemble");
-    }
-
-    private static CollectionLogRequirementPreview singleSectionPreview(List<CollectionLogRequirementItem> items, int iconColumns) {
-        return new CollectionLogRequirementPreview("", "", false, true, items, iconColumns);
-    }
-
-    private static String normalizeCompactPrereqs(String prereqs) {
-        String normalized = prereqs == null ? "" : prereqs.replace("\r", "").trim();
-        return isNoPrereqsText(normalized) ? "" : normalized;
-    }
-
-    private static boolean isNoPrereqsText(String prereqs) {
-        return prereqs.isEmpty() || prereqs.equalsIgnoreCase("none") || prereqs.equalsIgnoreCase("n/a") || prereqs.equals("-");
-    }
-
-    private void drawCompactLine(Graphics2D g, FontMetrics fm, CompactLine line, int x, int y, int maxWidth) {
-        if (line.fixedHeight >= 0) {
-            return;
+    private CollectionLogRequirementPreview compactCollectionLogIconPreview(XtremeTask task) {
+        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG) {
+            return null;
         }
 
-        int drawX = x;
-        int drawMaxWidth = maxWidth;
-        PrerequisiteStatus status = line.prerequisiteStatus;
-        if (status == null) {
-            String drawLine = TextUtils.truncateToWidth(line.text, fm, maxWidth);
-            g.setColor(line.heading ? P.UI_GOLD : (line.dim ? P.UI_TEXT_DIM : P.UI_TEXT));
-            g.drawString(drawLine, x, y);
-            return;
+        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
+        if (preview == null) {
+            return null;
         }
 
-        boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
-        g.setColor(!hasCheckSpans && status.isCompleted() ? P.UI_TEXT_DIM : P.UI_TEXT);
-        if (line.firstPrerequisiteLine) {
-            PrerequisiteIconRenderer.drawMarker(g, fm, line.prerequisiteMarkerImage, x, y);
+        if (preview.showTierSections()) {
+            CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
+            return currentSection == null
+                    ? null
+                    : new CollectionLogRequirementPreview("", "", false, true, currentSection.items(), currentSection.iconColumns());
         }
-        drawX = PrerequisiteIconRenderer.textX(fm, x, line.prerequisiteMarkerImage);
-        drawMaxWidth = PrerequisiteIconRenderer.textWidth(fm, maxWidth, line.prerequisiteMarkerImage);
-        String drawLine = TextUtils.truncateToWidth(line.text, fm, drawMaxWidth);
-        g.drawString(drawLine, drawX, y);
+        return preview;
+    }
 
-        if (!hasCheckSpans) {
-            if (status.isCompleted()) {
-                drawCompactStrikeThrough(g, fm, drawLine, drawX, y);
-            }
-            return;
+    private String compactTaskTitle(XtremeTask task) {
+        if (task == null) {
+            return "";
         }
 
-        for (PrerequisiteStatus.CheckSpan span : status.getCheckSpans()) {
-            if (!span.isCompleted() || span.getStart() < 0 || span.getEnd() > status.getText().length() || span.getStart() >= span.getEnd()) {
-                continue;
+        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
+        if (task.getSource() == TaskSource.COLLECTION_LOG && progress != null && progress.isGrouped()) {
+            if (isDecoratedSequenceTaskName(task.getName())) {
+                return task.getName();
             }
 
-            String spanText = status.getText().substring(span.getStart(), span.getEnd());
-            int lineIndex = drawLine.indexOf(spanText);
-            if (lineIndex < 0) {
-                continue;
+            String sequenceSuffix = collectionLogSequenceSuffix(task);
+            if (!sequenceSuffix.isEmpty()) {
+                return task.getName() + " (" + sequenceSuffix + ")";
             }
 
-            int spanX = drawX + fm.stringWidth(drawLine.substring(0, lineIndex));
-            g.setColor(P.UI_TEXT_DIM);
-            g.drawString(spanText, spanX, y);
-            drawCompactStrikeThrough(g, fm, spanText, spanX, y);
+            int next = Math.max(1, Math.min(progress.getCompleted() + 1, progress.getTotal()));
+            return task.getName() + " (" + next + "/" + progress.getTotal() + ")";
         }
+        return task.getName();
     }
 
-    private void drawCompactStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY) {
-        int lineW = fm.stringWidth(text);
-        int strikeY = baselineY - (fm.getAscent() * 3 / 5);
-        g.setColor(new Color(P.UI_TEXT_DIM.getRed(), P.UI_TEXT_DIM.getGreen(), P.UI_TEXT_DIM.getBlue(), 170));
-        g.drawLine(x, strikeY, x + lineW, strikeY);
-    }
-
-    private List<CompactLine> wrappedCompactLines(String text, boolean dim) {
-        List<CompactLine> out = new ArrayList<>();
-        for (String line : TextUtils.wrapText(text, fontMetrics(), PANEL_W_COMPACT - PANEL_PADDING * 2 - 26)) {
-            out.add(new CompactLine(line, false, dim));
-        }
-        return out;
-    }
-
-    private List<CompactLine> wrappedCompactPrereqLines(PrerequisiteStatus status) {
-        List<CompactLine> out = new ArrayList<>();
-        String text = status == null ? "" : status.getText();
-        FontMetrics fm = fontMetrics();
-        int width = PANEL_W_COMPACT - PANEL_PADDING * 2 - 26;
-        BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, this::getCachedSkillImage, null);
-        int textWidth = PrerequisiteIconRenderer.textWidth(fm, width, markerImage);
-        boolean firstLine = true;
-        for (String line : TextUtils.wrapText(text, fm, textWidth)) {
-            out.add(CompactLine.prerequisite(line, status, markerImage, firstLine));
-            firstLine = false;
-        }
-        return out;
-    }
-
-    private int compactLineHeight(CompactLine line, int maxWidth) {
-        if (line != null && line.fixedHeight >= 0) {
-            return line.fixedHeight;
-        }
-        if (line != null && line.collectionLogPreview != null) {
-            return CollectionLogIconGridRenderer.measureHeight(
-                    line.collectionLogPreview.getItems().size(),
-                    maxWidth,
-                    line.collectionLogPreview.iconColumns());
-        }
-        if (line != null && line.tierSection != null) {
-            return ROW_HEIGHT;
-        }
-        if (line != null && line.prerequisiteStatus != null) {
-            return PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, line.prerequisiteStatus);
-        }
-        return ROW_HEIGHT;
-    }
-
-    private FontMetrics fontMetrics() {
-        return client.getCanvas().getFontMetrics(FontManager.getRunescapeSmallFont());
-    }
-
-    private void drawCompactTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline) {
-        String text = section.tier() == null ? "TIER" : tierLabel(section.tier()).toUpperCase();
-        g.setColor(P.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 160)), x, baseline);
-    }
-
-    private void drawCompactScrollbar(Graphics2D g, Rectangle viewport, int totalPx, int visiblePx, int scrollPx) {
-        currentLayout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
-        currentLayout.scrollbarThumbBounds.setBounds(0, 0, 0, 0);
-        if (viewport.height <= 0 || visiblePx <= 0 || totalPx <= visiblePx) {
-            return;
-        }
-
-        Rectangle rail = taskRowsRendererTasks.scrollbarRailBounds(viewport);
-        g.setColor(new Color(0, 0, 0, 60));
-        g.fillRect(rail.x, rail.y, rail.width, rail.height);
-
-        float thumbRatio = (float) visiblePx / (float) totalPx;
-        int thumbH = Math.min(rail.height, Math.max(12, Math.round(rail.height * thumbRatio)));
-        int maxScrollPx = Math.max(1, totalPx - visiblePx);
-        float scrollRatio = Math.max(0f, Math.min(1f, (float) scrollPx / (float) maxScrollPx));
-        int thumbY = rail.y + (int) ((rail.height - thumbH) * scrollRatio);
-        Rectangle thumb = new Rectangle(rail.x, thumbY, Math.max(0, rail.width - 1), Math.max(0, thumbH - 1));
-
-        currentLayout.scrollbarRailBounds.setBounds(rail);
-        currentLayout.scrollbarThumbBounds.setBounds(thumb);
-
-        drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
-
-        g.setColor(new Color(P.UI_GOLD.getRed(), P.UI_GOLD.getGreen(), P.UI_GOLD.getBlue(), 140));
-        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
-    }
-
-    private void scrollCompactCurrent(double preciseWheelRotation) {
-        if (preciseWheelRotation == 0.0) {
-            return;
-        }
-
-        compactCurrentPendingWheelRotation += preciseWheelRotation;
-    }
-
-    private void setCompactCurrentScrollFraction(double fraction) {
-        double clamped = Math.max(0.0, Math.min(1.0, fraction));
-        compactCurrentScrollPx = (int) Math.round(clamped * Math.max(0, compactCurrentMaxOffsetPx));
-        compactCurrentWheelRemainderPx = 0.0;
-    }
-
-    private void resetCompactScroll() {
-        compactCurrentScrollPx = 0;
-        compactCurrentMaxOffsetPx = 0;
-        compactCurrentWheelRemainderPx = 0.0;
-        compactCurrentPendingWheelRotation = 0.0;
-    }
-
-    private void applyCompactScrollInputs(int maxOffsetPx) {
-        if (maxOffsetPx <= 0) {
-            resetCompactScroll();
-            return;
-        }
-
-        if (compactCurrentPendingWheelRotation != 0.0) {
-            double pixels = compactCurrentPendingWheelRotation * SCROLL_ROWS_PER_NOTCH * ROW_HEIGHT + compactCurrentWheelRemainderPx;
-            int deltaPx = pixels > 0 ? (int) Math.floor(pixels) : (int) Math.ceil(pixels);
-            compactCurrentWheelRemainderPx = pixels - deltaPx;
-            compactCurrentPendingWheelRotation = 0.0;
-            compactCurrentScrollPx += deltaPx;
-        }
-
-        compactCurrentScrollPx = Math.max(0, Math.min(maxOffsetPx, compactCurrentScrollPx));
+    private void drawCompactCenteredText(Graphics2D g, FontMetrics fm, Rectangle card, String text, Color color) {
+        String drawText = TextUtils.truncateToWidth(text, fm, card.width - 28);
+        int x = card.x + (card.width - fm.stringWidth(drawText)) / 2;
+        int y = card.y + (card.height - fm.getHeight()) / 2 + fm.getAscent();
+        g.setColor(color);
+        g.drawString(drawText, x, y);
     }
 
     private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {
@@ -5142,32 +4760,6 @@ public class XtremeTaskerOverlay extends Overlay {
         taskScrollbarThumbBounds.setBounds(0, 0, 0, 0);
     }
 
-    private String compactSourceLabel(TaskSource source) {
-        if (source == TaskSource.COMBAT_ACHIEVEMENT) {
-            return "CA";
-        }
-        if (source == TaskSource.COLLECTION_LOG) {
-            return "CL";
-        }
-        if (source == TaskSource.DIARY_ACHIEVEMENT) {
-            return "AD";
-        }
-        return "Task";
-    }
-
-    private String compactSourceHoverLabel(TaskSource source) {
-        if (source == TaskSource.COMBAT_ACHIEVEMENT) {
-            return "Combat Achievement";
-        }
-        if (source == TaskSource.COLLECTION_LOG) {
-            return "Collection Log";
-        }
-        if (source == TaskSource.DIARY_ACHIEVEMENT) {
-            return "Achievement Diary";
-        }
-        return "Task";
-    }
-
     private static String compactFormatTicks(long seconds) {
         if (seconds < 60) return seconds + "s";
         long minutes = seconds / 60;
@@ -5179,122 +4771,6 @@ public class XtremeTaskerOverlay extends Overlay {
         long days = hours / 24;
         long remHours = hours % 24;
         return remHours > 0 ? days + "d " + remHours + "h" : days + "d";
-    }
-
-    private static String compactCompletionSummary(CompletionInfo info) {
-        if (info == null || info.timestamp <= 0) {
-            return "Completed: date unknown";
-        }
-        return "Completed: " + COMPACT_COMPLETION_DATE_TIME_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
-    }
-
-    private static String compactCompletionSourceSuffix(CompletionInfo info) {
-        if (info == null || info.timestamp <= 0 || info.source == null) {
-            return "";
-        }
-        return info.source == CompletionInfo.Source.SYNCED ? " (synced)" : "";
-    }
-
-    private static final class CompactLine {
-        private final String text;
-        private final boolean heading;
-        private final boolean dim;
-        private final CollectionLogRequirementPreview collectionLogPreview;
-        private final boolean dimCollectionLogIcons;
-        private final CollectionLogRequirementPreview.TierSection tierSection;
-        private final PrerequisiteStatus prerequisiteStatus;
-        private final BufferedImage prerequisiteMarkerImage;
-        private final boolean firstPrerequisiteLine;
-        private final int fixedHeight;
-
-        private CompactLine(String text, boolean heading, boolean dim) {
-            this.text = text == null ? "" : text;
-            this.heading = heading;
-            this.dim = dim;
-            this.collectionLogPreview = null;
-            this.dimCollectionLogIcons = false;
-            this.tierSection = null;
-            this.prerequisiteStatus = null;
-            this.prerequisiteMarkerImage = null;
-            this.firstPrerequisiteLine = false;
-            this.fixedHeight = -1;
-        }
-
-        private CompactLine(CollectionLogRequirementPreview collectionLogPreview, boolean dimCollectionLogIcons) {
-            this.text = "";
-            this.heading = false;
-            this.dim = false;
-            this.collectionLogPreview = collectionLogPreview;
-            this.dimCollectionLogIcons = dimCollectionLogIcons;
-            this.tierSection = null;
-            this.prerequisiteStatus = null;
-            this.prerequisiteMarkerImage = null;
-            this.firstPrerequisiteLine = false;
-            this.fixedHeight = -1;
-        }
-
-        private CompactLine(String text, PrerequisiteStatus prerequisiteStatus, BufferedImage prerequisiteMarkerImage, boolean firstPrerequisiteLine) {
-            this.text = text == null ? "" : text;
-            this.heading = false;
-            this.dim = false;
-            this.collectionLogPreview = null;
-            this.dimCollectionLogIcons = false;
-            this.tierSection = null;
-            this.prerequisiteStatus = prerequisiteStatus;
-            this.prerequisiteMarkerImage = prerequisiteMarkerImage;
-            this.firstPrerequisiteLine = firstPrerequisiteLine;
-            this.fixedHeight = -1;
-        }
-
-        private CompactLine(int fixedHeight) {
-            this.text = "";
-            this.heading = false;
-            this.dim = true;
-            this.collectionLogPreview = null;
-            this.dimCollectionLogIcons = false;
-            this.tierSection = null;
-            this.prerequisiteStatus = null;
-            this.prerequisiteMarkerImage = null;
-            this.firstPrerequisiteLine = false;
-            this.fixedHeight = Math.max(0, fixedHeight);
-        }
-
-        private CompactLine(CollectionLogRequirementPreview.TierSection tierSection) {
-            this.text = "";
-            this.heading = false;
-            this.dim = false;
-            this.collectionLogPreview = null;
-            this.dimCollectionLogIcons = false;
-            this.tierSection = tierSection;
-            this.prerequisiteStatus = null;
-            this.prerequisiteMarkerImage = null;
-            this.firstPrerequisiteLine = false;
-            this.fixedHeight = -1;
-        }
-
-        private static CompactLine spacer() {
-            return new CompactLine("", false, true);
-        }
-
-        private static CompactLine verticalGap(int height) {
-            return new CompactLine(height);
-        }
-
-        private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview) {
-            return new CompactLine(collectionLogPreview, false);
-        }
-
-        private static CompactLine collectionLogIcons(CollectionLogRequirementPreview collectionLogPreview, boolean dimCollectionLogIcons) {
-            return new CompactLine(collectionLogPreview, dimCollectionLogIcons);
-        }
-
-        private static CompactLine tierLabel(CollectionLogRequirementPreview.TierSection tierSection) {
-            return new CompactLine(tierSection);
-        }
-
-        private static CompactLine prerequisite(String text, PrerequisiteStatus status, BufferedImage markerImage, boolean firstLine) {
-            return new CompactLine(text, status, markerImage, firstLine);
-        }
     }
 
     /** Height in px available for the scrollable body on the Current tab. */
@@ -5327,7 +4803,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 this::getSortedTasksForTier,
                 hoverX,
                 hoverY,
-                keyboardHintsOpen,
                 currentKeyboardTriggeredTaskTooltipText(),
                 currentKeyboardTriggeredTaskTooltipAnchor()
         );
@@ -5868,12 +5343,10 @@ public class XtremeTaskerOverlay extends Overlay {
             public void setCompactPanelMode(boolean compact) {
                 recenterPanelForMode(compact);
                 compactPanelMode = compact;
-                keyboardHintsOpen = false;
                 taskDetailsPopup.close();
                 syncMismatchReviewOpen = false;
                 syncMismatchDescriptionTask = null;
                 currentScroll.reset();
-                resetCompactScroll();
                 if (compact) {
                     activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
                 }
@@ -5930,9 +5403,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public void setActiveTab(MainTab tab) {
-                keyboardHintsOpen = false;
-                keyboardHintsButtonBounds.setBounds(0, 0, 0, 0);
-                keyboardHintsPopupBounds.setBounds(0, 0, 0, 0);
                 taskViewModeBounds.setBounds(0, 0, 0, 0);
                 switch (tab) {
                     case CURRENT:
@@ -6136,16 +5606,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public TaskListScrollController currentScroll() {
                 return currentScroll;
-            }
-
-            @Override
-            public void scrollCompactCurrent(double preciseWheelRotation) {
-                XtremeTaskerOverlay.this.scrollCompactCurrent(preciseWheelRotation);
-            }
-
-            @Override
-            public void setCompactCurrentScrollFraction(double fraction) {
-                XtremeTaskerOverlay.this.setCompactCurrentScrollFraction(fraction);
             }
 
             @Override
@@ -6757,26 +6217,6 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
-            public boolean isKeyboardHintsOpen() {
-                return keyboardHintsOpen;
-            }
-
-            @Override
-            public void setKeyboardHintsOpen(boolean open) {
-                keyboardHintsOpen = open;
-            }
-
-            @Override
-            public Rectangle keyboardHintsButtonBounds() {
-                return keyboardHintsButtonBounds;
-            }
-
-            @Override
-            public Rectangle keyboardHintsPopupBounds() {
-                return keyboardHintsPopupBounds;
-            }
-
-            @Override
             public Rectangle taskViewModeBounds() {
                 return taskViewModeBounds;
             }
@@ -6924,8 +6364,6 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRect(taskDetailsIncompleteConfirmBounds, anchorX, anchorY, scale);
         scaleRect(taskDetailsIncompleteConfirmYesBounds, anchorX, anchorY, scale);
         scaleRect(taskDetailsIncompleteConfirmNoBounds, anchorX, anchorY, scale);
-        scaleRect(keyboardHintsButtonBounds, anchorX, anchorY, scale);
-        scaleRect(keyboardHintsPopupBounds, anchorX, anchorY, scale);
         scaleRect(taskViewModeBounds, anchorX, anchorY, scale);
 
         scaleCurrentLayoutBounds(anchorX, anchorY, scale);

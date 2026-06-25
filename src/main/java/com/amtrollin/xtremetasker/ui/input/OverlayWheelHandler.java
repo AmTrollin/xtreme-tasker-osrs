@@ -30,12 +30,6 @@ public final class OverlayWheelHandler implements MouseWheelListener
             return e;
         }
 
-        if (a.isCompactPanelMode())
-        {
-            a.scrollCompactCurrent(precise);
-            return e;
-        }
-
         if (a.isSyncMismatchReviewOpen() && a.syncMismatchViewportBounds().contains(p))
         {
             int taskCount = a.syncMismatchVisibleTaskCount();

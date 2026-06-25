@@ -49,7 +49,6 @@ public final class TasksTabRenderer {
             Function<TaskTier, List<XtremeTask>> sortedTasksProvider,
             int hoverX,
             int hoverY,
-            boolean keyboardHintsOpen,
             String keyboardTriggeredTooltipText,
             Rectangle keyboardTriggeredTooltipAnchor
     ) {
@@ -230,12 +229,6 @@ public final class TasksTabRenderer {
                 g.drawString(TextUtils.truncateToWidth(filterMsg, fm, emptyViewport.width), emptyViewport.x, textY + fm.getHeight() + 2);
             }
 
-            displayKeyboardHintsButton(g, fm, panelX, hintBaselineY, innerW, state.keyboardHintsButtonBounds(), hoverX, hoverY);
-            if (keyboardHintsOpen) {
-                displayKeyboardHintsPopup(g, fm, panelBounds, state.keyboardHintsButtonBounds(), state.keyboardHintsPopupBounds());
-            } else {
-                state.keyboardHintsPopupBounds().setBounds(0, 0, 0, 0);
-            }
             return;
         }
 
@@ -318,12 +311,6 @@ public final class TasksTabRenderer {
 
         drawTaskNameHoverTooltip(g, fm, panelBounds, layout, hoverX, hoverY);
 
-        displayKeyboardHintsButton(g, fm, panelX, hintBaselineY, innerW, state.keyboardHintsButtonBounds(), hoverX, hoverY);
-        if (keyboardHintsOpen) {
-            displayKeyboardHintsPopup(g, fm, panelBounds, state.keyboardHintsButtonBounds(), state.keyboardHintsPopupBounds());
-        } else {
-            state.keyboardHintsPopupBounds().setBounds(0, 0, 0, 0);
-        }
     }
 
     private void drawTierTabWithPercent(Graphics2D g, Rectangle bounds, String leftText, String rightText, int pctValue, boolean active) {
@@ -515,84 +502,6 @@ public final class TasksTabRenderer {
 
         String name = task.getName();
         return name == null ? "" : name;
-    }
-
-    private void displayKeyboardHintsButton(
-            Graphics2D g,
-            FontMetrics fm,
-            int panelX,
-            int hintBaselineY,
-            int innerW,
-            Rectangle buttonBounds,
-            int hoverX,
-            int hoverY
-    ) {
-        String label = "[Keyboard hints]";
-        int padX = 9;
-        int buttonH = fm.getHeight() + 6;
-        int buttonW = padX * 2 + fm.stringWidth(label);
-        int buttonX = panelX + PANEL_PADDING + (innerW - buttonW) / 2;
-        int buttonY = hintBaselineY - fm.getAscent() - 3;
-        buttonBounds.setBounds(buttonX, buttonY, buttonW, buttonH);
-
-        boolean hovered = buttonBounds.contains(hoverX, hoverY);
-        g.setColor(hovered
-                ? new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 230)
-                : new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 180));
-        g.drawString(label, buttonX + padX, hintBaselineY);
-    }
-
-    private void displayKeyboardHintsPopup(
-            Graphics2D g,
-            FontMetrics fm,
-            Rectangle panelBounds,
-            Rectangle buttonBounds,
-            Rectangle popupBounds
-    ) {
-        String title = "Keyboard hints";
-        String[][] sections = {
-                {"Tasks:", "Space/Enter - open selected task details", "Esc - close task details", "Up/Down - move through task list", "PageUp/PageDown - jump 10 tasks", "Left/Right - switch tier tab"},
-                {"Filter:", "1/2/3/4 - toggle source (all, CAs, CLs, ADs)", "Q - show all statuses", "W - toggle incomplete", "E - toggle complete", "A - toggle tier"},
-                {"Sorts:", "S - completion", "T - tier", "D - completion date", "M - time spent", "R - reset sorting"}
-        };
-
-        int pad = 10;
-        int contentW = fm.stringWidth(title);
-        int lineCount = 1;
-        for (String[] section : sections) {
-            lineCount += section.length;
-            for (String line : section) {
-                contentW = Math.max(contentW, fm.stringWidth(line));
-            }
-        }
-
-        int w = Math.min(panelBounds.width - (PANEL_PADDING * 2), contentW + pad * 2);
-        int sectionGap = 5;
-        int h = pad * 2 + fm.getHeight() * lineCount + sectionGap * (sections.length - 1) + 5;
-        int x = panelBounds.x + (panelBounds.width - w) / 2;
-        int y = buttonBounds.y - h - 8;
-        popupBounds.setBounds(x, y, w, h);
-
-        drawBevelBox(g, popupBounds, new Color(45, 36, 24, 248));
-
-        int textX = x + pad;
-        int textY = y + pad + fm.getAscent();
-        g.setColor(palette.UI_GOLD);
-        g.drawString(TextUtils.truncateToWidth(title, fm, w - pad * 2), textX, textY);
-        textY += fm.getHeight() + 5;
-
-        for (String[] section : sections) {
-            g.setColor(palette.UI_TEXT);
-            g.drawString(TextUtils.truncateToWidth(section[0], fm, w - pad * 2), textX, textY);
-            textY += fm.getHeight();
-
-            g.setColor(new Color(palette.UI_TEXT_DIM.getRed(), palette.UI_TEXT_DIM.getGreen(), palette.UI_TEXT_DIM.getBlue(), 190));
-            for (int i = 1; i < section.length; i++) {
-                g.drawString(TextUtils.truncateToWidth(section[i], fm, w - pad * 2), textX, textY);
-                textY += fm.getHeight();
-            }
-            textY += sectionGap;
-        }
     }
 
     private static String emptyStateFilterMessage(TaskListQuery q, String activeTierLabel) {

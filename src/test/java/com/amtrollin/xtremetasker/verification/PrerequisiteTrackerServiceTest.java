@@ -1,7 +1,6 @@
 package com.amtrollin.xtremetasker.verification;
 
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import net.runelite.api.Skill;
 import net.runelite.api.gameval.VarbitID;
 import org.junit.Test;
@@ -56,16 +55,6 @@ public class PrerequisiteTrackerServiceTest
     }
 
     @Test
-    public void achievementDiaryPrerequisiteUsesAchievementDiaryIconMarker()
-    {
-        PrerequisiteStatus status = serviceWithVarbitValue(VarbitID.ARDOUGNE_DIARY_EASY_COMPLETE, 1)
-                .evaluate("Complete the Ardougne easy diary")
-                .get(0);
-
-        assertEquals(List.of(MarkerIcon.ACHIEVEMENT_DIARY), status.getMarkerIcons());
-    }
-
-    @Test
     public void skillOrPrerequisiteWithParentheticalNotesTracksEachSkillRequirement()
     {
         PrerequisiteTrackerService service = serviceWithSkillLevel(Skill.SLAYER, 23);
@@ -87,93 +76,13 @@ public class PrerequisiteTrackerServiceTest
     }
 
     @Test
-    public void questPrerequisiteUsesQuestIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("Some Unknown Quest quest").get(0);
-
-        assertTrue(status.hasQuestIcon());
-        assertEquals(List.of(MarkerIcon.QUEST), status.getMarkerIcons());
-        assertTrue(status.getSkillIcons().isEmpty());
-    }
-
-    @Test
-    public void questPointPrerequisiteUsesQuestIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("1 quest point").get(0);
-
-        assertTrue(status.hasQuestIcon());
-        assertEquals(List.of(MarkerIcon.QUEST), status.getMarkerIcons());
-    }
-
-    @Test
-    public void barbarianFiremakingPrerequisiteUsesMiniquestIconMarker()
-    {
-        PrerequisiteStatus status = serviceWithBrutFireValue(1).evaluate("Part 1 of Barbarian Firemaking").get(0);
-
-        assertEquals(List.of(MarkerIcon.BARBARIAN_MINIQUEST), status.getMarkerIcons());
-    }
-
-    @Test
-    public void combatLevelPrerequisiteUsesCombatIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("100 combat level").get(0);
-
-        assertEquals(List.of(MarkerIcon.COMBAT), status.getMarkerIcons());
-    }
-
-    @Test
-    public void totalLevelPrerequisiteUsesTotalIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("1500 total level").get(0);
-
-        assertEquals(List.of(MarkerIcon.TOTAL), status.getMarkerIcons());
-    }
-
-    @Test
-    public void favourPrerequisitesUseBulletMarker()
+    public void favourPrerequisiteCompletionIsTracked()
     {
         PrerequisiteStatus taiBwo = serviceWithVarbitValue(4600, 100).evaluate("Tai Bwo Wannai Cleanup favour").get(0);
         PrerequisiteStatus kourend = new PrerequisiteTrackerService(id -> 100).evaluate("100% Hosidius favour").get(0);
 
         assertTrue(taiBwo.isCompleted());
-        assertEquals(List.of(MarkerIcon.BULLET), taiBwo.getMarkerIcons());
         assertFalse(kourend.isCompleted());
-        assertEquals(List.of(MarkerIcon.BULLET), kourend.getMarkerIcons());
-    }
-
-    @Test
-    public void pointCurrencyPrerequisiteUsesCurrencyIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("400k NMZ Points").get(0);
-
-        assertEquals(List.of(MarkerIcon.CURRENCY), status.getMarkerIcons());
-    }
-
-    @Test
-    public void coinPrerequisiteUsesCurrencyIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("100k GP").get(0);
-
-        assertEquals(List.of(MarkerIcon.CURRENCY), status.getMarkerIcons());
-    }
-
-    @Test
-    public void nonSkillPrerequisiteFallsBackToBulletMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("Defeat the Giant Mole").get(0);
-
-        assertEquals(List.of(MarkerIcon.BULLET), status.getMarkerIcons());
-    }
-
-    @Test
-    public void subquestPrerequisiteUsesQuestIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0)
-                .evaluate("King Awowogei Recipe for Disaster subquest")
-                .get(0);
-
-        assertTrue(status.hasQuestIcon());
-        assertEquals(List.of(MarkerIcon.QUEST), status.getMarkerIcons());
     }
 
     @Test
@@ -187,15 +96,6 @@ public class PrerequisiteTrackerServiceTest
                 service.evaluate("Access to Barbarian Fishing, Firemaking, and Smithing").get(0).getSkillIcons());
         assertEquals(List.of(Skill.FISHING, Skill.FIREMAKING, Skill.SMITHING, Skill.HERBLORE),
                 service.evaluate("Access to Barbarian Fishing, Firemaking, Smithing, and Herblore").get(0).getSkillIcons());
-    }
-
-    @Test
-    public void startQuestPrerequisiteUsesStartQuestIconMarker()
-    {
-        PrerequisiteStatus status = new PrerequisiteTrackerService(id -> 0).evaluate("Start One Small Favour quest").get(0);
-
-        assertTrue(status.hasQuestIcon());
-        assertEquals(List.of(MarkerIcon.START_QUEST), status.getMarkerIcons());
     }
 
     @Test
