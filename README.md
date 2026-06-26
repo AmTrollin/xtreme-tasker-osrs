@@ -1,12 +1,16 @@
 # Xtreme Tasker
 
-Xtreme Tasker is a RuneLite plugin that turns Old School RuneScape into a long-term progression challenge using randomized Combat Achievements, Collection Log goals, and Achievement Diaries.
-
-**Latest release:** **v2.0** - **06.25.2026** ([Release Notes](docs/RELEASE_NOTES.md))
+Xtreme Tasker is a RuneLite plugin that turns Old School RuneScape into a long term progression challenge using randomized Combat Achievements, Collection Log goals, and Achievement Diaries.
 
 Inspired by Tedious' Collection Log Master game mode, Xtreme Tasker combines multiple progression systems into one randomized journey.
 
-Want to see it in action? Check out [@amtrollin](https://www.youtube.com/@AmTrollin/playlists)'s **[Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H)** series.
+**Latest release:** **v2.0** - **06.25.2026** ([Release Notes](docs/RELEASE_NOTES.md))
+
+Check out AmTrollin's **[Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H)** series to see the plugin in action. 
+
+Started your own Xtreme Tasker series? Let us know and we'll add it here!
+
+<img src="https://cdn.simpleicons.org/discord/5865F2" alt="" width="18" style="vertical-align: -3px;"> Contact us on [Discord](https://discord.gg/fPhEqEw32)
 
 ## Overview
 
