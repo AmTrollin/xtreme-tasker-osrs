@@ -2872,7 +2872,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             CollectionLogSyncSummary collectionLogSummary = refreshCollectionLogSyncState();
             setCombinedSyncResultAndChat(accountProgressSyncMessage(
                     combatAchievementCandidates + collectionLogSummary.completionCandidates,
-                    collectionLogSummary.capturedItems) + syncMismatchResultSuffix(null));
+                    collectionLogSummary.capturedItems));
             finishCollectionLogSync(collectionLogSummary.capturedItems);
             finishSyncStateUpdate();
         });
@@ -3389,12 +3389,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         CollectionLogSyncSummary summary = refreshCollectionLogSyncState();
         String taskDescriptionReviewHint = fromTaskDescription
-                && (summary.completionCandidates > 0 || !summary.mismatchTasks.isEmpty())
+                && summary.completionCandidates > 0
                 ? " Head to Help > Sync tab to review."
                 : "";
 
-        setSyncResultAndChat(TaskSource.COLLECTION_LOG, collectionLogSyncMessage(summary)
-                + syncMismatchResultSuffix(TaskSource.COLLECTION_LOG) + taskDescriptionReviewHint);
+        setSyncResultAndChat(TaskSource.COLLECTION_LOG, collectionLogSyncMessage(summary) + taskDescriptionReviewHint);
 
         finishCollectionLogSync(summary.capturedItems);
         finishSyncStateUpdate();
@@ -3427,7 +3426,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         int capturedItems = collectionLogService.getCapturedItemCount();
         List<XtremeTask> syncMismatchTasks = findCollectionLogSyncMismatches(capturedItems > 0);
         setSyncMismatchTasksForSource(TaskSource.COLLECTION_LOG, syncMismatchTasks);
-        return new CollectionLogSyncSummary(completionCandidates, capturedItems, syncMismatchTasks);
+        return new CollectionLogSyncSummary(completionCandidates, capturedItems);
     }
 
     private void finishCollectionLogSync(int capturedItems)
@@ -3455,13 +3454,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         private final int completionCandidates;
         private final int capturedItems;
-        private final List<XtremeTask> mismatchTasks;
 
-        private CollectionLogSyncSummary(int completionCandidates, int capturedItems, List<XtremeTask> mismatchTasks)
+        private CollectionLogSyncSummary(int completionCandidates, int capturedItems)
         {
             this.completionCandidates = completionCandidates;
             this.capturedItems = capturedItems;
-            this.mismatchTasks = mismatchTasks == null ? Collections.emptyList() : mismatchTasks;
         }
     }
 
@@ -3723,21 +3720,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 }
             }
         }
-    }
-
-    private String syncMismatchResultSuffix(TaskSource source)
-    {
-        int count = getSyncMismatchTasks(source).size();
-        if (count <= 0)
-        {
-            return "";
-        }
-        if (source == null)
-        {
-            return " Review " + count + " plugin completion(s) not found in game data.";
-        }
-        String label = source == TaskSource.COMBAT_ACHIEVEMENT ? "CA" : "CLOG/AD";
-        return " Review " + count + " " + label + " plugin completion(s) not found in game data.";
     }
 
     private boolean removeSyncIdsForSource(List<String> ids, TaskSource source, Map<String, XtremeTask> byId)

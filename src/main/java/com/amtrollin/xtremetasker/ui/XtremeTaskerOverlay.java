@@ -3563,9 +3563,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 null,
                 plugin.isCollectionLogSyncPending(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
-                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size(),
-                plugin.getSyncMismatchTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
-                plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).size()
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size()
         );
 
         rulesLayout.viewportBounds.setBounds(layout.viewportBounds);

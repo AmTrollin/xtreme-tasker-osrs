@@ -36,7 +36,6 @@ public final class RulesTabRenderer {
 
     private static final String LINE_SYNC_PROGRESS_BUTTON_ROW = "[SYNC_PROGRESS_BUTTON_ROW]";
     private static final String LINE_SYNC_CA_FOUND_ACTIONS_ROW = "[SYNC_CA_FOUND_ACTIONS_ROW]";
-    private static final String LINE_SYNC_CA_REVIEW_ACTIONS_ROW = "[SYNC_CA_REVIEW_ACTIONS_ROW]";
     private static final String LINE_SYNC_RESULT_LABEL = "[SYNC_RESULT_LABEL]";
     private static final String LINE_SYNC_RESULT_FOUND_PREFIX = "[SYNC_RESULT_FOUND]";
     private static final String LINE_SYNC_RESULT_EMPTY_PREFIX = "[SYNC_RESULT_EMPTY]";
@@ -95,9 +94,7 @@ public final class RulesTabRenderer {
             String lastCollectionLogSyncResultAtLocalTime,
             boolean collectionLogSyncPending,
             int combatAchievementFoundCount,
-            int collectionLogFoundCount,
-            int combatAchievementReviewCount,
-            int collectionLogReviewCount
+            int collectionLogFoundCount
     ) {
         RulesTabLayout layout = new RulesTabLayout();
         clearBounds(
@@ -151,9 +148,7 @@ public final class RulesTabRenderer {
                     lastCollectionLogSyncResultAtLocalTime,
                     collectionLogSyncPending,
                     combatAchievementFoundCount,
-                    collectionLogFoundCount,
-                    combatAchievementReviewCount,
-                    collectionLogReviewCount
+                    collectionLogFoundCount
             );
         }
 
@@ -247,9 +242,7 @@ public final class RulesTabRenderer {
             String lastCollectionLogSyncResultAtLocalTime,
             boolean collectionLogSyncPending,
             int combatAchievementFoundCount,
-            int collectionLogFoundCount,
-            int combatAchievementReviewCount,
-            int collectionLogReviewCount
+            int collectionLogFoundCount
     )
     {
         int contentW = Math.max(120, viewportW);
@@ -264,9 +257,7 @@ public final class RulesTabRenderer {
                 lastCollectionLogSyncResultAtLocalTime,
                 collectionLogSyncPending,
                 collectionLogFoundCount,
-                combatAchievementFoundCount,
-                collectionLogReviewCount,
-                combatAchievementReviewCount
+                combatAchievementFoundCount
         );
 
         Shape oldClip = g.getClip();
@@ -288,9 +279,7 @@ public final class RulesTabRenderer {
             String lastCollectionLogSyncResultAtLocalTime,
             boolean collectionLogSyncPending,
             int collectionLogFoundCount,
-            int combatAchievementFoundCount,
-            int collectionLogReviewCount,
-            int combatAchievementReviewCount)
+            int combatAchievementFoundCount)
     {
         List<String> lines = new ArrayList<>();
         boolean hasCaResult = lastCombatAchievementSyncResult != null && !lastCombatAchievementSyncResult.trim().isEmpty();
@@ -319,8 +308,6 @@ public final class RulesTabRenderer {
         {
             lines.add(LINE_SYNC_CA_FOUND_ACTIONS_ROW);
         }
-        int totalReview = combatAchievementReviewCount + collectionLogReviewCount;
-        addReviewLines(lines, totalReview, fm, maxWidth, LINE_SYNC_CA_REVIEW_ACTIONS_ROW);
         lines.add("");
         return lines;
     }
@@ -378,32 +365,18 @@ public final class RulesTabRenderer {
                 continue;
             }
 
-            if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line)
-                    || LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line))
+            if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line))
             {
-                int gap = 6;
-                boolean foundRow = LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line);
-                int reviewW = Math.max(fm.stringWidth(foundRow ? FOUND_COMPLETIONS_BUTTON_LABEL : "Review") + 18,
-                        foundRow ? 128 : 76);
-                int ignoreW = Math.max(fm.stringWidth("Ignore") + 18, 72);
+                int reviewW = Math.max(fm.stringWidth(FOUND_COMPLETIONS_BUTTON_LABEL) + 18, 128);
                 int btnH = rowHeight + 10;
                 int by = drawY - fm.getAscent();
-                int groupW = foundRow ? reviewW : reviewW + gap + ignoreW;
-                int groupX = x + Math.max(0, (colW - groupW) / 2);
+                int groupX = x + Math.max(0, (colW - reviewW) / 2);
                 if (!buttonFitsViewport(by, btnH, viewport))
                 {
                     drawY += Math.max(rb, btnH + listRowSpacing);
                     continue;
                 }
-                if (LINE_SYNC_CA_FOUND_ACTIONS_ROW.equals(line))
-                {
-                    layout.syncCaFoundReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
-                }
-                else if (LINE_SYNC_CA_REVIEW_ACTIONS_ROW.equals(line))
-                {
-                    layout.syncCaReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
-                    layout.syncCaReviewIgnoreButtonBounds.setBounds(groupX + reviewW + gap, by, ignoreW, btnH);
-                }
+                layout.syncCaFoundReviewButtonBounds.setBounds(groupX, by, reviewW, btnH);
                 drawY += Math.max(rb, btnH + listRowSpacing);
                 continue;
             }
@@ -537,28 +510,6 @@ public final class RulesTabRenderer {
     {
         lines.add(LINE_SYNC_RESULT_LABEL + "Result:");
         lines.add(LINE_SYNC_RESULT_EMPTY_PREFIX + "....");
-    }
-
-    private void addReviewLines(
-            List<String> lines,
-            int reviewCount,
-            FontMetrics fm,
-            int maxWidth,
-            String actionsMarker)
-    {
-        if (reviewCount > 0)
-        {
-            lines.add("");
-            lines.add(REVIEW_NEEDED_TITLE);
-            lines.addAll(prefixWrappedLines(
-                    LINE_SYNC_RESULT_ERROR_PREFIX,
-                    reviewCount + " completed " + (reviewCount == 1 ? "task was" : "tasks were")
-                            + " not found completed in game via sync.",
-                    fm,
-                    maxWidth
-            ));
-            lines.add(actionsMarker);
-        }
     }
 
     private void addSyncTimestampLine(
