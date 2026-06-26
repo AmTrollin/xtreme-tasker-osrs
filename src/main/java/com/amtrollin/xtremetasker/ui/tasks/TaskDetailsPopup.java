@@ -951,11 +951,14 @@ public final class TaskDetailsPopup
             int contentW
     )
     {
+        String title = syncMismatchTitle(task);
+        String action = syncMismatchAction(task);
+
         g.setColor(new Color(245, 92, 82, 245));
-        g.drawString(TextUtils.truncateToWidth(syncMismatchTitle(task), fm, contentW), contentLeft, y);
+        g.drawString(TextUtils.truncateToWidth(title, fm, contentW), contentLeft, y);
         y += ROW_HEIGHT;
         g.setColor(palette.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(syncMismatchAction(task), fm, contentW), contentLeft, y);
+        g.drawString(TextUtils.truncateToWidth(action, fm, contentW), contentLeft, y);
         return y + ROW_HEIGHT + 6;
     }
 
@@ -970,7 +973,7 @@ public final class TaskDetailsPopup
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
                 ? "Sync your Collection Log via Help tab or mark task incomplete"
-                : "Mark task incomplete";
+                : "Mark task incomplete to keep task tracking accurate";
     }
 
     private void drawGroupProgressEditor(
