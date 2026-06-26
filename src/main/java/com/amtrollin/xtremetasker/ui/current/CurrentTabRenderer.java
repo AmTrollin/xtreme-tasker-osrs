@@ -41,7 +41,6 @@ public final class CurrentTabRenderer
     private static final int TIER_SECTION_ICON_GAP = 5;
     private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
     private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
-    private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
     private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
     private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
@@ -1123,8 +1122,20 @@ public final class CurrentTabRenderer
     )
     {
         boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
-        g.setColor(!hasCheckSpans && status.isCompleted() ? uiTextDim : uiText);
-        g.drawString(drawLine, x, y);
+        Color textColor = !hasCheckSpans && status.isCompleted() ? uiTextDim : uiText;
+        if (isStartQuestLine(status, drawLine))
+        {
+            String startText = "Start";
+            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+            g.drawString(startText, x, y);
+            g.setColor(textColor);
+            g.drawString(drawLine.substring(startText.length()), x + fm.stringWidth(startText), y);
+        }
+        else
+        {
+            g.setColor(textColor);
+            g.drawString(drawLine, x, y);
+        }
 
         if (!hasCheckSpans)
         {
@@ -1154,6 +1165,14 @@ public final class CurrentTabRenderer
             g.drawString(spanText, spanX, y);
             drawStrikeThrough(g, fm, spanText, spanX, y);
         }
+    }
+
+    private static boolean isStartQuestLine(PrerequisiteStatus status, String drawLine)
+    {
+        return status.getMarkerIcons() != null
+                && status.getMarkerIcons().contains(MarkerIcon.START_QUEST)
+                && drawLine != null
+                && drawLine.startsWith("Start");
     }
 
     private int measureTipHeight(String tip, FontMetrics fm, int maxWidth, int maxLines)
@@ -1338,10 +1357,9 @@ public final class CurrentTabRenderer
         if (!sections.isEmpty())
         {
             y += SECONDARY_SECTION_GAP;
-            g.setColor(uiTextDim);
-            g.drawString(OTHER_SEQUENCE_CLOGS_DIVIDER, x, y);
             y += rowHeight;
             y += OTHER_SEQUENCE_LABEL_TOP_GAP;
+            g.setColor(uiTextDim);
             for (String line : wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
             {
                 g.drawString(truncateToWidth(line, fm, maxWidth), x, y);

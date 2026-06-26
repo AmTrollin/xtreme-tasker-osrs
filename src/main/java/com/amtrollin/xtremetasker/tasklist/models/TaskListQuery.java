@@ -32,16 +32,6 @@ public class TaskListQuery
     public boolean sourceDasSelected = true;
     public StatusFilter statusFilter = StatusFilter.ALL;
 
-    public boolean sortByDate = false;
-    public boolean newestFirst = true; // direction when sortByDate == true
-
-    public boolean sortByTimeTicks = false;  // enabled/disabled
-    public boolean longestFirst = true;      // direction when sortByTimeTicks == true
-    public boolean sortByTier = false;
-    public boolean easyTierFirst = true;
-    public boolean sortBySource = false;
-    public boolean sourceFirst = true;
-
     // =========================
     // Optional: compatibility helpers
     // (lets you keep old filter logic temporarily)

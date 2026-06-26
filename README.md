@@ -13,7 +13,7 @@ Want to see it in action? Check out [@amtrollin](https://www.youtube.com/@AmTrol
 * Roll randomized Combat Achievement, Collection Log, and Achievement Diary tasks
 * Progress through Easy, Medium, Hard, Elite, and Master tiers
 * Track your current task, timer, requirements, and tier progress
-* Search, filter, and sort the complete task list
+* Search and filter the complete task list
 * Sync existing account progress with review before applying changes
 * Store progress locally per RuneLite character profile
 
@@ -35,7 +35,7 @@ Track your active task, view requirements, open relevant wiki pages, and roll yo
 
 ### Task List
 
-Browse every task with powerful search, filtering, sorting, progress tracking, and detailed task information.
+Browse every task with search, filtering, progress tracking, and detailed task information.
 
 <img src="docs/images/TasksTab.png" alt="Task list" width="550">
 

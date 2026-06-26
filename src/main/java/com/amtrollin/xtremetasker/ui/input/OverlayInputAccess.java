@@ -30,9 +30,6 @@ public interface OverlayInputAccess
     // panel / drag / tab state
     boolean isPanelOpen();
     void setPanelOpen(boolean open);
-    boolean isCompactPanelMode();
-    void setCompactPanelMode(boolean compact);
-    Rectangle panelModeToggleBounds();
 
     boolean isDraggingPanel();
     void setDraggingPanel(boolean dragging);
@@ -158,27 +155,9 @@ public interface OverlayInputAccess
     Rectangle syncMismatchScrollbarRailBounds();
     Rectangle syncMismatchScrollbarThumbBounds();
     Map<XtremeTask, Rectangle> syncMismatchTaskBounds();
-    Map<XtremeTask, Rectangle> syncMismatchTaskNameBounds();
     TaskListScrollController syncMismatchScroll();
     int syncMismatchRowBlock();
     int syncMismatchVisibleTaskCount();
-    boolean isSyncMismatchDescriptionOpen();
-    Rectangle syncMismatchDescriptionBounds();
-    Rectangle syncMismatchDescriptionCloseBounds();
-    void openSyncMismatchDescription(XtremeTask task);
-    void closeSyncMismatchDescription();
-    boolean isSyncMismatchGroupResolveOpen();
-    Rectangle syncMismatchGroupResolveBounds();
-    Rectangle syncMismatchGroupResolveSaveBounds();
-    Rectangle syncMismatchGroupResolveCancelBounds();
-    Map<XtremeTask, Rectangle> syncMismatchGroupResolveToggleBounds();
-    void openSyncMismatchGroupResolve(XtremeTask task);
-    void closeSyncMismatchGroupResolve();
-    void saveSyncMismatchGroupResolve();
-    void toggleSyncMismatchGroupResolveTask(XtremeTask task);
-    boolean canToggleSyncMismatchGroupResolveTask(XtremeTask task);
-    boolean hasSyncMismatchGroupResolveChanges();
-    boolean isSyncMismatchGroupActionTask(XtremeTask task);
     boolean isSyncMismatchTaskSelected(XtremeTask task);
     void toggleSyncMismatchTaskSelected(XtremeTask task);
     void selectAllSyncMismatchTasks();

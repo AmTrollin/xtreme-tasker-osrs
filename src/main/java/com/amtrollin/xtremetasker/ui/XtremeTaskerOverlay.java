@@ -8,6 +8,7 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
@@ -44,6 +45,7 @@ import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.Skill;
+import net.runelite.api.SpriteID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.game.SkillIconManager;
@@ -111,6 +113,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_NAME = createTaskDetailsWikiLinksByName();
     private static final DateTimeFormatter TASK_RESOLVE_COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter SYNC_REVIEW_COMPLETION_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yy").withZone(ZoneId.systemDefault());
 
     private static BufferedImage loadPluginIconSafe() {
         try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_icon.png")) {
@@ -163,7 +167,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle panelBounds = new Rectangle();
     private final Rectangle panelDragBarBounds = new Rectangle();
     private final Rectangle panelCloseBounds = new Rectangle();
-    private final Rectangle panelModeToggleBounds = new Rectangle();
     private final Rectangle iconBounds = new Rectangle();
 
     private final Rectangle currentTabBounds = new Rectangle();
@@ -188,11 +191,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle syncMismatchConfirmNoBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarRailBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarThumbBounds = new Rectangle();
-    private final Rectangle syncMismatchDescriptionBounds = new Rectangle();
-    private final Rectangle syncMismatchDescriptionCloseBounds = new Rectangle();
-    private final Rectangle syncMismatchGroupResolveBounds = new Rectangle();
-    private final Rectangle syncMismatchGroupResolveSaveBounds = new Rectangle();
-    private final Rectangle syncMismatchGroupResolveCancelBounds = new Rectangle();
     private final Rectangle taskResolveBounds = new Rectangle();
     private final Rectangle taskResolveCloseBounds = new Rectangle();
     private final Rectangle taskResolveSaveBounds = new Rectangle();
@@ -204,12 +202,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Map<TaskTier, Rectangle> tierTabBounds = Collections.synchronizedMap(new EnumMap<>(TaskTier.class));
     private final Map<XtremeTask, Rectangle> taskRowBounds = Collections.synchronizedMap(new HashMap<>());
     private final Map<XtremeTask, Rectangle> syncMismatchTaskBounds = Collections.synchronizedMap(new HashMap<>());
-    private final Map<XtremeTask, Rectangle> syncMismatchTaskNameBounds = Collections.synchronizedMap(new HashMap<>());
-    private final Map<XtremeTask, Rectangle> syncMismatchGroupResolveToggleBounds = Collections.synchronizedMap(new HashMap<>());
     private final Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds = Collections.synchronizedMap(new HashMap<>());
     private final Set<String> selectedSyncMismatchTaskIds = Collections.synchronizedSet(new HashSet<>());
-    private final Set<String> selectedSyncMismatchGroupResolveTaskIds = Collections.synchronizedSet(new HashSet<>());
-    private final Set<String> originalSyncMismatchGroupResolveTaskIds = Collections.synchronizedSet(new HashSet<>());
     private final Set<String> selectedTaskResolveIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
     private final Set<String> taskResolveOriginalIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
 
@@ -220,7 +214,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private RulesTabLayout.SubTab rulesSubTab = RulesTabLayout.SubTab.RULES;
 
     private boolean panelOpen = false;
-    private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
@@ -228,8 +221,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private enum SyncReviewMode { MISMATCH, COMPLETION_CANDIDATES }
     private SyncReviewMode syncReviewMode = SyncReviewMode.MISMATCH;
     private TaskSource syncMismatchReviewSource = null;
-    private XtremeTask syncMismatchDescriptionTask = null;
-    private XtremeTask syncMismatchGroupResolveTask = null;
     private int dragOffsetX = 0;
     private int dragOffsetY = 0;
     private XtremeTask pendingMarkAllIncompleteTask = null;
@@ -266,9 +257,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private static final int PANEL_W_TASKS = 690;
     private static final int PANEL_H_TASKS = 460;
-    private static final int PANEL_W_COMPACT = 370;
-    private static final int PANEL_H_COMPACT = 260;
-    private static final double PANEL_SCALE_MIN = 0.82;
+    private static final double PANEL_SCALE_MIN = 0.95;
     private static final double PANEL_SCALE_AUTO_START_W = 1400.0;
     private static final double PANEL_SCALE_AUTO_START_H = 900.0;
     private static final double PANEL_SCALE_AUTO_RANGE_W = 1000.0;
@@ -362,7 +351,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
-        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return PrerequisiteIconRenderer.achievementDiaryIconImage();
+        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_GREEN_ACHIEVEMENT_DIARIES);
         Integer sequenceItemId = sequencePreviewFocusItemId(task);
         if (sequenceItemId != null && sequenceItemId > 0) return getCachedItemImage(sequenceItemId);
         Integer id = task.getIconItemId();
@@ -437,6 +426,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private BufferedImage getCachedSprite(int spriteId)
     {
+        if (spriteManager == null)
+        {
+            return null;
+        }
+
         BufferedImage cached = spriteCache.get(spriteId);
         if (cached != null)
         {
@@ -449,6 +443,43 @@ public class XtremeTaskerOverlay extends Overlay {
             spriteCache.put(spriteId, image);
         }
         return image;
+    }
+
+    private BufferedImage resolvePrerequisiteMarkerImage(MarkerIcon markerIcon)
+    {
+        if (markerIcon == null)
+        {
+            return null;
+        }
+
+        switch (markerIcon)
+        {
+            case QUEST:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS);
+            case START_QUEST:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS);
+            case ACHIEVEMENT_DIARY:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_GREEN_ACHIEVEMENT_DIARIES);
+            case COMBAT:
+                return getCachedSprite(SpriteID.MULTI_COMBAT_ZONE_CROSSED_SWORDS);
+            case TOTAL:
+                return getCachedSprite(SpriteID.SKILL_TOTAL);
+            case BULLET:
+                return null;
+            case BARBARIAN_MINIQUEST:
+            case LAIR_OF_TARN_RAZORLOR:
+            case MAGE_ARENA_1:
+            case ENTER_THE_ABYSS:
+            case VALE_TOTEMS:
+            case ALFRED_GRIMHANDS_BARCRAWL:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_RED_MINIGAMES);
+            case WILDERNESS:
+                return getCachedSprite(SpriteID.PLAYER_KILLER_SKULL);
+            case CURRENCY:
+                return getCachedSprite(SpriteID.WELCOME_SCREEN_COINS);
+            default:
+                return null;
+        }
     }
 
     private List<PrerequisiteStatus> getCachedPrerequisiteStatuses(XtremeTask task)
@@ -710,7 +741,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 itemIds,
                 repeatedDistinctPool,
                 repeatedRequirementState);
-        applySequenceTaskCompletionStatuses(task, itemIds, statusByItemId);
         boolean ancientPageRequirement = isAncientPageRequirement(itemIds);
         boolean medallionFragmentRequirement = isMedallionFragmentRequirement(itemIds);
         List<CollectionLogRequirementItem> items = hasCompletionItem
@@ -1071,7 +1101,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (!isTaskCompletedForCollectionLogPreview(sequenceTask) && !plugin.isCollectionLogItemObtained(itemId))
+            if (!plugin.isCollectionLogItemObtained(itemId))
             {
                 return itemId;
             }
@@ -1096,9 +1126,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            CollectionLogRequirementItem.Status status = isTaskCompletedForCollectionLogPreview(sequenceTask)
-                    ? CollectionLogRequirementItem.Status.APPLIED
-                    : plugin.isCollectionLogItemObtained(itemId)
+            CollectionLogRequirementItem.Status status = plugin.isCollectionLogItemObtained(itemId)
                     ? CollectionLogRequirementItem.Status.OBTAINED
                     : CollectionLogRequirementItem.Status.MISSING;
             itemsByTier.computeIfAbsent(sequenceTask.getTier(), ignored -> new ArrayList<>())
@@ -1268,43 +1296,17 @@ public class XtremeTaskerOverlay extends Overlay {
             return 0;
         }
 
-        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
         int completed = 0;
         for (int i = 0; i < itemIds.length; i++)
         {
-            boolean taskComplete = i < sequence.size() && isTaskCompletedForCollectionLogPreview(sequence.get(i));
             boolean itemObtained = plugin.isCollectionLogItemObtained(itemIds[i]);
-            if (!taskComplete && !itemObtained)
+            if (!itemObtained)
             {
                 break;
             }
             completed++;
         }
         return completed;
-    }
-
-    private void applySequenceTaskCompletionStatuses(
-            XtremeTask task,
-            int[] itemIds,
-            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
-    {
-        if (!isDisplaySequenceTaskName(task == null ? null : task.getName())
-                || itemIds == null
-                || itemIds.length == 0
-                || statusByItemId == null)
-        {
-            return;
-        }
-
-        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
-        for (int i = 0; i < itemIds.length && i < sequence.size(); i++)
-        {
-            XtremeTask sequenceTask = sequence.get(i);
-            if (sequenceTask != null && isTaskCompletedForCollectionLogPreview(sequenceTask))
-            {
-                statusByItemId.put(itemIds[i], CollectionLogRequirementItem.Status.APPLIED);
-            }
-        }
     }
 
     private Map<Integer, CollectionLogRequirementItem.Status> collectionLogRequirementStatuses(
@@ -1883,6 +1885,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private double computePanelScale(int canvasW, int canvasH, int panelW, int panelH) {
+        double maxScale = client.isResized() ? 1.0 : PANEL_SCALE_MIN;
         double widthPressure = (canvasW - PANEL_SCALE_AUTO_START_W) / PANEL_SCALE_AUTO_RANGE_W;
         double heightPressure = (canvasH - PANEL_SCALE_AUTO_START_H) / PANEL_SCALE_AUTO_RANGE_H;
         double pressure = Math.max(widthPressure, heightPressure);
@@ -1890,13 +1893,13 @@ public class XtremeTaskerOverlay extends Overlay {
 
         double fitW = canvasW <= 8 ? 1.0 : (canvasW - 8.0) / panelW;
         double fitH = canvasH <= 4 ? 1.0 : (canvasH - 4.0) / panelH;
-        double fitScale = Math.min(1.0, Math.min(fitW, fitH));
+        double fitScale = Math.min(maxScale, Math.min(fitW, fitH));
 
         double scale = Math.min(autoScale, fitScale);
         if (fitScale < PANEL_SCALE_MIN) {
-            return Math.max(0.55, Math.min(1.0, scale));
+            return Math.max(0.55, Math.min(maxScale, scale));
         }
-        return Math.max(PANEL_SCALE_MIN, Math.min(1.0, scale));
+        return Math.max(PANEL_SCALE_MIN, Math.min(maxScale, scale));
     }
 
     private net.runelite.api.Point toPanelRenderMouse(net.runelite.api.Point mouse, int anchorX, int anchorY, double scale) {
@@ -2030,8 +2033,8 @@ public class XtremeTaskerOverlay extends Overlay {
         synchronized (tierTabBounds) {
             tierTabBounds.clear();
         }
-        int panelW = compactPanelMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
-        int panelHeight = compactPanelMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
+        int panelW = PANEL_W_TASKS;
+        int panelHeight = PANEL_H_TASKS;
         panelScale = computePanelScale(canvasW, canvasH, panelW, panelHeight);
 
         int physicalPanelW = Math.max(1, (int) Math.round(panelW * panelScale));
@@ -2139,13 +2142,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int cursorY = panelY + headerH;
 
-        int modeW = closeSize;
-        int modeH = closeSize;
-        int modeX = panelX + closeInset;
-        int modeY = closeY;
-        panelModeToggleBounds.setBounds(modeX, modeY, modeW, modeH);
-        drawPanelModeToggle(g, fm, rlMouse);
-
         // gold divider under header
         g.setColor(withAlpha(P.UI_GOLD, 180));
         g.fillRect(panelX + 1, cursorY, panelW - 2, 1);
@@ -2154,27 +2150,6 @@ public class XtremeTaskerOverlay extends Overlay {
         panelDragBarBounds.setBounds(panelX, panelY, panelW, cursorY - panelY);
 
         cursorY += 4;
-
-        if (compactPanelMode) {
-            clearFullPanelTabBounds();
-            activeTab = MainTab.CURRENT;
-            renderCompactPanel(g, fm, panelX, cursorY);
-
-            if (pendingMarkAllIncompleteTask != null) {
-                renderMarkAllIncompleteConfirm(g, fm);
-            } else {
-                clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
-                        markAllIncompleteNoBounds, markIncompleteDontShowBounds);
-            }
-
-            animations.prune();
-            g.setTransform(oldTransform);
-            scalePanelInputBounds(panelX, panelY, panelScale);
-            panelBoundsScaledForInput = true;
-            panelRenderMouse = null;
-            logSlowPanelRender(panelRenderStartNanos);
-            return new Dimension(physicalPanelW, physicalPanelH);
-        }
 
         // tabs
         int tabH = ROW_HEIGHT + 6;
@@ -2248,7 +2223,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
                 this::getCachedPrerequisiteStatuses,
                 this::getCachedSkillImage,
-                null,
+                this::resolvePrerequisiteMarkerImage,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
                 plugin::getCollectionLogSequenceStepLabel,
                 plugin::isTaskSyncMismatch,
@@ -2353,247 +2328,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 hasTaskResolveChanges() ? P.UI_TEXT : P.UI_TEXT_DIM,
                 hasTaskResolveChanges() ? P.UI_GOLD : null);
         buttonRenderer.drawPlainButton(g, taskResolveCancelBounds, "Cancel", P.BTN_DISABLED_BG);
-    }
-
-    private void renderSyncMismatchGroupResolve(Graphics2D g, FontMetrics fm)
-    {
-        XtremeTask task = syncMismatchGroupResolveTask;
-        if (task == null)
-        {
-            return;
-        }
-
-        List<XtremeTask> resolveTasks = syncMismatchGroupResolveTasks(task);
-        if (resolveTasks.isEmpty())
-        {
-            closeSyncMismatchGroupResolve();
-            return;
-        }
-
-        drawScrim(g, syncMismatchReviewBounds, 115);
-
-        int pad = 12;
-        int rowGap = 4;
-        int rowH = fm.getHeight() + rowGap + 2;
-        int buttonH = ROW_HEIGHT + 8;
-        String title = syncReviewPopupTitle(task);
-        List<String> titleLines = TextUtils.wrapText(title, fm, Math.max(120, syncMismatchReviewBounds.width - 80));
-        List<String> summaryLines = TextUtils.wrapText(syncMismatchGroupResolveSummary(task), fm, Math.max(120, syncMismatchReviewBounds.width - 80));
-        int w = syncMismatchGroupResolvePopupWidth(fm, task, resolveTasks, titleLines, summaryLines, pad);
-        int h = Math.min(syncMismatchReviewBounds.height - 34,
-                Math.max(126, pad * 2 + (titleLines.size() + summaryLines.size()) * fm.getHeight() + 16
-                        + Math.max(1, resolveTasks.size()) * rowH + 12 + buttonH));
-        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
-        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
-        syncMismatchGroupResolveBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, syncMismatchGroupResolveBounds, POPUP_BG);
-
-        int textY = y + pad + fm.getAscent();
-        g.setColor(P.UI_GOLD);
-        for (String line : titleLines)
-        {
-            g.drawString(TextUtils.truncateToWidth(line, fm, w - pad * 2), x + pad, textY);
-            textY += fm.getHeight();
-        }
-
-        g.setColor(P.UI_TEXT_DIM);
-        for (String line : summaryLines)
-        {
-            g.drawString(TextUtils.truncateToWidth(line, fm, w - pad * 2), x + pad, textY);
-            textY += fm.getHeight();
-        }
-
-        int cursorY = textY + 10;
-        syncMismatchGroupResolveToggleBounds.clear();
-        for (XtremeTask instance : resolveTasks)
-        {
-            if (instance == null || instance.getId() == null)
-            {
-                continue;
-            }
-
-            boolean selected = selectedSyncMismatchGroupResolveTaskIds.contains(instance.getId());
-            boolean enabled = canToggleSyncMismatchGroupResolveTask(instance);
-            Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
-                    TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
-            syncMismatchGroupResolveToggleBounds.put(instance, toggle);
-            if (syncReviewMode == SyncReviewMode.MISMATCH)
-            {
-                drawResolveIncompleteToggleGlyph(g, toggle, selected, enabled);
-            }
-            else
-            {
-                drawResolveToggleGlyph(g, toggle, selected, enabled);
-            }
-
-            String marker = taskResolveInstanceMarker(task, instance);
-            int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
-            int lineW = w - (pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad);
-            drawTaskResolveInstanceRow(g, fm, marker, "", lineX, cursorY, lineW, enabled);
-            cursorY += rowH;
-        }
-
-        int actionY = y + h - pad - buttonH;
-        int buttonW = 72;
-        int gap = 8;
-        boolean saveEnabled = hasSyncMismatchGroupResolveChanges();
-        layoutButtonPair(syncMismatchGroupResolveSaveBounds, syncMismatchGroupResolveCancelBounds, x, w, actionY, buttonW, buttonH, gap);
-        buttonRenderer.drawPlainButton(g, syncMismatchGroupResolveSaveBounds, "Save",
-                saveEnabled ? P.BTN_ENABLED_BG : P.BTN_DISABLED_BG,
-                saveEnabled ? P.UI_TEXT : P.UI_TEXT_DIM,
-                saveEnabled ? P.UI_GOLD : null);
-        buttonRenderer.drawPlainButton(g, syncMismatchGroupResolveCancelBounds, "Cancel", P.BTN_DISABLED_BG);
-    }
-
-    private int syncMismatchGroupResolvePopupWidth(
-            FontMetrics fm,
-            XtremeTask task,
-            List<XtremeTask> resolveTasks,
-            List<String> titleLines,
-            List<String> summaryLines,
-            int pad)
-    {
-        int desiredW = 270;
-        for (String line : titleLines)
-        {
-            desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(line));
-        }
-        for (String line : summaryLines)
-        {
-            desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(line));
-        }
-
-        int rowReserve = pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad;
-        int fitBuffer = fm.charWidth('W');
-        for (XtremeTask instance : resolveTasks)
-        {
-            if (instance == null)
-            {
-                continue;
-            }
-            String marker = taskResolveInstanceMarker(task, instance);
-            String rowText = taskResolveInstanceLine(marker, "");
-            desiredW = Math.max(desiredW, rowReserve + fm.stringWidth(rowText) + fitBuffer);
-        }
-
-        return Math.min(Math.max(190, syncMismatchReviewBounds.width - 36), desiredW);
-    }
-
-    private String syncMismatchGroupResolveSummary(XtremeTask task)
-    {
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        int total = group == null || group.isEmpty() ? 1 : group.size();
-        List<XtremeTask> pluginCompletedTasks = syncMismatchGroupCompletedTasks(group, task);
-        boolean sequence = isTaskResolveSequence(group);
-        if (syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES)
-        {
-            List<XtremeTask> syncFoundTasks = syncMismatchGroupFoundInGameTasks(task);
-            if (sequence)
-            {
-                return "Sync found " + joinedSequenceStepLabels(syncFoundTasks)
-                        + " completed in game, but " + joinedSequenceStepLabels(pluginCompletedTasks)
-                        + " marked completed in plugin";
-            }
-            return "Sync found " + syncFoundTasks.size() + "/" + total
-                    + " completed in game, but " + pluginCompletedTasks.size()
-                    + " marked in plugin";
-        }
-
-        List<XtremeTask> syncFoundTasks = syncMismatchGroupFoundTasks(task);
-        if (sequence)
-        {
-            return "Sync found " + joinedSequenceStepLabels(syncFoundTasks)
-                    + " completed in game, but " + joinedSequenceStepLabels(pluginCompletedTasks)
-                    + " marked completed in plugin";
-        }
-        return "Sync found " + syncFoundTasks.size() + "/" + total
-                + " completed in game, but " + pluginCompletedTasks.size()
-                + " marked in plugin";
-    }
-
-    private List<XtremeTask> syncMismatchGroupCompletedTasks(List<XtremeTask> group, XtremeTask fallbackTask)
-    {
-        if (group == null || group.isEmpty())
-        {
-            return fallbackTask != null && plugin.isTaskCompleted(fallbackTask)
-                    ? List.of(fallbackTask)
-                    : List.of();
-        }
-
-        List<XtremeTask> completed = new ArrayList<>();
-        for (XtremeTask groupedTask : group)
-        {
-            if (groupedTask != null && plugin.isTaskCompleted(groupedTask))
-            {
-                completed.add(groupedTask);
-            }
-        }
-        return completed;
-    }
-
-    private List<XtremeTask> syncMismatchGroupFoundInGameTasks(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return Collections.emptyList();
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group == null || group.isEmpty())
-        {
-            return syncMismatchGroupActionTasks(task);
-        }
-
-        Set<String> actionIds = syncMismatchGroupActionTasks(task).stream()
-                .filter(Objects::nonNull)
-                .map(XtremeTask::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        List<XtremeTask> found = new ArrayList<>();
-        for (XtremeTask groupedTask : group)
-        {
-            if (groupedTask != null
-                    && groupedTask.getId() != null
-                    && (plugin.isTaskCompleted(groupedTask) || actionIds.contains(groupedTask.getId())))
-            {
-                found.add(groupedTask);
-            }
-        }
-        return found;
-    }
-
-    private String joinedSequenceStepLabels(List<XtremeTask> tasks)
-    {
-        List<String> labels = tasks == null
-                ? List.of()
-                : tasks.stream()
-                .map(this::collectionLogSequenceSuffix)
-                .filter(label -> label != null && !label.trim().isEmpty())
-                .map(label -> label.trim().toLowerCase(Locale.ROOT))
-                .collect(Collectors.toList());
-        if (labels.isEmpty())
-        {
-            return "none";
-        }
-        return joinedPlainLabels(labels);
-    }
-
-    private static String joinedPlainLabels(List<String> labels)
-    {
-        if (labels == null || labels.isEmpty())
-        {
-            return "";
-        }
-        if (labels.size() == 1)
-        {
-            return labels.get(0);
-        }
-        if (labels.size() == 2)
-        {
-            return labels.get(0) + " and " + labels.get(1);
-        }
-        return String.join(", ", labels.subList(0, labels.size() - 1))
-                + " and " + labels.get(labels.size() - 1);
     }
 
     private int taskResolvePopupWidth(FontMetrics fm, XtremeTask task, List<XtremeTask> resolveTasks,
@@ -2762,48 +2496,17 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
     {
-        drawScrim(g, panelBounds, 135);
-
-        String message = "Mark task incomplete?";
-        String warning = "Can only be completed again by rolling or syncing, if applicable.";
-        int pad = 14;
-        int buttonH = ROW_HEIGHT + 8;
-        int buttonW = 78;
-        int gap = 8;
-        int textW = Math.max(fm.stringWidth(message), fm.stringWidth(warning));
-        int w = Math.min(panelBounds.width - 48, Math.max(240, textW + pad * 2));
-        int h = 112;
-        int x = panelBounds.x + (panelBounds.width - w) / 2;
-        int y = panelBounds.y + (panelBounds.height - h) / 2;
-        taskDetailsIncompleteConfirmBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, taskDetailsIncompleteConfirmBounds, POPUP_BG);
-
-        int textY = y + pad + fm.getAscent() + 4;
-        g.setColor(P.UI_TEXT);
-        g.drawString(message, x + (w - fm.stringWidth(message)) / 2, textY);
-        g.setColor(new Color(245, 92, 82, 245));
-        g.drawString(warning, x + (w - fm.stringWidth(warning)) / 2, textY + fm.getHeight() + 3);
-
-        int buttonY = y + h - pad - buttonH;
-        layoutButtonPair(taskDetailsIncompleteConfirmYesBounds, taskDetailsIncompleteConfirmNoBounds, x, w, buttonY, buttonW, buttonH, gap);
-        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmYesBounds, "Confirm",
-                new Color(86, 31, 24, 235), P.UI_TEXT, new Color(245, 92, 82, 220));
-        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
-    }
-
-    private void drawResolveToggleGlyph(Graphics2D g, Rectangle bounds, boolean selected, boolean enabled)
-    {
-        drawResolveToggleFrame(g, bounds, selected, enabled,
-                new Color(45, 68, 38, 230), new Color(43, 45, 43, 210), new Color(105, 220, 125, 245));
-        if (!selected)
-        {
-            return;
-        }
-
-        Stroke oldStroke = g.getStroke();
-        g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        ButtonRenderer.drawCheckmark(g, bounds, 4);
-        g.setStroke(oldStroke);
+        int count = Math.max(1, selectedIncompleteTasksForDetails().size());
+        String taskLabel = count == 1 ? "task" : "tasks";
+        drawConfirmationPopup(
+                g,
+                fm,
+                panelBounds,
+                taskDetailsIncompleteConfirmBounds,
+                taskDetailsIncompleteConfirmYesBounds,
+                taskDetailsIncompleteConfirmNoBounds,
+                "Mark " + count + " " + taskLabel + " incomplete?",
+                "Completion dates and time spent will be cleared.");
     }
 
     private void drawResolveIncompleteToggleGlyph(Graphics2D g, Rectangle bounds, boolean selectedIncomplete, boolean enabled)
@@ -2846,6 +2549,16 @@ public class XtremeTaskerOverlay extends Overlay {
         return TASK_RESOLVE_COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
+    private String syncReviewCompletionDateText(XtremeTask task)
+    {
+        CompletionInfo info = plugin.getCompletionInfo(task);
+        if (info == null || info.timestamp <= 0)
+        {
+            return "";
+        }
+        return SYNC_REVIEW_COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
+    }
+
     private String taskResolveTimeSpentText(XtremeTask task)
     {
         Long ticks = plugin.getTaskTimeTicks(task);
@@ -2853,7 +2566,7 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             return "time unknown";
         }
-        return compactFormatTicks(Math.round(ticks * 0.6));
+        return formatShortDuration(Math.round(ticks * 0.6));
     }
 
     private boolean isMultiInstanceTask(XtremeTask task)
@@ -3058,106 +2771,9 @@ public class XtremeTaskerOverlay extends Overlay {
         return !selectedTaskResolveIncompleteTaskIds.equals(taskResolveOriginalIncompleteTaskIds);
     }
 
-    private void openSyncMismatchGroupResolve(XtremeTask task)
-    {
-        if (!syncMismatchUsesGroupResolver(task))
-        {
-            return;
-        }
-
-        syncMismatchGroupResolveTask = task;
-        syncMismatchDescriptionTask = null;
-        syncMismatchApplyConfirmOpen = false;
-        selectedSyncMismatchGroupResolveTaskIds.clear();
-        for (XtremeTask resolveTask : syncMismatchGroupResolveTasks(task))
-        {
-            if (resolveTask != null && resolveTask.getId() != null)
-            {
-                if (selectedSyncMismatchTaskIds.contains(resolveTask.getId()))
-                {
-                    selectedSyncMismatchGroupResolveTaskIds.add(resolveTask.getId());
-                }
-            }
-        }
-        originalSyncMismatchGroupResolveTaskIds.clear();
-        originalSyncMismatchGroupResolveTaskIds.addAll(selectedSyncMismatchGroupResolveTaskIds);
-    }
-
-    private void closeSyncMismatchGroupResolve()
-    {
-        syncMismatchGroupResolveTask = null;
-        selectedSyncMismatchGroupResolveTaskIds.clear();
-        originalSyncMismatchGroupResolveTaskIds.clear();
-        clearBounds(syncMismatchGroupResolveBounds, syncMismatchGroupResolveSaveBounds,
-                syncMismatchGroupResolveCancelBounds);
-        syncMismatchGroupResolveToggleBounds.clear();
-    }
-
-    private void saveSyncMismatchGroupResolve()
-    {
-        XtremeTask task = syncMismatchGroupResolveTask;
-        if (task == null)
-        {
-            closeSyncMismatchGroupResolve();
-            return;
-        }
-
-        for (XtremeTask selectableTask : syncMismatchGroupSelectableTasks(task))
-        {
-            if (selectableTask != null && selectableTask.getId() != null)
-            {
-                selectedSyncMismatchTaskIds.remove(selectableTask.getId());
-            }
-        }
-
-        selectedSyncMismatchTaskIds.addAll(selectedSyncMismatchGroupResolveTaskIds);
-        syncMismatchApplyConfirmOpen = false;
-        closeSyncMismatchGroupResolve();
-    }
-
-    private boolean hasSyncMismatchGroupResolveChanges()
-    {
-        return !selectedSyncMismatchGroupResolveTaskIds.equals(originalSyncMismatchGroupResolveTaskIds);
-    }
-
-    private void toggleSyncMismatchGroupResolveTask(XtremeTask task)
-    {
-        if (task == null || task.getId() == null || !canToggleSyncMismatchGroupResolveTask(task))
-        {
-            return;
-        }
-
-        if (!selectedSyncMismatchGroupResolveTaskIds.remove(task.getId()))
-        {
-            selectedSyncMismatchGroupResolveTaskIds.add(task.getId());
-        }
-    }
-
-    private boolean canToggleSyncMismatchGroupResolveTask(XtremeTask task)
-    {
-        return syncMismatchGroupResolveTask != null && task != null && task.getId() != null;
-    }
-
     private boolean canToggleTaskResolveTaskIncomplete(XtremeTask task)
     {
         return taskResolveTask != null && task != null && task.getId() != null;
-    }
-
-    private boolean isTaskResolveSequence(List<XtremeTask> resolveTasks)
-    {
-        if (resolveTasks == null || resolveTasks.size() <= 1)
-        {
-            return false;
-        }
-
-        for (XtremeTask resolveTask : resolveTasks)
-        {
-            if (resolveTask != null && !collectionLogSequenceSuffix(resolveTask).isEmpty())
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     private List<XtremeTask> resolveTasksForTask(XtremeTask task)
@@ -3192,21 +2808,15 @@ public class XtremeTaskerOverlay extends Overlay {
         clearBounds(syncMismatchReviewBounds, syncMismatchViewportBounds, syncMismatchCloseBounds,
                 syncMismatchMarkAllBounds, syncMismatchApplyBounds, syncMismatchCancelBounds,
                 syncMismatchConfirmBounds, syncMismatchConfirmYesBounds, syncMismatchConfirmNoBounds,
-                syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds,
-                syncMismatchDescriptionBounds, syncMismatchDescriptionCloseBounds);
-        closeSyncMismatchGroupResolve();
+                syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds);
         syncMismatchReviewOpen = false;
         syncReviewMode = SyncReviewMode.MISMATCH;
         syncMismatchReviewSource = null;
         syncMismatchApplyConfirmOpen = false;
-        syncMismatchDescriptionTask = null;
         selectedSyncMismatchTaskIds.clear();
         syncReviewVisibleTasksCache.clear();
         synchronized (syncMismatchTaskBounds) {
             syncMismatchTaskBounds.clear();
-        }
-        synchronized (syncMismatchTaskNameBounds) {
-            syncMismatchTaskNameBounds.clear();
         }
     }
 
@@ -3260,9 +2870,18 @@ public class XtremeTaskerOverlay extends Overlay {
         int listBottom = y + h - pad - footerH;
         Rectangle listFrame = new Rectangle(x + pad, 0, w - pad * 2, 0);
         int actionColumnW = 28;
-        int actionColumnX = listFrame.x + listFrame.width - actionColumnW;
         int reviewRowHeight = ROW_HEIGHT + 8;
         int rowCheckboxSize = Math.min(20, reviewRowHeight - 4);
+        int listTop = headerTop + fm.getHeight() + 7;
+        syncMismatchViewportBounds.setBounds(listFrame.x, listTop, listFrame.width, Math.max(0, listBottom - listTop));
+        int rowBlock = reviewRowHeight + LIST_ROW_SPACING;
+        int visible = Math.max(1, syncMismatchViewportBounds.height / rowBlock);
+        int scrollBarW = 6;
+        int scrollBarGap = 3;
+        boolean needsScrollbar = mismatches.size() > visible;
+        int scrollLaneW = needsScrollbar ? scrollBarW + scrollBarGap : 0;
+        int rowW = Math.max(0, syncMismatchViewportBounds.width - scrollLaneW);
+        int actionColumnX = listFrame.x + rowW - actionColumnW;
         g.setColor(P.UI_TEXT_DIM);
         g.drawString("Task", listFrame.x, headerTop + fm.getAscent());
 
@@ -3297,33 +2916,21 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString(hint, hintX, hintY);
         }
 
-        int listTop = headerTop + fm.getHeight() + 7;
-        syncMismatchViewportBounds.setBounds(listFrame.x, listTop, listFrame.width, Math.max(0, listBottom - listTop));
         g.setColor(P.ROW_LINE);
         g.drawLine(syncMismatchViewportBounds.x, listTop - 3,
-                syncMismatchViewportBounds.x + syncMismatchViewportBounds.width, listTop - 3);
+                syncMismatchViewportBounds.x + rowW, listTop - 3);
 
         synchronized (syncMismatchTaskBounds) {
             syncMismatchTaskBounds.clear();
         }
-        synchronized (syncMismatchTaskNameBounds) {
-            syncMismatchTaskNameBounds.clear();
-        }
 
         Shape oldClip = g.getClip();
         g.setClip(syncMismatchViewportBounds);
-        int rowBlock = reviewRowHeight + LIST_ROW_SPACING;
-        int visible = Math.max(1, syncMismatchViewportBounds.height / rowBlock);
         int maxOffset = Math.max(0, mismatches.size() - visible);
         if (syncMismatchScroll.offsetRows > maxOffset)
         {
             syncMismatchScroll.offsetRows = maxOffset;
         }
-        int scrollBarW = 6;
-        int scrollBarGap = 3;
-        boolean needsScrollbar = mismatches.size() > visible;
-        int scrollLaneW = needsScrollbar ? scrollBarW + scrollBarGap : 0;
-        int rowW = Math.max(0, syncMismatchViewportBounds.width - scrollLaneW);
 
         int end = Math.min(mismatches.size(), syncMismatchScroll.offsetRows + visible + 1);
         int rowY = syncMismatchViewportBounds.y + 2;
@@ -3353,19 +2960,23 @@ public class XtremeTaskerOverlay extends Overlay {
                 rowTextX += tierBadgeW + 6;
             }
 
-            String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm, actionColumnX - rowTextX - 8);
-            Rectangle taskNameArea = new Rectangle(row.x, row.y, Math.max(0, actionColumnX - row.x), row.height);
-            boolean hoverTaskName = taskNameArea.contains(mouseX, mouseY);
-            boolean clickableTaskName = hasSyncReviewPopup(task);
-            g.setColor(clickableTaskName && hoverTaskName ? P.UI_GOLD : P.UI_TEXT);
-            g.drawString(label, rowTextX, row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent());
-            if (hoverTaskName)
+            String completedDate = syncReviewCompletionDateText(task);
+            Font oldFont = g.getFont();
+            Font dateFont = oldFont.deriveFont(Font.ITALIC);
+            FontMetrics dateFm = g.getFontMetrics(dateFont);
+            int dateGap = completedDate.isEmpty() ? 0 : 8;
+            int dateW = completedDate.isEmpty() ? 0 : dateFm.stringWidth(completedDate);
+            String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm,
+                    actionColumnX - rowTextX - dateW - dateGap - 8);
+            int textY = row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent();
+            g.setColor(P.UI_TEXT);
+            g.drawString(label, rowTextX, textY);
+            if (!completedDate.isEmpty())
             {
-                if (clickableTaskName)
-                {
-                    int underlineY = row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent() + 2;
-                    g.drawLine(rowTextX, underlineY, rowTextX + fm.stringWidth(label), underlineY);
-                }
+                g.setFont(dateFont);
+                g.setColor(P.UI_TEXT_DIM);
+                g.drawString(completedDate, rowTextX + fm.stringWidth(label) + dateGap, textY);
+                g.setFont(oldFont);
             }
             Rectangle btn = new Rectangle(
                     actionColumnX + (actionColumnW - rowCheckboxSize) / 2,
@@ -3376,28 +2987,32 @@ public class XtremeTaskerOverlay extends Overlay {
             synchronized (syncMismatchTaskBounds) {
                 syncMismatchTaskBounds.put(task, hitTarget);
             }
-            if (clickableTaskName)
-            {
-                synchronized (syncMismatchTaskNameBounds) {
-                    syncMismatchTaskNameBounds.put(task, taskNameArea);
-                }
-            }
-            if (syncMismatchUsesGroupResolver(task))
-            {
-                drawSyncMismatchGroupAction(g, fm, hitTarget, task);
-            }
-            else
-            {
-                drawSyncMismatchCheckbox(g, btn, selectedSyncMismatchTaskIds.contains(task.getId()));
-            }
+            drawSyncMismatchCheckbox(g, btn, selectedSyncMismatchTaskIds.contains(task.getId()));
             rowY += rowBlock;
         }
         g.setClip(oldClip);
 
-        ButtonRenderer.drawScrollbar(g, new Rectangle(syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW,
-                        syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height),
-                mismatches.size(), visible, syncMismatchScroll.offsetRows, syncMismatchScrollbarRailBounds,
-                syncMismatchScrollbarThumbBounds, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD);
+        if (needsScrollbar)
+        {
+            ButtonRenderer.drawScrollbar(g, new Rectangle(syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW,
+                            syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height),
+                    mismatches.size(), visible, syncMismatchScroll.offsetRows, syncMismatchScrollbarRailBounds,
+                    syncMismatchScrollbarThumbBounds, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD);
+            syncMismatchScrollbarRailBounds.setBounds(
+                    syncMismatchScrollbarRailBounds.x - scrollBarGap,
+                    syncMismatchScrollbarRailBounds.y,
+                    syncMismatchScrollbarRailBounds.width + scrollBarGap,
+                    syncMismatchScrollbarRailBounds.height);
+            syncMismatchScrollbarThumbBounds.setBounds(
+                    syncMismatchScrollbarThumbBounds.x - scrollBarGap,
+                    syncMismatchScrollbarThumbBounds.y,
+                    syncMismatchScrollbarThumbBounds.width + scrollBarGap,
+                    syncMismatchScrollbarThumbBounds.height);
+        }
+        else
+        {
+            clearBounds(syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds);
+        }
 
         String scrollHint = "Displaying " + (syncMismatchScroll.offsetRows + 1) + "-"
                 + Math.min(mismatches.size(), syncMismatchScroll.offsetRows + visible)
@@ -3419,16 +3034,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 selectedVisibleCount == 0 ? P.UI_TEXT_DIM : P.UI_TEXT,
                 selectedVisibleCount == 0 ? null : P.UI_GOLD);
         buttonRenderer.drawPlainButton(g, syncMismatchCancelBounds, "Cancel", P.BTN_DISABLED_BG);
-
-        if (syncMismatchDescriptionTask != null)
-        {
-            renderSyncMismatchDescription(g, fm);
-        }
-
-        if (syncMismatchGroupResolveTask != null)
-        {
-            renderSyncMismatchGroupResolve(g, fm);
-        }
 
         if (syncMismatchApplyConfirmOpen)
         {
@@ -3465,64 +3070,11 @@ public class XtremeTaskerOverlay extends Overlay {
         List<XtremeTask> tasks = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
                 ? plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource)
                 : plugin.getSyncMismatchTasks(syncMismatchReviewSource);
-        tasks = collapseSyncMismatchGroupRows(tasks);
         List<XtremeTask> snapshot = tasks == null
                 ? List.of()
                 : Collections.unmodifiableList(new ArrayList<>(tasks));
         syncReviewVisibleTasksCache.put(cacheKey, snapshot);
         return snapshot;
-    }
-
-    private List<XtremeTask> collapseSyncMismatchGroupRows(List<XtremeTask> tasks)
-    {
-        if (tasks == null || tasks.isEmpty())
-        {
-            return Collections.emptyList();
-        }
-
-        List<XtremeTask> out = new ArrayList<>();
-        Set<String> seenGroups = new HashSet<>();
-        for (XtremeTask task : tasks)
-        {
-            if (task == null)
-            {
-                continue;
-            }
-
-            String groupKey = syncMismatchGroupKey(task);
-            if (groupKey != null)
-            {
-                if (seenGroups.add(groupKey))
-                {
-                    out.add(task);
-                }
-                continue;
-            }
-
-            out.add(task);
-        }
-        return out;
-    }
-
-    private String syncMismatchGroupKey(XtremeTask task)
-    {
-        if (!syncMismatchUsesGroupResolver(task))
-        {
-            return null;
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group == null || group.isEmpty())
-        {
-            return task.getId();
-        }
-
-        return group.stream()
-                .filter(Objects::nonNull)
-                .map(XtremeTask::getId)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(task.getId());
     }
 
     private String syncReviewVisibleTasksCacheKey()
@@ -3546,11 +3098,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (syncMismatchUsesGroupResolver(task))
-            {
-                count += selectedSyncMismatchGroupCount(task);
-            }
-            else if (selectedSyncMismatchTaskIds.contains(task.getId()))
+            if (selectedSyncMismatchTaskIds.contains(task.getId()))
             {
                 count++;
             }
@@ -3573,144 +3121,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (syncMismatchUsesGroupResolver(task))
-            {
-                count += syncMismatchGroupSelectableTasks(task).size();
-            }
-            else
-            {
-                count++;
-            }
+            count++;
         }
         return count;
-    }
-
-    private boolean syncMismatchUsesGroupResolver(XtremeTask task)
-    {
-        if (task == null
-                || task.getSource() != TaskSource.COLLECTION_LOG)
-        {
-            return false;
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        return group != null
-                && group.size() > 1
-                && !syncMismatchGroupResolveTasks(task).isEmpty();
-    }
-
-    private List<XtremeTask> syncMismatchGroupResolveTasks(XtremeTask task)
-    {
-        return syncMismatchGroupActionTasks(task);
-    }
-
-    private List<XtremeTask> syncMismatchGroupActionTasks(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return Collections.emptyList();
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group == null || group.size() <= 1)
-        {
-            return Collections.emptyList();
-        }
-
-        List<XtremeTask> reviewTasks = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
-                ? plugin.getSyncCompletionCandidateTasks(syncMismatchReviewSource)
-                : plugin.getSyncMismatchTasks(syncMismatchReviewSource);
-        Set<String> reviewTaskIds = reviewTasks.stream()
-                .filter(Objects::nonNull)
-                .map(XtremeTask::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        if (reviewTaskIds.isEmpty())
-        {
-            return Collections.emptyList();
-        }
-
-        List<XtremeTask> out = new ArrayList<>();
-        for (XtremeTask groupedTask : group)
-        {
-            if (groupedTask != null && groupedTask.getId() != null && reviewTaskIds.contains(groupedTask.getId()))
-            {
-                out.add(groupedTask);
-            }
-        }
-        return out;
-    }
-
-    private List<XtremeTask> syncMismatchGroupSelectableTasks(XtremeTask task)
-    {
-        if (!syncMismatchUsesGroupResolver(task))
-        {
-            return Collections.emptyList();
-        }
-
-        return syncMismatchGroupActionTasks(task);
-    }
-
-    private int selectedSyncMismatchGroupCount(XtremeTask task)
-    {
-        int count = 0;
-        for (XtremeTask groupedTask : syncMismatchGroupSelectableTasks(task))
-        {
-            if (groupedTask != null
-                    && groupedTask.getId() != null
-                    && selectedSyncMismatchTaskIds.contains(groupedTask.getId()))
-            {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private List<XtremeTask> syncMismatchGroupFoundTasks(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return Collections.emptyList();
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group == null || group.isEmpty())
-        {
-            return Collections.emptyList();
-        }
-
-        Set<String> notFoundIds = syncMismatchGroupResolveTasks(task).stream()
-                .filter(Objects::nonNull)
-                .map(XtremeTask::getId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        List<XtremeTask> found = new ArrayList<>();
-        for (XtremeTask groupedTask : group)
-        {
-            if (groupedTask != null
-                    && groupedTask.getId() != null
-                    && plugin.isTaskCompleted(groupedTask)
-                    && !notFoundIds.contains(groupedTask.getId()))
-            {
-                found.add(groupedTask);
-            }
-        }
-        return found;
-    }
-
-    private void drawSyncMismatchGroupAction(Graphics2D g, FontMetrics fm, Rectangle bounds, XtremeTask task)
-    {
-        int total = Math.max(1, syncMismatchGroupActionTasks(task).size());
-        int selectedCount = selectedSyncMismatchGroupCount(task);
-        String label = selectedCount + "/" + total;
-
-        net.runelite.api.Point mouse = mouseCanvasPositionForPanelRender();
-        boolean hover = mouse != null && bounds.contains(mouse.getX(), mouse.getY());
-        g.setColor(hover ? P.UI_GOLD : P.UI_TEXT);
-        int textX = bounds.x + (bounds.width - fm.stringWidth(label)) / 2;
-        int textY = bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
-        g.drawString(label, textX, textY);
-        g.drawLine(textX, textY + 2, textX + fm.stringWidth(label), textY + 2);
     }
 
     private int drawSyncReviewRowBadge(Graphics2D g, FontMetrics fm, int x, int y, String text)
@@ -3719,243 +3132,6 @@ public class XtremeTaskerOverlay extends Overlay {
         int width = Math.max(24, fm.stringWidth(label) + 14);
         TaskRowsRenderer.drawSourceBadge(g, x, y, label, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT);
         return width;
-    }
-
-    private boolean hasSyncReviewPopup(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return false;
-        }
-        return task.getSource() == TaskSource.COMBAT_ACHIEVEMENT
-                || task.getSource() == TaskSource.DIARY_ACHIEVEMENT
-                || hasCollectionLogReviewItems(task);
-    }
-
-    private String syncReviewPopupTitle(XtremeTask task)
-    {
-        String title = syncReviewRowLabel(task);
-        if (title == null || title.trim().isEmpty())
-        {
-            title = task == null ? "" : task.getName();
-        }
-        return title == null || title.trim().isEmpty() ? "Task" : title.trim();
-    }
-
-    private boolean hasCollectionLogReviewItems(XtremeTask task)
-    {
-        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG)
-        {
-            return false;
-        }
-
-        TaskVerification verification = task.getVerification();
-        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
-        {
-            return false;
-        }
-
-        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
-        return preview != null && preview.hasItems();
-    }
-
-    private void renderSyncMismatchDescription(Graphics2D g, FontMetrics fm)
-    {
-        XtremeTask task = syncMismatchDescriptionTask;
-        if (task == null)
-        {
-            return;
-        }
-
-        if (hasCollectionLogReviewItems(task))
-        {
-            renderSyncMismatchCollectionLogDescription(g, fm, task);
-            return;
-        }
-
-        String description = task.getDescription();
-        if (description == null || description.trim().isEmpty())
-        {
-            description = "No description available.";
-        }
-
-        int pad = 12;
-        int closeW = 28;
-        int w = Math.min(syncMismatchReviewBounds.width - 44, 380);
-        int textW = w - (pad * 2) - closeW;
-        List<String> titleLines = TextUtils.wrapText(syncReviewPopupTitle(task), fm, textW);
-        List<String> lines = TextUtils.wrapText(description.trim(), fm, textW);
-        boolean achievementDiaryTask = task.getSource() == TaskSource.DIARY_ACHIEVEMENT;
-        int visibleLines = achievementDiaryTask ? Math.max(1, lines.size()) : Math.max(1, Math.min(lines.size(), 5));
-        int titleLineCount = Math.max(1, Math.min(titleLines.size(), 2));
-        int titleGap = Math.max(9, fm.getHeight() / 2);
-        int textBlockH = titleLineCount * fm.getHeight()
-                + titleGap
-                + visibleLines * fm.getHeight();
-        int requestedH = Math.max(86, pad * 2 + textBlockH);
-        int maxH = achievementDiaryTask ? Math.max(96, syncMismatchReviewBounds.height - 36) : 184;
-        int h = Math.min(requestedH, maxH);
-        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
-        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
-        syncMismatchDescriptionBounds.setBounds(x, y, w, h);
-
-        drawScrim(g, syncMismatchReviewBounds, 115);
-        drawBevelBox(g, syncMismatchDescriptionBounds, POPUP_BG);
-
-        syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
-        drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
-
-        Shape oldClip = g.getClip();
-        int textTop = y + pad;
-        Rectangle textBounds = new Rectangle(x + pad, textTop, textW, h - pad * 2);
-        g.setClip(textBounds);
-        int textY = textBounds.y + fm.getAscent();
-        g.setColor(P.UI_GOLD);
-        for (int i = 0; i < titleLineCount; i++)
-        {
-            String line = titleLines.isEmpty() ? task.getName() : titleLines.get(i);
-            g.drawString(TextUtils.truncateToWidth(line, fm, textBounds.width), textBounds.x, textY);
-            textY += fm.getHeight();
-        }
-        textY += titleGap;
-        g.setColor(P.UI_TEXT);
-        for (String line : lines)
-        {
-            if (textY > textBounds.y + textBounds.height)
-            {
-                break;
-            }
-            g.drawString(TextUtils.truncateToWidth(line, fm, textBounds.width), textBounds.x, textY);
-            textY += fm.getHeight();
-        }
-        g.setClip(oldClip);
-    }
-
-    private void renderSyncMismatchCollectionLogDescription(Graphics2D g, FontMetrics fm, XtremeTask task)
-    {
-        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
-        List<CollectionLogRequirementItem> items = syncReviewCollectionLogItems(preview);
-        boolean showTierSections = preview != null && preview.showTierSections();
-        if (showTierSections)
-        {
-            CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
-            items = currentSection == null ? List.of() : currentSection.items();
-        }
-        if (items.isEmpty())
-        {
-            return;
-        }
-
-        int pad = 12;
-        int closeW = 28;
-        int itemIconSize = 28;
-        int iconGap = 7;
-        int columns = 5;
-        int gridW = columns * itemIconSize + (columns - 1) * iconGap;
-        int w = Math.min(syncMismatchReviewBounds.width - 48, Math.max(250, gridW + pad * 2 + closeW));
-        int listW = w - pad * 2 - closeW;
-        int rows = (items.size() + columns - 1) / columns;
-        int listH = rows * itemIconSize + Math.max(0, rows - 1) * iconGap;
-        List<String> titleLines = TextUtils.wrapText(syncReviewPopupTitle(task), fm, listW);
-        int titleLineCount = Math.max(1, Math.min(titleLines.size(), 2));
-        int titleIconGap = 4;
-        int listBlockH = titleLineCount * fm.getHeight()
-                + titleIconGap
-                + listH;
-        int h = Math.max(86, Math.min(syncMismatchReviewBounds.height - 34, pad * 2 + listBlockH));
-        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
-        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
-        syncMismatchDescriptionBounds.setBounds(x, y, w, h);
-
-        drawScrim(g, syncMismatchReviewBounds, 115);
-        drawBevelBox(g, syncMismatchDescriptionBounds, POPUP_BG);
-
-        syncMismatchDescriptionCloseBounds.setBounds(x + w - pad - closeW, y + pad - 4, closeW, ROW_HEIGHT + 8);
-        drawPopupCloseX(g, syncMismatchDescriptionCloseBounds);
-
-        Shape oldClip = g.getClip();
-        Rectangle listBounds = new Rectangle(x + pad, y + pad, listW, h - pad * 2);
-        g.setClip(listBounds);
-        int textY = listBounds.y + fm.getAscent();
-        g.setColor(P.UI_GOLD);
-        for (int i = 0; i < titleLineCount; i++)
-        {
-            String line = titleLines.isEmpty() ? task.getName() : titleLines.get(i);
-            g.drawString(TextUtils.truncateToWidth(line, fm, listBounds.width), listBounds.x, textY);
-            textY += fm.getHeight();
-        }
-        int listTop = textY + titleIconGap;
-        int gridX = listBounds.x;
-        for (int i = 0; i < items.size(); i++)
-        {
-            CollectionLogRequirementItem item = items.get(i);
-            if (item == null)
-            {
-                continue;
-            }
-
-            int col = i % columns;
-            int row = i / columns;
-            int itemX = gridX + col * (itemIconSize + iconGap);
-            int itemY = listTop + row * (itemIconSize + iconGap);
-            if (itemY > listBounds.y + listBounds.height)
-            {
-                break;
-            }
-            drawSyncReviewCollectionLogItemIcon(g, item, itemX, itemY, itemIconSize);
-        }
-        g.setClip(oldClip);
-    }
-
-    private List<CollectionLogRequirementItem> syncReviewCollectionLogItems(CollectionLogRequirementPreview preview)
-    {
-        if (preview == null)
-        {
-            return List.of();
-        }
-
-        List<CollectionLogRequirementItem> out = new ArrayList<>();
-        if (preview.showItemList())
-        {
-            out.addAll(preview.getItems());
-        }
-        if (preview.showSecondaryItemList())
-        {
-            out.addAll(preview.secondaryItems());
-        }
-        return out;
-    }
-
-    private void drawSyncReviewCollectionLogItemIcon(
-            Graphics2D g,
-            CollectionLogRequirementItem item,
-            int x,
-            int y,
-            int iconSize)
-    {
-        Rectangle iconBounds = new Rectangle(x, y, iconSize, iconSize);
-        BufferedImage image = item.getItemId() > 0 ? getCachedItemImage(item.getItemId()) : null;
-        if (image != null)
-        {
-            g.drawImage(image, iconBounds.x, iconBounds.y, iconBounds.width, iconBounds.height, null);
-        }
-        else
-        {
-            g.setColor(P.UI_TEXT_DIM);
-            g.drawString("?", iconBounds.x + 5, iconBounds.y + iconBounds.height - 4);
-        }
-
-        if (item.isObtained())
-        {
-            int checkSize = Math.max(9, iconSize / 3);
-            int checkX = iconBounds.x + iconBounds.width - checkSize - 1;
-            int checkY = iconBounds.y + iconBounds.height - checkSize - 1;
-            g.setColor(new Color(20, 16, 10, 210));
-            g.fillOval(checkX - 2, checkY - 2, checkSize + 4, checkSize + 4);
-            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
-            g.drawLine(checkX, checkY + checkSize / 2, checkX + checkSize / 3, checkY + checkSize - 1);
-            g.drawLine(checkX + checkSize / 3, checkY + checkSize - 1, checkX + checkSize, checkY);
-        }
     }
 
     private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked)
@@ -3998,17 +3174,12 @@ public class XtremeTaskerOverlay extends Overlay {
             return "";
         }
 
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (syncMismatchUsesGroupResolver(task) && group != null && !group.isEmpty())
-        {
-            XtremeTask first = group.stream().filter(Objects::nonNull).findFirst().orElse(task);
-            return first.getName();
-        }
-
         if (isDecoratedSequenceTaskName(task.getName()))
         {
             return task.getName();
         }
+
+        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
         if (group == null || group.size() <= 1)
         {
             return task.getName();
@@ -4023,7 +3194,7 @@ public class XtremeTaskerOverlay extends Overlay {
         String sequenceSuffix = collectionLogSequenceSuffix(task);
         if (!sequenceSuffix.isEmpty())
         {
-            return task.getName() + " (" + sequenceSuffix + ")";
+            return task.getName() + ": " + sequenceSuffix;
         }
 
         int instanceOrdinal = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
@@ -4031,9 +3202,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 : completedInstanceOrdinalInGroup(group, task);
         if (instanceOrdinal <= 0)
         {
-            return task.getName() + " " + progress.label();
+            return task.getName() + ": " + progress.label();
         }
-        return task.getName() + " (" + instanceOrdinal + "/" + group.size() + ")";
+        return task.getName() + ": " + instanceOrdinal + "/" + group.size();
     }
 
     private static boolean isDecoratedSequenceTaskName(String name)
@@ -4127,8 +3298,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void renderSyncMismatchApplyConfirm(Graphics2D g, FontMetrics fm)
     {
-        drawScrim(g, syncMismatchReviewBounds, 115);
-
         int count = selectedVisibleSyncMismatchCount(visibleSyncMismatchTasks());
         boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
         String message = reviewingCompletionCandidates
@@ -4137,13 +3306,36 @@ public class XtremeTaskerOverlay extends Overlay {
         String warning = reviewingCompletionCandidates
                 ? "Completion source will be recorded as sync."
                 : "Completion dates and time spent will be cleared.";
-        int w = Math.min(syncMismatchReviewBounds.width - 50,
+        drawConfirmationPopup(
+                g,
+                fm,
+                syncMismatchReviewBounds,
+                syncMismatchConfirmBounds,
+                syncMismatchConfirmYesBounds,
+                syncMismatchConfirmNoBounds,
+                message,
+                warning);
+    }
+
+    private void drawConfirmationPopup(
+            Graphics2D g,
+            FontMetrics fm,
+            Rectangle parentBounds,
+            Rectangle confirmBounds,
+            Rectangle yesBounds,
+            Rectangle noBounds,
+            String message,
+            String warning)
+    {
+        drawScrim(g, parentBounds, 115);
+
+        int w = Math.min(parentBounds.width - 50,
                 Math.max(fm.stringWidth(message), fm.stringWidth(warning)) + 36);
         int h = 104;
-        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
-        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
-        syncMismatchConfirmBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, syncMismatchConfirmBounds, POPUP_BG);
+        int x = parentBounds.x + (parentBounds.width - w) / 2;
+        int y = parentBounds.y + (parentBounds.height - h) / 2;
+        confirmBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, confirmBounds, POPUP_BG);
 
         int firstY = y + 18 + fm.getAscent();
         g.setColor(P.UI_TEXT);
@@ -4155,9 +3347,9 @@ public class XtremeTaskerOverlay extends Overlay {
         int buttonH = ROW_HEIGHT + 8;
         int gap = 8;
         int buttonY = y + h - buttonH - 10;
-        layoutButtonPair(syncMismatchConfirmYesBounds, syncMismatchConfirmNoBounds, x, w, buttonY, buttonW, buttonH, gap);
-        buttonRenderer.drawPlainButton(g, syncMismatchConfirmYesBounds, "Confirm", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        buttonRenderer.drawPlainButton(g, syncMismatchConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
+        layoutButtonPair(yesBounds, noBounds, x, w, buttonY, buttonW, buttonH, gap);
+        buttonRenderer.drawPlainButton(g, yesBounds, "Confirm", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+        buttonRenderer.drawPlainButton(g, noBounds, "Cancel", P.BTN_DISABLED_BG);
     }
 
     private void renderMarkAllIncompleteConfirm(Graphics2D g, FontMetrics fm)
@@ -4285,7 +3477,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 (ignored) -> computeCurrentLineForRender(current, currentCompleted, fm),
                 this::getCachedPrerequisiteStatuses,
                 this::getCachedSkillImage,
-                null,
+                this::resolvePrerequisiteMarkerImage,
                 this::buildCollectionLogRequirementPreview,
                 this::getCachedItemImage,
                 tierForProgress,
@@ -4307,357 +3499,7 @@ public class XtremeTaskerOverlay extends Overlay {
         );
     }
 
-    private void renderCompactPanel(Graphics2D g, FontMetrics fm, int panelX, int contentTop) {
-        resetCurrentLayoutBounds();
-        int innerX = panelX + PANEL_PADDING;
-        int innerW = panelBounds.width - PANEL_PADDING * 2;
-        int bottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
-        int cardH = Math.max(120, bottom - contentTop);
-        Rectangle card = new Rectangle(innerX, contentTop, innerW, cardH);
-        drawBevelBox(g, card, new Color(26, 17, 10, 225));
-
-        if (!plugin.hasTaskPackLoaded()) {
-            drawCompactCenteredText(g, fm, card, "No tasks loaded.", P.UI_TEXT_DIM);
-            return;
-        }
-
-        XtremeTask current = plugin.getCurrentTask();
-        boolean rolling = animations.isRolling();
-        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
-        boolean showCurrentTask = current != null && !currentCompleted && !rolling;
-
-        net.runelite.api.Point rlMouse = mouseCanvasPositionForPanelRender();
-        java.awt.Point mousePoint = rlMouse == null ? null : new java.awt.Point(rlMouse.getX(), rlMouse.getY());
-
-        Shape oldClip = g.getClip();
-        g.setClip(new Rectangle(card.x + 2, card.y + 2, card.width - 4, card.height - 4));
-        if (rolling) {
-            drawCompactRolling(g, fm, card, current);
-        } else if (showCurrentTask) {
-            drawCompactCurrentIdentity(g, fm, card, current, mousePoint);
-        } else {
-            drawCompactEmptyIdentity(g, fm, card);
-        }
-        g.setClip(oldClip);
-
-        if (rolling) {
-            return;
-        }
-
-        int actionH = ROW_HEIGHT + 8;
-        int actionW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Mark complete") + 58));
-        int actionX = card.x + (card.width - actionW) / 2;
-        int actionY = card.y + card.height - actionH - 14;
-        if (showCurrentTask) {
-            currentLayout.completeButtonBounds.setBounds(actionX, actionY, actionW, actionH);
-            buttonRenderer.drawPrimaryButton(
-                    g,
-                    currentLayout.completeButtonBounds,
-                    "Mark complete",
-                    plugin.isCurrentTaskCompletionCriteriaMet() ? UiPalette.TIER_COMPLETE_GLOW : null);
-        } else {
-            int rollW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Roll task") + 58));
-            currentLayout.rollButtonBounds.setBounds(card.x + (card.width - rollW) / 2, actionY, rollW, actionH);
-            buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
-        }
-    }
-
-    private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current) {
-        int x = card.x + 14;
-        int innerW = card.width - 28;
-        g.setColor(Color.WHITE);
-        g.drawString("Rolling...", x, card.y + 12 + fm.getAscent());
-
-        Font oldFont = g.getFont();
-        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
-        g.setFont(nameFont);
-        FontMetrics nameFm = g.getFontMetrics();
-        String name = computeCurrentLineForRender(current, false, nameFm);
-        List<String> nameLines = TextUtils.wrapText(name, nameFm, innerW);
-        int lineCount = Math.max(1, Math.min(2, nameLines.size()));
-        int blockH = lineCount * nameFm.getHeight();
-        int nameY = card.y + (card.height - blockH) / 2 + nameFm.getAscent();
-
-        g.setColor(P.UI_GOLD);
-        for (int i = 0; i < lineCount; i++) {
-            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, innerW);
-            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
-            g.drawString(line, lineX, nameY);
-            nameY += nameFm.getHeight();
-        }
-        g.setFont(oldFont);
-    }
-
-    private void drawCompactEmptyIdentity(Graphics2D g, FontMetrics fm, Rectangle card) {
-        Font oldFont = g.getFont();
-        Font titleFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f);
-        g.setFont(titleFont);
-        FontMetrics titleFm = g.getFontMetrics();
-        String title = TextUtils.truncateToWidth("No current task", titleFm, card.width - 28);
-        int titleY = card.y + (card.height - titleFm.getHeight()) / 2 + titleFm.getAscent();
-        g.setColor(Color.WHITE);
-        g.drawString(title, card.x + (card.width - titleFm.stringWidth(title)) / 2, titleY);
-        g.setFont(oldFont);
-    }
-
-    private void drawCompactCurrentIdentity(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current, java.awt.Point mousePoint) {
-        int pad = 14;
-        int textW = card.width - pad * 2;
-        int y = card.y + pad;
-
-        y = Math.max(y, drawCompactBadges(g, fm, card, current) + 6);
-        y = drawCompactTaskIcon(g, fm, current, card.x + pad, y, textW, mousePoint, card) + 8;
-
-        Font oldFont = g.getFont();
-        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
-        g.setFont(nameFont);
-        FontMetrics nameFm = g.getFontMetrics();
-        List<String> nameLines = TextUtils.wrapText(compactTaskTitle(current), nameFm, textW);
-        int textY = y + nameFm.getAscent();
-        g.setColor(P.UI_GOLD);
-        for (int i = 0; i < Math.min(2, nameLines.size()); i++) {
-            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, textW);
-            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
-            g.drawString(line, lineX, textY);
-            textY += nameFm.getHeight();
-        }
-
-        g.setFont(oldFont);
-        Long ticks = plugin.getTaskTimeTicks(current);
-        if (ticks != null && ticks > 0) {
-            String time = compactFormatTicks(Math.round(ticks * 0.6));
-            int timeX = card.x + (card.width - fm.stringWidth(time)) / 2;
-            g.setColor(P.UI_TEXT_DIM);
-            g.drawString(time, timeX, textY + 2);
-        }
-    }
-
-    private int drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task) {
-        String sourceText = shortSource(task.getSource());
-        String tierText = tierLabel(task.getTier());
-        int gap = 5;
-        int y = card.y + 8;
-        Font oldFont = g.getFont();
-        g.setFont(FontManager.getRunescapeSmallFont());
-        FontMetrics badgeFm = g.getFontMetrics();
-        int sourceW = Math.max(24, badgeFm.stringWidth(sourceText) + 14);
-        int tierW = Math.max(24, badgeFm.stringWidth(tierText) + 14);
-        int x = card.x + card.width - 12 - sourceW - gap - tierW;
-        g.setFont(oldFont);
-
-        x += TaskRowsRenderer.drawSourceBadge(g, x, y, sourceText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT) + gap;
-        TaskRowsRenderer.drawSourceBadge(g, x, y, tierText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT);
-        return y + 18;
-    }
-
-    private int drawCompactTaskIcon(Graphics2D g, FontMetrics fm, XtremeTask task, int x, int y, int maxW, java.awt.Point mousePoint, Rectangle card) {
-        CollectionLogRequirementPreview preview = compactCollectionLogIconPreview(task);
-        if (preview != null && preview.showItemList()) {
-            Rectangle tooltipBounds = new Rectangle(card.x + 4, card.y + 4, card.width - 8, card.height - 8);
-            int renderX = centeredCompactCollectionLogIconX(x, maxW, preview);
-            return CollectionLogIconGridRenderer.render(
-                    g,
-                    fm,
-                    renderX,
-                    y + fm.getAscent(),
-                    maxW,
-                    preview.getItems(),
-                    this::getCachedItemImage,
-                    mousePoint,
-                    tooltipBounds,
-                    P.UI_TEXT,
-                    P.UI_TEXT_DIM,
-                    P.UI_EDGE_LIGHT,
-                    P.UI_EDGE_DARK,
-                    preview.iconColumns()) - fm.getAscent();
-        }
-
-        int iconSize = 44;
-        int iconX = x + (maxW - iconSize) / 2;
-        BufferedImage taskIcon = resolveTaskIcon(task);
-        if (taskIcon != null) {
-            g.drawImage(taskIcon, iconX, y, iconSize, iconSize, null);
-        }
-        return y + iconSize;
-    }
-
-    private int centeredCompactCollectionLogIconX(int x, int maxW, CollectionLogRequirementPreview preview) {
-        int count = preview == null ? 0 : preview.getItems().size();
-        if (count <= 0) {
-            return x;
-        }
-
-        int columns = Math.max(1, preview.iconColumns());
-        int shownColumns = Math.min(count, columns);
-        int iconSize = compactCollectionLogIconSize(maxW, columns);
-        int rowW = shownColumns * iconSize + Math.max(0, shownColumns - 1) * 3;
-        return x + Math.max(0, (maxW - rowW) / 2);
-    }
-
-    private int compactCollectionLogIconSize(int maxW, int columns) {
-        int normalizedColumns = Math.max(1, columns);
-        int available = Math.max(20 * normalizedColumns, maxW - (normalizedColumns - 1) * 3);
-        int maxIconSize = normalizedColumns < 8 ? 56 : 36;
-        return Math.max(20, Math.min(maxIconSize, available / normalizedColumns));
-    }
-
-    private CollectionLogRequirementPreview compactCollectionLogIconPreview(XtremeTask task) {
-        if (task == null || task.getSource() != TaskSource.COLLECTION_LOG) {
-            return null;
-        }
-
-        CollectionLogRequirementPreview preview = buildCollectionLogRequirementPreview(task);
-        if (preview == null) {
-            return null;
-        }
-
-        if (preview.showTierSections()) {
-            CollectionLogRequirementPreview.TierSection currentSection = preview.currentTierSection();
-            return currentSection == null
-                    ? null
-                    : new CollectionLogRequirementPreview("", "", false, true, currentSection.items(), currentSection.iconColumns());
-        }
-        return preview;
-    }
-
-    private String compactTaskTitle(XtremeTask task) {
-        if (task == null) {
-            return "";
-        }
-
-        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
-        if (task.getSource() == TaskSource.COLLECTION_LOG && progress != null && progress.isGrouped()) {
-            if (isDecoratedSequenceTaskName(task.getName())) {
-                return task.getName();
-            }
-
-            String sequenceSuffix = collectionLogSequenceSuffix(task);
-            if (!sequenceSuffix.isEmpty()) {
-                return task.getName() + " (" + sequenceSuffix + ")";
-            }
-
-            int next = Math.max(1, Math.min(progress.getCompleted() + 1, progress.getTotal()));
-            return task.getName() + " (" + next + "/" + progress.getTotal() + ")";
-        }
-        return task.getName();
-    }
-
-    private void drawCompactCenteredText(Graphics2D g, FontMetrics fm, Rectangle card, String text, Color color) {
-        String drawText = TextUtils.truncateToWidth(text, fm, card.width - 28);
-        int x = card.x + (card.width - fm.stringWidth(drawText)) / 2;
-        int y = card.y + (card.height - fm.getHeight()) / 2 + fm.getAscent();
-        g.setColor(color);
-        g.drawString(drawText, x, y);
-    }
-
-    private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {
-        boolean hovered = rlMouse != null && panelModeToggleBounds.contains(rlMouse.getX(), rlMouse.getY());
-        g.setColor(hovered ? new Color(22, 17, 11, 235) : new Color(18, 14, 9, 185));
-        g.fillRoundRect(
-                panelModeToggleBounds.x - 2,
-                panelModeToggleBounds.y - 2,
-                panelModeToggleBounds.width + 4,
-                panelModeToggleBounds.height + 4,
-                4,
-                4
-        );
-        g.setColor(withAlpha(P.UI_EDGE_LIGHT, hovered ? 95 : 55));
-        g.drawRoundRect(
-                panelModeToggleBounds.x - 2,
-                panelModeToggleBounds.y - 2,
-                panelModeToggleBounds.width + 4,
-                panelModeToggleBounds.height + 4,
-                4,
-                4
-        );
-
-        g.setColor(hovered ? Color.WHITE : new Color(200, 200, 200, 180));
-        int cx = panelModeToggleBounds.x + panelModeToggleBounds.width / 2;
-        int cy = panelModeToggleBounds.y + panelModeToggleBounds.height / 2;
-        int arm = panelModeToggleBounds.width / 2 - 2;
-        int x = cx - arm;
-        int y = cy - arm;
-        int w = arm * 2;
-        int h = arm * 2;
-        Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-        Stroke oldStroke = g.getStroke();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-
-        if (compactPanelMode) {
-            // Expand/full-view corners.
-            int leg = Math.max(4, arm - 1);
-            g.drawLine(x, y + leg, x, y);
-            g.drawLine(x, y, x + leg, y);
-            g.drawLine(x + w - leg, y, x + w, y);
-            g.drawLine(x + w, y, x + w, y + leg);
-            g.drawLine(x, y + h - leg, x, y + h);
-            g.drawLine(x, y + h, x + leg, y + h);
-            g.drawLine(x + w - leg, y + h, x + w, y + h);
-            g.drawLine(x + w, y + h, x + w, y + h - leg);
-        } else {
-            // Collapse/compact-view inward corners.
-            int inset = 4;
-            g.drawLine(x, y, x + inset, y);
-            g.drawLine(x, y, x, y + inset);
-            g.drawLine(x + w - inset, y, x + w, y);
-            g.drawLine(x + w, y, x + w, y + inset);
-            g.drawLine(x, y + h - inset, x, y + h);
-            g.drawLine(x, y + h, x + inset, y + h);
-            g.drawLine(x + w - inset, y + h, x + w, y + h);
-            g.drawLine(x + w, y + h - inset, x + w, y + h);
-            g.drawLine(x + inset + 1, y + inset + 1, x + w - inset - 1, y + h - inset - 1);
-            g.drawLine(x + w - inset - 1, y + inset + 1, x + inset + 1, y + h - inset - 1);
-        }
-        g.setStroke(oldStroke);
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
-
-        if (hovered) {
-            drawSmallTooltip(g, fm, compactPanelMode ? "Full\nview" : "Compact view", panelModeToggleBounds);
-        }
-    }
-
-    private void drawSmallTooltip(Graphics2D g, FontMetrics fm, String text, Rectangle anchor) {
-        int padX = 0;
-        int padY = 4;
-        String[] lines = text.split("\\n", -1);
-        int textW = 0;
-        for (String line : lines) {
-            textW = Math.max(textW, fm.stringWidth(line));
-        }
-        int w = textW + padX * 2;
-        int h = fm.getHeight() * lines.length + padY * 2;
-        int x = anchor.x;
-        int y = anchor.y + anchor.height + 5;
-        if (x + w > panelBounds.x + panelBounds.width - PANEL_PADDING) {
-            x = panelBounds.x + panelBounds.width - PANEL_PADDING - w;
-        }
-        if (y + h > panelBounds.y + panelBounds.height - PANEL_PADDING) {
-            y = anchor.y - h - 5;
-        }
-
-        g.setColor(withAlpha(P.UI_TEXT_DIM, 190));
-        int textY = y + padY + fm.getAscent();
-        for (String line : lines) {
-            g.drawString(line, x + padX, textY);
-            textY += fm.getHeight();
-        }
-    }
-
-    private void resetCurrentLayoutBounds() {
-        clearBounds(currentLayout.wikiButtonBounds, currentLayout.rollButtonBounds,
-                currentLayout.completeButtonBounds, currentLayout.undoButtonBounds,
-                currentLayout.rollSourceIconBounds, currentLayout.viewportBounds,
-                currentLayout.scrollbarRailBounds, currentLayout.scrollbarThumbBounds);
-        currentLayout.totalContentPx = 0;
-    }
-
-    private void clearFullPanelTabBounds() {
-        clearBounds(currentTabBounds, tasksTabBounds, rulesTabBounds, taskListViewportBounds,
-                taskScrollbarRailBounds, taskScrollbarThumbBounds);
-    }
-
-    private static String compactFormatTicks(long seconds) {
+    private static String formatShortDuration(long seconds) {
         if (seconds < 60) return seconds + "s";
         long minutes = seconds / 60;
         long remSeconds = seconds % 60;
@@ -4974,9 +3816,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 base,
                 taskQuery,
                 plugin::isTaskCompleted,
-                plugin::isNewTask,
-                this::taskListCompletionInfo,
-                this::taskListTimeTicks);
+                plugin::isNewTask);
         List<XtremeTask> result = useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
         List<XtremeTask> immutableResult = Collections.unmodifiableList(new ArrayList<>(result));
         sortedTaskListCache.put(cacheKey, immutableResult);
@@ -4989,58 +3829,6 @@ public class XtremeTaskerOverlay extends Overlay {
         return plugin.condenseRepeatedTasks();
     }
 
-    private CompletionInfo taskListCompletionInfo(XtremeTask task)
-    {
-        return plugin.getCompletionInfo(useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task);
-    }
-
-    private Long taskListTimeTicks(XtremeTask task)
-    {
-        XtremeTask sortTask = useCondensedTaskRows() ? latestCompletedGroupInstance(task) : task;
-        if (sortTask == null || plugin.getCompletionInfo(sortTask) == null)
-        {
-            return null;
-        }
-        return plugin.getTaskTimeTicks(sortTask);
-    }
-
-    private XtremeTask latestCompletedGroupInstance(XtremeTask task)
-    {
-        if (!useCondensedTaskRows() || task == null)
-        {
-            return task;
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group == null || group.size() <= 1)
-        {
-            return task;
-        }
-
-        XtremeTask latestTimestamped = null;
-        XtremeTask latestUntimestamped = null;
-        long latestTimestamp = Long.MIN_VALUE;
-        for (XtremeTask instance : group)
-        {
-            CompletionInfo info = plugin.getCompletionInfo(instance);
-            if (info == null)
-            {
-                continue;
-            }
-
-            latestUntimestamped = instance;
-            if (info.timestamp > 0 && info.timestamp >= latestTimestamp)
-            {
-                latestTimestamped = instance;
-                latestTimestamp = info.timestamp;
-            }
-        }
-
-        return latestTimestamped != null
-                ? latestTimestamped
-                : latestUntimestamped != null ? latestUntimestamped : task;
-    }
-
     private String sortedTaskListCacheKey(TaskTier tier)
     {
         return "tier=" + tier
@@ -5051,14 +3839,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|cl=" + taskQuery.sourceClogsSelected
                 + "|da=" + taskQuery.sourceDasSelected
                 + "|status=" + taskQuery.statusFilter
-                + "|sortDate=" + taskQuery.sortByDate
-                + "|newestFirst=" + taskQuery.newestFirst
-                + "|sortTicks=" + taskQuery.sortByTimeTicks
-                + "|longestFirst=" + taskQuery.longestFirst
-                + "|sortTier=" + taskQuery.sortByTier
-                + "|easyFirst=" + taskQuery.easyTierFirst
-                + "|sortSource=" + taskQuery.sortBySource
-                + "|sourceFirst=" + taskQuery.sourceFirst
                 + "|newOnly=" + taskQuery.showNewTasksFilter
                 + "|condensed=" + useCondensedTaskRows()
                 + "|state=" + plugin.getTaskListRenderStateHash();
@@ -5098,8 +3878,8 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         lastSlowPanelRenderLogMs = nowMs;
-        log.debug("Slow Xtreme Tasker panel render: tab={}, compact={}, detailsOpen={}, elapsed={}ms",
-                activeTab, compactPanelMode, taskDetailsPopup.isOpen(), elapsedNanos / 1_000_000L);
+        log.debug("Slow Xtreme Tasker panel render: tab={}, detailsOpen={}, elapsed={}ms",
+                activeTab, taskDetailsPopup.isOpen(), elapsedNanos / 1_000_000L);
     }
 
     // -----------------------------
@@ -5135,29 +3915,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void setPanelOpen(boolean open) {
                 panelOpen = open;
-            }
-
-            @Override
-            public boolean isCompactPanelMode() {
-                return compactPanelMode;
-            }
-
-            @Override
-            public void setCompactPanelMode(boolean compact) {
-                recenterPanelForMode(compact);
-                compactPanelMode = compact;
-                taskDetailsPopup.close();
-                syncMismatchReviewOpen = false;
-                syncMismatchDescriptionTask = null;
-                currentScroll.reset();
-                if (compact) {
-                    activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
-                }
-            }
-
-            @Override
-            public Rectangle panelModeToggleBounds() {
-                return panelModeToggleBounds;
             }
 
             @Override
@@ -5308,7 +4065,6 @@ public class XtremeTaskerOverlay extends Overlay {
                     syncMismatchScroll.reset();
                     selectedSyncMismatchTaskIds.clear();
                     syncMismatchApplyConfirmOpen = false;
-                    closeSyncMismatchGroupResolve();
                 }
             }
 
@@ -5326,7 +4082,6 @@ public class XtremeTaskerOverlay extends Overlay {
                     syncMismatchScroll.reset();
                     selectedSyncMismatchTaskIds.clear();
                     syncMismatchApplyConfirmOpen = false;
-                    closeSyncMismatchGroupResolve();
                 }
             }
 
@@ -5337,8 +4092,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 syncMismatchReviewSource = null;
                 selectedSyncMismatchTaskIds.clear();
                 syncMismatchApplyConfirmOpen = false;
-                syncMismatchDescriptionTask = null;
-                closeSyncMismatchGroupResolve();
             }
 
             @Override
@@ -5693,109 +4446,18 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
-            public Map<XtremeTask, Rectangle> syncMismatchTaskNameBounds() {
-                return syncMismatchTaskNameBounds;
-            }
-
-            @Override
             public TaskListScrollController syncMismatchScroll() {
                 return syncMismatchScroll;
             }
 
             @Override
             public int syncMismatchRowBlock() {
-                return scaleInputValue(ROW_HEIGHT + LIST_ROW_SPACING);
+                return scaleInputValue(ROW_HEIGHT + 8 + LIST_ROW_SPACING);
             }
 
             @Override
             public int syncMismatchVisibleTaskCount() {
                 return visibleSyncMismatchTasks().size();
-            }
-
-            @Override
-            public boolean isSyncMismatchDescriptionOpen() {
-                return syncMismatchDescriptionTask != null;
-            }
-
-            @Override
-            public Rectangle syncMismatchDescriptionBounds() {
-                return syncMismatchDescriptionBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchDescriptionCloseBounds() {
-                return syncMismatchDescriptionCloseBounds;
-            }
-
-            @Override
-            public void openSyncMismatchDescription(XtremeTask task) {
-                syncMismatchDescriptionTask = task;
-                syncMismatchApplyConfirmOpen = false;
-            }
-
-            @Override
-            public void closeSyncMismatchDescription() {
-                syncMismatchDescriptionTask = null;
-            }
-
-            @Override
-            public boolean isSyncMismatchGroupResolveOpen() {
-                return syncMismatchGroupResolveTask != null;
-            }
-
-            @Override
-            public Rectangle syncMismatchGroupResolveBounds() {
-                return syncMismatchGroupResolveBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchGroupResolveSaveBounds() {
-                return syncMismatchGroupResolveSaveBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchGroupResolveCancelBounds() {
-                return syncMismatchGroupResolveCancelBounds;
-            }
-
-            @Override
-            public Map<XtremeTask, Rectangle> syncMismatchGroupResolveToggleBounds() {
-                return syncMismatchGroupResolveToggleBounds;
-            }
-
-            @Override
-            public void openSyncMismatchGroupResolve(XtremeTask task) {
-                XtremeTaskerOverlay.this.openSyncMismatchGroupResolve(task);
-            }
-
-            @Override
-            public void closeSyncMismatchGroupResolve() {
-                XtremeTaskerOverlay.this.closeSyncMismatchGroupResolve();
-            }
-
-            @Override
-            public void saveSyncMismatchGroupResolve() {
-                XtremeTaskerOverlay.this.saveSyncMismatchGroupResolve();
-            }
-
-            @Override
-            public void toggleSyncMismatchGroupResolveTask(XtremeTask task) {
-                XtremeTaskerOverlay.this.toggleSyncMismatchGroupResolveTask(task);
-            }
-
-            @Override
-            public boolean canToggleSyncMismatchGroupResolveTask(XtremeTask task) {
-                return XtremeTaskerOverlay.this.canToggleSyncMismatchGroupResolveTask(task);
-            }
-
-            @Override
-            public boolean hasSyncMismatchGroupResolveChanges() {
-                return XtremeTaskerOverlay.this.hasSyncMismatchGroupResolveChanges();
-            }
-
-            @Override
-            public boolean isSyncMismatchGroupActionTask(XtremeTask task) {
-                return syncMismatchUsesGroupResolver(task);
             }
 
             @Override
@@ -5806,10 +4468,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void toggleSyncMismatchTaskSelected(XtremeTask task) {
                 if (task == null || task.getId() == null) return;
-                if (syncMismatchUsesGroupResolver(task)) {
-                    openSyncMismatchGroupResolve(task);
-                    return;
-                }
                 if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
                     selectedSyncMismatchTaskIds.add(task.getId());
                 }
@@ -5822,15 +4480,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     if (task == null || task.getId() == null) {
                         continue;
                     }
-                    if (syncMismatchUsesGroupResolver(task)) {
-                        for (XtremeTask groupedTask : syncMismatchGroupSelectableTasks(task)) {
-                            if (groupedTask != null && groupedTask.getId() != null) {
-                                selectedSyncMismatchTaskIds.add(groupedTask.getId());
-                            }
-                        }
-                    } else {
-                        selectedSyncMismatchTaskIds.add(task.getId());
-                    }
+                    selectedSyncMismatchTaskIds.add(task.getId());
                 }
                 syncMismatchApplyConfirmOpen = false;
             }
@@ -5859,16 +4509,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     if (task == null || task.getId() == null) {
                         continue;
                     }
-                    if (syncMismatchUsesGroupResolver(task)) {
-                        for (XtremeTask groupedTask : syncMismatchGroupSelectableTasks(task)) {
-                            if (groupedTask != null
-                                    && groupedTask.getId() != null
-                                    && selectedSyncMismatchTaskIds.contains(groupedTask.getId())
-                                    && seen.add(groupedTask.getId())) {
-                                out.add(groupedTask);
-                            }
-                        }
-                    } else if (selectedSyncMismatchTaskIds.contains(task.getId()) && seen.add(task.getId())) {
+                    if (selectedSyncMismatchTaskIds.contains(task.getId()) && seen.add(task.getId())) {
                         out.add(task);
                     }
                 }
@@ -6053,31 +4694,13 @@ public class XtremeTaskerOverlay extends Overlay {
         }
     }
 
-    private void recenterPanelForMode(boolean targetCompactMode) {
-        if (!panelOpen || panelBounds.width <= 0 || panelBounds.height <= 0) {
-            return;
-        }
-
-        int canvasW = client.getCanvasWidth();
-        int canvasH = client.getCanvasHeight();
-        int targetW = targetCompactMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
-        int targetH = targetCompactMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
-        double targetScale = computePanelScale(canvasW, canvasH, targetW, targetH);
-        int physicalTargetW = Math.max(1, (int) Math.round(targetW * targetScale));
-        int physicalTargetH = Math.max(1, (int) Math.round(targetH * targetScale));
-
-        int centerX = panelBounds.x + panelBounds.width / 2;
-        panelXOverride = Math.max(0, Math.min(centerX - physicalTargetW / 2, Math.max(0, canvasW - physicalTargetW)));
-        panelYOverride = Math.max(0, Math.min(panelBounds.y, Math.max(0, canvasH - physicalTargetH)));
-    }
-
     private void scalePanelInputBounds(int anchorX, int anchorY, double scale) {
         if (scale == 1.0) {
             return;
         }
 
         scaleRects(anchorX, anchorY, scale,
-                panelBounds, panelDragBarBounds, panelCloseBounds, panelModeToggleBounds,
+                panelBounds, panelDragBarBounds, panelCloseBounds,
                 currentTabBounds, tasksTabBounds, rulesTabBounds,
                 taskListViewportBounds, taskScrollbarRailBounds, taskScrollbarThumbBounds,
                 markAllIncompleteConfirmBounds, markAllIncompleteYesBounds, markAllIncompleteNoBounds,
@@ -6085,9 +4708,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 syncMismatchCloseBounds, syncMismatchMarkAllBounds, syncMismatchApplyBounds,
                 syncMismatchCancelBounds, syncMismatchConfirmBounds, syncMismatchConfirmYesBounds,
                 syncMismatchConfirmNoBounds, syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds,
-                syncMismatchDescriptionBounds, syncMismatchDescriptionCloseBounds,
-                syncMismatchGroupResolveBounds, syncMismatchGroupResolveSaveBounds,
-                syncMismatchGroupResolveCancelBounds, taskResolveBounds, taskResolveCloseBounds,
+                taskResolveBounds, taskResolveCloseBounds,
                 taskResolveSaveBounds, taskResolveCancelBounds, taskDetailsIncompleteConfirmBounds,
                 taskDetailsIncompleteConfirmYesBounds, taskDetailsIncompleteConfirmNoBounds);
         scaleCurrentLayoutBounds(anchorX, anchorY, scale);
@@ -6096,8 +4717,6 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRectMap(taskRowBounds, anchorX, anchorY, scale);
         scaleRectMap(taskCheckboxBounds, anchorX, anchorY, scale);
         scaleRectMap(syncMismatchTaskBounds, anchorX, anchorY, scale);
-        scaleRectMap(syncMismatchTaskNameBounds, anchorX, anchorY, scale);
-        scaleRectMap(syncMismatchGroupResolveToggleBounds, anchorX, anchorY, scale);
         scaleRectMap(taskResolveInstanceToggleBounds, anchorX, anchorY, scale);
     }
 
@@ -6122,9 +4741,7 @@ public class XtremeTaskerOverlay extends Overlay {
         scaleRects(anchorX, anchorY, scale,
                 layout.searchBox, layout.filtersHeaderBounds, layout.filterSourceAll, layout.filterCA,
                 layout.filterCL, layout.filterDA, layout.filterStatusAll, layout.filterIncomplete,
-                layout.filterComplete, layout.filterTierThis, layout.filterTierAll, layout.columnDate,
-                layout.columnTime, layout.columnTier, layout.columnSource, layout.sortDate,
-                layout.sortTimeTicks, layout.sortTier, layout.sortSource, layout.clearFilters,
+                layout.filterComplete, layout.filterTierThis, layout.filterTierAll, layout.clearFilters,
                 layout.filterNewTasks, layout.filterNewTasksHelp);
         layout.searchTextX = scaleX(layout.searchTextX, anchorX, scale);
         for (int i = 0; i < layout.searchCharXPositions.length; i++) {
@@ -6308,9 +4925,6 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     private int getHeaderLogoMaxHeight() {
-        if (compactPanelMode) {
-            return 54;
-        }
         return client.isResized() ? 82 : 70;
     }
 

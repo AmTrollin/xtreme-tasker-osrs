@@ -24,19 +24,6 @@ public class TaskControlsLayout
     public final Rectangle filterTierThis = new Rectangle();
     public final Rectangle filterTierAll = new Rectangle();
 
-    public boolean showDateColumn = true;
-    public boolean showTimeColumn = true;
-    public boolean showTierColumn = true;
-    public boolean showSourceColumn = true;
-    public final Rectangle columnDate = new Rectangle();
-    public final Rectangle columnTime = new Rectangle();
-    public final Rectangle columnTier = new Rectangle();
-    public final Rectangle columnSource = new Rectangle();
-
-    public final Rectangle sortDate = new Rectangle();
-    public final Rectangle sortTimeTicks = new Rectangle();
-    public final Rectangle sortTier = new Rectangle();
-    public final Rectangle sortSource = new Rectangle();
     public final Rectangle clearFilters = new Rectangle();
 
     // Session-only: visible only when there are new tasks this session
