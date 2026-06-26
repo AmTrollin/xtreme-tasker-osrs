@@ -35,7 +35,7 @@ Track your active task, view requirements, open relevant wiki pages, and roll yo
 
 ### Task List
 
-Browse every task with powerful search, filtering, progress tracking, and detailed task information.
+Browse every task with search, filtering, progress tracking, and detailed task information.
 
 <img src="docs/images/TasksTab.png" alt="Task list" width="550">
 

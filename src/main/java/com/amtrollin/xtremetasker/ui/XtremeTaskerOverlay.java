@@ -8,6 +8,7 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
@@ -44,6 +45,7 @@ import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.Skill;
+import net.runelite.api.SpriteID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.game.SkillIconManager;
@@ -349,7 +351,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
-        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return PrerequisiteIconRenderer.achievementDiaryIconImage();
+        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_GREEN_ACHIEVEMENT_DIARIES);
         Integer sequenceItemId = sequencePreviewFocusItemId(task);
         if (sequenceItemId != null && sequenceItemId > 0) return getCachedItemImage(sequenceItemId);
         Integer id = task.getIconItemId();
@@ -424,6 +426,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private BufferedImage getCachedSprite(int spriteId)
     {
+        if (spriteManager == null)
+        {
+            return null;
+        }
+
         BufferedImage cached = spriteCache.get(spriteId);
         if (cached != null)
         {
@@ -436,6 +443,43 @@ public class XtremeTaskerOverlay extends Overlay {
             spriteCache.put(spriteId, image);
         }
         return image;
+    }
+
+    private BufferedImage resolvePrerequisiteMarkerImage(MarkerIcon markerIcon)
+    {
+        if (markerIcon == null)
+        {
+            return null;
+        }
+
+        switch (markerIcon)
+        {
+            case QUEST:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS);
+            case START_QUEST:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_BLUE_QUESTS);
+            case ACHIEVEMENT_DIARY:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_GREEN_ACHIEVEMENT_DIARIES);
+            case COMBAT:
+                return getCachedSprite(SpriteID.MULTI_COMBAT_ZONE_CROSSED_SWORDS);
+            case TOTAL:
+                return getCachedSprite(SpriteID.SKILL_TOTAL);
+            case BULLET:
+                return null;
+            case BARBARIAN_MINIQUEST:
+            case LAIR_OF_TARN_RAZORLOR:
+            case MAGE_ARENA_1:
+            case ENTER_THE_ABYSS:
+            case VALE_TOTEMS:
+            case ALFRED_GRIMHANDS_BARCRAWL:
+                return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_RED_MINIGAMES);
+            case WILDERNESS:
+                return getCachedSprite(SpriteID.PLAYER_KILLER_SKULL);
+            case CURRENCY:
+                return getCachedSprite(SpriteID.WELCOME_SCREEN_COINS);
+            default:
+                return null;
+        }
     }
 
     private List<PrerequisiteStatus> getCachedPrerequisiteStatuses(XtremeTask task)
@@ -697,7 +741,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 itemIds,
                 repeatedDistinctPool,
                 repeatedRequirementState);
-        applySequenceTaskCompletionStatuses(task, itemIds, statusByItemId);
         boolean ancientPageRequirement = isAncientPageRequirement(itemIds);
         boolean medallionFragmentRequirement = isMedallionFragmentRequirement(itemIds);
         List<CollectionLogRequirementItem> items = hasCompletionItem
@@ -1058,7 +1101,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (!isTaskCompletedForCollectionLogPreview(sequenceTask) && !plugin.isCollectionLogItemObtained(itemId))
+            if (!plugin.isCollectionLogItemObtained(itemId))
             {
                 return itemId;
             }
@@ -1083,9 +1126,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            CollectionLogRequirementItem.Status status = isTaskCompletedForCollectionLogPreview(sequenceTask)
-                    ? CollectionLogRequirementItem.Status.APPLIED
-                    : plugin.isCollectionLogItemObtained(itemId)
+            CollectionLogRequirementItem.Status status = plugin.isCollectionLogItemObtained(itemId)
                     ? CollectionLogRequirementItem.Status.OBTAINED
                     : CollectionLogRequirementItem.Status.MISSING;
             itemsByTier.computeIfAbsent(sequenceTask.getTier(), ignored -> new ArrayList<>())
@@ -1255,43 +1296,17 @@ public class XtremeTaskerOverlay extends Overlay {
             return 0;
         }
 
-        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
         int completed = 0;
         for (int i = 0; i < itemIds.length; i++)
         {
-            boolean taskComplete = i < sequence.size() && isTaskCompletedForCollectionLogPreview(sequence.get(i));
             boolean itemObtained = plugin.isCollectionLogItemObtained(itemIds[i]);
-            if (!taskComplete && !itemObtained)
+            if (!itemObtained)
             {
                 break;
             }
             completed++;
         }
         return completed;
-    }
-
-    private void applySequenceTaskCompletionStatuses(
-            XtremeTask task,
-            int[] itemIds,
-            Map<Integer, CollectionLogRequirementItem.Status> statusByItemId)
-    {
-        if (!isDisplaySequenceTaskName(task == null ? null : task.getName())
-                || itemIds == null
-                || itemIds.length == 0
-                || statusByItemId == null)
-        {
-            return;
-        }
-
-        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
-        for (int i = 0; i < itemIds.length && i < sequence.size(); i++)
-        {
-            XtremeTask sequenceTask = sequence.get(i);
-            if (sequenceTask != null && isTaskCompletedForCollectionLogPreview(sequenceTask))
-            {
-                statusByItemId.put(itemIds[i], CollectionLogRequirementItem.Status.APPLIED);
-            }
-        }
     }
 
     private Map<Integer, CollectionLogRequirementItem.Status> collectionLogRequirementStatuses(
@@ -2208,7 +2223,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 useCondensedTaskRows() ? plugin::getTaskGroupInstances : null,
                 this::getCachedPrerequisiteStatuses,
                 this::getCachedSkillImage,
-                null,
+                this::resolvePrerequisiteMarkerImage,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
                 plugin::getCollectionLogSequenceStepLabel,
                 plugin::isTaskSyncMismatch,
@@ -2481,48 +2496,17 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
     {
-        drawScrim(g, panelBounds, 135);
-
-        String message = "Mark task incomplete?";
-        String warning = "Can only be completed again by rolling or syncing, if applicable.";
-        int pad = 14;
-        int buttonH = ROW_HEIGHT + 8;
-        int buttonW = 78;
-        int gap = 8;
-        int textW = Math.max(fm.stringWidth(message), fm.stringWidth(warning));
-        int w = Math.min(panelBounds.width - 48, Math.max(240, textW + pad * 2));
-        int h = 112;
-        int x = panelBounds.x + (panelBounds.width - w) / 2;
-        int y = panelBounds.y + (panelBounds.height - h) / 2;
-        taskDetailsIncompleteConfirmBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, taskDetailsIncompleteConfirmBounds, POPUP_BG);
-
-        int textY = y + pad + fm.getAscent() + 4;
-        g.setColor(P.UI_TEXT);
-        g.drawString(message, x + (w - fm.stringWidth(message)) / 2, textY);
-        g.setColor(new Color(245, 92, 82, 245));
-        g.drawString(warning, x + (w - fm.stringWidth(warning)) / 2, textY + fm.getHeight() + 3);
-
-        int buttonY = y + h - pad - buttonH;
-        layoutButtonPair(taskDetailsIncompleteConfirmYesBounds, taskDetailsIncompleteConfirmNoBounds, x, w, buttonY, buttonW, buttonH, gap);
-        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmYesBounds, "Confirm",
-                new Color(86, 31, 24, 235), P.UI_TEXT, new Color(245, 92, 82, 220));
-        buttonRenderer.drawPlainButton(g, taskDetailsIncompleteConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
-    }
-
-    private void drawResolveToggleGlyph(Graphics2D g, Rectangle bounds, boolean selected, boolean enabled)
-    {
-        drawResolveToggleFrame(g, bounds, selected, enabled,
-                new Color(45, 68, 38, 230), new Color(43, 45, 43, 210), new Color(105, 220, 125, 245));
-        if (!selected)
-        {
-            return;
-        }
-
-        Stroke oldStroke = g.getStroke();
-        g.setStroke(new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        ButtonRenderer.drawCheckmark(g, bounds, 4);
-        g.setStroke(oldStroke);
+        int count = Math.max(1, selectedIncompleteTasksForDetails().size());
+        String taskLabel = count == 1 ? "task" : "tasks";
+        drawConfirmationPopup(
+                g,
+                fm,
+                panelBounds,
+                taskDetailsIncompleteConfirmBounds,
+                taskDetailsIncompleteConfirmYesBounds,
+                taskDetailsIncompleteConfirmNoBounds,
+                "Mark " + count + " " + taskLabel + " incomplete?",
+                "Completion dates and time spent will be cleared.");
     }
 
     private void drawResolveIncompleteToggleGlyph(Graphics2D g, Rectangle bounds, boolean selectedIncomplete, boolean enabled)
@@ -2792,23 +2776,6 @@ public class XtremeTaskerOverlay extends Overlay {
         return taskResolveTask != null && task != null && task.getId() != null;
     }
 
-    private boolean isTaskResolveSequence(List<XtremeTask> resolveTasks)
-    {
-        if (resolveTasks == null || resolveTasks.size() <= 1)
-        {
-            return false;
-        }
-
-        for (XtremeTask resolveTask : resolveTasks)
-        {
-            if (resolveTask != null && !collectionLogSequenceSuffix(resolveTask).isEmpty())
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private List<XtremeTask> resolveTasksForTask(XtremeTask task)
     {
         if (task == null)
@@ -2903,9 +2870,18 @@ public class XtremeTaskerOverlay extends Overlay {
         int listBottom = y + h - pad - footerH;
         Rectangle listFrame = new Rectangle(x + pad, 0, w - pad * 2, 0);
         int actionColumnW = 28;
-        int actionColumnX = listFrame.x + listFrame.width - actionColumnW;
         int reviewRowHeight = ROW_HEIGHT + 8;
         int rowCheckboxSize = Math.min(20, reviewRowHeight - 4);
+        int listTop = headerTop + fm.getHeight() + 7;
+        syncMismatchViewportBounds.setBounds(listFrame.x, listTop, listFrame.width, Math.max(0, listBottom - listTop));
+        int rowBlock = reviewRowHeight + LIST_ROW_SPACING;
+        int visible = Math.max(1, syncMismatchViewportBounds.height / rowBlock);
+        int scrollBarW = 6;
+        int scrollBarGap = 3;
+        boolean needsScrollbar = mismatches.size() > visible;
+        int scrollLaneW = needsScrollbar ? scrollBarW + scrollBarGap : 0;
+        int rowW = Math.max(0, syncMismatchViewportBounds.width - scrollLaneW);
+        int actionColumnX = listFrame.x + rowW - actionColumnW;
         g.setColor(P.UI_TEXT_DIM);
         g.drawString("Task", listFrame.x, headerTop + fm.getAscent());
 
@@ -2940,11 +2916,9 @@ public class XtremeTaskerOverlay extends Overlay {
             g.drawString(hint, hintX, hintY);
         }
 
-        int listTop = headerTop + fm.getHeight() + 7;
-        syncMismatchViewportBounds.setBounds(listFrame.x, listTop, listFrame.width, Math.max(0, listBottom - listTop));
         g.setColor(P.ROW_LINE);
         g.drawLine(syncMismatchViewportBounds.x, listTop - 3,
-                syncMismatchViewportBounds.x + syncMismatchViewportBounds.width, listTop - 3);
+                syncMismatchViewportBounds.x + rowW, listTop - 3);
 
         synchronized (syncMismatchTaskBounds) {
             syncMismatchTaskBounds.clear();
@@ -2952,18 +2926,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
         Shape oldClip = g.getClip();
         g.setClip(syncMismatchViewportBounds);
-        int rowBlock = reviewRowHeight + LIST_ROW_SPACING;
-        int visible = Math.max(1, syncMismatchViewportBounds.height / rowBlock);
         int maxOffset = Math.max(0, mismatches.size() - visible);
         if (syncMismatchScroll.offsetRows > maxOffset)
         {
             syncMismatchScroll.offsetRows = maxOffset;
         }
-        int scrollBarW = 6;
-        int scrollBarGap = 3;
-        boolean needsScrollbar = mismatches.size() > visible;
-        int scrollLaneW = needsScrollbar ? scrollBarW + scrollBarGap : 0;
-        int rowW = Math.max(0, syncMismatchViewportBounds.width - scrollLaneW);
 
         int end = Math.min(mismatches.size(), syncMismatchScroll.offsetRows + visible + 1);
         int rowY = syncMismatchViewportBounds.y + 2;
@@ -3025,10 +2992,27 @@ public class XtremeTaskerOverlay extends Overlay {
         }
         g.setClip(oldClip);
 
-        ButtonRenderer.drawScrollbar(g, new Rectangle(syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW,
-                        syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height),
-                mismatches.size(), visible, syncMismatchScroll.offsetRows, syncMismatchScrollbarRailBounds,
-                syncMismatchScrollbarThumbBounds, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD);
+        if (needsScrollbar)
+        {
+            ButtonRenderer.drawScrollbar(g, new Rectangle(syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW,
+                            syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height),
+                    mismatches.size(), visible, syncMismatchScroll.offsetRows, syncMismatchScrollbarRailBounds,
+                    syncMismatchScrollbarThumbBounds, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD);
+            syncMismatchScrollbarRailBounds.setBounds(
+                    syncMismatchScrollbarRailBounds.x - scrollBarGap,
+                    syncMismatchScrollbarRailBounds.y,
+                    syncMismatchScrollbarRailBounds.width + scrollBarGap,
+                    syncMismatchScrollbarRailBounds.height);
+            syncMismatchScrollbarThumbBounds.setBounds(
+                    syncMismatchScrollbarThumbBounds.x - scrollBarGap,
+                    syncMismatchScrollbarThumbBounds.y,
+                    syncMismatchScrollbarThumbBounds.width + scrollBarGap,
+                    syncMismatchScrollbarThumbBounds.height);
+        }
+        else
+        {
+            clearBounds(syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds);
+        }
 
         String scrollHint = "Displaying " + (syncMismatchScroll.offsetRows + 1) + "-"
                 + Math.min(mismatches.size(), syncMismatchScroll.offsetRows + visible)
@@ -3314,8 +3298,6 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void renderSyncMismatchApplyConfirm(Graphics2D g, FontMetrics fm)
     {
-        drawScrim(g, syncMismatchReviewBounds, 115);
-
         int count = selectedVisibleSyncMismatchCount(visibleSyncMismatchTasks());
         boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
         String message = reviewingCompletionCandidates
@@ -3324,13 +3306,36 @@ public class XtremeTaskerOverlay extends Overlay {
         String warning = reviewingCompletionCandidates
                 ? "Completion source will be recorded as sync."
                 : "Completion dates and time spent will be cleared.";
-        int w = Math.min(syncMismatchReviewBounds.width - 50,
+        drawConfirmationPopup(
+                g,
+                fm,
+                syncMismatchReviewBounds,
+                syncMismatchConfirmBounds,
+                syncMismatchConfirmYesBounds,
+                syncMismatchConfirmNoBounds,
+                message,
+                warning);
+    }
+
+    private void drawConfirmationPopup(
+            Graphics2D g,
+            FontMetrics fm,
+            Rectangle parentBounds,
+            Rectangle confirmBounds,
+            Rectangle yesBounds,
+            Rectangle noBounds,
+            String message,
+            String warning)
+    {
+        drawScrim(g, parentBounds, 115);
+
+        int w = Math.min(parentBounds.width - 50,
                 Math.max(fm.stringWidth(message), fm.stringWidth(warning)) + 36);
         int h = 104;
-        int x = syncMismatchReviewBounds.x + (syncMismatchReviewBounds.width - w) / 2;
-        int y = syncMismatchReviewBounds.y + (syncMismatchReviewBounds.height - h) / 2;
-        syncMismatchConfirmBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, syncMismatchConfirmBounds, POPUP_BG);
+        int x = parentBounds.x + (parentBounds.width - w) / 2;
+        int y = parentBounds.y + (parentBounds.height - h) / 2;
+        confirmBounds.setBounds(x, y, w, h);
+        drawBevelBox(g, confirmBounds, POPUP_BG);
 
         int firstY = y + 18 + fm.getAscent();
         g.setColor(P.UI_TEXT);
@@ -3342,9 +3347,9 @@ public class XtremeTaskerOverlay extends Overlay {
         int buttonH = ROW_HEIGHT + 8;
         int gap = 8;
         int buttonY = y + h - buttonH - 10;
-        layoutButtonPair(syncMismatchConfirmYesBounds, syncMismatchConfirmNoBounds, x, w, buttonY, buttonW, buttonH, gap);
-        buttonRenderer.drawPlainButton(g, syncMismatchConfirmYesBounds, "Confirm", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        buttonRenderer.drawPlainButton(g, syncMismatchConfirmNoBounds, "Cancel", P.BTN_DISABLED_BG);
+        layoutButtonPair(yesBounds, noBounds, x, w, buttonY, buttonW, buttonH, gap);
+        buttonRenderer.drawPlainButton(g, yesBounds, "Confirm", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
+        buttonRenderer.drawPlainButton(g, noBounds, "Cancel", P.BTN_DISABLED_BG);
     }
 
     private void renderMarkAllIncompleteConfirm(Graphics2D g, FontMetrics fm)
@@ -3472,7 +3477,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 (ignored) -> computeCurrentLineForRender(current, currentCompleted, fm),
                 this::getCachedPrerequisiteStatuses,
                 this::getCachedSkillImage,
-                null,
+                this::resolvePrerequisiteMarkerImage,
                 this::buildCollectionLogRequirementPreview,
                 this::getCachedItemImage,
                 tierForProgress,
@@ -4447,7 +4452,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public int syncMismatchRowBlock() {
-                return scaleInputValue(ROW_HEIGHT + LIST_ROW_SPACING);
+                return scaleInputValue(ROW_HEIGHT + 8 + LIST_ROW_SPACING);
             }
 
             @Override

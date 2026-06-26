@@ -30,7 +30,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
             return e;
         }
 
-        if (a.isSyncMismatchReviewOpen() && a.syncMismatchViewportBounds().contains(p))
+        if (a.isSyncMismatchReviewOpen() && a.syncMismatchReviewBounds().contains(p))
         {
             int taskCount = a.syncMismatchVisibleTaskCount();
             a.syncMismatchScroll().onWheel(
@@ -40,6 +40,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
                     taskCount <= 0 ? 1 : taskCount,
                     null
             );
+            a.client().getCanvas().repaint();
             return e;
         }
 

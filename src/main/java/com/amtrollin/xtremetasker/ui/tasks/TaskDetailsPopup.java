@@ -1007,8 +1007,20 @@ public final class TaskDetailsPopup
     )
     {
         boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
-        g.setColor(!hasCheckSpans && status.isCompleted() ? palette.UI_TEXT_DIM : palette.UI_TEXT);
-        g.drawString(drawLine, x, baselineY);
+        Color textColor = !hasCheckSpans && status.isCompleted() ? palette.UI_TEXT_DIM : palette.UI_TEXT;
+        if (isStartQuestLine(status, drawLine))
+        {
+            String startText = "Start";
+            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+            g.drawString(startText, x, baselineY);
+            g.setColor(textColor);
+            g.drawString(drawLine.substring(startText.length()), x + fm.stringWidth(startText), baselineY);
+        }
+        else
+        {
+            g.setColor(textColor);
+            g.drawString(drawLine, x, baselineY);
+        }
 
         if (!hasCheckSpans)
         {
@@ -1038,6 +1050,14 @@ public final class TaskDetailsPopup
             g.drawString(spanText, spanX, baselineY);
             drawStrikeThrough(g, fm, spanText, spanX, baselineY);
         }
+    }
+
+    private static boolean isStartQuestLine(PrerequisiteStatus status, String drawLine)
+    {
+        return status.getMarkerIcons() != null
+                && status.getMarkerIcons().contains(MarkerIcon.START_QUEST)
+                && drawLine != null
+                && drawLine.startsWith("Start");
     }
 
     private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)
@@ -1089,13 +1109,14 @@ public final class TaskDetailsPopup
     {
         int actionSize = Math.min(14, ROW_HEIGHT);
         int actionGap = 6;
-        int actionX = x + contentW - actionSize;
+        int actionInset = 4;
+        int actionX = x + contentW - actionSize - actionInset;
         int actionY = baselineY - fm.getAscent() + (ROW_HEIGHT - actionSize) / 2;
         Rectangle actionBounds = new Rectangle(actionX, actionY, actionSize, actionSize);
         instanceRemoveBounds.put(line.task, actionBounds);
 
         g.setColor(palette.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(line.text, fm, Math.max(0, contentW - actionSize - actionGap)),
+        g.drawString(TextUtils.truncateToWidth(line.text, fm, Math.max(0, contentW - actionSize - actionGap - actionInset)),
                 x, baselineY + 2);
 
         boolean hover = mouse != null && actionBounds.contains(mouse);
