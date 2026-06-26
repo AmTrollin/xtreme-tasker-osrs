@@ -1,9 +1,7 @@
 package com.amtrollin.xtremetasker.ui.input;
 
-import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
-import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.rules.RulesTabLayout;
 import com.amtrollin.xtremetasker.ui.rules.RulesTabRenderer;
@@ -712,21 +710,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         return null;
     }
 
-    private XtremeTask syncMismatchGroupResolveTaskAt(Point p)
-    {
-        synchronized (a.syncMismatchGroupResolveToggleBounds())
-        {
-            for (Map.Entry<XtremeTask, Rectangle> entry : a.syncMismatchGroupResolveToggleBounds().entrySet())
-            {
-                if (entry.getValue() != null && entry.getValue().contains(p))
-                {
-                    return entry.getKey();
-                }
-            }
-        }
-        return null;
-    }
-
     private boolean tryHandleSyncMismatchClick(MouseEvent e, Point p, int button)
     {
         if (!a.isSyncMismatchReviewOpen() || button != MouseEvent.BUTTON1)
@@ -752,69 +735,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             a.closeSyncMismatchReview();
             syncMismatchReviewOpenedAt = Long.MIN_VALUE;
             return false;
-        }
-
-        if (a.isSyncMismatchGroupResolveOpen())
-        {
-            if (a.syncMismatchGroupResolveSaveBounds().contains(p))
-            {
-                a.saveSyncMismatchGroupResolve();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            if (a.syncMismatchGroupResolveCancelBounds().contains(p))
-            {
-                a.closeSyncMismatchGroupResolve();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            XtremeTask task = syncMismatchGroupResolveTaskAt(p);
-            if (task != null)
-            {
-                a.toggleSyncMismatchGroupResolveTask(task);
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            if (a.syncMismatchGroupResolveBounds().contains(p) || a.syncMismatchReviewBounds().contains(p))
-            {
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            a.closeSyncMismatchGroupResolve();
-            rememberSyncMismatchClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        if (a.isSyncMismatchDescriptionOpen())
-        {
-            if (a.syncMismatchDescriptionCloseBounds().contains(p))
-            {
-                a.closeSyncMismatchDescription();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            if (a.syncMismatchDescriptionBounds().contains(p))
-            {
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
-
-            a.closeSyncMismatchDescription();
-            rememberSyncMismatchClick(e, p, button);
-            e.consume();
-            return true;
         }
 
         if (a.isSyncMismatchApplyConfirmOpen())
@@ -918,25 +838,9 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
         }
 
-        XtremeTask nameTask = syncMismatchTaskAt(p, true);
-        if (nameTask != null)
-        {
-            a.openSyncMismatchDescription(nameTask);
-            rememberSyncMismatchClick(e, p, button);
-            e.consume();
-            return true;
-        }
-
-        XtremeTask actionTask = syncMismatchTaskAt(p, false);
+        XtremeTask actionTask = syncMismatchTaskAt(p);
         if (actionTask != null)
         {
-            if (a.isSyncMismatchGroupActionTask(actionTask))
-            {
-                a.openSyncMismatchGroupResolve(actionTask);
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return true;
-            }
             a.toggleSyncMismatchTaskSelected(actionTask);
             rememberSyncMismatchClick(e, p, button);
             e.consume();
@@ -1002,43 +906,20 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
     }
 
-    private XtremeTask syncMismatchTaskAt(Point p, boolean nameColumn)
+    private XtremeTask syncMismatchTaskAt(Point p)
     {
-        Map<XtremeTask, Rectangle> bounds = nameColumn
-                ? a.syncMismatchTaskNameBounds()
-                : a.syncMismatchTaskBounds();
+        Map<XtremeTask, Rectangle> bounds = a.syncMismatchTaskBounds();
         synchronized (bounds)
         {
             for (Map.Entry<XtremeTask, Rectangle> entry : bounds.entrySet())
             {
                 if (entry.getValue() != null && entry.getValue().contains(p))
                 {
-                    XtremeTask task = entry.getKey();
-                    if (!nameColumn || hasSyncReviewPopup(task))
-                    {
-                        return task;
-                    }
+                    return entry.getKey();
                 }
             }
         }
         return null;
-    }
-
-    private boolean hasSyncReviewPopup(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return false;
-        }
-        if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT
-                || task.getSource() == TaskSource.DIARY_ACHIEVEMENT)
-        {
-            return true;
-        }
-        TaskVerification verification = task.getVerification();
-        return task.getSource() == TaskSource.COLLECTION_LOG
-                && verification != null
-                && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG;
     }
 
     private boolean isSyncMismatchInteractivePoint(Point p)
@@ -1049,8 +930,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || a.syncMismatchCancelBounds().contains(p)
                 || a.syncMismatchScrollbarThumbBounds().contains(p)
                 || a.syncMismatchScrollbarRailBounds().contains(p)
-                || syncMismatchTaskAt(p, true) != null
-                || syncMismatchTaskAt(p, false) != null
+                || syncMismatchTaskAt(p) != null
                 || (a.isSyncMismatchApplyConfirmOpen() && (
                         a.syncMismatchConfirmYesBounds().contains(p)
                                 || a.syncMismatchConfirmNoBounds().contains(p)
@@ -1149,13 +1029,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
             else
             {
-                boolean hoveringSyncMismatch =
-                        (a.isSyncMismatchDescriptionOpen() && (
-                                a.syncMismatchDescriptionCloseBounds().contains(p)
-                                        || a.syncMismatchDescriptionBounds().contains(p)
-                        ))
-                                || isSyncMismatchInteractivePoint(p);
-                updateHandCursor(hoveringSyncMismatch);
+                updateHandCursor(isSyncMismatchInteractivePoint(p));
                 return e;
             }
         }
