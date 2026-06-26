@@ -587,9 +587,10 @@ public final class TaskDetailsPopup
             if (showGroupedCollectionLogMismatch)
             {
                 y += ROW_HEIGHT;
-                y = drawCollectionLogMismatchText(
+                y = drawSyncMismatchText(
                         g,
                         fm,
+                        task,
                         contentLeft,
                         y,
                         contentW);
@@ -634,9 +635,10 @@ public final class TaskDetailsPopup
 
         if (showStandaloneSyncMismatch)
         {
-            y = drawCollectionLogMismatchText(
+            y = drawSyncMismatchText(
                     g,
                     fm,
+                    task,
                     contentLeft,
                     y,
                     contentW);
@@ -940,19 +942,38 @@ public final class TaskDetailsPopup
                 oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
     }
 
-    private int drawCollectionLogMismatchText(
+    private int drawSyncMismatchText(
             Graphics2D g,
             FontMetrics fm,
+            XtremeTask task,
             int contentLeft,
             int y,
             int contentW
     )
     {
+        String title = syncMismatchTitle(task);
+        String action = syncMismatchAction(task);
+
         g.setColor(new Color(245, 92, 82, 245));
-        g.drawString(TextUtils.truncateToWidth("Not enough CLOG(s) obtained", fm, contentW), contentLeft, y);
+        g.drawString(TextUtils.truncateToWidth(title, fm, contentW), contentLeft, y);
         y += ROW_HEIGHT;
-        g.drawString(TextUtils.truncateToWidth("Go to the Sync page or mark incomplete.", fm, contentW), contentLeft, y);
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(TextUtils.truncateToWidth(action, fm, contentW), contentLeft, y);
         return y + ROW_HEIGHT + 6;
+    }
+
+    static String syncMismatchTitle(XtremeTask task)
+    {
+        return task != null && task.getSource() == TaskSource.COLLECTION_LOG
+                ? "Not enough Collection Log items obtained"
+                : "Task not completed in game";
+    }
+
+    static String syncMismatchAction(XtremeTask task)
+    {
+        return task != null && task.getSource() == TaskSource.COLLECTION_LOG
+                ? "Sync your Collection Log via Help tab or mark task incomplete"
+                : "Mark task incomplete";
     }
 
     private void drawGroupProgressEditor(
