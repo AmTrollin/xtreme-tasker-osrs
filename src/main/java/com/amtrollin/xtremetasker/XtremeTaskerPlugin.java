@@ -47,7 +47,6 @@ import net.runelite.client.ui.overlay.OverlayManager;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,7 +56,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 @PluginDescriptor(
@@ -823,14 +821,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return stateConfigKeyForAccount(accountKey) + STATE_CORRUPT_SUFFIX;
     }
 
+    private Path stateDir() {
+        return Paths.get(System.getProperty("user.home"), ".runelite", STATE_FILE_DIR_NAME);
+    }
+
     private Path stateFileForAccount(String accountKey) {
         String safeAccountKey = safeTrim(accountKey);
         if (safeAccountKey == null) {
             safeAccountKey = "unknown";
         }
         safeAccountKey = safeAccountKey.replaceAll("[^A-Za-z0-9_-]", "_");
-        return Paths.get(System.getProperty("user.home"), ".runelite", STATE_FILE_DIR_NAME,
-                safeAccountKey + STATE_FILE_SUFFIX);
+        return stateDir().resolve(safeAccountKey + STATE_FILE_SUFFIX);
     }
 
     private Path stateBackupFileForAccount(String accountKey, int index) {
@@ -1504,72 +1505,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
 
-        for (PersistedState profileState : loadMatchingLegacyStatesFromProfileFiles(legacyAccountKey, characterName)) {
-            if (best == null || isBetterProgressRecoveryCandidate(profileState, best)) {
-                best = profileState;
-            }
-        }
-
         if (best != null) {
             log.warn("Imported legacy XtremeTasker state for character {} from shared account hash {} (completed={})",
                     characterName, legacyAccountKey, completedCount(best));
         }
         return best;
-    }
-
-    private List<PersistedState> loadMatchingLegacyStatesFromProfileFiles(String legacyAccountKey, String characterName) {
-        Path runeliteDir = Paths.get(System.getProperty("user.home"), ".runelite");
-        if (!Files.isDirectory(runeliteDir)) {
-            return Collections.emptyList();
-        }
-
-        List<PersistedState> states = new ArrayList<>();
-        try (Stream<Path> paths = Files.walk(runeliteDir, 4)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName() != null && path.getFileName().toString().endsWith(".properties"))
-                    .forEach(path -> loadMatchingLegacyStatesFromProfileFile(path, legacyAccountKey, characterName, states));
-        } catch (IOException e) {
-            log.warn("Failed to scan RuneLite profile files for XtremeTasker legacy saves.", e);
-        }
-        return states;
-    }
-
-    private void loadMatchingLegacyStatesFromProfileFile(
-            Path path,
-            String legacyAccountKey,
-            String characterName,
-            List<PersistedState> states)
-    {
-        Properties properties = new Properties();
-        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-            properties.load(reader);
-        } catch (Exception e) {
-            log.debug("Skipped RuneLite profile file {} while scanning XtremeTasker legacy saves.", path, e);
-            return;
-        }
-
-        loadMatchingLegacyStateFromProperties(properties, legacyAccountKey, characterName,
-                stateConfigKeyForAccount(legacyAccountKey), "legacy profile primary save", states);
-        for (int i = 1; i <= STATE_BACKUP_COUNT; i++) {
-            loadMatchingLegacyStateFromProperties(properties, legacyAccountKey, characterName,
-                    stateBackupConfigKeyForAccount(legacyAccountKey, i), "legacy profile backup " + i, states);
-        }
-    }
-
-    private void loadMatchingLegacyStateFromProperties(
-            Properties properties,
-            String legacyAccountKey,
-            String characterName,
-            String stateKey,
-            String source,
-            List<PersistedState> states)
-    {
-        String json = properties.getProperty(CONFIG_GROUP + "." + stateKey);
-        PersistedState state = parseAndValidateState(json, source);
-        if (isPersistedStateForCharacter(state, characterName)
-                && legacyAccountKey.equals(safeTrim(state.getAccountKey()))) {
-            states.add(state);
-        }
     }
 
     private boolean isPersistedStateForCharacter(PersistedState state, String characterName) {
