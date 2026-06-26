@@ -62,7 +62,7 @@ import java.util.stream.Stream;
 @Slf4j
 @PluginDescriptor(
         name = "Xtreme Tasker",
-        description = "Progressive random task generator using Combat Achievements and collection log entries, with completion tracking.",
+        description = "Progressive random task generator using Combat Achievements, Collection Log entries, and Achievement Diaries.",
         tags = {"tasks", "combat achievements", "collection log"}
 )
 public class XtremeTaskerPlugin extends Plugin implements TaskerService {
