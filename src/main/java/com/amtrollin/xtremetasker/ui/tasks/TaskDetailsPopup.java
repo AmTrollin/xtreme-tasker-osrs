@@ -973,7 +973,7 @@ public final class TaskDetailsPopup
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
                 ? "Sync your Collection Log via Help tab or mark task incomplete"
-                : "Mark task incomplete";
+                : "Mark task incomplete to keep task tracking accurate";
     }
 
     private void drawGroupProgressEditor(
