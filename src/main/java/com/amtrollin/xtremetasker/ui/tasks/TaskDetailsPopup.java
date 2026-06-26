@@ -951,19 +951,26 @@ public final class TaskDetailsPopup
             int contentW
     )
     {
-        String title = task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "Not enough Collection Log items obtained"
-                : "Task not completed in game";
-        String action = task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "Sync your Collection Log via Help tab or mark task incomplete"
-                : "Mark task incomplete";
-
         g.setColor(new Color(245, 92, 82, 245));
-        g.drawString(TextUtils.truncateToWidth(title, fm, contentW), contentLeft, y);
+        g.drawString(TextUtils.truncateToWidth(syncMismatchTitle(task), fm, contentW), contentLeft, y);
         y += ROW_HEIGHT;
         g.setColor(palette.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(action, fm, contentW), contentLeft, y);
+        g.drawString(TextUtils.truncateToWidth(syncMismatchAction(task), fm, contentW), contentLeft, y);
         return y + ROW_HEIGHT + 6;
+    }
+
+    static String syncMismatchTitle(XtremeTask task)
+    {
+        return task != null && task.getSource() == TaskSource.COLLECTION_LOG
+                ? "Not enough Collection Log items obtained"
+                : "Task not completed in game";
+    }
+
+    static String syncMismatchAction(XtremeTask task)
+    {
+        return task != null && task.getSource() == TaskSource.COLLECTION_LOG
+                ? "Sync your Collection Log via Help tab or mark task incomplete"
+                : "Mark task incomplete";
     }
 
     private void drawGroupProgressEditor(

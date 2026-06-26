@@ -13,3 +13,4 @@ src/main/resources/task_data/taskbak.json
 src/main/resources/task_data/tasks_v1*.csv
 src/main/resources/task_data/utils/
 .ignored-tests/
+docs/TOKEN_ESTIMATE_LOCAL.md
