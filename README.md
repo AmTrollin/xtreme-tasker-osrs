@@ -15,9 +15,10 @@ Started your own Xtreme Tasker series? Let us know and we'll add it here!
 ## Overview
 
 * Roll randomized Combat Achievement, Collection Log, and Achievement Diary tasks
+* Use the Roll Source config option to roll all sources, CAs only, or CLOGs/ADs only
 * Progress through Easy, Medium, Hard, Elite, and Master tiers
 * Track your current task, timer, requirements, and tier progress
-* Search and filter the complete task list
+* Search, filter and sort the full task list
 * Sync existing account progress with review before applying changes
 * Store progress locally per RuneLite character profile
 
@@ -39,7 +40,7 @@ Track your active task, view requirements, open relevant wiki pages, and roll yo
 
 ### Task List
 
-Browse every task with search, filtering, progress tracking, and detailed task information.
+Browse every task with search, filtering, sorting, progress tracking, and detailed task information.
 
 <img src="docs/images/TasksTab.png" alt="Task list" width="550">
 

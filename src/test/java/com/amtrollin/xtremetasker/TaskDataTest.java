@@ -166,6 +166,11 @@ public class TaskDataTest
         TaskListQuery query = new TaskListQuery();
         query.setCollectionLogAndDiarySources();
 
+        assertTrue("Collection Log should be selected", query.sourceClogsSelected);
+        assertTrue("Achievement Diaries should be selected", query.sourceDasSelected);
+        assertTrue("Combat Achievements should be excluded", !query.sourceCASelected);
+        assertTrue("CL+AD preset should not be treated as all sources", !query.isSourceAllSelected());
+
         List<XtremeTask> results = TaskListPipeline.apply(tasks, query, task -> false);
         assertEquals(Arrays.asList("clog", "diary"), ids(results));
     }

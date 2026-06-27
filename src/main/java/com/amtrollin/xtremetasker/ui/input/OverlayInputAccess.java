@@ -30,9 +30,6 @@ public interface OverlayInputAccess
     // panel / drag / tab state
     boolean isPanelOpen();
     void setPanelOpen(boolean open);
-    boolean isCompactPanelMode();
-    void setCompactPanelMode(boolean compact);
-    Rectangle panelModeToggleBounds();
 
     boolean isDraggingPanel();
     void setDraggingPanel(boolean dragging);
@@ -57,6 +54,7 @@ public interface OverlayInputAccess
     // bounds needed for hit testing
     Rectangle iconBounds();
     Rectangle panelBounds();
+    Point toPanelLogicalPoint(Point point);
     Rectangle panelDragBarBounds();
     Rectangle panelCloseBounds();
 

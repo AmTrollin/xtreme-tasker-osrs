@@ -209,8 +209,6 @@ public class TaskControlsRenderer
         // Row 3: Filters header + applied state
         // ================================
         cursorY += 6;
-        layout.filtersExpanded = true;
-        layout.filtersHeaderBounds.setBounds(0, 0, 0, 0);
         FontMetrics bodyFm = fm;
         java.awt.Font savedHeaderFont = g.getFont();
         java.awt.Font sectionHeaderFont = net.runelite.client.ui.FontManager.getRunescapeBoldFont().deriveFont(java.awt.Font.BOLD, 16f);
@@ -303,7 +301,7 @@ public class TaskControlsRenderer
         drawTierScopePill(g, fm, layout.filterTierThis, T_THIS, query.tierScope == TaskListQuery.TierScope.THIS_TIER);
         drawPill(g, fm, layout.filterTierAll, T_ALL, query.tierScope == TaskListQuery.TierScope.ALL_TIERS);
 
-        cursorY += rowH + 20;
+        cursorY += rowH + 28;
 
         g.setFont(sectionHeaderFont);
         headerFm = g.getFontMetrics();

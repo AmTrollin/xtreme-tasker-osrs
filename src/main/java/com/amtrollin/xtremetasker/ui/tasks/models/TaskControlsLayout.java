@@ -6,10 +6,6 @@ public class TaskControlsLayout
 {
     public final Rectangle searchBox = new Rectangle();
 
-    // Static section labels; bounds stay empty so headers are not clickable.
-    public final Rectangle filtersHeaderBounds = new Rectangle();
-    public boolean filtersExpanded = true;
-
     // Source (single select): ALL / CA / CLOGs / ADs
     public final Rectangle filterSourceAll = new Rectangle();
     public final Rectangle filterCA = new Rectangle();

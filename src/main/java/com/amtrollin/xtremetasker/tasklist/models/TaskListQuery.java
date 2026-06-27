@@ -39,7 +39,6 @@ public class TaskListQuery
         DESC
     }
 
-    public SourceFilter sourceFilter = SourceFilter.ALL;
     public boolean sourceCASelected = true;
     public boolean sourceClogsSelected = true;
     public boolean sourceDasSelected = true;
@@ -49,10 +48,6 @@ public class TaskListQuery
     public boolean showDateCompletedColumn = true;
     public boolean showTimeSpentColumn = true;
 
-    // =========================
-    // Optional: compatibility helpers
-    // (lets you keep old filter logic temporarily)
-    // =========================
     public boolean isFilterCA()
     {
         return isSourceAllSelected() || sourceCASelected;
@@ -78,7 +73,6 @@ public class TaskListQuery
         sourceCASelected = true;
         sourceClogsSelected = true;
         sourceDasSelected = true;
-        sourceFilter = SourceFilter.ALL;
     }
 
     public void setOnlySource(SourceFilter source)
@@ -92,7 +86,6 @@ public class TaskListQuery
         sourceCASelected = source == SourceFilter.CA;
         sourceClogsSelected = source == SourceFilter.CLOGS;
         sourceDasSelected = source == SourceFilter.DAS;
-        sourceFilter = source;
     }
 
     public void setCollectionLogAndDiarySources()
@@ -100,7 +93,6 @@ public class TaskListQuery
         sourceCASelected = false;
         sourceClogsSelected = true;
         sourceDasSelected = true;
-        updateLegacySourceFilter();
     }
 
     public boolean toggleSort(SortColumn column)
@@ -192,40 +184,7 @@ public class TaskListQuery
         {
             selectAllSources();
         }
-        else if (isSourceAllSelected())
-        {
-            sourceFilter = SourceFilter.ALL;
-        }
-        else
-        {
-            updateLegacySourceFilter();
-        }
-
         return beforeCA != sourceCASelected || beforeClogs != sourceClogsSelected || beforeDas != sourceDasSelected;
-    }
-
-    public void updateLegacySourceFilter()
-    {
-        if (isSourceAllSelected())
-        {
-            sourceFilter = SourceFilter.ALL;
-        }
-        else if (sourceCASelected && !sourceClogsSelected && !sourceDasSelected)
-        {
-            sourceFilter = SourceFilter.CA;
-        }
-        else if (!sourceCASelected && sourceClogsSelected && !sourceDasSelected)
-        {
-            sourceFilter = SourceFilter.CLOGS;
-        }
-        else if (!sourceCASelected && !sourceClogsSelected && sourceDasSelected)
-        {
-            sourceFilter = SourceFilter.DAS;
-        }
-        else
-        {
-            sourceFilter = SourceFilter.ALL;
-        }
     }
 
     public boolean isFilterIncomplete()
