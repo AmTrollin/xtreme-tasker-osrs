@@ -965,14 +965,14 @@ public final class TaskDetailsPopup
     static String syncMismatchTitle(XtremeTask task)
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "Not enough Collection Log items obtained"
+                ? "You do not have enough CLOGs"
                 : "Task not completed in game";
     }
 
     static String syncMismatchAction(XtremeTask task)
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "Sync your Collection Log via Help tab or mark task incomplete"
+                ? "Open your Collection Log or mark task incomplete"
                 : "Mark task incomplete to keep task tracking accurate";
     }
 

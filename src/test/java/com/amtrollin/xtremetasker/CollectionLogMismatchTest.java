@@ -8,6 +8,7 @@ import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.google.gson.Gson;
 import org.junit.Test;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -54,6 +55,8 @@ public class CollectionLogMismatchTest
         syncedCompletedTaskIds.clear();
         syncedCompletedTaskIds.add(task.getId());
 
+        collectionLogService.storeSeenItem(10878);
+        collectionLogService.markSyncSeen();
         List<XtremeTask> mismatchesWhenNotFound = plugin.findCollectionLogSyncMismatches(true);
         assertEquals("Completed CLOG requirement not found by sync should mismatch", 1, mismatchesWhenNotFound.size());
         assertEquals(task.getId(), mismatchesWhenNotFound.get(0).getId());
@@ -64,23 +67,17 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    public void manualOnlyCollectionLogTaskIsNotMarkedAsSyncMismatch() throws Exception
+    public void manuallyCompletedCollectionLogTaskIsNotMarkedMismatchBeforeSyncEvidence() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         plugin.setCollectionLogServiceForTesting(new CollectionLogService());
 
-        XtremeTask task = new XtremeTask(
-                "collection_log_medium_1-graceful-recolor_001_34396fc6b4",
-                "1 Graceful Recolor",
-                TaskSource.COLLECTION_LOG,
-                TaskTier.MEDIUM,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_manual_no_sync_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
         );
 
         List<XtremeTask> tasks = plugin.tasksForTesting();
@@ -92,7 +89,175 @@ public class CollectionLogMismatchTest
         manualCompletedTaskIds.add(task.getId());
 
         List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
-        assertTrue("Manual-only graceful recolor should stay out of sync mismatch review", mismatches.isEmpty());
+        assertTrue("Manual CLOG completion should not mismatch until a sync has seen the relevant log slot",
+                mismatches.isEmpty());
+    }
+
+    @Test
+    public void quietCollectionLogOpenStoresMismatchForCompletedMissingClog() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_quiet_sync_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().clear();
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+
+        assertTrue("Completing manually alone should not show the CLOG mismatch helper",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
+
+        collectionLogService.storeSeenItem(10878);
+        collectionLogService.markSyncSeen();
+
+        assertTrue("Opening CLOG and seeing the missing slot should show the CLOG mismatch helper",
+                plugin.isCollectionLogTaskSyncMismatch(task));
+        assertEquals(List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
+    }
+
+    @Test
+    public void fullCollectionLogSyncStoresMismatchWithoutOpeningSpecificPage() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_full_sync_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().clear();
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+
+        assertTrue("Completing manually alone should not show the CLOG mismatch helper",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
+
+        collectionLogService.markFullSyncSeen();
+
+        assertTrue("A full CLOG sync should prove a manually completed missing CLOG is mismatched",
+                plugin.isCollectionLogTaskSyncMismatch(task));
+        assertEquals(List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
+    }
+
+    @Test
+    public void oldCollectionLogSyncDoesNotMismatchTaskCompletedAfterSync() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_old_sync_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+
+        collectionLogService.markFullSyncSeen();
+        Thread.sleep(5L);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.manualCompletionTimestampsForTesting().put(task.getId(), System.currentTimeMillis());
+
+        assertTrue("A sync that happened before manual completion should not show the CLOG mismatch helper",
+                plugin.findCollectionLogSyncMismatches(true).isEmpty());
+        assertTrue("Task details should not inherit stale pre-completion CLOG sync evidence",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
+
+        Thread.sleep(5L);
+        collectionLogService.markFullSyncSeen();
+
+        assertTrue("A new CLOG sync after manual completion should show the CLOG mismatch helper",
+                plugin.isCollectionLogTaskSyncMismatch(task));
+        assertEquals(List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
+    }
+
+    @Test
+    public void manualCollectionLogSyncDoesNotStoreDiaryMismatchRows() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask diaryTask = achievementDiaryTask(
+                "collection_log_easy_complete-the-ardougne-easy-diary_001_manual_sync_test",
+                "Complete the Ardougne easy diary"
+        );
+        XtremeTask clogTask = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_manual_sync_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(diaryTask);
+        plugin.tasksForTesting().add(clogTask);
+        plugin.manualCompletedTaskIdsForTesting().clear();
+        plugin.manualCompletedTaskIdsForTesting().add(diaryTask.getId());
+        plugin.manualCompletedTaskIdsForTesting().add(clogTask.getId());
+
+        collectionLogService.markFullSyncSeen();
+        assertEquals(List.of(clogTask.getId()), plugin.syncMismatchTaskIdsForTesting());
+
+        Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCollectionLogSyncState");
+        refresh.setAccessible(true);
+        refresh.invoke(plugin);
+
+        assertEquals("Manual CLOG/AD sync should only store CLOG item mismatches, never diary rows",
+                List.of(clogTask.getId()), plugin.syncMismatchTaskIdsForTesting());
+    }
+
+    @Test
+    public void obtainedCollectionLogItemClearsMismatchAndStaysObtained() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-right-skull-half_001_obtained_test",
+                "Get a Right skull half",
+                TaskTier.EASY,
+                new int[]{9007},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().clear();
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+
+        collectionLogService.storeSeenItem(9007);
+        collectionLogService.markSyncSeen();
+        assertTrue("Missing right skull half should mismatch after sync sees the slot",
+                plugin.isCollectionLogTaskSyncMismatch(task));
+
+        collectionLogService.storeItem(9007);
+
+        assertTrue("Obtained right skull half should be cached permanently",
+                collectionLogService.isItemObtained(9007));
+        assertTrue("Obtained right skull half should clear the CLOG mismatch helper",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
     }
 
     @Test
@@ -228,6 +393,11 @@ public class CollectionLogMismatchTest
         manualCompletionTimestamps.put(tasks.get(0).getId(), 200L);
         manualCompletionTimestamps.put(tasks.get(1).getId(), 100L);
 
+        for (int itemId : forestryItemIds)
+        {
+            collectionLogService.storeSeenItem(itemId);
+        }
+        collectionLogService.markSyncSeen();
         collectionLogService.storeItem(28138);
 
         List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
@@ -487,6 +657,11 @@ public class CollectionLogMismatchTest
         manualCompletedTaskIds.clear();
         manualCompletedTaskIds.add(first.getId());
 
+        for (int itemId : new int[]{4119, 4121, 4123, 4125, 4127, 4129, 4131})
+        {
+            collectionLogService.storeSeenItem(itemId);
+        }
+        collectionLogService.markSyncSeen();
         List<XtremeTask> mismatches = plugin.findCollectionLogSyncMismatches(true);
         assertEquals("Repeated counted CLOG completion not found by sync should be reviewable", 1, mismatches.size());
         assertEquals(first.getId(), mismatches.get(0).getId());

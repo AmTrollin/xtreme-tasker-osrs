@@ -14,8 +14,8 @@ public class TaskDetailsPopupTest
     {
         XtremeTask task = task(TaskSource.COLLECTION_LOG);
 
-        assertEquals("Not enough Collection Log items obtained", TaskDetailsPopup.syncMismatchTitle(task));
-        assertEquals("Sync your Collection Log via Help tab or mark task incomplete",
+        assertEquals("You do not have enough CLOGs", TaskDetailsPopup.syncMismatchTitle(task));
+        assertEquals("Open your Collection Log or mark task incomplete",
                 TaskDetailsPopup.syncMismatchAction(task));
     }
 
