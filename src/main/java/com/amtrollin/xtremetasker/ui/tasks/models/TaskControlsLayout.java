@@ -6,10 +6,6 @@ public class TaskControlsLayout
 {
     public final Rectangle searchBox = new Rectangle();
 
-    // Static section labels; bounds stay empty so headers are not clickable.
-    public final Rectangle filtersHeaderBounds = new Rectangle();
-    public boolean filtersExpanded = true;
-
     // Source (single select): ALL / CA / CLOGs / ADs
     public final Rectangle filterSourceAll = new Rectangle();
     public final Rectangle filterCA = new Rectangle();
@@ -29,6 +25,12 @@ public class TaskControlsLayout
     // Session-only: visible only when there are new tasks this session
     public final Rectangle filterNewTasks = new Rectangle();
     public final Rectangle filterNewTasksHelp = new Rectangle();
+
+    public final Rectangle displayDateCompleted = new Rectangle();
+    public final Rectangle displayTimeSpent = new Rectangle();
+
+    public final Rectangle sortDateCompleted = new Rectangle();
+    public final Rectangle sortTimeSpent = new Rectangle();
 
     // Search text rendering aids — populated each frame by TaskControlsRenderer
     public int searchTextX = 0;

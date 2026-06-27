@@ -1,10 +1,12 @@
 package com.amtrollin.xtremetasker.tasklist;
 
+import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -27,6 +29,17 @@ public final class TaskListPipeline {
             TaskListQuery query,
             TaskListFilter.CompletionLookup completed,
             TaskListFilter.NewTaskLookup isNew
+    ) {
+        return apply(input, query, completed, isNew, null, null);
+    }
+
+    public static List<XtremeTask> apply(
+            List<XtremeTask> input,
+            TaskListQuery query,
+            TaskListFilter.CompletionLookup completed,
+            TaskListFilter.NewTaskLookup isNew,
+            Function<XtremeTask, CompletionInfo> completionInfoProvider,
+            Function<XtremeTask, Long> taskTicksProvider
     ) {
         if (input == null || input.isEmpty()) {
             return new ArrayList<>();
@@ -60,7 +73,7 @@ public final class TaskListPipeline {
             out.add(t);
         }
 
-        out.sort(TaskListSorter.comparator(query, completed));
+        out.sort(TaskListSorter.comparator(query, completed, completionInfoProvider, taskTicksProvider));
         return out;
     }
 

@@ -18,7 +18,6 @@ import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.anim.OverlayAnimations;
 import com.amtrollin.xtremetasker.ui.tasks.TaskControlsRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.TaskDetailsPopup;
-import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.tasks.TasksTabRenderer;
@@ -66,6 +65,8 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.NoninvertibleTransformException;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.time.Instant;
@@ -232,8 +233,9 @@ public class XtremeTaskerOverlay extends Overlay {
     private Integer panelXOverride = null;
     private Integer panelYOverride = null;
     private double panelScale = 1.0;
+    private int panelInputAnchorX = 0;
+    private int panelInputAnchorY = 0;
     private net.runelite.api.Point panelRenderMouse = null;
-    private boolean panelBoundsScaledForInput = false;
 
     private boolean draggingIcon = false;
     private int iconDragOffsetX = 0;
@@ -1902,14 +1904,18 @@ public class XtremeTaskerOverlay extends Overlay {
         return Math.max(PANEL_SCALE_MIN, Math.min(maxScale, scale));
     }
 
-    private net.runelite.api.Point toPanelRenderMouse(net.runelite.api.Point mouse, int anchorX, int anchorY, double scale) {
-        if (mouse == null || scale == 1.0) {
+    private net.runelite.api.Point toPanelRenderMouse(net.runelite.api.Point mouse, AffineTransform transform) {
+        if (mouse == null || transform == null || transform.isIdentity()) {
             return mouse;
         }
 
-        int x = anchorX + (int) Math.round((mouse.getX() - anchorX) / scale);
-        int y = anchorY + (int) Math.round((mouse.getY() - anchorY) / scale);
-        return new net.runelite.api.Point(x, y);
+        try {
+            Point2D source = new Point2D.Double(mouse.getX(), mouse.getY());
+            Point2D logical = transform.inverseTransform(source, null);
+            return new net.runelite.api.Point((int) Math.round(logical.getX()), (int) Math.round(logical.getY()));
+        } catch (NoninvertibleTransformException ignored) {
+            return mouse;
+        }
     }
 
     private net.runelite.api.Point mouseCanvasPositionForPanelRender() {
@@ -2045,16 +2051,18 @@ public class XtremeTaskerOverlay extends Overlay {
 
         panelX = Math.max(0, Math.min(panelX, canvasW - physicalPanelW));
         panelY = Math.max(0, Math.min(panelY, canvasH - physicalPanelH));
+        panelInputAnchorX = panelX;
+        panelInputAnchorY = panelY;
 
         panelBounds.setBounds(panelX, panelY, panelW, panelHeight);
-        panelBoundsScaledForInput = false;
-        panelRenderMouse = toPanelRenderMouse(client.getMouseCanvasPosition(), panelX, panelY, panelScale);
         AffineTransform oldTransform = g.getTransform();
         if (panelScale != 1.0) {
             g.translate(panelX, panelY);
             g.scale(panelScale, panelScale);
             g.translate(-panelX, -panelY);
         }
+        AffineTransform panelTransform = g.getTransform();
+        panelRenderMouse = toPanelRenderMouse(client.getMouseCanvasPosition(), panelTransform);
 
         // header — fit the largest font that leaves room for close button + padding
         Font oldFont = g.getFont();
@@ -2190,8 +2198,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
         animations.prune();
         g.setTransform(oldTransform);
-        scalePanelInputBounds(panelX, panelY, panelScale);
-        panelBoundsScaledForInput = true;
+        scalePanelInputBounds(panelTransform);
         panelRenderMouse = null;
         renderTaskDetailsPopupUnscaled(g, fm);
         if (isTaskResolveOpen()) {
@@ -3563,9 +3570,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 null,
                 plugin.isCollectionLogSyncPending(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
-                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size(),
-                plugin.getSyncMismatchTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
-                plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).size()
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size()
         );
 
         rulesLayout.viewportBounds.setBounds(layout.viewportBounds);
@@ -3782,6 +3787,10 @@ public class XtremeTaskerOverlay extends Overlay {
             {
                 taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
             }
+            else if (rsf == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY)
+            {
+                taskQuery.setCollectionLogAndDiarySources();
+            }
             else
             {
                 taskQuery.selectAllSources();
@@ -3816,7 +3825,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 base,
                 taskQuery,
                 plugin::isTaskCompleted,
-                plugin::isNewTask);
+                plugin::isNewTask,
+                plugin::getCompletionInfo,
+                plugin::getTaskTimeTicks);
         List<XtremeTask> result = useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
         List<XtremeTask> immutableResult = Collections.unmodifiableList(new ArrayList<>(result));
         sortedTaskListCache.put(cacheKey, immutableResult);
@@ -3834,11 +3845,14 @@ public class XtremeTaskerOverlay extends Overlay {
         return "tier=" + tier
                 + "|scope=" + taskQuery.tierScope
                 + "|search=" + (taskQuery.searchText == null ? "" : taskQuery.searchText)
-                + "|src=" + taskQuery.sourceFilter
                 + "|ca=" + taskQuery.sourceCASelected
                 + "|cl=" + taskQuery.sourceClogsSelected
                 + "|da=" + taskQuery.sourceDasSelected
                 + "|status=" + taskQuery.statusFilter
+                + "|sort=" + taskQuery.sortColumn
+                + "|dir=" + taskQuery.sortDirection
+                + "|showDate=" + taskQuery.showDateCompletedColumn
+                + "|showSpent=" + taskQuery.showTimeSpentColumn
                 + "|newOnly=" + taskQuery.showNewTasksFilter
                 + "|condensed=" + useCondensedTaskRows()
                 + "|state=" + plugin.getTaskListRenderStateHash();
@@ -3982,6 +3996,16 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public Rectangle panelBounds() {
                 return panelBounds;
+            }
+
+            @Override
+            public Point toPanelLogicalPoint(Point point) {
+                if (point == null || panelScale == 1.0) {
+                    return point;
+                }
+                int x = panelInputAnchorX + (int) Math.round((point.x - panelInputAnchorX) / panelScale);
+                int y = panelInputAnchorY + (int) Math.round((point.y - panelInputAnchorY) / panelScale);
+                return new Point(x, y);
             }
 
             @Override
@@ -4694,12 +4718,12 @@ public class XtremeTaskerOverlay extends Overlay {
         }
     }
 
-    private void scalePanelInputBounds(int anchorX, int anchorY, double scale) {
-        if (scale == 1.0) {
+    private void scalePanelInputBounds(AffineTransform transform) {
+        if (transform == null || transform.isIdentity()) {
             return;
         }
 
-        scaleRects(anchorX, anchorY, scale,
+        transformRects(transform,
                 panelBounds, panelDragBarBounds, panelCloseBounds,
                 currentTabBounds, tasksTabBounds, rulesTabBounds,
                 taskListViewportBounds, taskScrollbarRailBounds, taskScrollbarThumbBounds,
@@ -4711,25 +4735,24 @@ public class XtremeTaskerOverlay extends Overlay {
                 taskResolveBounds, taskResolveCloseBounds,
                 taskResolveSaveBounds, taskResolveCancelBounds, taskDetailsIncompleteConfirmBounds,
                 taskDetailsIncompleteConfirmYesBounds, taskDetailsIncompleteConfirmNoBounds);
-        scaleCurrentLayoutBounds(anchorX, anchorY, scale);
-        scaleRulesLayoutBounds(anchorX, anchorY, scale);
-        scaleControlsLayoutBounds(controls, anchorX, anchorY, scale);
-        scaleRectMap(taskRowBounds, anchorX, anchorY, scale);
-        scaleRectMap(taskCheckboxBounds, anchorX, anchorY, scale);
-        scaleRectMap(syncMismatchTaskBounds, anchorX, anchorY, scale);
-        scaleRectMap(taskResolveInstanceToggleBounds, anchorX, anchorY, scale);
+        transformCurrentLayoutBounds(transform);
+        transformRulesLayoutBounds(transform);
+        transformRectMap(taskRowBounds, transform);
+        transformRectMap(taskCheckboxBounds, transform);
+        transformRectMap(syncMismatchTaskBounds, transform);
+        transformRectMap(taskResolveInstanceToggleBounds, transform);
     }
 
-    private void scaleCurrentLayoutBounds(int anchorX, int anchorY, double scale) {
-        scaleRects(anchorX, anchorY, scale,
+    private void transformCurrentLayoutBounds(AffineTransform transform) {
+        transformRects(transform,
                 currentLayout.wikiButtonBounds, currentLayout.rollButtonBounds,
                 currentLayout.completeButtonBounds, currentLayout.undoButtonBounds,
                 currentLayout.rollSourceIconBounds, currentLayout.viewportBounds,
                 currentLayout.scrollbarRailBounds, currentLayout.scrollbarThumbBounds);
     }
 
-    private void scaleRulesLayoutBounds(int anchorX, int anchorY, double scale) {
-        scaleRects(anchorX, anchorY, scale,
+    private void transformRulesLayoutBounds(AffineTransform transform) {
+        transformRects(transform,
                 rulesLayout.viewportBounds, rulesLayout.reloadButtonBounds,
                 rulesLayout.taskerFaqLinkBounds, rulesLayout.githubReadmeLinkBounds,
                 rulesLayout.syncProgressButtonBounds, rulesLayout.syncCaFoundReviewButtonBounds,
@@ -4737,52 +4760,42 @@ public class XtremeTaskerOverlay extends Overlay {
                 rulesLayout.subTabRulesBounds, rulesLayout.subTabDataSyncsBounds);
     }
 
-    private void scaleControlsLayoutBounds(TaskControlsLayout layout, int anchorX, int anchorY, double scale) {
-        scaleRects(anchorX, anchorY, scale,
-                layout.searchBox, layout.filtersHeaderBounds, layout.filterSourceAll, layout.filterCA,
-                layout.filterCL, layout.filterDA, layout.filterStatusAll, layout.filterIncomplete,
-                layout.filterComplete, layout.filterTierThis, layout.filterTierAll, layout.clearFilters,
-                layout.filterNewTasks, layout.filterNewTasksHelp);
-        layout.searchTextX = scaleX(layout.searchTextX, anchorX, scale);
-        for (int i = 0; i < layout.searchCharXPositions.length; i++) {
-            layout.searchCharXPositions[i] = scaleX(layout.searchCharXPositions[i], anchorX, scale);
-        }
-    }
-
-    private void scaleRectMap(Map<?, Rectangle> map, int anchorX, int anchorY, double scale) {
+    private void transformRectMap(Map<?, Rectangle> map, AffineTransform transform) {
         synchronized (map) {
             for (Rectangle r : map.values()) {
-                scaleRect(r, anchorX, anchorY, scale);
+                transformRect(r, transform);
             }
         }
     }
 
-    private void scaleRects(int anchorX, int anchorY, double scale, Rectangle... rects)
+    private void transformRects(AffineTransform transform, Rectangle... rects)
     {
         for (Rectangle rect : rects)
         {
-            scaleRect(rect, anchorX, anchorY, scale);
+            transformRect(rect, transform);
         }
     }
 
-    private void scaleRect(Rectangle r, int anchorX, int anchorY, double scale) {
+    private void transformRect(Rectangle r, AffineTransform transform) {
         if (r == null || r.width <= 0 || r.height <= 0) {
             return;
         }
 
-        int x1 = scaleX(r.x, anchorX, scale);
-        int y1 = scaleY(r.y, anchorY, scale);
-        int x2 = scaleX(r.x + r.width, anchorX, scale);
-        int y2 = scaleY(r.y + r.height, anchorY, scale);
-        r.setBounds(x1, y1, Math.max(1, x2 - x1), Math.max(1, y2 - y1));
-    }
+        Point2D p1 = transform.transform(new Point2D.Double(r.x, r.y), null);
+        Point2D p2 = transform.transform(new Point2D.Double(r.x + r.width, r.y), null);
+        Point2D p3 = transform.transform(new Point2D.Double(r.x, r.y + r.height), null);
+        Point2D p4 = transform.transform(new Point2D.Double(r.x + r.width, r.y + r.height), null);
 
-    private int scaleX(int x, int anchorX, double scale) {
-        return anchorX + (int) Math.round((x - anchorX) * scale);
-    }
+        double minX = Math.min(Math.min(p1.getX(), p2.getX()), Math.min(p3.getX(), p4.getX()));
+        double minY = Math.min(Math.min(p1.getY(), p2.getY()), Math.min(p3.getY(), p4.getY()));
+        double maxX = Math.max(Math.max(p1.getX(), p2.getX()), Math.max(p3.getX(), p4.getX()));
+        double maxY = Math.max(Math.max(p1.getY(), p2.getY()), Math.max(p3.getY(), p4.getY()));
 
-    private int scaleY(int y, int anchorY, double scale) {
-        return anchorY + (int) Math.round((y - anchorY) * scale);
+        int x = (int) Math.floor(minX);
+        int y = (int) Math.floor(minY);
+        int w = Math.max(1, (int) Math.ceil(maxX) - x);
+        int h = Math.max(1, (int) Math.ceil(maxY) - y);
+        r.setBounds(x, y, w, h);
     }
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill) {

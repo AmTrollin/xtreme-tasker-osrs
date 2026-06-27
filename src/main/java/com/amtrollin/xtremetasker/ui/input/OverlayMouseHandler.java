@@ -256,7 +256,8 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         // SEARCH box focus (only when panel is open and click is inside panel)
         if (a.activeTab() == OverlayInputAccess.MainTab.TASKS && button == MouseEvent.BUTTON1) {
-            if (a.controlsLayout().searchBox.contains(p)) {
+            if (containsControl(a.controlsLayout().searchBox, p)) {
+                Point searchPoint = a.toPanelLogicalPoint(p);
                 a.taskQuery().searchFocused = true;
                 a.client().getCanvas().requestFocusInWindow();
 
@@ -268,7 +269,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     a.taskQuery().searchSelEnd = text.length();
                 } else if (clickCount == 2) {
                     // Double-click: select word at click position
-                    int charIdx = charIndexAt(p.x, a.controlsLayout().searchTextX, a.controlsLayout().searchCharXPositions, text);
+                    int charIdx = charIndexAt(searchPoint.x, a.controlsLayout().searchTextX, a.controlsLayout().searchCharXPositions, text);
                     int wordStart = charIdx;
                     while (wordStart > 0 && !Character.isWhitespace(text.charAt(wordStart - 1))) wordStart--;
                     int wordEnd = charIdx;
@@ -325,7 +326,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 // 0) Filters / Sort clear links
                 // ----------------------------
                 if (a.controlsLayout().clearFilters.width > 0
-                        && a.controlsLayout().clearFilters.contains(p)) {
+                        && containsControl(a.controlsLayout().clearFilters, p)) {
                     TaskListQuery q = a.taskQuery();
                     q.selectAllSources();
                     q.statusFilter = TaskListQuery.StatusFilter.ALL;
@@ -337,39 +338,39 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 // ----------------------------
                 // 1) SOURCE filter (multi-select; all selected collapses to All)
                 // ----------------------------
-                if (a.controlsLayout().filterSourceAll.contains(p)) {
+                if (containsControl(a.controlsLayout().filterSourceAll, p)) {
                     changed = setSourceFilter(TaskListQuery.SourceFilter.ALL);
-                } else if (a.controlsLayout().filterCA.contains(p)) {
+                } else if (containsControl(a.controlsLayout().filterCA, p)) {
                     changed = toggleSourceFilter(TaskListQuery.SourceFilter.CA);
-                } else if (a.controlsLayout().filterCL.contains(p)) {
+                } else if (containsControl(a.controlsLayout().filterCL, p)) {
                     changed = toggleSourceFilter(TaskListQuery.SourceFilter.CLOGS);
-                } else if (a.controlsLayout().filterDA.contains(p)) {
+                } else if (containsControl(a.controlsLayout().filterDA, p)) {
                     changed = toggleSourceFilter(TaskListQuery.SourceFilter.DAS);
                 }
 
                 // ----------------------------
                 // 2) STATUS filter (single-select)
                 // ----------------------------
-                else if (a.controlsLayout().filterStatusAll.contains(p)) {
+                else if (containsControl(a.controlsLayout().filterStatusAll, p)) {
                     changed = setStatusFilter(TaskListQuery.StatusFilter.ALL);
-                } else if (a.controlsLayout().filterIncomplete.contains(p)) {
+                } else if (containsControl(a.controlsLayout().filterIncomplete, p)) {
                     changed = toggleSingleSelectStatus(TaskListQuery.StatusFilter.INCOMPLETE);
-                } else if (a.controlsLayout().filterComplete.contains(p)) {
+                } else if (containsControl(a.controlsLayout().filterComplete, p)) {
                     changed = toggleSingleSelectStatus(TaskListQuery.StatusFilter.COMPLETE);
                 }
 
                 // ----------------------------
                 // 3) TIER scope (single-select)
                 // ----------------------------
-                else if (a.controlsLayout().filterTierThis.contains(p)) {
+                else if (containsControl(a.controlsLayout().filterTierThis, p)) {
                     changed = setTierScope(TaskListQuery.TierScope.THIS_TIER);
-                } else if (a.controlsLayout().filterTierAll.contains(p)) {
+                } else if (containsControl(a.controlsLayout().filterTierAll, p)) {
                     changed = setTierScope(TaskListQuery.TierScope.ALL_TIERS);
                 }
                 // ----------------------------
                 // 5) See New Tasks toggle (session-only, only visible when hasNewTasks)
                 // ----------------------------
-                else if (a.controlsLayout().filterNewTasks.width > 0 && a.controlsLayout().filterNewTasks.contains(p)) {
+                else if (a.controlsLayout().filterNewTasks.width > 0 && containsControl(a.controlsLayout().filterNewTasks, p)) {
                     a.taskQuery().showNewTasksFilter = !a.taskQuery().showNewTasksFilter;
                     if (a.taskQuery().showNewTasksFilter) {
                         // Auto-expand to show new tasks across all tiers/sources/statuses
@@ -378,6 +379,22 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         a.taskQuery().statusFilter = TaskListQuery.StatusFilter.ALL;
                     }
                     changed = true;
+                }
+                else if (containsControl(a.controlsLayout().displayDateCompleted, p)) {
+                    a.taskQuery().showDateCompletedColumn = !a.taskQuery().showDateCompletedColumn;
+                    clearHiddenSort(TaskListQuery.SortColumn.DATE);
+                    changed = true;
+                }
+                else if (containsControl(a.controlsLayout().displayTimeSpent, p)) {
+                    a.taskQuery().showTimeSpentColumn = !a.taskQuery().showTimeSpentColumn;
+                    clearHiddenSort(TaskListQuery.SortColumn.SPENT);
+                    changed = true;
+                }
+                else if (containsControl(a.controlsLayout().sortDateCompleted, p)) {
+                    changed = a.taskQuery().toggleSort(TaskListQuery.SortColumn.DATE);
+                }
+                else if (containsControl(a.controlsLayout().sortTimeSpent, p)) {
+                    changed = a.taskQuery().toggleSort(TaskListQuery.SortColumn.SPENT);
                 }
 
                 if (changed) {
@@ -1114,21 +1131,27 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.activeTab() == OverlayInputAccess.MainTab.TASKS && (
                         // tier tabs
                         containsAny(a.tierTabBounds(), p)
-                        || cl.searchBox.contains(p)
-                        || (cl.clearFilters.width > 0 && cl.clearFilters.contains(p))
+                        || containsControl(cl.searchBox, p)
+                        || (cl.clearFilters.width > 0 && containsControl(cl.clearFilters, p))
                         // filter pills (always clickable)
-                        || cl.filterSourceAll.contains(p)
-                        || cl.filterCA.contains(p)
-                        || cl.filterCL.contains(p)
-                        || cl.filterDA.contains(p)
-                        || cl.filterStatusAll.contains(p)
-                        || cl.filterIncomplete.contains(p)
-                        || cl.filterComplete.contains(p)
-                        || cl.filterTierThis.contains(p)
-                        || cl.filterTierAll.contains(p)
+                        || containsControl(cl.filterSourceAll, p)
+                        || containsControl(cl.filterCA, p)
+                        || containsControl(cl.filterCL, p)
+                        || containsControl(cl.filterDA, p)
+                        || containsControl(cl.filterStatusAll, p)
+                        || containsControl(cl.filterIncomplete, p)
+                        || containsControl(cl.filterComplete, p)
+                        || containsControl(cl.filterTierThis, p)
+                        || containsControl(cl.filterTierAll, p)
                         // new tasks button
-                        || cl.filterNewTasks.contains(p)
-                        || cl.filterNewTasksHelp.contains(p)
+                        || containsControl(cl.filterNewTasks, p)
+                        || containsControl(cl.filterNewTasksHelp, p)
+                        // column display toggles
+                        || containsControl(cl.displayDateCompleted, p)
+                        || containsControl(cl.displayTimeSpent, p)
+                        // task list sortable columns
+                        || containsControl(cl.sortDateCompleted, p)
+                        || containsControl(cl.sortTimeSpent, p)
                         // task list scrollbar
                         || (!a.isTaskDetailsOpen() && (
                                 a.taskScrollbarThumbBounds().contains(p)
@@ -1161,6 +1184,14 @@ public final class OverlayMouseHandler extends MouseAdapter {
     private boolean taskDetailsInstanceRemoveContains(Point p)
     {
         return containsAny(a.taskDetailsInstanceRemoveBounds(), p);
+    }
+
+    private boolean containsControl(Rectangle bounds, Point p) {
+        if (bounds == null || p == null) {
+            return false;
+        }
+        Point logical = a.toPanelLogicalPoint(p);
+        return bounds.contains(logical);
     }
 
     private static boolean containsAny(Map<?, Rectangle> bounds, Point p) {
@@ -1455,6 +1486,15 @@ public final class OverlayMouseHandler extends MouseAdapter {
         if (q.tierScope == next) return false;
         q.tierScope = next;
         return true;
+    }
+
+    private void clearHiddenSort(TaskListQuery.SortColumn column)
+    {
+        TaskListQuery q = a.taskQuery();
+        if (!q.isColumnVisible(column) && q.sortColumn == column)
+        {
+            q.sortDirection = TaskListQuery.SortDirection.OFF;
+        }
     }
 
     /** Returns the character index in {@code text} closest to pixel {@code clickX}. */

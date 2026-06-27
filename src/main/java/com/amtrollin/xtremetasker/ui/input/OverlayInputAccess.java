@@ -54,6 +54,7 @@ public interface OverlayInputAccess
     // bounds needed for hit testing
     Rectangle iconBounds();
     Rectangle panelBounds();
+    Point toPanelLogicalPoint(Point point);
     Rectangle panelDragBarBounds();
     Rectangle panelCloseBounds();
 

@@ -25,10 +25,11 @@ import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 public final class TasksTabRenderer {
     private static final int TASKS_CONTROLS_COLUMN_W = 228;
     private static final long TASK_NAME_TOOLTIP_DELAY_MS = 1000L;
+    private static final int DATE_COL_W = 58;
+    private static final int SPENT_COL_W = 48;
+    private static final int HEADER_COL_GAP = 6;
 
     private final UiPalette palette;
-    private final Rectangle headerTierBounds = new Rectangle();
-    private final Rectangle headerSourceBounds = new Rectangle();
     private String hoveredTruncatedTaskKey = null;
     private long hoveredTruncatedTaskSinceMs = 0L;
 
@@ -151,7 +152,7 @@ public final class TasksTabRenderer {
 
         g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
 
-        drawTaskTableHeader(g, fm, headerTierBounds, headerSourceBounds, listColumnX, listCursorBaseline - 5, listColumnW);
+        drawTaskTableHeader(g, fm, state.controlsLayout(), state.taskQuery(), listColumnX, listCursorBaseline - 5, listColumnW);
 
         listCursorBaseline += fm.getHeight() - 1;
 
@@ -236,6 +237,9 @@ public final class TasksTabRenderer {
                 hoverY,
                 animations::completionProgress,
                 plugin::isTaskCompleted,
+                plugin::getCompletionInfo,
+                plugin::getTaskTimeTicks,
+                state.taskQuery(),
                 useCondensedRows ? plugin::getTaskGroupProgress : null,
                 useCondensedRows ? plugin::isTaskGroupNew : plugin::isNewTask
         );
@@ -360,42 +364,70 @@ public final class TasksTabRenderer {
     private void drawTaskTableHeader(
             Graphics2D g,
             FontMetrics fm,
-            Rectangle tierBounds,
-            Rectangle sourceBounds,
+            com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout layout,
+            TaskListQuery query,
             int x,
             int baselineY,
             int width
     ) {
         FontMetrics badgeFm = g.getFontMetrics(FontManager.getRunescapeSmallFont());
-        int badgeReserveW = badgeHeaderReserveWidth(badgeFm);
+        int badgeReserveW = badgeHeaderReserveWidth(badgeFm, query);
 
         g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
-        g.drawString(TextUtils.truncateToWidth("Task", fm, Math.max(0, width - badgeReserveW)), x, baselineY);
-        drawBadgeColumnHeaders(g, tierBounds, sourceBounds, baselineY, x, width);
+        int taskHeaderW = Math.max(0, width - badgeReserveW);
+        g.drawString(TextUtils.truncateToWidth("Task", fm, taskHeaderW), x, baselineY);
+        drawBadgeColumnHeaders(g, layout, query, baselineY, x, width);
     }
 
-    private void drawBadgeColumnHeaders(Graphics2D g, Rectangle tierBounds, Rectangle sourceBounds,
+    private void drawBadgeColumnHeaders(Graphics2D g, com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout layout, TaskListQuery query,
                                         int baselineY, int x, int width) {
         Font oldFont = g.getFont();
         g.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics sfm = g.getFontMetrics();
         int pillPadX = 6;
-        int pillGap = 3;
         int top = baselineY - sfm.getAscent() - 2;
         int h = sfm.getHeight() + 4;
         int nextRight = x + width - 13;
 
-        int srcW = Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2;
-        int srcX = nextRight - srcW;
-        sourceBounds.setBounds(srcX, top, srcW, h);
-        drawSmallHeaderLabel(g, sfm, sourceBounds, "Src");
-        nextRight = srcX - pillGap;
+        layout.sortDateCompleted.setBounds(0, 0, 0, 0);
+        layout.sortTimeSpent.setBounds(0, 0, 0, 0);
 
-        int tierW = sfm.stringWidth("Master") + pillPadX * 2;
+        int srcW = Math.max(
+                Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2,
+                sfm.stringWidth("Src") + 4);
+        int srcX = nextRight - srcW;
+        drawSmallHeaderLabel(g, sfm, new Rectangle(srcX, top, srcW, h), "Src");
+        nextRight = srcX - HEADER_COL_GAP;
+
+        int tierW = Math.max(sfm.stringWidth("Master") + pillPadX * 2, sfm.stringWidth("Tier") + 4);
         int tierX = nextRight - tierW;
-        tierBounds.setBounds(tierX, top, tierW, h);
-        drawSmallHeaderLabel(g, sfm, tierBounds, "Tier");
+        drawSmallHeaderLabel(g, sfm, new Rectangle(tierX, top, tierW, h), "Tier");
+        nextRight = tierX - HEADER_COL_GAP;
+
+        if (query != null && query.showTimeSpentColumn)
+        {
+            int spentX = nextRight - SPENT_COL_W;
+            layout.sortTimeSpent.setBounds(spentX, top, SPENT_COL_W, h);
+            drawSmallHeaderLabel(g, sfm, layout.sortTimeSpent, sortHeaderLabel("Spent", query, TaskListQuery.SortColumn.SPENT));
+            nextRight = spentX - HEADER_COL_GAP;
+        }
+
+        if (query != null && query.showDateCompletedColumn)
+        {
+            int dateX = nextRight - DATE_COL_W;
+            layout.sortDateCompleted.setBounds(dateX, top, DATE_COL_W, h);
+            drawSmallHeaderLabel(g, sfm, layout.sortDateCompleted, sortHeaderLabel("Date", query, TaskListQuery.SortColumn.DATE));
+        }
         g.setFont(oldFont);
+    }
+
+    private static String sortHeaderLabel(String label, TaskListQuery query, TaskListQuery.SortColumn column)
+    {
+        if (query == null || query.sortColumn != column || query.sortDirection == TaskListQuery.SortDirection.OFF)
+        {
+            return label + " -";
+        }
+        return label + (query.sortDirection == TaskListQuery.SortDirection.DESC ? " v" : " ^");
     }
 
     private void drawSmallHeaderLabel(Graphics2D g, FontMetrics fm, Rectangle bounds, String text) {
@@ -409,12 +441,28 @@ public final class TasksTabRenderer {
                 bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent());
     }
 
-    private static int badgeHeaderReserveWidth(FontMetrics fm)
+    private static int badgeHeaderReserveWidth(FontMetrics fm, TaskListQuery query)
     {
-        return 13
-                + fm.stringWidth("Master") + 12
-                + Math.max(fm.stringWidth("CA"), Math.max(fm.stringWidth("CL"), fm.stringWidth("AD"))) + 12
-                + 3;
+        int sourceW = Math.max(
+                Math.max(fm.stringWidth("CA"), Math.max(fm.stringWidth("CL"), fm.stringWidth("AD"))) + 12,
+                fm.stringWidth("Src") + 4);
+        int tierW = Math.max(fm.stringWidth("Master") + 12, fm.stringWidth("Tier") + 4);
+
+        int width = 13;
+        width = addColumnWidth(width, query != null && query.showDateCompletedColumn ? DATE_COL_W : 0);
+        width = addColumnWidth(width, query != null && query.showTimeSpentColumn ? SPENT_COL_W : 0);
+        width = addColumnWidth(width, tierW);
+        width = addColumnWidth(width, sourceW);
+        return width;
+    }
+
+    private static int addColumnWidth(int current, int width)
+    {
+        if (width <= 0)
+        {
+            return current;
+        }
+        return current == 0 ? width : current + HEADER_COL_GAP + width;
     }
 
     private void drawTaskNameHoverTooltip(

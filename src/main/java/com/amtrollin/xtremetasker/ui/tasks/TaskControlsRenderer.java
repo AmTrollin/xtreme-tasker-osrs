@@ -209,8 +209,6 @@ public class TaskControlsRenderer
         // Row 3: Filters header + applied state
         // ================================
         cursorY += 6;
-        layout.filtersExpanded = true;
-        layout.filtersHeaderBounds.setBounds(0, 0, 0, 0);
         FontMetrics bodyFm = fm;
         java.awt.Font savedHeaderFont = g.getFont();
         java.awt.Font sectionHeaderFont = net.runelite.client.ui.FontManager.getRunescapeBoldFont().deriveFont(java.awt.Font.BOLD, 16f);
@@ -302,6 +300,42 @@ public class TaskControlsRenderer
 
         drawTierScopePill(g, fm, layout.filterTierThis, T_THIS, query.tierScope == TaskListQuery.TierScope.THIS_TIER);
         drawPill(g, fm, layout.filterTierAll, T_ALL, query.tierScope == TaskListQuery.TierScope.ALL_TIERS);
+
+        cursorY += rowH + 28;
+
+        g.setFont(sectionHeaderFont);
+        headerFm = g.getFontMetrics();
+        g.setColor(uiGold);
+        g.drawString("Column displays", rowX + leftPad, cursorY);
+        drawHeaderRule(g, rowX + leftPad + headerFm.stringWidth("Column displays") + 10,
+                cursorY - headerFm.getAscent() + headerFm.getHeight() / 2,
+                rowX + rowW - rightPad);
+        g.setFont(savedHeaderFont);
+        fm = bodyFm;
+        cursorY += headerFm.getHeight() + 4;
+
+        rowTop = cursorY - fm.getAscent();
+        int displayAvailableW = rowW - leftPad - rightPad;
+        drawTwoColumnPillGrid(
+                g,
+                fm,
+                rowX + leftPad,
+                rowTop,
+                rowH,
+                displayAvailableW,
+                chipGap,
+                new Rectangle[] {
+                        layout.displayDateCompleted,
+                        layout.displayTimeSpent
+                },
+                new String[] {
+                        "Date completed",
+                        "Time spent"
+                },
+                new boolean[] {
+                        query.showDateCompletedColumn,
+                        query.showTimeSpentColumn
+                });
 
         cursorY += rowH + 20;
 

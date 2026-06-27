@@ -26,16 +26,28 @@ public class TaskListQuery
         COMPLETE
     }
 
-    public SourceFilter sourceFilter = SourceFilter.ALL;
+    public enum SortColumn
+    {
+        DATE,
+        SPENT
+    }
+
+    public enum SortDirection
+    {
+        OFF,
+        ASC,
+        DESC
+    }
+
     public boolean sourceCASelected = true;
     public boolean sourceClogsSelected = true;
     public boolean sourceDasSelected = true;
     public StatusFilter statusFilter = StatusFilter.ALL;
+    public SortColumn sortColumn = SortColumn.DATE;
+    public SortDirection sortDirection = SortDirection.OFF;
+    public boolean showDateCompletedColumn = true;
+    public boolean showTimeSpentColumn = true;
 
-    // =========================
-    // Optional: compatibility helpers
-    // (lets you keep old filter logic temporarily)
-    // =========================
     public boolean isFilterCA()
     {
         return isSourceAllSelected() || sourceCASelected;
@@ -61,7 +73,6 @@ public class TaskListQuery
         sourceCASelected = true;
         sourceClogsSelected = true;
         sourceDasSelected = true;
-        sourceFilter = SourceFilter.ALL;
     }
 
     public void setOnlySource(SourceFilter source)
@@ -75,7 +86,60 @@ public class TaskListQuery
         sourceCASelected = source == SourceFilter.CA;
         sourceClogsSelected = source == SourceFilter.CLOGS;
         sourceDasSelected = source == SourceFilter.DAS;
-        sourceFilter = source;
+    }
+
+    public void setCollectionLogAndDiarySources()
+    {
+        sourceCASelected = false;
+        sourceClogsSelected = true;
+        sourceDasSelected = true;
+    }
+
+    public boolean toggleSort(SortColumn column)
+    {
+        if (column == null)
+        {
+            return false;
+        }
+
+        if (sortColumn == column)
+        {
+            switch (sortDirection)
+            {
+                case OFF:
+                    sortDirection = SortDirection.ASC;
+                    break;
+                case ASC:
+                    sortDirection = SortDirection.DESC;
+                    break;
+                case DESC:
+                default:
+                    sortDirection = SortDirection.OFF;
+                    break;
+            }
+            return true;
+        }
+
+        sortColumn = column;
+        sortDirection = SortDirection.ASC;
+        return true;
+    }
+
+    public boolean isColumnVisible(SortColumn column)
+    {
+        if (column == null)
+        {
+            return false;
+        }
+        switch (column)
+        {
+            case DATE:
+                return showDateCompletedColumn;
+            case SPENT:
+                return showTimeSpentColumn;
+            default:
+                return true;
+        }
     }
 
     public boolean toggleSource(SourceFilter source)
@@ -120,40 +184,7 @@ public class TaskListQuery
         {
             selectAllSources();
         }
-        else if (isSourceAllSelected())
-        {
-            sourceFilter = SourceFilter.ALL;
-        }
-        else
-        {
-            updateLegacySourceFilter();
-        }
-
         return beforeCA != sourceCASelected || beforeClogs != sourceClogsSelected || beforeDas != sourceDasSelected;
-    }
-
-    public void updateLegacySourceFilter()
-    {
-        if (isSourceAllSelected())
-        {
-            sourceFilter = SourceFilter.ALL;
-        }
-        else if (sourceCASelected && !sourceClogsSelected && !sourceDasSelected)
-        {
-            sourceFilter = SourceFilter.CA;
-        }
-        else if (!sourceCASelected && sourceClogsSelected && !sourceDasSelected)
-        {
-            sourceFilter = SourceFilter.CLOGS;
-        }
-        else if (!sourceCASelected && !sourceClogsSelected && sourceDasSelected)
-        {
-            sourceFilter = SourceFilter.DAS;
-        }
-        else
-        {
-            sourceFilter = SourceFilter.ALL;
-        }
     }
 
     public boolean isFilterIncomplete()
