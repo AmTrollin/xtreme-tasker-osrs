@@ -618,6 +618,56 @@ public class CollectionLogMismatchTest
                 plugin.getTaskTimeTicks(task));
     }
 
+    @Test
+    public void currentSingleCollectionLogTaskAlreadyCompleteAtRollUsesExistingCacheWithoutSync() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-right-skull-half_001_cbr_test",
+                "Get a Right skull half",
+                TaskTier.EASY,
+                new int[]{9007},
+                1
+        );
+
+        collectionLogService.storeItem(9007);
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("Current single-item CLOG task should use existing cache without waiting for sync",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Already obtained CLOG task should be CBR immediately on roll",
+                Long.valueOf(-1L),
+                plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
+    public void currentCollectionLogGetterRecoversReadyStateFromExistingCache() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-right-skull-half_001_getter_test",
+                "Get a Right skull half",
+                TaskTier.EASY,
+                new int[]{9007},
+                1
+        );
+
+        plugin.setCurrentTaskForTesting(task);
+        assertTrue("Task should start unready before CLOG cache has the item",
+                !plugin.isCurrentTaskCompletionCriteriaMet());
+
+        collectionLogService.storeItem(9007);
+
+        assertTrue("Current task readiness getter should reconcile from obtained CLOG cache",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
     private static XtremeTask countedCollectionLogTask(String id, String name, int count)
     {
         TaskVerification verification = new Gson().fromJson(

@@ -1900,6 +1900,15 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return false;
         }
 
+        if (isCurrentCollectionLogTaskCompleteFromCache(task))
+        {
+            currentTaskCompletionCriteriaMet = true;
+            if (isCurrentCollectionLogTaskCompleteAtRollBaseline(task))
+            {
+                markCurrentTaskCompletedBeforeRolledIfReady();
+            }
+        }
+
         return currentTaskCompletionCriteriaMet;
     }
 
@@ -1920,8 +1929,57 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         TaskSource source = task.getSource();
+        if (isCurrentCollectionLogTaskCompleteFromCache(task))
+        {
+            currentTaskCompletionCriteriaMet = true;
+            return;
+        }
+
         currentTaskCompletionCriteriaMet = (source == TaskSource.COMBAT_ACHIEVEMENT || isCollectionLogSyncSource(source))
                 && syncCompletionCandidateTaskIds.contains(id);
+    }
+
+    private boolean isCurrentCollectionLogTaskCompleteFromCache(XtremeTask task)
+    {
+        ItemRequirement requirement = currentCollectionLogRequirement(task);
+        return requirement != null
+                && countObtainedCollectionLogItems(requirement.itemIds) >= requirement.requiredCount;
+    }
+
+    private boolean isCurrentCollectionLogTaskCompleteAtRollBaseline(XtremeTask task)
+    {
+        ItemRequirement requirement = currentCollectionLogRequirement(task);
+        if (requirement == null)
+        {
+            return false;
+        }
+
+        String signature = collectionLogRequirementSignature(requirement.itemIds);
+        Integer baselineCount = getCurrentTaskCollectionLogBaselineCount(signature);
+        return baselineCount != null && baselineCount >= requirement.requiredCount;
+    }
+
+    private ItemRequirement currentCollectionLogRequirement(XtremeTask task)
+    {
+        if (task == null
+                || task.getSource() != TaskSource.COLLECTION_LOG
+                || collectionLogService == null)
+        {
+            return null;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null || verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG)
+        {
+            return null;
+        }
+
+        if (hasCollectionLogCompletionItem(verification))
+        {
+            return new ItemRequirement(new int[]{verification.getCompletionItemId()}, 1);
+        }
+
+        return resolveCollectionLogRequirement(task);
     }
 
     private void refreshCurrentTaskCompletionCandidatesForCurrentSource()
