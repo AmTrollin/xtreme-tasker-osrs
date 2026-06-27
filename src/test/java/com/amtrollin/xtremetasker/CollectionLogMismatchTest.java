@@ -583,6 +583,41 @@ public class CollectionLogMismatchTest
                 plugin.isCurrentTaskCompletionCriteriaMet());
     }
 
+    @Test
+    public void currentCollectionLogTaskAlreadyCompleteAtRollUsesCompletedBeforeRolledTime() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-1-unique-from-forestry_001_cbr_test",
+                "Get 1 unique from Forestry",
+                TaskTier.EASY,
+                new int[]{28138, 28140, 28146, 28166, 28169, 28171},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        collectionLogService.storeItem(28138);
+
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("Current CLOG task should still be markable complete",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Completed-before-rolled task should use CBR time sentinel",
+                Long.valueOf(-1L),
+                plugin.getTaskTimeTicks(task));
+
+        plugin.toggleTaskCompletedAndPersist(task);
+
+        assertTrue("CBR task should mark complete normally", plugin.isTaskCompleted(task));
+        assertEquals("CBR time marker should survive manual completion",
+                Long.valueOf(-1L),
+                plugin.getTaskTimeTicks(task));
+    }
+
     private static XtremeTask countedCollectionLogTask(String id, String name, int count)
     {
         TaskVerification verification = new Gson().fromJson(

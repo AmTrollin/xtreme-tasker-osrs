@@ -664,12 +664,14 @@ public final class CurrentTabRenderer
             drawn++;
         }
 
-        boolean showTimer = taskTimeTicks != null && taskTimeTicks > 0;
+        boolean completedBeforeRolled = taskTimeTicks != null && taskTimeTicks < 0;
+        boolean showTimer = completedBeforeRolled || (taskTimeTicks != null && taskTimeTicks > 0);
         if (showTimer)
         {
             y += Math.max(8, card.height / 36);
-            long seconds = Math.round(taskTimeTicks * 0.6);
-            String timerText = formatTicks(seconds);
+            String timerText = completedBeforeRolled
+                    ? "Completed before rolled"
+                    : formatTicks(Math.round(taskTimeTicks * 0.6));
             int timerX = x + Math.max(0, (innerW - timerFm.stringWidth(timerText)) / 2);
             g.setFont(timerFont);
             g.setColor(uiTextDim);
@@ -978,7 +980,14 @@ public final class CurrentTabRenderer
         g.drawString(completed, x, y);
         y += lineH;
 
-        if (ticks != null && ticks > 0)
+        if (ticks != null && ticks < 0)
+        {
+            String time = "Time spent: N/A (Completed before rolled)";
+            time = truncateToWidth(time, fm, innerW);
+            g.drawString(time, x, y);
+            y += lineH;
+        }
+        else if (ticks != null && ticks > 0)
         {
             String time = "Time spent: " + formatTicks(Math.round(ticks * 0.6));
             time = truncateToWidth(time, fm, innerW);

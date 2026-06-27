@@ -2483,7 +2483,9 @@ public class XtremeTaskerOverlay extends Overlay {
 
         g.setFont(oldFont);
         Long ticks = plugin.getTaskTimeTicks(current);
-        String time = compactFormatTicks(Math.round((ticks == null ? 0L : ticks) * 0.6));
+        String time = ticks != null && ticks < 0
+                ? "Completed before rolled"
+                : compactFormatTicks(Math.round((ticks == null ? 0L : ticks) * 0.6));
         time = TextUtils.truncateToWidth(time, fm, textW);
         int timeX = card.x + (card.width - fm.stringWidth(time)) / 2;
         g.setColor(P.UI_TEXT_DIM);
@@ -2877,6 +2879,10 @@ public class XtremeTaskerOverlay extends Overlay {
     private String taskResolveTimeSpentText(XtremeTask task)
     {
         Long ticks = plugin.getTaskTimeTicks(task);
+        if (ticks != null && ticks < 0)
+        {
+            return "CBR";
+        }
         if (ticks == null || ticks <= 0)
         {
             return "time unknown";

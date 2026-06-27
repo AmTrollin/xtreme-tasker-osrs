@@ -1647,6 +1647,11 @@ public final class TaskDetailsPopup
 
     private static String buildTimeSpentLine(CompletionInfo info, Long ticks)
     {
+        if (ticks != null && ticks < 0)
+        {
+            return "Time spent: N/A (Completed before rolled)";
+        }
+
         if (ticks != null && ticks > 0)
         {
             return "Time spent: " + formatDuration(Math.round(ticks * 0.6));
@@ -1658,7 +1663,7 @@ public final class TaskDetailsPopup
         }
         if (info != null && info.source == CompletionInfo.Source.SYNCED)
         {
-            return "Time spent: unknown (synced)";
+            return "Time spent: N/A (synced)";
         }
         return "Time spent: unknown";
     }
@@ -1707,6 +1712,11 @@ public final class TaskDetailsPopup
 
     private static String instanceTimeSpentText(CompletionInfo info, Long ticks)
     {
+        if (ticks != null && ticks < 0)
+        {
+            return "N/A (Completed before rolled)";
+        }
+
         if (ticks != null && ticks > 0)
         {
             return formatDuration(Math.round(ticks * 0.6));
@@ -1718,7 +1728,7 @@ public final class TaskDetailsPopup
         }
         if (info != null && info.source == CompletionInfo.Source.SYNCED)
         {
-            return "unknown (synced)";
+            return "N/A (synced)";
         }
         return "unknown";
     }

@@ -51,6 +51,8 @@ public class PersistedState {
     private Map<String, Long> taskTimeTicksById = new HashMap<>();
     /** accumulated in game ticks captured at the moment each task was completed. */
     private Map<String, Long> completedTaskTimeTicksById = new HashMap<>();
+    /** Task ids that were already complete in game when rolled as current. */
+    private Set<String> completedBeforeRolledTaskIds = new HashSet<>();
     /** Collection log item IDs RuneLite has exposed for this account. */
     private Set<Integer> collectionLogItemIds = new HashSet<>();
     /** Per collection-log item acquisition order, used to show applied vs not-yet-applied items chronologically. */
