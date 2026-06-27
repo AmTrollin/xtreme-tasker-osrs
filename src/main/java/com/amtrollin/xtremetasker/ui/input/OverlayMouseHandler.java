@@ -250,6 +250,13 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
+        if (button == MouseEvent.BUTTON1 && a.panelModeToggleBounds().contains(p)) {
+            a.setCompactPanelMode(!a.isCompactPanelMode());
+            a.setActiveTab(OverlayInputAccess.MainTab.CURRENT);
+            e.consume();
+            return e;
+        }
+
         if (tryHandleTaskRowClick(e, p, button)) {
             return e;
         }
