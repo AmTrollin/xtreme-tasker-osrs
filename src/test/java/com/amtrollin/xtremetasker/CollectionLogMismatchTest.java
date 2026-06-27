@@ -492,6 +492,97 @@ public class CollectionLogMismatchTest
         assertEquals(first.getId(), mismatches.get(0).getId());
     }
 
+    @Test
+    public void currentRepeatedCollectionLogTaskCanCompleteFromExistingCache() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        for (int i = 1; i <= 6; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-1-unique-from-forestry_00" + i + "_test",
+                    "Get 1 unique from Forestry",
+                    TaskTier.EASY,
+                    forestryItemIds,
+                    i
+            ));
+        }
+
+        collectionLogService.storeItem(28138);
+        plugin.setCurrentTaskForTesting(tasks.get(0));
+
+        assertTrue("Current CLOG task should be markable complete when its required item is already cached",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
+    public void currentRepeatedCollectionLogTaskHighlightsAfterNewCachedDrop() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        int[] forestryItemIds = new int[]{28138, 28140, 28146, 28166, 28169, 28171};
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        for (int i = 1; i <= 6; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-1-unique-from-forestry_00" + i + "_test",
+                    "Get 1 unique from Forestry",
+                    TaskTier.EASY,
+                    forestryItemIds,
+                    i
+            ));
+        }
+
+        plugin.setCurrentTaskForTesting(tasks.get(0));
+        assertTrue("Current CLOG task should not be markable complete before the item is cached",
+                !plugin.isCurrentTaskCompletionCriteriaMet());
+
+        collectionLogService.storeItem(28138);
+
+        assertTrue("Current CLOG task should highlight once its required item is cached",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
+    public void currentCollectionLogCompletionDoesNotRequirePrerequisites() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = new XtremeTask(
+                "collection_log_easy_get-a-green-satchel_001_prereq_test",
+                "Get a Green satchel",
+                TaskSource.COLLECTION_LOG,
+                TaskTier.EASY,
+                null,
+                null,
+                null,
+                "99 Agility",
+                null,
+                new Gson().fromJson(
+                        "{\"method\":\"collection-log\",\"itemIds\":[10878],\"count\":1}",
+                        TaskVerification.class),
+                null
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        collectionLogService.storeItem(10878);
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("Current CLOG completion highlight should match cache evidence even when prereqs are unmet",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
     private static XtremeTask countedCollectionLogTask(String id, String name, int count)
     {
         TaskVerification verification = new Gson().fromJson(

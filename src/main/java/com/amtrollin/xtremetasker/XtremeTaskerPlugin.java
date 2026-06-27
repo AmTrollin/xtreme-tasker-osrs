@@ -154,6 +154,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private String undoableCompletedTaskId = null;
     private String currentTaskCollectionLogBaselineSignature = null;
     private Integer currentTaskCollectionLogBaselineCount = null;
+    private boolean currentTaskCompletionCriteriaMet = false;
 
     private final List<XtremeTask> tasks = new ArrayList<>();
     private boolean taskPackLoaded = false;
@@ -172,6 +173,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Map<String, Integer> caTaskIdsByNormalizedName = new HashMap<>();
     private final Map<String, List<XtremeTask>> taskGroupInstancesCache = new HashMap<>();
     private int taskGroupInstancesCachePackVersion = -1;
+    private int taskListRenderStateVersion = 0;
+    private int taskListTimerStateVersion = 0;
 
     private long rollAnimEndMs = 0L;
     private boolean inWorld = false;
@@ -219,6 +222,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         this.collectionLogService = collectionLogService;
         attachCollectionLogCacheListener();
+    }
+
+    void setCurrentTaskForTesting(XtremeTask task)
+    {
+        currentTask = task;
+        currentTaskId = task == null ? null : task.getId();
+        captureCurrentTaskCollectionLogBaseline();
+        refreshCurrentTaskCompletionCandidatesForCurrentSource();
     }
 
     void setSyncMismatchTitleForTesting(String syncMismatchTitle)
@@ -281,6 +292,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         undoableCompletedTaskId = null;
         currentTaskCollectionLogBaselineSignature = null;
         currentTaskCollectionLogBaselineCount = null;
+        currentTaskCompletionCriteriaMet = false;
 
         manualCompletedTaskIds.clear();
         syncedCompletedTaskIds.clear();
@@ -346,12 +358,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         if (tasks.isEmpty() || collectionLogService == null)
         {
+            refreshCurrentTaskCompletionCriteriaMet();
             return;
         }
 
         List<String> completionCandidateTaskIds = new ArrayList<>();
         findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds);
         setSyncCompletionCandidatesForSource(TaskSource.COLLECTION_LOG, completionCandidateTaskIds);
+        refreshCurrentTaskCompletionCriteriaMet();
     }
 
     private synchronized void saveActiveState(String reason) {
@@ -461,15 +475,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     public int getTaskListRenderStateHash() {
-        return Objects.hash(
-                loadedPackVersion,
-                manualCompletedTaskIds,
-                syncedCompletedTaskIds,
-                manualCompletionTimestamps,
-                syncedCompletionTimestamps,
-                taskTimeTicksById,
-                completedTaskTimeTicksById,
-                newTaskIds);
+        return taskListRenderStateVersion;
+    }
+
+    public int getTaskListTimerStateVersion()
+    {
+        return taskListTimerStateVersion;
     }
 
     public boolean hasTaskPackLoaded() {
@@ -578,7 +589,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public boolean isTaskGroupNew(XtremeTask task)
     {
-        for (XtremeTask groupedTask : TaskGroupUtils.groupFor(tasks, task))
+        for (XtremeTask groupedTask : getCachedTaskGroupInstances(task))
         {
             if (isNewTask(groupedTask))
             {
@@ -1708,6 +1719,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             currentTaskId = null;
             clearCurrentTaskCollectionLogBaseline();
         }
+        refreshCurrentTaskCompletionCandidatesForCurrentSource();
 
         XtremeTask undoableTask = findTaskById(undoableCompletedTaskId);
         if (undoableTask == null || !isTaskCompleted(undoableTask))
@@ -1766,6 +1778,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                     newTaskIds.add(id);
                 }
             }
+            bumpTaskListRenderStateVersion();
             return;
         }
 
@@ -1778,12 +1791,15 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 }
             }
         }
+        bumpTaskListRenderStateVersion();
     }
 
 
     // ---------- tier counts / progress ----------
 
     private void rebuildTierCounts() {
+        bumpTaskListRenderStateVersion();
+
         totalByTier.clear();
         doneByTier.clear();
 
@@ -1867,125 +1883,76 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return false;
         }
 
-        if (!areKnownPrerequisitesSatisfied(task))
+        String id = task.getId();
+        if (id == null || id.trim().isEmpty())
         {
             return false;
         }
 
-        TaskVerification verification = task.getVerification();
-        if (verification == null)
-        {
-            return false;
-        }
-
-        if (verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
-        {
-            return isCurrentCollectionLogRequirementSatisfied(task, verification);
-        }
-
-        if (verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY)
-        {
-            return prerequisiteTrackerService.isDiaryComplete(verification.getRegion(), verification.getDifficulty());
-        }
-
-        if (verification.getType() == TaskVerification.VerificationType.SKILL
-                && verification.getExperience() != null
-                && verification.getCount() != null)
-        {
-            return prerequisiteTrackerService.countSkillsAt99(verification.getExperience().keySet()) >= verification.getCount();
-        }
-
-        if (verification.getType() == TaskVerification.VerificationType.COMBAT_ACHIEVEMENT)
-        {
-            Integer taskId = resolveCombatAchievementTaskId(task);
-            return taskId != null && combatAchievementService.isTaskComplete(taskId);
-        }
-
-        return false;
+        return currentTaskCompletionCriteriaMet;
     }
 
-    private boolean areKnownPrerequisitesSatisfied(XtremeTask task)
+    private void refreshCurrentTaskCompletionCriteriaMet()
     {
-        List<PrerequisiteStatus> statuses = getPrerequisiteStatuses(task);
-        if (statuses == null || statuses.isEmpty())
+        XtremeTask task = getCurrentTask();
+        if (task == null || isTaskCompleted(task))
         {
-            return true;
+            currentTaskCompletionCriteriaMet = false;
+            return;
         }
 
-        for (PrerequisiteStatus status : statuses)
+        String id = task.getId();
+        if (id == null || id.trim().isEmpty())
         {
-            if (status != null && !status.isCompleted())
-            {
-                return false;
-            }
+            currentTaskCompletionCriteriaMet = false;
+            return;
         }
-        return true;
+
+        TaskSource source = task.getSource();
+        currentTaskCompletionCriteriaMet = (source == TaskSource.COMBAT_ACHIEVEMENT || isCollectionLogSyncSource(source))
+                && syncCompletionCandidateTaskIds.contains(id);
     }
 
-    private boolean isCurrentCollectionLogRequirementSatisfied(XtremeTask task, TaskVerification verification)
+    private void refreshCurrentTaskCompletionCandidatesForCurrentSource()
     {
-        if (hasCollectionLogCompletionItem(verification))
+        XtremeTask task = getCurrentTask();
+        if (task == null || isTaskCompleted(task))
         {
-            return isCollectionLogItemObtained(verification.getCompletionItemId());
+            refreshCurrentTaskCompletionCriteriaMet();
+            return;
         }
 
-        ItemRequirement requirement = resolveCollectionLogRequirement(task);
-        if (requirement == null)
+        TaskSource source = task.getSource();
+        if (source == TaskSource.COMBAT_ACHIEVEMENT)
         {
-            return false;
-        }
-
-        int totalObtainedCount = countObtainedCollectionLogItems(requirement.itemIds);
-        List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
-        if (group.size() <= 1)
-        {
-            return totalObtainedCount >= requirement.requiredCount;
-        }
-
-        int currentIndex = requirementIndex(task, group);
-        if (currentIndex < 0)
-        {
-            return totalObtainedCount >= requirement.requiredCount;
-        }
-
-        List<Integer> thresholds = countedGroupThresholds(group);
-        int previousThreshold = currentIndex <= 0 ? 0 : thresholdAt(thresholds, currentIndex - 1);
-        int currentThreshold = Math.max(thresholdAt(thresholds, currentIndex), previousThreshold);
-        int currentRequired = Math.max(1, currentThreshold - previousThreshold);
-
-        int completedCount = 0;
-        for (XtremeTask groupedTask : group)
-        {
-            if (groupedTask != null && isTaskCompleted(groupedTask))
+            if (combatAchievementService == null)
             {
-                completedCount++;
+                refreshCurrentTaskCompletionCriteriaMet();
+                return;
             }
-        }
 
-        int completedThreshold = thresholdAt(thresholds, completedCount - 1);
-        Integer baselineCount = getCurrentTaskCollectionLogBaselineCount(collectionLogRequirementSignature(requirement.itemIds));
-        int baseline = baselineCount != null
-                ? Math.min(Math.max(0, baselineCount), Math.max(0, completedThreshold))
-                : Math.max(previousThreshold, completedThreshold);
-        return Math.max(0, totalObtainedCount - baseline) >= currentRequired;
-    }
-
-    private static int requirementIndex(XtremeTask task, List<XtremeTask> group)
-    {
-        if (task == null || task.getId() == null || group == null)
-        {
-            return -1;
-        }
-
-        for (int i = 0; i < group.size(); i++)
-        {
-            XtremeTask groupedTask = group.get(i);
-            if (groupedTask != null && task.getId().equals(groupedTask.getId()))
+            int beforeSize = syncCompletionCandidateTaskIds.size();
+            refreshCombatAchievementSyncState();
+            if (syncCompletionCandidateTaskIds.size() != beforeSize)
             {
-                return i;
+                syncMismatchTasksCacheValid = false;
             }
+            return;
         }
-        return -1;
+
+        if (isCollectionLogSyncSource(source))
+        {
+            if (collectionLogService == null || prerequisiteTrackerService == null)
+            {
+                refreshCurrentTaskCompletionCriteriaMet();
+                return;
+            }
+
+            refreshCollectionLogCompletionCandidatesFromCache();
+            return;
+        }
+
+        refreshCurrentTaskCompletionCriteriaMet();
     }
 
     private static int thresholdAt(List<Integer> thresholds, int index)
@@ -2547,6 +2514,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         currentTaskId = (currentTask != null) ? currentTask.getId() : null;
         captureCurrentTaskCollectionLogBaseline();
+        refreshCurrentTaskCompletionCandidatesForCurrentSource();
         markDirtyAndPersist(); // writes immediately if activeAccountKey != null
     }
 
@@ -2566,6 +2534,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         undoableCompletedTaskId = id;
         currentTask = null;
         currentTaskId = null;
+        currentTaskCompletionCriteriaMet = false;
 
         rebuildTierCounts();
         markDirtyAndPersist();
@@ -2605,6 +2574,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTask = decorateCurrentSequenceTask(task);
         currentTaskId = id;
         undoableCompletedTaskId = null;
+        refreshCurrentTaskCompletionCandidatesForCurrentSource();
 
         rebuildTierCounts();
         markDirtyAndPersist();
@@ -2655,7 +2625,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void setTaskGroupCompletedCountAndPersist(XtremeTask task, int completedCount)
     {
-        List<XtremeTask> group = TaskGroupUtils.groupFor(tasks, task);
+        List<XtremeTask> group = getCachedTaskGroupInstances(task);
         if (group.isEmpty())
         {
             return;
@@ -2722,6 +2692,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         syncedCompletionTimestamps.remove(id);
         taskTimeTicksById.remove(id);
         completedTaskTimeTicksById.remove(id);
+        bumpTaskListTimerStateVersion();
         if (id != null && id.equals(undoableCompletedTaskId))
         {
             undoableCompletedTaskId = null;
@@ -2736,6 +2707,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         completedTaskTimeTicksById.put(id, Math.max(0L, taskTimeTicksById.getOrDefault(id, 0L)));
+        bumpTaskListTimerStateVersion();
     }
 
     private void freezeCompletedTaskTime(String id)
@@ -2749,6 +2721,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (completedTicks != null)
         {
             taskTimeTicksById.put(id, completedTicks);
+            bumpTaskListTimerStateVersion();
         }
     }
 
@@ -2812,6 +2785,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (timerTaskId != null && client.getGameState() == GameState.LOGGED_IN)
         {
             taskTimeTicksById.merge(timerTaskId, 1L, Long::sum);
+            bumpTaskListTimerStateVersion();
             dirty = true;
         }
 
@@ -2850,6 +2824,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         dirty = true;
         persistIfPossible();
+    }
+
+    private void bumpTaskListRenderStateVersion()
+    {
+        taskListRenderStateVersion++;
+    }
+
+    private void bumpTaskListTimerStateVersion()
+    {
+        taskListTimerStateVersion++;
     }
 
     // ---------- JSON task pack loading ----------
@@ -3441,6 +3425,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void finishSyncStateUpdate()
     {
+        refreshCurrentTaskCompletionCriteriaMet();
         rebuildTierCounts();
         dirty = true;
         if (activeAccountKey != null)
@@ -3720,6 +3705,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 }
             }
         }
+        refreshCurrentTaskCompletionCriteriaMet();
     }
 
     private boolean removeSyncIdsForSource(List<String> ids, TaskSource source, Map<String, XtremeTask> byId)
@@ -4624,6 +4610,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 && verification.getTaskId() != null)
         {
             return verification.getTaskId();
+        }
+
+        if (caTaskIdsByName.isEmpty() && caTaskIdsByNormalizedName.isEmpty())
+        {
+            loadCombatAchievementMappings();
         }
 
         Integer byName = caTaskIdsByName.get(task.getName());

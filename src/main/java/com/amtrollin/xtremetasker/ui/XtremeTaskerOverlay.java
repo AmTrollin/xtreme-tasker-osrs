@@ -2386,6 +2386,7 @@ public class XtremeTaskerOverlay extends Overlay {
         boolean rolling = animations.isRolling();
         boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
         boolean showCurrentTask = current != null && !currentCompleted && !rolling;
+        boolean currentCompletionCriteriaMet = showCurrentTask && plugin.isCurrentTaskCompletionCriteriaMet();
 
         Shape oldClip = g.getClip();
         g.setClip(new Rectangle(card.x + 2, card.y + 2, card.width - 4, card.height - 4));
@@ -2412,7 +2413,7 @@ public class XtremeTaskerOverlay extends Overlay {
                     g,
                     currentLayout.completeButtonBounds,
                     "Mark complete",
-                    plugin.isCurrentTaskCompletionCriteriaMet() ? UiPalette.TIER_COMPLETE_GLOW : null);
+                    currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
         } else {
             int rollW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Roll task") + 58));
             currentLayout.rollButtonBounds.setBounds(card.x + (card.width - rollW) / 2, actionY, rollW, actionH);
@@ -4162,7 +4163,16 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|showSpent=" + taskQuery.showTimeSpentColumn
                 + "|newOnly=" + taskQuery.showNewTasksFilter
                 + "|condensed=" + useCondensedTaskRows()
-                + "|state=" + plugin.getTaskListRenderStateHash();
+                + "|state=" + plugin.getTaskListRenderStateHash()
+                + "|timerState=" + taskListTimerCacheState();
+    }
+
+    private int taskListTimerCacheState()
+    {
+        return taskQuery.sortColumn == TaskListQuery.SortColumn.SPENT
+                && taskQuery.sortDirection != TaskListQuery.SortDirection.OFF
+                ? plugin.getTaskListTimerStateVersion()
+                : 0;
     }
 
     private void logSlowTaskListBuild(long startNanos, TaskTier tier, int inputCount, int outputCount)
