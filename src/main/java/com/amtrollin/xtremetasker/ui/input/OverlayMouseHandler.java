@@ -386,6 +386,22 @@ public final class OverlayMouseHandler extends MouseAdapter {
                     }
                     changed = true;
                 }
+                else if (a.controlsLayout().displayDateCompleted.contains(p)) {
+                    a.taskQuery().showDateCompletedColumn = !a.taskQuery().showDateCompletedColumn;
+                    clearHiddenSort(TaskListQuery.SortColumn.DATE);
+                    changed = true;
+                }
+                else if (a.controlsLayout().displayTimeSpent.contains(p)) {
+                    a.taskQuery().showTimeSpentColumn = !a.taskQuery().showTimeSpentColumn;
+                    clearHiddenSort(TaskListQuery.SortColumn.SPENT);
+                    changed = true;
+                }
+                else if (a.controlsLayout().sortDateCompleted.contains(p)) {
+                    changed = a.taskQuery().toggleSort(TaskListQuery.SortColumn.DATE);
+                }
+                else if (a.controlsLayout().sortTimeSpent.contains(p)) {
+                    changed = a.taskQuery().toggleSort(TaskListQuery.SortColumn.SPENT);
+                }
 
                 if (changed) {
                     a.resetTaskListViewAfterQueryChange();
@@ -1136,6 +1152,12 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         // new tasks button
                         || cl.filterNewTasks.contains(p)
                         || cl.filterNewTasksHelp.contains(p)
+                        // column display toggles
+                        || cl.displayDateCompleted.contains(p)
+                        || cl.displayTimeSpent.contains(p)
+                        // task list sortable columns
+                        || cl.sortDateCompleted.contains(p)
+                        || cl.sortTimeSpent.contains(p)
                         // task list scrollbar
                         || (!a.isTaskDetailsOpen() && (
                                 a.taskScrollbarThumbBounds().contains(p)
@@ -1462,6 +1484,15 @@ public final class OverlayMouseHandler extends MouseAdapter {
         if (q.tierScope == next) return false;
         q.tierScope = next;
         return true;
+    }
+
+    private void clearHiddenSort(TaskListQuery.SortColumn column)
+    {
+        TaskListQuery q = a.taskQuery();
+        if (!q.isColumnVisible(column) && q.sortColumn == column)
+        {
+            q.sortDirection = TaskListQuery.SortDirection.OFF;
+        }
     }
 
     /** Returns the character index in {@code text} closest to pixel {@code clickX}. */

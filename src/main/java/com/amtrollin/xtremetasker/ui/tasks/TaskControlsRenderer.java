@@ -305,6 +305,42 @@ public class TaskControlsRenderer
 
         cursorY += rowH + 20;
 
+        g.setFont(sectionHeaderFont);
+        headerFm = g.getFontMetrics();
+        g.setColor(uiGold);
+        g.drawString("Column displays", rowX + leftPad, cursorY);
+        drawHeaderRule(g, rowX + leftPad + headerFm.stringWidth("Column displays") + 10,
+                cursorY - headerFm.getAscent() + headerFm.getHeight() / 2,
+                rowX + rowW - rightPad);
+        g.setFont(savedHeaderFont);
+        fm = bodyFm;
+        cursorY += headerFm.getHeight() + 4;
+
+        rowTop = cursorY - fm.getAscent();
+        int displayAvailableW = rowW - leftPad - rightPad;
+        drawTwoColumnPillGrid(
+                g,
+                fm,
+                rowX + leftPad,
+                rowTop,
+                rowH,
+                displayAvailableW,
+                chipGap,
+                new Rectangle[] {
+                        layout.displayDateCompleted,
+                        layout.displayTimeSpent
+                },
+                new String[] {
+                        "Date completed",
+                        "Time spent"
+                },
+                new boolean[] {
+                        query.showDateCompletedColumn,
+                        query.showTimeSpentColumn
+                });
+
+        cursorY += rowH + 20;
+
         return cursorY;
 
     }

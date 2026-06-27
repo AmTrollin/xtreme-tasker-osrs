@@ -4170,6 +4170,10 @@ public class XtremeTaskerOverlay extends Overlay {
             {
                 taskQuery.setOnlySource(TaskListQuery.SourceFilter.CA);
             }
+            else if (rsf == XtremeTaskerConfig.RollSourceFilter.CLOG_ONLY)
+            {
+                taskQuery.setCollectionLogAndDiarySources();
+            }
             else
             {
                 taskQuery.selectAllSources();
@@ -4204,7 +4208,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 base,
                 taskQuery,
                 plugin::isTaskCompleted,
-                plugin::isNewTask);
+                plugin::isNewTask,
+                plugin::getCompletionInfo,
+                plugin::getTaskTimeTicks);
         List<XtremeTask> result = useCondensedTaskRows() ? TaskGroupUtils.collapsePreservingOrder(sorted) : sorted;
         List<XtremeTask> immutableResult = Collections.unmodifiableList(new ArrayList<>(result));
         sortedTaskListCache.put(cacheKey, immutableResult);
@@ -4227,6 +4233,10 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|cl=" + taskQuery.sourceClogsSelected
                 + "|da=" + taskQuery.sourceDasSelected
                 + "|status=" + taskQuery.statusFilter
+                + "|sort=" + taskQuery.sortColumn
+                + "|dir=" + taskQuery.sortDirection
+                + "|showDate=" + taskQuery.showDateCompletedColumn
+                + "|showSpent=" + taskQuery.showTimeSpentColumn
                 + "|newOnly=" + taskQuery.showNewTasksFilter
                 + "|condensed=" + useCondensedTaskRows()
                 + "|state=" + plugin.getTaskListRenderStateHash();
@@ -5170,7 +5180,9 @@ public class XtremeTaskerOverlay extends Overlay {
                 layout.searchBox, layout.filtersHeaderBounds, layout.filterSourceAll, layout.filterCA,
                 layout.filterCL, layout.filterDA, layout.filterStatusAll, layout.filterIncomplete,
                 layout.filterComplete, layout.filterTierThis, layout.filterTierAll, layout.clearFilters,
-                layout.filterNewTasks, layout.filterNewTasksHelp);
+                layout.filterNewTasks, layout.filterNewTasksHelp,
+                layout.displayDateCompleted, layout.displayTimeSpent,
+                layout.sortDateCompleted, layout.sortTimeSpent);
         layout.searchTextX = scaleX(layout.searchTextX, anchorX, scale);
         for (int i = 0; i < layout.searchCharXPositions.length; i++) {
             layout.searchCharXPositions[i] = scaleX(layout.searchCharXPositions[i], anchorX, scale);

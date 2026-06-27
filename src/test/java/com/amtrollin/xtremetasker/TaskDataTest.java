@@ -2,6 +2,7 @@ package com.amtrollin.xtremetasker;
 
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.TaskListPipeline;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
@@ -18,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -92,6 +94,80 @@ public class TaskDataTest
         query.searchText = "level 99";
         List<XtremeTask> orderedResults = TaskListPipeline.apply(tasks, query, task -> false);
         assertEquals(reversedResults.get(0).getId(), orderedResults.get(0).getId());
+    }
+
+    @Test
+    public void taskListCanSortByDateAndTimeSpentWithUnknownValuesLast()
+    {
+        List<XtremeTask> tasks = Arrays.asList(
+                new XtremeTask("unknown", "Unknown", TaskSource.COLLECTION_LOG, TaskTier.EASY),
+                new XtremeTask("old", "Old", TaskSource.COLLECTION_LOG, TaskTier.EASY),
+                new XtremeTask("new", "New", TaskSource.COLLECTION_LOG, TaskTier.EASY)
+        );
+        Map<String, CompletionInfo> completions = Map.of(
+                "old", new CompletionInfo(1_000L, CompletionInfo.Source.MANUAL),
+                "new", new CompletionInfo(2_000L, CompletionInfo.Source.MANUAL)
+        );
+        Map<String, Long> ticks = Map.of(
+                "old", 10L,
+                "new", 20L
+        );
+
+        TaskListQuery query = new TaskListQuery();
+        query.sortColumn = TaskListQuery.SortColumn.DATE;
+        query.sortDirection = TaskListQuery.SortDirection.DESC;
+        List<XtremeTask> byDateDesc = TaskListPipeline.apply(
+                tasks,
+                query,
+                task -> false,
+                null,
+                task -> completions.get(task.getId()),
+                task -> ticks.get(task.getId()));
+        assertEquals(Arrays.asList("new", "old", "unknown"), ids(byDateDesc));
+
+        query.sortColumn = TaskListQuery.SortColumn.SPENT;
+        query.sortDirection = TaskListQuery.SortDirection.ASC;
+        List<XtremeTask> bySpentAsc = TaskListPipeline.apply(
+                tasks,
+                query,
+                task -> false,
+                null,
+                task -> completions.get(task.getId()),
+                task -> ticks.get(task.getId()));
+        assertEquals(Arrays.asList("old", "new", "unknown"), ids(bySpentAsc));
+    }
+
+    @Test
+    public void taskListSortCyclesOffAscendingDescendingOff()
+    {
+        TaskListQuery query = new TaskListQuery();
+
+        assertEquals(TaskListQuery.SortDirection.OFF, query.sortDirection);
+        query.toggleSort(TaskListQuery.SortColumn.DATE);
+        assertEquals(TaskListQuery.SortColumn.DATE, query.sortColumn);
+        assertEquals(TaskListQuery.SortDirection.ASC, query.sortDirection);
+        query.toggleSort(TaskListQuery.SortColumn.DATE);
+        assertEquals(TaskListQuery.SortDirection.DESC, query.sortDirection);
+        query.toggleSort(TaskListQuery.SortColumn.DATE);
+        assertEquals(TaskListQuery.SortDirection.OFF, query.sortDirection);
+        query.toggleSort(TaskListQuery.SortColumn.DATE);
+        assertEquals(TaskListQuery.SortDirection.ASC, query.sortDirection);
+    }
+
+    @Test
+    public void collectionLogAndDiarySourcePresetExcludesCombatAchievements()
+    {
+        List<XtremeTask> tasks = Arrays.asList(
+                new XtremeTask("ca", "CA", TaskSource.COMBAT_ACHIEVEMENT, TaskTier.EASY),
+                new XtremeTask("clog", "CLOG", TaskSource.COLLECTION_LOG, TaskTier.EASY),
+                new XtremeTask("diary", "Diary", TaskSource.DIARY_ACHIEVEMENT, TaskTier.EASY)
+        );
+
+        TaskListQuery query = new TaskListQuery();
+        query.setCollectionLogAndDiarySources();
+
+        List<XtremeTask> results = TaskListPipeline.apply(tasks, query, task -> false);
+        assertEquals(Arrays.asList("clog", "diary"), ids(results));
     }
 
     @Test
@@ -241,5 +317,10 @@ public class TaskDataTest
 
         String value = task.get(key).getAsString();
         return value == null ? null : value.trim();
+    }
+
+    private static List<String> ids(List<XtremeTask> tasks)
+    {
+        return tasks.stream().map(XtremeTask::getId).collect(Collectors.toList());
     }
 }

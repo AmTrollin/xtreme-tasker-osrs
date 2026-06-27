@@ -30,6 +30,12 @@ public class TaskControlsLayout
     public final Rectangle filterNewTasks = new Rectangle();
     public final Rectangle filterNewTasksHelp = new Rectangle();
 
+    public final Rectangle displayDateCompleted = new Rectangle();
+    public final Rectangle displayTimeSpent = new Rectangle();
+
+    public final Rectangle sortDateCompleted = new Rectangle();
+    public final Rectangle sortTimeSpent = new Rectangle();
+
     // Search text rendering aids — populated each frame by TaskControlsRenderer
     public int searchTextX = 0;
     public int[] searchCharXPositions = new int[0];

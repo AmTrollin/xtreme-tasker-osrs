@@ -26,11 +26,28 @@ public class TaskListQuery
         COMPLETE
     }
 
+    public enum SortColumn
+    {
+        DATE,
+        SPENT
+    }
+
+    public enum SortDirection
+    {
+        OFF,
+        ASC,
+        DESC
+    }
+
     public SourceFilter sourceFilter = SourceFilter.ALL;
     public boolean sourceCASelected = true;
     public boolean sourceClogsSelected = true;
     public boolean sourceDasSelected = true;
     public StatusFilter statusFilter = StatusFilter.ALL;
+    public SortColumn sortColumn = SortColumn.DATE;
+    public SortDirection sortDirection = SortDirection.OFF;
+    public boolean showDateCompletedColumn = true;
+    public boolean showTimeSpentColumn = true;
 
     // =========================
     // Optional: compatibility helpers
@@ -76,6 +93,61 @@ public class TaskListQuery
         sourceClogsSelected = source == SourceFilter.CLOGS;
         sourceDasSelected = source == SourceFilter.DAS;
         sourceFilter = source;
+    }
+
+    public void setCollectionLogAndDiarySources()
+    {
+        sourceCASelected = false;
+        sourceClogsSelected = true;
+        sourceDasSelected = true;
+        updateLegacySourceFilter();
+    }
+
+    public boolean toggleSort(SortColumn column)
+    {
+        if (column == null)
+        {
+            return false;
+        }
+
+        if (sortColumn == column)
+        {
+            switch (sortDirection)
+            {
+                case OFF:
+                    sortDirection = SortDirection.ASC;
+                    break;
+                case ASC:
+                    sortDirection = SortDirection.DESC;
+                    break;
+                case DESC:
+                default:
+                    sortDirection = SortDirection.OFF;
+                    break;
+            }
+            return true;
+        }
+
+        sortColumn = column;
+        sortDirection = SortDirection.ASC;
+        return true;
+    }
+
+    public boolean isColumnVisible(SortColumn column)
+    {
+        if (column == null)
+        {
+            return false;
+        }
+        switch (column)
+        {
+            case DATE:
+                return showDateCompletedColumn;
+            case SPENT:
+                return showTimeSpentColumn;
+            default:
+                return true;
+        }
     }
 
     public boolean toggleSource(SourceFilter source)

@@ -1,13 +1,18 @@
 package com.amtrollin.xtremetasker.ui.tasklist;
 
 import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
 import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import net.runelite.client.ui.FontManager;
 
 import java.awt.*;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
@@ -44,6 +49,11 @@ public final class TaskRowsRenderer {
     private static final int SCROLLBAR_WIDTH = 6;
     private static final int SCROLLBAR_GAP = 3;
     private static final int ROW_BADGE_Y_OFFSET = 2;
+    private static final int DATE_COL_W = 58;
+    private static final int SPENT_COL_W = 48;
+    private static final int COL_GAP = 6;
+    private static final DateTimeFormatter ROW_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MM/dd/yy").withZone(ZoneId.systemDefault());
 
     public TaskRowsRenderer(
             int panelPadding,
@@ -113,6 +123,9 @@ public final class TaskRowsRenderer {
             int hoverMouseY,
             Function<String, Float> animProgressProvider,
             Function<XtremeTask, Boolean> isCompleted,
+            Function<XtremeTask, CompletionInfo> completionInfoProvider,
+            Function<XtremeTask, Long> taskTicksProvider,
+            TaskListQuery query,
             Function<XtremeTask, TaskGroupProgress> groupProgressProvider,
             Function<XtremeTask, Boolean> isNewTask
     ) {
@@ -240,7 +253,7 @@ public final class TaskRowsRenderer {
             int tierW = sfm.stringWidth("Master") + pillPadX * 2;
             int newW = sfm.stringWidth("NEW") + pillPadX * 2;
             int progressW = (progress != null && progress.isGrouped()) ? sfm.stringWidth(progress.label()) + 6 : 0;
-            int visibleBadgeW = srcW + pillGap + tierW;
+            int visibleBadgeW = visibleColumnWidth(query, srcW, tierW);
             int badgeReserveW = progressW + (progressW > 0 ? pillGap : 0)
                     + visibleBadgeW + (visibleBadgeW > 0 ? 4 : 0) + (isNew ? pillGap + newW : 0) + 4; // 4px margin from row right edge
             int rightColW = badgeReserveW;
@@ -263,7 +276,7 @@ public final class TaskRowsRenderer {
                     : uiText);
             g.drawString(taskName, textX, drawY);
 
-            // Draw tier pill, then source pill, right-aligned
+            // Draw optional right-side columns, right-aligned
             int pillRightEdge = viewportX + rowW - 4;
             int pillTop = drawY - fm.getAscent() + (fm.getHeight() - pillH) / 2 + ROW_BADGE_Y_OFFSET;
 
@@ -272,11 +285,25 @@ public final class TaskRowsRenderer {
 
             int srcX = nextBadgeRight - srcW;
             drawRowPill(g, sfm, srcText, srcX, pillTop, srcW, pillH, pillArc, withAlpha(uiTextDim, 210));
-            nextBadgeRight = srcX - pillGap;
+            nextBadgeRight = srcX - COL_GAP;
 
             int tierX = nextBadgeRight - tierW;
             drawRowPill(g, sfm, tierText, tierX, pillTop, tierW, pillH, pillArc, tierTextColor(task.getTier()));
-            nextBadgeRight = tierX - pillGap;
+            nextBadgeRight = tierX - COL_GAP;
+
+            if (query != null && query.showTimeSpentColumn)
+            {
+                int spentX = nextBadgeRight - SPENT_COL_W;
+                drawSmallColumnText(g, sfm, timeSpentText(task, taskTicksProvider), spentX, pillTop, SPENT_COL_W, pillH);
+                nextBadgeRight = spentX - COL_GAP;
+            }
+
+            if (query != null && query.showDateCompletedColumn)
+            {
+                int dateX = nextBadgeRight - DATE_COL_W;
+                drawSmallColumnText(g, sfm, completionDateText(task, completionInfoProvider), dateX, pillTop, DATE_COL_W, pillH);
+                nextBadgeRight = dateX - COL_GAP;
+            }
 
             g.setFont(fm.getFont()); // restore row font
 
@@ -439,6 +466,70 @@ public final class TaskRowsRenderer {
 
         g.setColor(withAlpha(uiGold, 140));
         g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
+    }
+
+    private static int visibleColumnWidth(TaskListQuery query, int srcW, int tierW)
+    {
+        boolean showDate = query != null && query.showDateCompletedColumn;
+        boolean showSpent = query != null && query.showTimeSpentColumn;
+        int width = 0;
+        width = addColumnWidth(width, showDate ? DATE_COL_W : 0);
+        width = addColumnWidth(width, showSpent ? SPENT_COL_W : 0);
+        width = addColumnWidth(width, tierW);
+        width = addColumnWidth(width, srcW);
+        return width;
+    }
+
+    private static int addColumnWidth(int current, int width)
+    {
+        if (width <= 0)
+        {
+            return current;
+        }
+        return current == 0 ? width : current + COL_GAP + width;
+    }
+
+    private void drawSmallColumnText(Graphics2D g, FontMetrics fm, String text, int x, int y, int width, int height)
+    {
+        String draw = TextUtils.truncateToWidth(text, fm, Math.max(0, width - 4));
+        g.setColor(withAlpha(uiTextDim, 220));
+        g.drawString(draw, x + Math.max(0, (width - fm.stringWidth(draw)) / 2),
+                y + ((height - fm.getHeight()) / 2) + fm.getAscent());
+    }
+
+    private static String completionDateText(
+            XtremeTask task,
+            Function<XtremeTask, CompletionInfo> completionInfoProvider)
+    {
+        CompletionInfo info = completionInfoProvider == null || task == null ? null : completionInfoProvider.apply(task);
+        if (info == null || info.timestamp <= 0)
+        {
+            return "??";
+        }
+        return ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
+    }
+
+    private static String timeSpentText(XtremeTask task, Function<XtremeTask, Long> taskTicksProvider)
+    {
+        Long ticks = taskTicksProvider == null || task == null ? null : taskTicksProvider.apply(task);
+        if (ticks == null || ticks <= 0)
+        {
+            return "??";
+        }
+        return formatDuration(Math.round(ticks * 0.6));
+    }
+
+    private static String formatDuration(long seconds)
+    {
+        if (seconds < 60) return seconds + "s";
+        long minutes = seconds / 60;
+        long remSeconds = seconds % 60;
+        if (minutes < 60) return remSeconds > 0 ? minutes + "m" : minutes + "m";
+        long hours = minutes / 60;
+        long remMinutes = minutes % 60;
+        if (hours < 24) return remMinutes > 0 ? hours + "h" : hours + "h";
+        long days = hours / 24;
+        return days + "d";
     }
 
     public Rectangle scrollbarRailBounds(Rectangle viewport) {
