@@ -268,8 +268,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final double PANEL_SCALE_AUTO_START_H = 900.0;
     private static final double PANEL_SCALE_AUTO_RANGE_W = 1000.0;
     private static final double PANEL_SCALE_AUTO_RANGE_H = 700.0;
-
-
     // ---- animations (extracted) ----
     private final OverlayAnimations animations = new OverlayAnimations(COMPLETE_ANIM_MS, ROLL_ANIM_MS);
 
@@ -289,6 +287,9 @@ public class XtremeTaskerOverlay extends Overlay {
     private long lastSlowPreviewLogMs = 0L;
     private long lastSlowTaskListLogMs = 0L;
     private long lastSlowPanelRenderLogMs = 0L;
+    private boolean rollExecutionPending = false;
+    private TaskTier rollingDisplayTier = null;
+    private List<XtremeTask> rollingDisplayPool = Collections.emptyList();
 
     @Getter
     private final MouseAdapter mouseAdapter;
@@ -1841,6 +1842,48 @@ public class XtremeTaskerOverlay extends Overlay {
         return animations.isRolling();
     }
 
+    private void requestRollTask()
+    {
+        if (rollExecutionPending || animations.isRolling())
+        {
+            return;
+        }
+
+        XtremeTask current = plugin.getCurrentTask();
+        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        if (current != null && !currentCompleted)
+        {
+            return;
+        }
+
+        rollingDisplayTier = current == null ? plugin.getCurrentTier() : current.getTier();
+        if (rollingDisplayTier == null)
+        {
+            rollingDisplayTier = TaskTier.EASY;
+        }
+        rollingDisplayPool = Collections.unmodifiableList(new ArrayList<>(getTasksForTier(rollingDisplayTier)));
+        animations.startRoll();
+        rollExecutionPending = true;
+    }
+
+    private void processPendingRollExecution()
+    {
+        if (!rollExecutionPending)
+        {
+            return;
+        }
+
+        rollExecutionPending = false;
+        plugin.rollRandomTaskAndPersist();
+    }
+
+    private void cancelPendingRollExecution()
+    {
+        rollExecutionPending = false;
+        rollingDisplayTier = null;
+        rollingDisplayPool = Collections.emptyList();
+    }
+
     /** Resets the draggable icon to its default position (clears overrides + persisted config). */
     public void resetIconPosition() {
         clearIconPositionState(true);
@@ -2187,6 +2230,7 @@ public class XtremeTaskerOverlay extends Overlay {
             scalePanelInputBounds(panelTransform);
             panelRenderMouse = null;
             logSlowPanelRender(panelRenderStartNanos);
+            processPendingRollExecution();
             return new Dimension(physicalPanelW, physicalPanelH);
         }
 
@@ -2242,6 +2286,7 @@ public class XtremeTaskerOverlay extends Overlay {
             renderMarkAllIncompleteConfirm(g, fm);
         }
         logSlowPanelRender(panelRenderStartNanos);
+        processPendingRollExecution();
         return new Dimension(physicalPanelW, physicalPanelH);
     }
 
@@ -3948,6 +3993,8 @@ public class XtremeTaskerOverlay extends Overlay {
         final int maxW = panelInnerTextMaxWidth();
 
         if (!animations.isRolling()) {
+            rollingDisplayTier = null;
+            rollingDisplayPool = Collections.emptyList();
             if (current == null) {
                 return TextUtils.truncateToWidth("Click \"Roll task\" to get a task", fm, maxW);
             }
@@ -3955,10 +4002,12 @@ public class XtremeTaskerOverlay extends Overlay {
             return TextUtils.truncateToWidth(current.getName(), fm, maxW); // prefix drawn by renderer
         }
 
-        TaskTier tier = (current != null) ? current.getTier() : plugin.getCurrentTier();
+        TaskTier tier = rollingDisplayTier != null ? rollingDisplayTier : (current != null) ? current.getTier() : plugin.getCurrentTier();
         if (tier == null) tier = TaskTier.EASY;
 
-        List<XtremeTask> pool = getTasksForTier(tier);
+        List<XtremeTask> pool = !rollingDisplayPool.isEmpty() && rollingDisplayTier == tier
+                ? rollingDisplayPool
+                : getTasksForTier(tier);
         if (pool.isEmpty()) {
             return TextUtils.truncateToWidth("Rolling...", fm, maxW);
         }
@@ -4062,8 +4111,7 @@ public class XtremeTaskerOverlay extends Overlay {
         boolean completeEnabled = (current != null) && !currentCompleted;
 
         if (code == KeyEvent.VK_R && rollEnabled) {
-            animations.startRoll();
-            plugin.rollRandomTaskAndPersist();
+            requestRollTask();
             return true;
         }
 
@@ -4281,6 +4329,9 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void setPanelOpen(boolean open) {
                 panelOpen = open;
+                if (!open) {
+                    cancelPendingRollExecution();
+                }
             }
 
             @Override
@@ -4550,6 +4601,11 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void shiftTier(int delta) {
                 XtremeTaskerOverlay.this.shiftTier(delta);
+            }
+
+            @Override
+            public void requestRollTask() {
+                XtremeTaskerOverlay.this.requestRollTask();
             }
 
             @Override

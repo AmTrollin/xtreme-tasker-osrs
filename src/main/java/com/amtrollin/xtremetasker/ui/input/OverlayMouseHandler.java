@@ -507,8 +507,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
 
             if (rollEnabled && a.currentLayout().rollButtonBounds.contains(p)) {
-                a.animations().startRoll();
-                a.plugin().rollRandomTaskAndPersist();
+                a.requestRollTask();
                 e.consume();
                 return e;
             }

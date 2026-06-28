@@ -95,6 +95,7 @@ public interface OverlayInputAccess
     // core behaviors handlers call
     void resetTaskListViewAfterQueryChange();
     void shiftTier(int delta);
+    void requestRollTask();
 
     boolean handleTasksKey(java.awt.event.KeyEvent e);
     boolean handleCurrentKey(java.awt.event.KeyEvent e);
