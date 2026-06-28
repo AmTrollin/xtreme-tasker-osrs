@@ -2354,8 +2354,9 @@ public class XtremeTaskerOverlay extends Overlay {
         XtremeTask current = plugin.getCurrentTask();
         boolean rolling = animations.isRolling();
         boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
-        boolean showCurrentTask = current != null && !currentCompleted && !rolling;
-        boolean currentCompletionCriteriaMet = showCurrentTask && plugin.isCurrentTaskCompletionCriteriaMet();
+        boolean showCurrentTask = current != null && !rolling;
+        boolean showCompleteAction = showCurrentTask && !currentCompleted;
+        boolean currentCompletionCriteriaMet = showCompleteAction && plugin.isCurrentTaskCompletionCriteriaMet();
 
         Shape oldClip = g.getClip();
         g.setClip(new Rectangle(card.x + 2, card.y + 2, card.width - 4, card.height - 4));
@@ -2374,7 +2375,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int actionH = ROW_HEIGHT + 8;
         int actionY = card.y + card.height - actionH - 14;
-        if (showCurrentTask) {
+        if (showCompleteAction) {
             int actionW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Mark complete") + 58));
             int actionX = card.x + (card.width - actionW) / 2;
             currentLayout.completeButtonBounds.setBounds(actionX, actionY, actionW, actionH);
