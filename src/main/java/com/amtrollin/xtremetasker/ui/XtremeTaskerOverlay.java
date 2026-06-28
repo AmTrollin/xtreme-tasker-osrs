@@ -108,6 +108,18 @@ public class XtremeTaskerOverlay extends Overlay {
             new WikiLink("Zamorak hood", "https://oldschool.runescape.wiki/w/Castlewars_hood_(Zamorak)"),
             new WikiLink("Zamorak cloak", "https://oldschool.runescape.wiki/w/Castlewars_cloak_(Zamorak)")
     );
+    private static final List<WikiLink> SARADOMIN_HOOD_CLOAK_WIKI_LINKS = List.of(
+            new WikiLink("Saradomin hood", "https://oldschool.runescape.wiki/w/Castlewars_hood_(Saradomin)"),
+            new WikiLink("Saradomin cloak", "https://oldschool.runescape.wiki/w/Castlewars_cloak_(Saradomin)")
+    );
+    private static final List<WikiLink> FRESH_CRAB_CLAW_SHELL_WIKI_LINKS = List.of(
+            new WikiLink("Fresh crab claw", "https://oldschool.runescape.wiki/w/Fresh_crab_claw"),
+            new WikiLink("Fresh crab shell", "https://oldschool.runescape.wiki/w/Fresh_crab_shell")
+    );
+    private static final List<WikiLink> MOLE_CLAW_SKIN_WIKI_LINKS = List.of(
+            new WikiLink("Mole claw", "https://oldschool.runescape.wiki/w/Mole_claw"),
+            new WikiLink("Mole skin", "https://oldschool.runescape.wiki/w/Mole_skin")
+    );
     private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_ID = createTaskDetailsWikiLinksById();
     private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_NAME = createTaskDetailsWikiLinksByName();
     private static final DateTimeFormatter SYNC_REVIEW_COMPLETION_DATE_FORMAT =
@@ -125,6 +137,11 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         Map<String, List<WikiLink>> links = new HashMap<>();
         links.put(normalizeWikiTaskName("Get the Zamorak hood & cloak"), ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get the Castle Wars Zamorak hood & cloak"), ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get the Saradomin hood & cloak"), SARADOMIN_HOOD_CLOAK_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get a Fresh crab claw & Fresh crab shell"), FRESH_CRAB_CLAW_SHELL_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get a Mole claw + skin"), MOLE_CLAW_SKIN_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get a Mole claw & skin"), MOLE_CLAW_SKIN_WIKI_LINKS);
         return Collections.unmodifiableMap(links);
     }
 
@@ -132,6 +149,9 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         Map<String, List<WikiLink>> links = new HashMap<>();
         links.put("collection_log_easy_get-the-zamorak-hood-cloak_001_53931281fb", ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        links.put("collection_log_easy_get-the-saradomin-hood-cloak_001_9827fe8228", SARADOMIN_HOOD_CLOAK_WIKI_LINKS);
+        links.put("collection_log_easy_get-a-fresh-crab-claw-fresh-crab-shell_001_0b0bfc6713", FRESH_CRAB_CLAW_SHELL_WIKI_LINKS);
+        links.put("collection_log_easy_get-a-mole-claw-skin_001_79bd65ec5d", MOLE_CLAW_SKIN_WIKI_LINKS);
         return Collections.unmodifiableMap(links);
     }
 

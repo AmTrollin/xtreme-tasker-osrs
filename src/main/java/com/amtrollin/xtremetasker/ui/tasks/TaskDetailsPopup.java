@@ -628,9 +628,13 @@ public final class TaskDetailsPopup
             }
         }
 
-        if (showDescriptionSection)
+        if (showDescriptionSection && !showStandaloneSyncMismatch)
         {
             y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
+        }
+        else if (showDescriptionSection)
+        {
+            y += 6 + 12;
         }
 
         if (showStandaloneSyncMismatch)
