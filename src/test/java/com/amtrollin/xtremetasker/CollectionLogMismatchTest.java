@@ -299,7 +299,7 @@ public class CollectionLogMismatchTest
         Thread.sleep(5L);
         invokeRefreshCombatAchievementSyncState(plugin);
 
-        assertEquals("A CA sync after completion should show the mismatch helper when the CA is not complete in game",
+        assertEquals("A CA sync after completion should show the mismatch helper when the CA is not complete in-game",
                 List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
         assertTrue(plugin.isTaskSyncMismatch(task));
     }

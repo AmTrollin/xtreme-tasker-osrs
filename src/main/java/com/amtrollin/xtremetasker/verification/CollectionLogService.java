@@ -134,7 +134,7 @@ public class CollectionLogService
     @Subscribe
     public void onChatMessage(ChatMessage event)
     {
-        // Capture newly obtained collection log items from the in game notification.
+        // Capture newly obtained collection log items from the in-game notification.
         // This fires even when the Collection Log interface is closed.
         ChatMessageType type = event.getType();
         if (type != ChatMessageType.GAMEMESSAGE && type != ChatMessageType.SPAM)

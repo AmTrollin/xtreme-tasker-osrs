@@ -10,8 +10,6 @@ public final class RulesTabLayout
     public final Rectangle githubReadmeLinkBounds = new Rectangle();
     public final Rectangle syncProgressButtonBounds = new Rectangle();
     public final Rectangle syncCaFoundReviewButtonBounds = new Rectangle();
-    public final Rectangle syncCaReviewButtonBounds = new Rectangle();
-    public final Rectangle syncCaReviewIgnoreButtonBounds = new Rectangle();
 
     // Sub-tab toggles (rendered at top of help panel)
     public final Rectangle subTabRulesBounds = new Rectangle();

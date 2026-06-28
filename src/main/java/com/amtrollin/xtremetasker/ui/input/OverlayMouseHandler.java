@@ -542,19 +542,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 e.consume();
                 return e;
             }
-            if (a.rulesLayout().syncCaReviewButtonBounds.contains(p)) {
-                a.openSyncMismatchReview(null);
-                syncMismatchReviewOpenedAt = e.getWhen();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)) {
-                a.plugin().dismissSyncMismatchReview(null);
-                a.closeSyncMismatchReview();
-                e.consume();
-                return e;
-            }
             if (a.rulesLayout().githubReadmeLinkBounds.contains(p)) {
                 LinkBrowser.browse(RulesTabRenderer.githubReadmeUrl());
                 e.consume();
@@ -1042,8 +1029,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().githubReadmeLinkBounds.contains(p)
                         || a.rulesLayout().syncProgressButtonBounds.contains(p)
                         || a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncCaReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
                 ))
                 // CURRENT tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && (

@@ -2813,7 +2813,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (showCollectionLogRefreshHint)
         {
             g.setColor(P.UI_TEXT);
-            String refreshHint = "If new CLOG items are missing, open your Collection Log in game, then sync again.";
+            String refreshHint = "If new CLOG items are missing, open your Collection Log in-game, then sync again.";
             g.drawString(TextUtils.truncateToWidth(refreshHint, fm, w - pad * 2),
                     x + pad, nextY + fm.getAscent());
             nextY += fm.getHeight();
@@ -3010,8 +3010,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 ? "Tasks"
                 : hasCollectionLogReview ? "Collection Log + Achievement Diary tasks" : "Combat Achievement tasks";
         String suffix = completionCandidates
-                ? "found completed in game via sync, but not marked completed in plugin."
-                : "marked completed in plugin, but not found completed in game via sync.";
+                ? "found completed in-game via sync, but not marked completed in plugin."
+                : "marked completed in plugin, but not found completed in-game via sync.";
         return prefix + " " + suffix;
     }
 
@@ -3559,8 +3559,6 @@ public class XtremeTaskerOverlay extends Overlay {
         rulesLayout.githubReadmeLinkBounds.setBounds(layout.githubReadmeLinkBounds);
         rulesLayout.syncProgressButtonBounds.setBounds(layout.syncProgressButtonBounds);
         rulesLayout.syncCaFoundReviewButtonBounds.setBounds(layout.syncCaFoundReviewButtonBounds);
-        rulesLayout.syncCaReviewButtonBounds.setBounds(layout.syncCaReviewButtonBounds);
-        rulesLayout.syncCaReviewIgnoreButtonBounds.setBounds(layout.syncCaReviewIgnoreButtonBounds);
         rulesLayout.subTabRulesBounds.setBounds(layout.subTabRulesBounds);
         rulesLayout.subTabDataSyncsBounds.setBounds(layout.subTabDataSyncsBounds);
 
@@ -3571,12 +3569,6 @@ public class XtremeTaskerOverlay extends Overlay {
         if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review",
                     P.BTN_ENABLED_BG, P.UI_TEXT, new Color(111, 190, 92));
-        }
-        if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        }
-        if (rulesLayout.syncCaReviewIgnoreButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
         }
     }
 
@@ -4740,7 +4732,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 rulesLayout.viewportBounds,
                 rulesLayout.githubReadmeLinkBounds,
                 rulesLayout.syncProgressButtonBounds, rulesLayout.syncCaFoundReviewButtonBounds,
-                rulesLayout.syncCaReviewButtonBounds, rulesLayout.syncCaReviewIgnoreButtonBounds,
                 rulesLayout.subTabRulesBounds, rulesLayout.subTabDataSyncsBounds);
     }
 

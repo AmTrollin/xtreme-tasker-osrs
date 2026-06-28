@@ -34,7 +34,7 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
 
 public final class CurrentTabRenderer
 {
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in game diary completion.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;

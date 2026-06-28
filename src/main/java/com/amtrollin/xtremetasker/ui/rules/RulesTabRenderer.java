@@ -1,11 +1,9 @@
 package com.amtrollin.xtremetasker.ui.rules;
 
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
+import net.runelite.client.ui.FontManager;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -29,9 +27,10 @@ public final class RulesTabRenderer {
 
     private static final String GITHUB_README_URL =
             "https://github.com/AmTrollin/xtreme-tasker-osrs/blob/master/docs/RULES.md";
-    private static final String RULES_TITLE = "Rules:";
-    private static final String RULES_SUMMARY_PREFIX =
-            "Xtreme Tasker adds extra rules on top of official Tasker. See the ";
+    private static final String RULES_TITLE = "Rules";
+    private static final String RULES_SUMMARY_INTRO =
+            "Xtreme Tasker follows the official Tasker ruleset, with additional rules to support the expanded task list.";
+    private static final String RULES_SUMMARY_LINK_PREFIX = "See the ";
     private static final String RULES_SUMMARY_LINK_TEXT = "Xtreme Tasker Rules GitHub README";
     private static final String RULES_SUMMARY_SUFFIX = ".";
 
@@ -40,24 +39,20 @@ public final class RulesTabRenderer {
     private static final String LINE_SYNC_RESULT_LABEL = "[SYNC_RESULT_LABEL]";
     private static final String LINE_SYNC_RESULT_FOUND_PREFIX = "[SYNC_RESULT_FOUND]";
     private static final String LINE_SYNC_RESULT_EMPTY_PREFIX = "[SYNC_RESULT_EMPTY]";
-    private static final String LINE_SYNC_RESULT_ERROR_PREFIX = "[SYNC_RESULT_ERROR]";
     private static final String LINE_SYNC_TIMESTAMP_PREFIX = "[SYNC_TIMESTAMP]";
-    private static final String LINE_SYNC_TIMESTAMP_DIVIDER = "[SYNC_TIMESTAMP_DIVIDER]";
     private static final String LINE_SYNC_HELPER_GOLD_PREFIX = "[SYNC_HELPER_GOLD]";
     private static final String LINE_SYNC_HELPER_DIM_PREFIX = "[SYNC_HELPER_DIM]";
     private static final String LINE_SYNC_BUTTON_TOP_SPACER = "[SYNC_BUTTON_TOP_SPACER]";
-    private static final String LINE_SYNC_RESULT_TIGHT_SPACER = "[SYNC_RESULT_TIGHT_SPACER]";
-    private static final String REVIEW_NEEDED_TITLE = "Review needed";
-    private static final String SYNC_HELPER_TEXT = "Sync account progress here.";
+    private static final String SYNC_TITLE_TEXT = "Sync In-Game Progress";
+    private static final String SYNC_DESCRIPTION_TEXT =
+            "Find tasks already completed in-game for Combat Achievements, Collection Logs, and Achievement Diaries to review and mark complete in the plugin.";
     private static final String CLOG_SYNC_HELPER_TEXT =
-            "For CLOGs, open in game CLOG before syncing so plugin can see latest data.";
+            "For CLOGs, open in-game CLOG before syncing so plugin can see latest data.";
     private static final String SYNC_LIMITATION_HELPER_TEXT =
-            "Note: syncs may not catch all tasks needing updates.";
-    private static final BufferedImage REVIEW_NEEDED_ICON = loadReviewNeededIconSafe();
+            "Note: rarely, some completed tasks may not be detected.";
     private static final DateTimeFormatter SYNC_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US);
     private static final DateTimeFormatter SYNC_TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
     private static final Color SYNC_FOUND_GREEN = new Color(111, 190, 92);
-    private static final Color SYNC_ERROR_RED = new Color(198, 82, 70);
     private static final String FOUND_COMPLETIONS_BUTTON_LABEL = "Update tasks";
 
     public RulesTabRenderer(
@@ -99,7 +94,6 @@ public final class RulesTabRenderer {
         clearBounds(
                 layout.githubReadmeLinkBounds,
                 layout.syncProgressButtonBounds, layout.syncCaFoundReviewButtonBounds,
-                layout.syncCaReviewButtonBounds, layout.syncCaReviewIgnoreButtonBounds,
                 layout.subTabRulesBounds, layout.subTabDataSyncsBounds
         );
         int bx = panelX + panelPadding;
@@ -167,12 +161,16 @@ public final class RulesTabRenderer {
         Shape oldClip = g.getClip();
         g.setClip(layout.viewportBounds);
         Font normalFont = g.getFont();
+        Font titleFont = titleFont();
 
         int drawY = firstBaselineY + Math.max(3, rb / 3);
-        g.setColor(white);
-        g.drawString(RULES_TITLE, bx, drawY);
+        g.setFont(titleFont);
+        FontMetrics titleFm = g.getFontMetrics();
+        g.setColor(uiGold);
+        drawCenteredText(g, titleFm, RULES_TITLE, bx, drawY, viewportW, 8);
 
         drawY += rb;
+        g.setFont(normalFont);
         drawRulesSummarySentence(g, fm, layout, bx, drawY, viewportW - 8);
 
         g.setClip(oldClip);
@@ -214,7 +212,8 @@ public final class RulesTabRenderer {
         Shape oldClip = g.getClip();
         g.setClip(fullViewport);
 
-        drawSyncColumn(g, fm, layout, lines, bx, viewportY + fm.getAscent(), contentW, 0, lines.size(), fullViewport);
+        int firstBaselineY = viewportY + fm.getAscent() + Math.max(3, rowBlock() / 3);
+        drawSyncColumn(g, fm, layout, lines, bx, firstBaselineY, contentW, 0, lines.size(), fullViewport);
 
         g.setClip(oldClip);
         layout.viewportBounds.setBounds(fullViewport);
@@ -236,7 +235,9 @@ public final class RulesTabRenderer {
         boolean hasCaResult = lastCombatAchievementSyncResult != null && !lastCombatAchievementSyncResult.trim().isEmpty();
         boolean hasClogResult = lastCollectionLogSyncResult != null && !lastCollectionLogSyncResult.trim().isEmpty();
 
-        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_GOLD_PREFIX, SYNC_HELPER_TEXT, fm, maxWidth));
+        lines.add(LINE_SYNC_HELPER_GOLD_PREFIX + SYNC_TITLE_TEXT);
+        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, SYNC_DESCRIPTION_TEXT, fm, maxWidth));
+        lines.add("");
         lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, CLOG_SYNC_HELPER_TEXT, fm, maxWidth));
         lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, SYNC_LIMITATION_HELPER_TEXT, fm, maxWidth));
         lines.add(LINE_SYNC_BUTTON_TOP_SPACER);
@@ -250,8 +251,6 @@ public final class RulesTabRenderer {
             int totalFound = combatAchievementFoundCount + collectionLogFoundCount;
             String latestTime = hasCaResult ? lastCombatAchievementSyncResultAtLocalTime : lastCollectionLogSyncResultAtLocalTime;
             addSyncTimestampLine(lines, "Last sync", latestTime, fm, maxWidth);
-            lines.add(LINE_SYNC_TIMESTAMP_DIVIDER);
-            lines.add(LINE_SYNC_RESULT_TIGHT_SPACER);
             addSyncResultStatusMessageLines(lines, totalFound, fm, maxWidth);
         }
         int totalFound = combatAchievementFoundCount + collectionLogFoundCount;
@@ -286,7 +285,7 @@ public final class RulesTabRenderer {
             String line = lines.get(idx);
             if (LINE_SYNC_BUTTON_TOP_SPACER.equals(line))
             {
-                drawY += Math.max(4, rb / 3);
+                drawY += Math.max(10, rb / 2);
                 continue;
             }
 
@@ -302,17 +301,6 @@ public final class RulesTabRenderer {
                     layout.syncProgressButtonBounds.setBounds(btnX, by, btnW, btnH);
                 }
                 drawY += Math.max(rb, btnH + listRowSpacing) + 3;
-                continue;
-            }
-
-            if (LINE_SYNC_TIMESTAMP_DIVIDER.equals(line))
-            {
-                int dividerW = Math.max(40, colW / 2);
-                int dividerX = x + Math.max(0, (colW - dividerW) / 2);
-                int dividerY = drawY - rb + fm.getDescent() + 8;
-                g.setColor(withAlpha(uiGold, 105));
-                g.drawLine(dividerX, dividerY, dividerX + dividerW, dividerY);
-                drawY += Math.max(4, rb / 3);
                 continue;
             }
 
@@ -332,14 +320,34 @@ public final class RulesTabRenderer {
                 continue;
             }
 
-            if (LINE_SYNC_RESULT_TIGHT_SPACER.equals(line))
+            if (line.trim().isEmpty())
             {
-                drawY += Math.max(5, rb / 2);
+                drawY += rb;
                 continue;
             }
 
-            if (line.trim().isEmpty())
+            if (line.startsWith(LINE_SYNC_TIMESTAMP_PREFIX))
             {
+                drawCenteredLabeledText(
+                        g,
+                        fm,
+                        line.substring(LINE_SYNC_TIMESTAMP_PREFIX.length()),
+                        "Last sync:",
+                        uiTextDim,
+                        x,
+                        drawY,
+                        colW,
+                        8
+                );
+                drawY += rb;
+                continue;
+            }
+
+            if (line.startsWith(LINE_SYNC_RESULT_LABEL)
+                    || line.startsWith(LINE_SYNC_RESULT_FOUND_PREFIX)
+                    || line.startsWith(LINE_SYNC_RESULT_EMPTY_PREFIX))
+            {
+                drawCenteredLabeledText(g, fm, markedLineText(line), "Result:", markedLineColor(line), x, drawY, colW, 8);
                 drawY += rb;
                 continue;
             }
@@ -347,37 +355,27 @@ public final class RulesTabRenderer {
             String markedLine = markedLineText(line);
             if (markedLine != null)
             {
+                if (SYNC_TITLE_TEXT.equals(markedLine))
+                {
+                    Font titleFont = titleFont();
+                    g.setFont(titleFont);
+                    FontMetrics titleFm = g.getFontMetrics();
+                    g.setColor(markedLineColor(line));
+                    drawCenteredText(g, titleFm, markedLine, x, drawY, colW, 8);
+                    g.setFont(normalFont);
+                    fm = g.getFontMetrics();
+                    drawY += rb;
+                    continue;
+                }
+
                 g.setColor(markedLineColor(line));
                 drawCenteredText(g, fm, markedLine, x, drawY, colW, 8);
                 drawY += rb;
                 continue;
             }
 
-            boolean isTitle = line.equals("Combat Achievements sync")
-                    || line.equals("Collection Logs + Achievement Diaries sync")
-                    || line.equals(REVIEW_NEEDED_TITLE);
-            if (isTitle)
-            {
-                g.setColor(uiGold);
-                g.setFont(normalFont);
-                fm = g.getFontMetrics();
-                if (line.equals(REVIEW_NEEDED_TITLE))
-                {
-                    int textW = fm.stringWidth(REVIEW_NEEDED_TITLE);
-                    drawReviewNeededTitle(g, fm, x + Math.max(0, (colW - textW) / 2) - 14, drawY, colW);
-                }
-                else
-                {
-                    drawCenteredText(g, fm, line, x, drawY, colW, 8);
-                }
-                g.setFont(normalFont);
-                fm = g.getFontMetrics();
-            }
-            else
-            {
-                g.setColor(uiTextDim);
-                drawCenteredText(g, fm, line, x, drawY, colW, 8);
-            }
+            g.setColor(uiTextDim);
+            drawCenteredText(g, fm, line, x, drawY, colW, 8);
             drawY += rb;
         }
 
@@ -397,20 +395,27 @@ public final class RulesTabRenderer {
             int baseline,
             int maxWidth)
     {
-        int cursorX = x;
         int lineY = baseline;
+        int suffixW = fm.stringWidth(RULES_SUMMARY_SUFFIX);
 
         g.setColor(uiTextDim);
-        String prefix = TextUtils.truncateToWidth(RULES_SUMMARY_PREFIX, fm, maxWidth);
+        drawCenteredText(g, fm, RULES_SUMMARY_INTRO, x, lineY, maxWidth, 0);
+
+        lineY += rowBlock();
+        String prefix = TextUtils.truncateToWidth(RULES_SUMMARY_LINK_PREFIX, fm, maxWidth);
+        String linkText = TextUtils.truncateToWidth(
+                RULES_SUMMARY_LINK_TEXT,
+                fm,
+                Math.max(0, maxWidth - fm.stringWidth(prefix) - suffixW)
+        );
+        int totalW = fm.stringWidth(prefix) + fm.stringWidth(linkText) + suffixW;
+        int cursorX = x + Math.max(0, (maxWidth - totalW) / 2);
+
+        g.setColor(uiTextDim);
         g.drawString(prefix, cursorX, lineY);
         cursorX += fm.stringWidth(prefix);
 
         g.setColor(white);
-        String linkText = TextUtils.truncateToWidth(
-                RULES_SUMMARY_LINK_TEXT,
-                fm,
-                Math.max(0, maxWidth - (cursorX - x) - fm.stringWidth(RULES_SUMMARY_SUFFIX))
-        );
         g.drawString(linkText, cursorX, lineY);
         int linkW = fm.stringWidth(linkText);
         layout.githubReadmeLinkBounds.setBounds(cursorX, lineY - fm.getAscent(), linkW, fm.getHeight());
@@ -419,7 +424,7 @@ public final class RulesTabRenderer {
         cursorX += linkW;
 
         g.setColor(uiTextDim);
-        if (cursorX - x + fm.stringWidth(RULES_SUMMARY_SUFFIX) <= maxWidth)
+        if (cursorX - x + suffixW <= maxWidth)
         {
             g.drawString(RULES_SUMMARY_SUFFIX, cursorX, lineY);
         }
@@ -450,8 +455,8 @@ public final class RulesTabRenderer {
         String prefix = foundCount > 0 ? LINE_SYNC_RESULT_FOUND_PREFIX : LINE_SYNC_RESULT_EMPTY_PREFIX;
         String completionNoun = foundCount == 1 ? "task completion" : "task completions";
         String message = foundCount > 0
-                ? "Sync found " + foundCount + " new " + completionNoun + "!"
-                : "Sync did not find new task completions";
+                ? "Result: sync found " + foundCount + " new " + completionNoun + "!"
+                : "Result: sync did not find new task completions";
         lines.addAll(prefixWrappedLines(prefix, message, fm, maxWidth));
     }
 
@@ -479,10 +484,6 @@ public final class RulesTabRenderer {
         {
             return line.substring(LINE_SYNC_RESULT_EMPTY_PREFIX.length());
         }
-        if (line.startsWith(LINE_SYNC_RESULT_ERROR_PREFIX))
-        {
-            return line.substring(LINE_SYNC_RESULT_ERROR_PREFIX.length());
-        }
         if (line.startsWith(LINE_SYNC_TIMESTAMP_PREFIX))
         {
             return line.substring(LINE_SYNC_TIMESTAMP_PREFIX.length());
@@ -507,10 +508,6 @@ public final class RulesTabRenderer {
         if (line.startsWith(LINE_SYNC_RESULT_FOUND_PREFIX))
         {
             return SYNC_FOUND_GREEN;
-        }
-        if (line.startsWith(LINE_SYNC_RESULT_ERROR_PREFIX))
-        {
-            return SYNC_ERROR_RED;
         }
         if (line.startsWith(LINE_SYNC_HELPER_GOLD_PREFIX))
         {
@@ -567,31 +564,6 @@ public final class RulesTabRenderer {
         catch (DateTimeParseException ignored)
         {
             return cleanTimestamp(value);
-        }
-    }
-
-    private void drawReviewNeededTitle(Graphics2D g, FontMetrics fm, int x, int baseline, int maxWidth) {
-        int textX = x;
-        if (REVIEW_NEEDED_ICON != null)
-        {
-            int iconSize = Math.min(18, Math.max(12, rowHeight + 2));
-            int iconY = baseline - fm.getAscent() + ((fm.getHeight() - iconSize) / 2);
-            g.drawImage(REVIEW_NEEDED_ICON, x, iconY, iconSize, iconSize, null);
-            textX = x + iconSize + 5;
-        }
-
-        String drawText = TextUtils.truncateToWidth(REVIEW_NEEDED_TITLE, fm, Math.max(0, maxWidth - (textX - x) - 8));
-        g.drawString(drawText, textX, baseline + 2);
-    }
-
-    private static BufferedImage loadReviewNeededIconSafe() {
-        try (InputStream in = RulesTabRenderer.class.getResourceAsStream("/icons/notifications/OSRS_exclamation.png"))
-        {
-            return in == null ? null : ImageIO.read(in);
-        }
-        catch (Exception ignored)
-        {
-            return null;
         }
     }
 
@@ -664,6 +636,37 @@ public final class RulesTabRenderer {
     {
         String drawText = TextUtils.truncateToWidth(text, fm, Math.max(0, width - pad));
         g.drawString(drawText, x + Math.max(0, (width - fm.stringWidth(drawText)) / 2), baseline);
+    }
+
+    private static void drawCenteredLabeledText(
+            Graphics2D g,
+            FontMetrics fm,
+            String text,
+            String label,
+            Color valueColor,
+            int x,
+            int baseline,
+            int width,
+            int pad)
+    {
+        String drawText = TextUtils.truncateToWidth(text, fm, Math.max(0, width - pad));
+        int textX = x + Math.max(0, (width - fm.stringWidth(drawText)) / 2);
+        if (!drawText.startsWith(label))
+        {
+            g.setColor(valueColor);
+            g.drawString(drawText, textX, baseline);
+            return;
+        }
+
+        g.setColor(white);
+        g.drawString(label, textX, baseline);
+        g.setColor(valueColor);
+        g.drawString(drawText.substring(label.length()), textX + fm.stringWidth(label), baseline);
+    }
+
+    private static Font titleFont()
+    {
+        return FontManager.getRunescapeFont();
     }
 
 }

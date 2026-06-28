@@ -25,9 +25,9 @@ public class TaskDetailsPopupTest
         XtremeTask combatAchievement = task(TaskSource.COMBAT_ACHIEVEMENT);
         XtremeTask diary = task(TaskSource.DIARY_ACHIEVEMENT);
 
-        assertEquals("Task not completed in game", TaskDetailsPopup.syncMismatchTitle(combatAchievement));
+        assertEquals("Task not completed in-game", TaskDetailsPopup.syncMismatchTitle(combatAchievement));
         assertEquals("Mark task incomplete to keep task tracking accurate", TaskDetailsPopup.syncMismatchAction(combatAchievement));
-        assertEquals("Task not completed in game", TaskDetailsPopup.syncMismatchTitle(diary));
+        assertEquals("Task not completed in-game", TaskDetailsPopup.syncMismatchTitle(diary));
         assertEquals("Mark task incomplete to keep task tracking accurate", TaskDetailsPopup.syncMismatchAction(diary));
     }
 
