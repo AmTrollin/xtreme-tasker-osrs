@@ -2264,7 +2264,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 this::resolvePrerequisiteMarkerImage,
                 task -> buildCollectionLogRequirementPreview(task, !useCondensedTaskRows()),
                 plugin::getCollectionLogSequenceStepLabel,
-                plugin::isCollectionLogTaskSyncMismatch,
+                plugin::isTaskSyncMismatch,
                 this::getCachedItemImage,
                 this::taskDetailsWikiLinks,
                 client.getMouseCanvasPosition(),

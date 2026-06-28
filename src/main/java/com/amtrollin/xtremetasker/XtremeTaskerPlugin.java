@@ -186,6 +186,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private String lastCombatAchievementSyncResult = null;
     private long lastCombatAchievementSyncResultAtEpochMillis = 0L;
     private String lastCombatAchievementSyncResultAtLocalTime = null;
+    private long combatAchievementLastSyncSeenAtMillis = 0L;
     private String lastCollectionLogSyncResult = null;
     private long lastCollectionLogSyncResultAtEpochMillis = 0L;
     private String lastCollectionLogSyncResultAtLocalTime = null;
@@ -223,6 +224,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         this.collectionLogService = collectionLogService;
         attachCollectionLogCacheListener();
+    }
+
+    void setCombatAchievementServiceForTesting(CombatAchievementService combatAchievementService)
+    {
+        this.combatAchievementService = combatAchievementService;
     }
 
     void setCurrentTaskForTesting(XtremeTask task)
@@ -1291,6 +1297,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setLastCombatAchievementSyncResult(lastCombatAchievementSyncResult);
         state.setLastCombatAchievementSyncResultAtEpochMillis(lastCombatAchievementSyncResultAtEpochMillis);
         state.setLastCombatAchievementSyncResultAtLocalTime(lastCombatAchievementSyncResultAtLocalTime);
+        state.setCombatAchievementLastSyncSeenAtMillis(combatAchievementLastSyncSeenAtMillis);
         state.setLastCollectionLogSyncResult(lastCollectionLogSyncResult);
         state.setLastCollectionLogSyncResultAtEpochMillis(lastCollectionLogSyncResultAtEpochMillis);
         state.setLastCollectionLogSyncResultAtLocalTime(lastCollectionLogSyncResultAtLocalTime);
@@ -1305,6 +1312,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setCompletedBeforeRolledTaskIds(new HashSet<>(completedBeforeRolledTaskIds));
         state.setCollectionLogItemIds(new HashSet<>(collectionLogService.getCachedItemIds()));
         state.setCollectionLogItemOrder(new HashMap<>(collectionLogService.getCachedItemOrder()));
+        state.setCollectionLogFullSyncSeen(collectionLogService.hasFullSyncSeen());
+        state.setCollectionLogLastSyncSeenAtMillis(collectionLogService.getLastSyncSeenAtMillis());
         return state;
     }
 
@@ -1354,6 +1363,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 && isValidLongMap(state.getCompletedTaskTimeTicksById())
                 && isValidIdSet(state.getCompletedBeforeRolledTaskIds())
                 && isValidPositiveIntegerSet(state.getCollectionLogItemIds())
+                && state.getCombatAchievementLastSyncSeenAtMillis() >= 0L
+                && state.getCollectionLogLastSyncSeenAtMillis() >= 0L
                 && (state.getCurrentTaskCollectionLogBaselineCount() == null
                 || state.getCurrentTaskCollectionLogBaselineCount() >= 0)
                 && state.getLastSeenPackVersion() >= 0
@@ -1623,6 +1634,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             completedBeforeRolledTaskIds.addAll(state.getCompletedBeforeRolledTaskIds());
         }
         collectionLogService.restoreCachedItemState(state.getCollectionLogItemIds(), state.getCollectionLogItemOrder());
+        collectionLogService.restoreSyncEvidence(
+                state.isCollectionLogFullSyncSeen(),
+                state.getCollectionLogLastSyncSeenAtMillis());
         collectionLogStateVersion++;
 
         currentTaskId = safeTrim(state.getCurrentTaskId());
@@ -1641,6 +1655,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         lastCombatAchievementSyncResult = safeTrim(state.getLastCombatAchievementSyncResult());
         lastCombatAchievementSyncResultAtEpochMillis = state.getLastCombatAchievementSyncResultAtEpochMillis();
         lastCombatAchievementSyncResultAtLocalTime = safeTrim(state.getLastCombatAchievementSyncResultAtLocalTime());
+        combatAchievementLastSyncSeenAtMillis = Math.max(0L, state.getCombatAchievementLastSyncSeenAtMillis());
         if (lastCombatAchievementSyncResultAtLocalTime == null && lastCombatAchievementSyncResultAtEpochMillis > 0L)
         {
             lastCombatAchievementSyncResultAtLocalTime = formatSaveTime(lastCombatAchievementSyncResultAtEpochMillis);
@@ -1656,6 +1671,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 legacyLastSyncResult,
                 legacyLastSyncResultAtEpochMillis,
                 legacyLastSyncResultAtLocalTime);
+        if (combatAchievementLastSyncSeenAtMillis == 0L && lastCombatAchievementSyncResultAtEpochMillis > 0L)
+        {
+            combatAchievementLastSyncSeenAtMillis = lastCombatAchievementSyncResultAtEpochMillis;
+        }
         if (state.getSyncCompletionCandidateTaskIds() != null)
         {
             syncCompletionCandidateTaskIds.addAll(state.getSyncCompletionCandidateTaskIds());
@@ -1695,6 +1714,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         lastCombatAchievementSyncResult = null;
         lastCombatAchievementSyncResultAtEpochMillis = 0L;
         lastCombatAchievementSyncResultAtLocalTime = null;
+        combatAchievementLastSyncSeenAtMillis = 0L;
         lastCollectionLogSyncResult = null;
         lastCollectionLogSyncResultAtEpochMillis = 0L;
         lastCollectionLogSyncResultAtLocalTime = null;
@@ -3042,6 +3062,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             loadCombatAchievementMappings();
         }
 
+        markCombatAchievementSyncSeen();
         List<String> completionCandidateTaskIds = new ArrayList<>();
         int completionCandidates = findCombatAchievementCompletionCandidates(completionCandidateTaskIds);
         setSyncCompletionCandidatesForSource(TaskSource.COMBAT_ACHIEVEMENT, completionCandidateTaskIds);
@@ -3081,6 +3102,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         for (XtremeTask task : tasks)
         {
             if (task.getSource() != TaskSource.COMBAT_ACHIEVEMENT || !isTaskCompleted(task))
+            {
+                continue;
+            }
+            if (!hasCombatAchievementSyncAfterCompletion(task))
             {
                 continue;
             }
@@ -4038,7 +4063,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return syncMismatchTasksCache;
         }
 
-        pruneResolvedCollectionLogSyncMismatches();
+        pruneResolvedSyncMismatches();
         if (syncMismatchTaskIds.isEmpty())
         {
             updateSyncMismatchTasksCache(Collections.emptyList(), capturedItemCount);
@@ -4070,12 +4095,22 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         syncMismatchTasksCacheCapturedItemCount = capturedItemCount;
     }
 
-    private void pruneResolvedCollectionLogSyncMismatches()
+    private void pruneResolvedSyncMismatches()
+    {
+        boolean changed = pruneResolvedCollectionLogSyncMismatches();
+        changed |= pruneInvalidCombatAchievementSyncMismatches();
+        if (changed)
+        {
+            markDirtyAndPersist();
+        }
+    }
+
+    private boolean pruneResolvedCollectionLogSyncMismatches()
     {
         if (syncMismatchTaskIds.isEmpty()
                 || collectionLogService == null)
         {
-            return;
+            return false;
         }
 
         Map<String, XtremeTask> byId = tasksById();
@@ -4096,7 +4131,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
         if (!hasCollectionLogItemMismatch)
         {
-            return;
+            return false;
         }
 
         Set<String> currentCollectionLogMismatchIds = findCollectionLogItemSyncMismatchIds();
@@ -4117,8 +4152,37 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             {
                 updateSyncMismatchTitle();
             }
-            markDirtyAndPersist();
         }
+        return changed;
+    }
+
+    private boolean pruneInvalidCombatAchievementSyncMismatches()
+    {
+        if (syncMismatchTaskIds.isEmpty())
+        {
+            return false;
+        }
+
+        Map<String, XtremeTask> byId = tasksById();
+        boolean changed = syncMismatchTaskIds.removeIf(id -> {
+            XtremeTask task = byId.get(id);
+            if (task == null || task.getSource() != TaskSource.COMBAT_ACHIEVEMENT)
+            {
+                return false;
+            }
+            if (!isTaskCompleted(task) || !hasCombatAchievementSyncAfterCompletion(task))
+            {
+                return true;
+            }
+
+            Integer taskId = resolveCombatAchievementTaskId(task);
+            return taskId != null && combatAchievementService.isTaskComplete(taskId);
+        });
+        if (changed && syncMismatchTaskIds.isEmpty())
+        {
+            updateSyncMismatchTitle();
+        }
+        return changed;
     }
 
     private Set<String> findCollectionLogItemSyncMismatchIds()
@@ -4283,6 +4347,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             {
                 changed |= syncMismatchTaskIds.remove(candidate.getId());
             }
+            else if (candidate.getSource() == TaskSource.COMBAT_ACHIEVEMENT
+                    && !hasCombatAchievementSyncAfterCompletion(candidate))
+            {
+                continue;
+            }
             else if (!syncMismatchTaskIds.contains(candidate.getId()))
             {
                 syncMismatchTaskIds.add(candidate.getId());
@@ -4343,6 +4412,24 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return null;
+    }
+
+    private void markCombatAchievementSyncSeen()
+    {
+        combatAchievementLastSyncSeenAtMillis = System.currentTimeMillis();
+    }
+
+    private boolean hasCombatAchievementSyncAfterCompletion(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return false;
+        }
+
+        CompletionInfo completionInfo = getCompletionInfo(task);
+        long completedAt = completionInfo == null ? 0L : Math.max(0L, completionInfo.timestamp);
+        return combatAchievementLastSyncSeenAtMillis > 0L
+                && combatAchievementLastSyncSeenAtMillis > completedAt;
     }
 
     @Override

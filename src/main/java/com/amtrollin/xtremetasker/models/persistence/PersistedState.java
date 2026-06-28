@@ -35,6 +35,8 @@ public class PersistedState {
     private String lastCombatAchievementSyncResult;
     private long lastCombatAchievementSyncResultAtEpochMillis = 0L;
     private String lastCombatAchievementSyncResultAtLocalTime;
+    /** Epoch millis of the latest Combat Achievement sync used to validate completed CA tasks. */
+    private long combatAchievementLastSyncSeenAtMillis = 0L;
     private String lastCollectionLogSyncResult;
     private long lastCollectionLogSyncResultAtEpochMillis = 0L;
     private String lastCollectionLogSyncResultAtLocalTime;
@@ -57,4 +59,8 @@ public class PersistedState {
     private Set<Integer> collectionLogItemIds = new HashSet<>();
     /** Per collection-log item acquisition order, used to show applied vs not-yet-applied items chronologically. */
     private Map<Integer, Long> collectionLogItemOrder = new HashMap<>();
+    /** Whether a full Collection Log sync has completed for this account. */
+    private boolean collectionLogFullSyncSeen = false;
+    /** Epoch millis of the latest Collection Log sync used to validate completed CLOG tasks. */
+    private long collectionLogLastSyncSeenAtMillis = 0L;
 }

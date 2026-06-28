@@ -225,7 +225,7 @@ public final class TaskDetailsPopup
             Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<XtremeTask, String> collectionLogSequenceLabelProvider,
-            Function<XtremeTask, Boolean> collectionLogSyncMismatchProvider,
+            Function<XtremeTask, Boolean> syncMismatchProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             Function<XtremeTask, List<WikiLink>> wikiLinksProvider,
             net.runelite.api.Point mouse,
@@ -287,8 +287,8 @@ public final class TaskDetailsPopup
         g.setColor(palette.UI_GOLD);
 
         final int wikiW = Math.max(headerFm.stringWidth(wikiOpenText), headerFm.stringWidth(wikiCloseText)) + 20;
-        boolean collectionLogMismatch = collectionLogSyncMismatchProvider != null
-                && Boolean.TRUE.equals(collectionLogSyncMismatchProvider.apply(task));
+        boolean syncMismatch = syncMismatchProvider != null
+                && Boolean.TRUE.equals(syncMismatchProvider.apply(task));
 
         // Icon in header
         int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - iconReserve - completeReserve);
@@ -441,14 +441,14 @@ public final class TaskDetailsPopup
         boolean tipInDescriptionSection = hasTaskTip && showDescriptionSection && !hasRequirementPreview;
         boolean tipInRequirementSection = hasTaskTip && hasRequirementPreview;
         boolean showGroupedProgressSection = groupProgress != null && groupProgress.isGrouped();
-        boolean showGroupedCollectionLogMismatch = showGroupedProgressSection && collectionLogMismatch;
-        boolean showStandaloneSyncMismatch = collectionLogMismatch && !showGroupedProgressSection;
+        boolean showGroupedSyncMismatch = showGroupedProgressSection && syncMismatch;
+        boolean showStandaloneSyncMismatch = syncMismatch && !showGroupedProgressSection;
         int totalPx = 0;
         if (showGroupedProgressSection)
         {
             totalPx += ROW_HEIGHT; // "Progress" header
             totalPx += ROW_HEIGHT + 8; // progress editor
-            if (showGroupedCollectionLogMismatch)
+            if (showGroupedSyncMismatch)
             {
                 totalPx += ROW_HEIGHT; // blank line before warning
                 totalPx += ROW_HEIGHT; // warning text
@@ -584,7 +584,7 @@ public final class TaskDetailsPopup
             drawGroupProgressEditor(g, fm, contentLeft, y - fm.getAscent() + 1, contentW, groupProgress, mouse);
             y += ROW_HEIGHT + 8;
 
-            if (showGroupedCollectionLogMismatch)
+            if (showGroupedSyncMismatch)
             {
                 y += ROW_HEIGHT;
                 y = drawSyncMismatchText(

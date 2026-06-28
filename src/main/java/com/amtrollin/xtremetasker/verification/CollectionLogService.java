@@ -414,6 +414,12 @@ public class CollectionLogService
         }
     }
 
+    public void restoreSyncEvidence(boolean fullSyncSeen, long lastSyncSeenAtMillis)
+    {
+        this.fullSyncSeen = fullSyncSeen;
+        this.lastSyncSeenAtMillis = Math.max(0L, lastSyncSeenAtMillis);
+    }
+
     public Set<Integer> getCachedItemIds()
     {
         return java.util.Collections.unmodifiableSet(obtainedItems);

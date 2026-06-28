@@ -3,8 +3,10 @@ package com.amtrollin.xtremetasker;
 import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.persistence.PersistedState;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.verification.CollectionLogService;
+import com.amtrollin.xtremetasker.verification.CombatAchievementService;
 import com.google.gson.Gson;
 import org.junit.Test;
 
@@ -191,6 +193,47 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void collectionLogMismatchSyncEvidencePersistsAcrossSessions() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_persisted_sync_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.manualCompletionTimestampsForTesting().put(task.getId(), System.currentTimeMillis() - 1_000L);
+        collectionLogService.markFullSyncSeen();
+        assertTrue(plugin.isCollectionLogTaskSyncMismatch(task));
+
+        Method buildState = XtremeTaskerPlugin.class.getDeclaredMethod("buildPersistedState");
+        buildState.setAccessible(true);
+        PersistedState state = (PersistedState) buildState.invoke(plugin);
+
+        XtremeTaskerPlugin restoredPlugin = new XtremeTaskerPlugin();
+        CollectionLogService restoredCollectionLogService = new CollectionLogService();
+        restoredPlugin.setCollectionLogServiceForTesting(restoredCollectionLogService);
+        restoredPlugin.tasksForTesting().clear();
+        restoredPlugin.tasksForTesting().add(task);
+
+        Method applyState = XtremeTaskerPlugin.class.getDeclaredMethod("applyPersistedState", PersistedState.class);
+        applyState.setAccessible(true);
+        applyState.invoke(restoredPlugin, state);
+
+        assertTrue("Persisted CLOG sync evidence should keep the mismatch helper visible after login",
+                restoredPlugin.isCollectionLogTaskSyncMismatch(task));
+        assertEquals(List.of(task.getId()), restoredPlugin.syncMismatchTaskIdsForTesting());
+    }
+
+    @Test
     public void manualCollectionLogSyncDoesNotStoreDiaryMismatchRows() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -225,6 +268,104 @@ public class CollectionLogMismatchTest
 
         assertEquals("Manual CLOG/AD sync should only store CLOG item mismatches, never diary rows",
                 List.of(clogTask.getId()), plugin.syncMismatchTaskIdsForTesting());
+    }
+
+    @Test
+    public void combatAchievementMismatchRequiresSyncAfterCompletion() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCollectionLogServiceForTesting(new CollectionLogService());
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(false));
+
+        XtremeTask task = combatAchievementTask(
+                "combat_achievement_easy_missing_after_sync_test",
+                "Missing CA after sync",
+                7
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+
+        invokeRefreshCombatAchievementSyncState(plugin);
+        Thread.sleep(5L);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.manualCompletionTimestampsForTesting().put(task.getId(), System.currentTimeMillis());
+
+        assertTrue("A CA sync before completion should not prove the completed task is mismatched",
+                plugin.syncMismatchTaskIdsForTesting().isEmpty());
+        assertTrue("Old CA sync evidence should be ignored on task details",
+                !plugin.isTaskSyncMismatch(task));
+
+        Thread.sleep(5L);
+        invokeRefreshCombatAchievementSyncState(plugin);
+
+        assertEquals("A CA sync after completion should show the mismatch helper when the CA is not complete in game",
+                List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
+        assertTrue(plugin.isTaskSyncMismatch(task));
+    }
+
+    @Test
+    public void combatAchievementMismatchSyncEvidencePersistsAcrossSessions() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCollectionLogServiceForTesting(new CollectionLogService());
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(false));
+
+        XtremeTask task = combatAchievementTask(
+                "combat_achievement_easy_persisted_mismatch_test",
+                "Persisted CA mismatch",
+                8
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.manualCompletionTimestampsForTesting().put(task.getId(), System.currentTimeMillis() - 1_000L);
+
+        invokeRefreshCombatAchievementSyncState(plugin);
+        assertEquals(List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
+
+        Method buildState = XtremeTaskerPlugin.class.getDeclaredMethod("buildPersistedState");
+        buildState.setAccessible(true);
+        PersistedState state = (PersistedState) buildState.invoke(plugin);
+
+        XtremeTaskerPlugin restoredPlugin = new XtremeTaskerPlugin();
+        restoredPlugin.setCollectionLogServiceForTesting(new CollectionLogService());
+        restoredPlugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(false));
+        restoredPlugin.tasksForTesting().clear();
+        restoredPlugin.tasksForTesting().add(task);
+
+        Method applyState = XtremeTaskerPlugin.class.getDeclaredMethod("applyPersistedState", PersistedState.class);
+        applyState.setAccessible(true);
+        applyState.invoke(restoredPlugin, state);
+
+        assertEquals("Persisted CA sync evidence should keep the mismatch helper visible after login",
+                List.of(task.getId()), restoredPlugin.syncMismatchTaskIdsForTesting());
+        assertTrue(restoredPlugin.isTaskSyncMismatch(task));
+    }
+
+    @Test
+    public void staleCombatAchievementMismatchWithoutSyncEvidenceIsPruned() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCollectionLogServiceForTesting(new CollectionLogService());
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(false));
+
+        XtremeTask task = combatAchievementTask(
+                "combat_achievement_easy_stale_mismatch_test",
+                "Stale CA mismatch",
+                9
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.manualCompletionTimestampsForTesting().put(task.getId(), System.currentTimeMillis());
+        plugin.syncMismatchTaskIdsForTesting().add(task.getId());
+
+        assertTrue("Old bogus CA mismatch rows should clear when there is no post-completion CA sync evidence",
+                plugin.getSyncMismatchTasks(TaskSource.COMBAT_ACHIEVEMENT).isEmpty());
+        assertTrue(plugin.syncMismatchTaskIdsForTesting().isEmpty());
     }
 
     @Test
@@ -910,6 +1051,51 @@ public class CollectionLogMismatchTest
                 verification,
                 null
         );
+    }
+
+    private static XtremeTask combatAchievementTask(String id, String name, int taskId)
+    {
+        TaskVerification verification = new Gson().fromJson(
+                "{\"method\":\"COMBAT_ACHIEVEMENT\",\"taskId\":" + taskId + "}",
+                TaskVerification.class
+        );
+
+        return new XtremeTask(
+                id,
+                name,
+                TaskSource.COMBAT_ACHIEVEMENT,
+                TaskTier.EASY,
+                null,
+                null,
+                null,
+                null,
+                null,
+                verification,
+                null
+        );
+    }
+
+    private static void invokeRefreshCombatAchievementSyncState(XtremeTaskerPlugin plugin) throws Exception
+    {
+        Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCombatAchievementSyncState");
+        refresh.setAccessible(true);
+        refresh.invoke(plugin);
+    }
+
+    private static final class StubCombatAchievementService extends CombatAchievementService
+    {
+        private final boolean complete;
+
+        private StubCombatAchievementService(boolean complete)
+        {
+            this.complete = complete;
+        }
+
+        @Override
+        public boolean isTaskComplete(int sortId)
+        {
+            return complete;
+        }
     }
 
 }
