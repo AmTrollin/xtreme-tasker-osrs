@@ -25,6 +25,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.MenuAction;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuOpened;
@@ -229,6 +230,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     void setCombatAchievementServiceForTesting(CombatAchievementService combatAchievementService)
     {
         this.combatAchievementService = combatAchievementService;
+    }
+
+    void setClientForTesting(Client client)
+    {
+        this.client = client;
     }
 
     void setCurrentTaskForTesting(XtremeTask task)
@@ -2925,6 +2931,26 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .mapToObj(String::valueOf)
                 .collect(Collectors.joining(","));
         return signature.isEmpty() ? null : signature;
+    }
+
+    @Subscribe(priority = 1000.0f)
+    public void onChatMessage(ChatMessage event)
+    {
+        // RuneLite's Loot Tracker dereferences localPlayer for these chat types.
+        // During login/hop transitions the chat event can arrive first, so defang it.
+        if (isLootTrackerWatchedChatType(event.getType())
+                && client != null
+                && client.getLocalPlayer() == null)
+        {
+            event.setType(ChatMessageType.CONSOLE);
+        }
+    }
+
+    private static boolean isLootTrackerWatchedChatType(ChatMessageType type)
+    {
+        return type == ChatMessageType.GAMEMESSAGE
+                || type == ChatMessageType.SPAM
+                || type == ChatMessageType.MESBOX;
     }
 
     @Subscribe
