@@ -7,8 +7,6 @@ public final class RulesTabLayout
     public enum SubTab { RULES, DATA_SYNCS }
 
     public final Rectangle viewportBounds = new Rectangle();
-    public final Rectangle reloadButtonBounds = new Rectangle();
-    public final Rectangle taskerFaqLinkBounds = new Rectangle();
     public final Rectangle githubReadmeLinkBounds = new Rectangle();
     public final Rectangle syncProgressButtonBounds = new Rectangle();
     public final Rectangle syncCaFoundReviewButtonBounds = new Rectangle();

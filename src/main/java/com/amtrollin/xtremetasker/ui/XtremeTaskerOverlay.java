@@ -3556,8 +3556,6 @@ public class XtremeTaskerOverlay extends Overlay {
         );
 
         rulesLayout.viewportBounds.setBounds(layout.viewportBounds);
-        rulesLayout.reloadButtonBounds.setBounds(layout.reloadButtonBounds);
-        rulesLayout.taskerFaqLinkBounds.setBounds(layout.taskerFaqLinkBounds);
         rulesLayout.githubReadmeLinkBounds.setBounds(layout.githubReadmeLinkBounds);
         rulesLayout.syncProgressButtonBounds.setBounds(layout.syncProgressButtonBounds);
         rulesLayout.syncCaFoundReviewButtonBounds.setBounds(layout.syncCaFoundReviewButtonBounds);
@@ -4739,8 +4737,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void transformRulesLayoutBounds(AffineTransform transform) {
         transformRects(transform,
-                rulesLayout.viewportBounds, rulesLayout.reloadButtonBounds,
-                rulesLayout.taskerFaqLinkBounds, rulesLayout.githubReadmeLinkBounds,
+                rulesLayout.viewportBounds,
+                rulesLayout.githubReadmeLinkBounds,
                 rulesLayout.syncProgressButtonBounds, rulesLayout.syncCaFoundReviewButtonBounds,
                 rulesLayout.syncCaReviewButtonBounds, rulesLayout.syncCaReviewIgnoreButtonBounds,
                 rulesLayout.subTabRulesBounds, rulesLayout.subTabDataSyncsBounds);

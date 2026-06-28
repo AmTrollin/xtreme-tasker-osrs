@@ -54,7 +54,7 @@ When plugin updates add new tasks, they'll appear in the **Tasks** tab for revie
 
 ## Rules
 
-Xtreme Tasker follows the official Tasker ruleset with additional rules for the expanded task list.
+Xtreme Tasker follows the official Tasker ruleset with additional rules for the expanded task list. See the full [Xtreme Tasker Rules](docs/RULES.md).
 
 Grandmaster Combat Achievements are included in the **Master** tier.
 

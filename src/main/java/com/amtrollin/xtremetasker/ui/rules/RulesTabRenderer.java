@@ -6,7 +6,6 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
@@ -28,11 +27,13 @@ public final class RulesTabRenderer {
     private final Color uiGold;
     private final Color uiTextDim;
 
-    private static final String TASKER_FAQ_URL =
-            "https://docs.google.com/document/d/e/2PACX-1vTHfXHzMQFbt_iYAP-O88uRhhz3wigh1KMiiuomU7ftli-rL_c3bRqfGYmUliE1EHcIr3LfMx2UTf2U/pub";
-
     private static final String GITHUB_README_URL =
-            "https://github.com/amtrollin/xtreme-tasker-plugin#readme";
+            "https://github.com/AmTrollin/xtreme-tasker-osrs/blob/master/docs/RULES.md";
+    private static final String RULES_TITLE = "Rules:";
+    private static final String RULES_SUMMARY_PREFIX =
+            "Xtreme Tasker adds extra rules on top of official Tasker. See the ";
+    private static final String RULES_SUMMARY_LINK_TEXT = "Xtreme Tasker Rules GitHub README";
+    private static final String RULES_SUMMARY_SUFFIX = ".";
 
     private static final String LINE_SYNC_PROGRESS_BUTTON_ROW = "[SYNC_PROGRESS_BUTTON_ROW]";
     private static final String LINE_SYNC_CA_FOUND_ACTIONS_ROW = "[SYNC_CA_FOUND_ACTIONS_ROW]";
@@ -46,7 +47,6 @@ public final class RulesTabRenderer {
     private static final String LINE_SYNC_HELPER_DIM_PREFIX = "[SYNC_HELPER_DIM]";
     private static final String LINE_SYNC_BUTTON_TOP_SPACER = "[SYNC_BUTTON_TOP_SPACER]";
     private static final String LINE_SYNC_RESULT_TIGHT_SPACER = "[SYNC_RESULT_TIGHT_SPACER]";
-    private static final String LINE_RULES_TOP_SPACER = "[RULES_TOP_SPACER]";
     private static final String REVIEW_NEEDED_TITLE = "Review needed";
     private static final String SYNC_HELPER_TEXT = "Sync account progress here.";
     private static final String CLOG_SYNC_HELPER_TEXT =
@@ -59,7 +59,6 @@ public final class RulesTabRenderer {
     private static final Color SYNC_FOUND_GREEN = new Color(111, 190, 92);
     private static final Color SYNC_ERROR_RED = new Color(198, 82, 70);
     private static final String FOUND_COMPLETIONS_BUTTON_LABEL = "Update tasks";
-    private static final List<String> RULES_COPY_LINES = loadRulesCopyLinesSafe();
 
     public RulesTabRenderer(
             int panelWidth,
@@ -98,7 +97,7 @@ public final class RulesTabRenderer {
     ) {
         RulesTabLayout layout = new RulesTabLayout();
         clearBounds(
-                layout.taskerFaqLinkBounds, layout.githubReadmeLinkBounds, layout.reloadButtonBounds,
+                layout.githubReadmeLinkBounds,
                 layout.syncProgressButtonBounds, layout.syncCaFoundReviewButtonBounds,
                 layout.syncCaReviewButtonBounds, layout.syncCaReviewIgnoreButtonBounds,
                 layout.subTabRulesBounds, layout.subTabDataSyncsBounds
@@ -152,80 +151,32 @@ public final class RulesTabRenderer {
             );
         }
 
-        List<String> lines = buildRulesLines(fm, viewportW - 8);
-        int rb = rowBlock();
+        renderRulesSummary(g, fm, layout, bx, adjustedBaseline, viewportW);
+        return layout;
+    }
 
+    private void renderRulesSummary(
+            Graphics2D g,
+            FontMetrics fm,
+            RulesTabLayout layout,
+            int bx,
+            int firstBaselineY,
+            int viewportW)
+    {
+        int rb = rowBlock();
         Shape oldClip = g.getClip();
         g.setClip(layout.viewportBounds);
-
         Font normalFont = g.getFont();
 
-        int drawY = adjustedBaseline;
+        int drawY = firstBaselineY + Math.max(3, rb / 3);
+        g.setColor(white);
+        g.drawString(RULES_TITLE, bx, drawY);
 
-        for (String line : lines) {
-            if (LINE_RULES_TOP_SPACER.equals(line)) {
-                drawY += Math.max(3, rb / 3);
-                continue;
-            }
-
-            // ---- spacing ----
-            if (line.trim().isEmpty()) {
-                drawY += rb;
-                continue;
-            }
-
-            String markedLine = markedLineText(line);
-            if (markedLine != null) {
-                g.setColor(markedLineColor(line));
-                g.setFont(normalFont);
-                fm = g.getFontMetrics();
-                String drawText = TextUtils.truncateToWidth(markedLine, fm, viewportW - 8);
-                g.drawString(drawText, bx, drawY);
-                drawY += rb;
-                continue;
-            }
-
-            // Section titles within Rules copy
-            boolean isRulesTitle = line.equals("Rules:");
-            boolean isRuleSubheader = line.equals("Xtreme Tasker rules") || line.equals("Official Tasker rules");
-            boolean isAllowanceHeader = line.equals("Boss combat training allowance");
-            boolean isDataSubtitle = line.equals("Last sync result")
-                    || line.equals("Combat Achievements sync")
-                    || line.equals("Collection Logs + Achievement Diaries sync")
-                    || line.equals(REVIEW_NEEDED_TITLE);
-
-            // color + font
-            if (isRulesTitle) {
-                g.setColor(white);
-                g.setFont(normalFont);
-            } else if (isRuleSubheader) {
-                g.setColor(uiGold);
-                g.setFont(normalFont);
-            } else if (isAllowanceHeader) {
-                g.setColor(uiGold);
-                g.setFont(normalFont);
-            } else if (isDataSubtitle) {
-                g.setColor(uiGold);
-                g.setFont(normalFont);
-            } else {
-                g.setColor(uiTextDim);
-                g.setFont(normalFont);
-            }
-            fm = g.getFontMetrics();
-
-            if (line.equals(REVIEW_NEEDED_TITLE)) {
-                drawReviewNeededTitle(g, fm, bx, drawY, viewportW);
-            } else {
-                drawRulesLineWithInlineLinks(g, fm, layout, line, bx, drawY, viewportW - 8);
-            }
-
-            g.setFont(normalFont);
-            drawY += rb;
-        }
+        drawY += rb;
+        drawRulesSummarySentence(g, fm, layout, bx, drawY, viewportW - 8);
 
         g.setClip(oldClip);
         g.setFont(normalFont);
-        return layout;
     }
 
     private RulesTabLayout renderDataSyncColumns(
@@ -438,72 +389,40 @@ public final class RulesTabRenderer {
         return viewport == null || (y >= viewport.y && y + height <= viewport.y + viewport.height);
     }
 
-    private void drawRulesLineWithInlineLinks(
+    private void drawRulesSummarySentence(
             Graphics2D g,
             FontMetrics fm,
             RulesTabLayout layout,
-            String line,
             int x,
             int baseline,
             int maxWidth)
     {
-        String linkText = null;
-        Rectangle linkBounds = null;
-        if (line.contains("GitHub README"))
-        {
-            linkText = "GitHub README";
-            linkBounds = layout.githubReadmeLinkBounds;
-        }
-        else if (line.contains("TaskerFAQ"))
-        {
-            linkText = "TaskerFAQ";
-            linkBounds = layout.taskerFaqLinkBounds;
-        }
-
-        if (linkText == null)
-        {
-            String drawText = TextUtils.truncateToWidth(line, fm, maxWidth);
-            g.drawString(drawText, x, baseline);
-            return;
-        }
-
-        int linkStart = line.indexOf(linkText);
-        String before = line.substring(0, linkStart);
-        String after = line.substring(linkStart + linkText.length());
         int cursorX = x;
+        int lineY = baseline;
 
         g.setColor(uiTextDim);
-        g.drawString(before, cursorX, baseline);
-        cursorX += fm.stringWidth(before);
+        String prefix = TextUtils.truncateToWidth(RULES_SUMMARY_PREFIX, fm, maxWidth);
+        g.drawString(prefix, cursorX, lineY);
+        cursorX += fm.stringWidth(prefix);
 
         g.setColor(white);
-        g.drawString(linkText, cursorX, baseline);
+        String linkText = TextUtils.truncateToWidth(
+                RULES_SUMMARY_LINK_TEXT,
+                fm,
+                Math.max(0, maxWidth - (cursorX - x) - fm.stringWidth(RULES_SUMMARY_SUFFIX))
+        );
+        g.drawString(linkText, cursorX, lineY);
         int linkW = fm.stringWidth(linkText);
-        linkBounds.setBounds(cursorX, baseline - fm.getAscent(), linkW, fm.getHeight());
+        layout.githubReadmeLinkBounds.setBounds(cursorX, lineY - fm.getAscent(), linkW, fm.getHeight());
         g.setColor(withAlpha(uiGold, 180));
-        g.drawLine(cursorX, baseline + 2, cursorX + linkW, baseline + 2);
+        g.drawLine(cursorX, lineY + 2, cursorX + linkW, lineY + 2);
         cursorX += linkW;
 
         g.setColor(uiTextDim);
-        g.drawString(TextUtils.truncateToWidth(after, fm, Math.max(0, maxWidth - (cursorX - x))), cursorX, baseline);
-    }
-
-    private List<String> buildRulesLines(FontMetrics fm, int maxWidth) {
-        List<String> lines = new ArrayList<>();
-        lines.add(LINE_RULES_TOP_SPACER);
-        for (String rawLine : RULES_COPY_LINES)
+        if (cursorX - x + fm.stringWidth(RULES_SUMMARY_SUFFIX) <= maxWidth)
         {
-            String line = rawLine.trim();
-            if (line.isEmpty())
-            {
-                lines.add("");
-            }
-            else
-            {
-                lines.addAll(TextUtils.wrapText(line, fm, maxWidth));
-            }
+            g.drawString(RULES_SUMMARY_SUFFIX, cursorX, lineY);
         }
-        return lines;
     }
 
     private void addSyncPendingLines(List<String> lines, FontMetrics fm, int maxWidth)
@@ -676,29 +595,6 @@ public final class RulesTabRenderer {
         }
     }
 
-    private static List<String> loadRulesCopyLinesSafe()
-    {
-        try (InputStream in = RulesTabRenderer.class.getResourceAsStream("/ui/rules.txt"))
-        {
-            if (in == null)
-            {
-                return List.of("Rules:", "Rules text unavailable.");
-            }
-            String text = new String(in.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n");
-            String[] lines = text.split("\n", -1);
-            List<String> out = new ArrayList<>(lines.length);
-            for (String line : lines)
-            {
-                out.add(line);
-            }
-            return out;
-        }
-        catch (Exception ignored)
-        {
-            return List.of("Rules:", "Rules text unavailable.");
-        }
-    }
-
     /** Draws a two-segment connected control. leftActive=true highlights the left segment. */
     private void drawSegmentedControl(Graphics2D g, FontMetrics fm,
                                       Rectangle left, String leftLabel,
@@ -750,11 +646,6 @@ public final class RulesTabRenderer {
             g.setColor(active ? white : new Color(200, 190, 160, 130));
             g.drawString(trunc, tx, ty);
         }
-    }
-
-    // Expose URL so overlay can use it for clicks without duplicating string
-    public static String taskerFaqUrl() {
-        return TASKER_FAQ_URL;
     }
 
     public static String githubReadmeUrl() {

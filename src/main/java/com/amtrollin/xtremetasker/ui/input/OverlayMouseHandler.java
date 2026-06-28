@@ -555,11 +555,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 e.consume();
                 return e;
             }
-            if (a.rulesLayout().taskerFaqLinkBounds.contains(p)) {
-                LinkBrowser.browse(RulesTabRenderer.taskerFaqUrl());
-                e.consume();
-                return e;
-            }
             if (a.rulesLayout().githubReadmeLinkBounds.contains(p)) {
                 LinkBrowser.browse(RulesTabRenderer.githubReadmeUrl());
                 e.consume();
@@ -1044,7 +1039,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.activeTab() == OverlayInputAccess.MainTab.RULES && (
                         a.rulesLayout().subTabRulesBounds.contains(p)
                         || a.rulesLayout().subTabDataSyncsBounds.contains(p)
-                        || a.rulesLayout().taskerFaqLinkBounds.contains(p)
                         || a.rulesLayout().githubReadmeLinkBounds.contains(p)
                         || a.rulesLayout().syncProgressButtonBounds.contains(p)
                         || a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)
