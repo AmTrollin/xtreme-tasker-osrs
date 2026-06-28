@@ -36,18 +36,17 @@ public final class RulesTabRenderer {
 
     private static final String LINE_SYNC_PROGRESS_BUTTON_ROW = "[SYNC_PROGRESS_BUTTON_ROW]";
     private static final String LINE_SYNC_CA_FOUND_ACTIONS_ROW = "[SYNC_CA_FOUND_ACTIONS_ROW]";
-    private static final String LINE_SYNC_RESULT_LABEL = "[SYNC_RESULT_LABEL]";
     private static final String LINE_SYNC_RESULT_FOUND_PREFIX = "[SYNC_RESULT_FOUND]";
     private static final String LINE_SYNC_RESULT_EMPTY_PREFIX = "[SYNC_RESULT_EMPTY]";
     private static final String LINE_SYNC_TIMESTAMP_PREFIX = "[SYNC_TIMESTAMP]";
     private static final String LINE_SYNC_HELPER_GOLD_PREFIX = "[SYNC_HELPER_GOLD]";
     private static final String LINE_SYNC_HELPER_DIM_PREFIX = "[SYNC_HELPER_DIM]";
     private static final String LINE_SYNC_BUTTON_TOP_SPACER = "[SYNC_BUTTON_TOP_SPACER]";
-    private static final String SYNC_TITLE_TEXT = "Sync In-Game Progress";
+    private static final String SYNC_TITLE_TEXT = "Sync & Review Task Completions";
     private static final String SYNC_DESCRIPTION_TEXT =
-            "Find tasks already completed in-game for Combat Achievements, Collection Logs, and Achievement Diaries to review and mark complete in the plugin.";
+            "Find tasks already completed in-game for Combat Achievements and Achievement Diaries, then review and mark complete below.";
     private static final String CLOG_SYNC_HELPER_TEXT =
-            "For CLOGs, open in-game CLOG before syncing so plugin can see latest data.";
+            "For Collection Log tasks, open your in-game Collection Log. The plugin refreshes your Collection Log progress and adds any newly eligible tasks to the review below.";
     private static final String SYNC_LIMITATION_HELPER_TEXT =
             "Note: rarely, some completed tasks may not be detected.";
     private static final DateTimeFormatter SYNC_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US);
@@ -84,9 +83,6 @@ public final class RulesTabRenderer {
             RulesTabLayout.SubTab activeSubTab,
             String lastCombatAchievementSyncResult,
             String lastCombatAchievementSyncResultAtLocalTime,
-            String lastCollectionLogSyncResult,
-            String lastCollectionLogSyncResultAtLocalTime,
-            boolean collectionLogSyncPending,
             int combatAchievementFoundCount,
             int collectionLogFoundCount
     ) {
@@ -137,9 +133,6 @@ public final class RulesTabRenderer {
                     viewportH,
                     lastCombatAchievementSyncResult,
                     lastCombatAchievementSyncResultAtLocalTime,
-                    lastCollectionLogSyncResult,
-                    lastCollectionLogSyncResultAtLocalTime,
-                    collectionLogSyncPending,
                     combatAchievementFoundCount,
                     collectionLogFoundCount
             );
@@ -187,9 +180,6 @@ public final class RulesTabRenderer {
             int viewportH,
             String lastCombatAchievementSyncResult,
             String lastCombatAchievementSyncResultAtLocalTime,
-            String lastCollectionLogSyncResult,
-            String lastCollectionLogSyncResultAtLocalTime,
-            boolean collectionLogSyncPending,
             int combatAchievementFoundCount,
             int collectionLogFoundCount
     )
@@ -202,9 +192,6 @@ public final class RulesTabRenderer {
                 contentW - 8,
                 lastCombatAchievementSyncResult,
                 lastCombatAchievementSyncResultAtLocalTime,
-                lastCollectionLogSyncResult,
-                lastCollectionLogSyncResultAtLocalTime,
-                collectionLogSyncPending,
                 collectionLogFoundCount,
                 combatAchievementFoundCount
         );
@@ -225,15 +212,11 @@ public final class RulesTabRenderer {
             int maxWidth,
             String lastCombatAchievementSyncResult,
             String lastCombatAchievementSyncResultAtLocalTime,
-            String lastCollectionLogSyncResult,
-            String lastCollectionLogSyncResultAtLocalTime,
-            boolean collectionLogSyncPending,
             int collectionLogFoundCount,
             int combatAchievementFoundCount)
     {
         List<String> lines = new ArrayList<>();
         boolean hasCaResult = lastCombatAchievementSyncResult != null && !lastCombatAchievementSyncResult.trim().isEmpty();
-        boolean hasClogResult = lastCollectionLogSyncResult != null && !lastCollectionLogSyncResult.trim().isEmpty();
 
         lines.add(LINE_SYNC_HELPER_GOLD_PREFIX + SYNC_TITLE_TEXT);
         lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, SYNC_DESCRIPTION_TEXT, fm, maxWidth));
@@ -242,15 +225,10 @@ public final class RulesTabRenderer {
         lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, SYNC_LIMITATION_HELPER_TEXT, fm, maxWidth));
         lines.add(LINE_SYNC_BUTTON_TOP_SPACER);
         lines.add(LINE_SYNC_PROGRESS_BUTTON_ROW);
-        if (collectionLogSyncPending)
-        {
-            addSyncPendingLines(lines, fm, maxWidth);
-        }
-        else if (hasCaResult || hasClogResult)
+        if (hasCaResult)
         {
             int totalFound = combatAchievementFoundCount + collectionLogFoundCount;
-            String latestTime = hasCaResult ? lastCombatAchievementSyncResultAtLocalTime : lastCollectionLogSyncResultAtLocalTime;
-            addSyncTimestampLine(lines, "Last sync", latestTime, fm, maxWidth);
+            addSyncTimestampLine(lines, "Last sync", lastCombatAchievementSyncResultAtLocalTime, fm, maxWidth);
             addSyncResultStatusMessageLines(lines, totalFound, fm, maxWidth);
         }
         int totalFound = combatAchievementFoundCount + collectionLogFoundCount;
@@ -291,7 +269,7 @@ public final class RulesTabRenderer {
 
             if (LINE_SYNC_PROGRESS_BUTTON_ROW.equals(line))
             {
-                int btnW = Math.min(colW - 8, Math.max(164, fm.stringWidth("SYNC") + 72));
+                int btnW = Math.min(colW - 8, Math.max(164, fm.stringWidth("SYNC CA/AD") + 72));
                 int btnH = rowHeight + 14;
                 int btnX = x + Math.max(0, (colW - btnW) / 2);
                 int by = drawY - fm.getAscent();
@@ -343,8 +321,7 @@ public final class RulesTabRenderer {
                 continue;
             }
 
-            if (line.startsWith(LINE_SYNC_RESULT_LABEL)
-                    || line.startsWith(LINE_SYNC_RESULT_FOUND_PREFIX)
+            if (line.startsWith(LINE_SYNC_RESULT_FOUND_PREFIX)
                     || line.startsWith(LINE_SYNC_RESULT_EMPTY_PREFIX))
             {
                 drawCenteredLabeledText(g, fm, markedLineText(line), "Result:", markedLineColor(line), x, drawY, colW, 8);
@@ -430,12 +407,6 @@ public final class RulesTabRenderer {
         }
     }
 
-    private void addSyncPendingLines(List<String> lines, FontMetrics fm, int maxWidth)
-    {
-        lines.add(LINE_SYNC_RESULT_LABEL + "Result:");
-        lines.add(LINE_SYNC_RESULT_EMPTY_PREFIX + "....");
-    }
-
     private void addSyncTimestampLine(
             List<String> lines,
             String label,
@@ -455,8 +426,8 @@ public final class RulesTabRenderer {
         String prefix = foundCount > 0 ? LINE_SYNC_RESULT_FOUND_PREFIX : LINE_SYNC_RESULT_EMPTY_PREFIX;
         String completionNoun = foundCount == 1 ? "task completion" : "task completions";
         String message = foundCount > 0
-                ? "Result: sync found " + foundCount + " new " + completionNoun + "!"
-                : "Result: sync did not find new task completions";
+                ? "Result: review has " + foundCount + " new " + completionNoun + "!"
+                : "Result: review has no new task completions";
         lines.addAll(prefixWrappedLines(prefix, message, fm, maxWidth));
     }
 
@@ -472,10 +443,6 @@ public final class RulesTabRenderer {
 
     private String markedLineText(String line)
     {
-        if (line.startsWith(LINE_SYNC_RESULT_LABEL))
-        {
-            return line.substring(LINE_SYNC_RESULT_LABEL.length());
-        }
         if (line.startsWith(LINE_SYNC_RESULT_FOUND_PREFIX))
         {
             return line.substring(LINE_SYNC_RESULT_FOUND_PREFIX.length());
@@ -501,10 +468,6 @@ public final class RulesTabRenderer {
 
     private Color markedLineColor(String line)
     {
-        if (line.startsWith(LINE_SYNC_RESULT_LABEL))
-        {
-            return white;
-        }
         if (line.startsWith(LINE_SYNC_RESULT_FOUND_PREFIX))
         {
             return SYNC_FOUND_GREEN;

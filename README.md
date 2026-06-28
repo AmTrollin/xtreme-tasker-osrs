@@ -25,9 +25,11 @@ Starting your own Xtreme Tasker series? Let us know and we'll add it here!
 
 ## Getting Started
 
-Open the Xtreme Tasker overlay. If importing an existing account, go to **Help → Sync** before rolling your first task.
+Open the Xtreme Tasker overlay. If importing progress from an existing account, go to Help → Sync before rolling your first task to import completed Combat Achievements and Achievement Diaries.
 
-> **Collection Log syncing only includes entries RuneLite has seen.** For best results, open your in-game Collection Log before syncing.
+Collection Log item progress is refreshed automatically whenever you open your in-game Collection Log. This updates the underlying Collection Log data used by Xtreme Tasker, but does not automatically mark tasks as complete. Instead, any newly eligible Collection Log tasks will appear in the Help → Sync review panel alongside Combat Achievement and Achievement Diary tasks for you to review and apply manually.
+
+Then head to Current tab to roll your first task! 
 
 <img src="docs/gifs/RollTask.gif" alt="Open overlay, complete a task, and roll a new one" width="550">
 
@@ -47,7 +49,9 @@ Browse the full task list with search, filtering, sorting, and progress tracking
 
 ### Account Sync
 
-Find completed in-game tasks and review changes before applying them. Account Sync also flags tasks that no longer meet in-game requirements to help keep your progress accurate.
+Import completed Combat Achievements and Achievement Diaries into Xtreme Tasker, then review the proposed task completions before applying them. Account Sync also identifies tasks that no longer meet in-game requirements, helping keep your plugin progress accurate.
+
+Collection Log progress is refreshed automatically whenever you open your in-game Collection Log. This updates the underlying Collection Log data used to evaluate task completion. Any newly eligible Collection Log tasks are also added to the Help → Sync review panel and must be manually marked complete.
 
 <img src="docs/images/SyncTab.png" alt="Sync review" width="550">
 
@@ -63,7 +67,7 @@ Grandmaster Combat Achievements are included in the **Master** tier.
 
 Xtreme Tasker stores progress locally in your RuneLite profile and mirrors it to RuneLite config for compatibility. No account progress or gameplay data is sent to external services.
 
-Sync only reads data already available to RuneLite, such as Combat Achievements, cached Collection Log entries, Achievement Diaries, and skill progress. External links are only opened when you click them.
+Sync only reads data already available to RuneLite, such as Combat Achievements, Achievement Diaries, skill progress, and Collection Log entries that have been viewed in-game. Collection Log data is refreshed automatically when the Collection Log interface is opened. No tasks are automatically completed.
 
 ## Credits
 

@@ -408,6 +408,16 @@ public class CollectionLogService
         boolean changed = !fullSyncSeen || lastSyncSeenAtMillis != now;
         fullSyncSeen = true;
         lastSyncSeenAtMillis = now;
+        if (pendingAncientPageDropCountSinceLastSync > 0)
+        {
+            pendingAncientPageDropCountSinceLastSync = 0;
+            changed = true;
+        }
+        if (pendingMedallionFragmentDropCountSinceLastSync > 0)
+        {
+            pendingMedallionFragmentDropCountSinceLastSync = 0;
+            changed = true;
+        }
         if (changed)
         {
             notifyCacheChanged();
@@ -438,24 +448,6 @@ public class CollectionLogService
     public int getPendingMedallionFragmentDropCountSinceLastSync()
     {
         return Math.max(0, pendingMedallionFragmentDropCountSinceLastSync);
-    }
-
-    public void clearPendingAncientPageDropCountSinceLastSync()
-    {
-        if (pendingAncientPageDropCountSinceLastSync > 0)
-        {
-            pendingAncientPageDropCountSinceLastSync = 0;
-            notifyCacheChanged();
-        }
-    }
-
-    public void clearPendingMedallionFragmentDropCountSinceLastSync()
-    {
-        if (pendingMedallionFragmentDropCountSinceLastSync > 0)
-        {
-            pendingMedallionFragmentDropCountSinceLastSync = 0;
-            notifyCacheChanged();
-        }
     }
 
     public void restoreCachedItemIds(Set<Integer> itemIds)

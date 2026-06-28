@@ -2819,7 +2819,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (showCollectionLogRefreshHint)
         {
             g.setColor(P.UI_TEXT);
-            String refreshHint = "If new CLOG items are missing, open your Collection Log in-game, then sync again.";
+            String refreshHint = "If new CLOG items are missing, open your Collection Log in-game to refresh CLOG review rows.";
             g.drawString(TextUtils.truncateToWidth(refreshHint, fm, w - pad * 2),
                     x + pad, nextY + fm.getAscent());
             nextY += fm.getHeight();
@@ -3053,8 +3053,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|taskState=" + plugin.getTaskListRenderStateHash()
                 + "|clState=" + plugin.getCollectionLogStateVersion()
                 + "|lastSync=" + plugin.getLastSyncResultAtLocalTime()
-                + "|lastCa=" + plugin.getLastCombatAchievementSyncResultAtLocalTime()
-                + "|lastCl=" + plugin.getLastCollectionLogSyncResultAtLocalTime();
+                + "|lastCa=" + plugin.getLastCombatAchievementSyncResultAtLocalTime();
     }
 
     private int selectedVisibleSyncMismatchCount(List<XtremeTask> mismatches)
@@ -3554,9 +3553,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 rulesSubTab,
                 plugin.getLastSyncResult(),
                 plugin.getLastSyncResultAtLocalTime(),
-                null,
-                null,
-                plugin.isCollectionLogSyncPending(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size()
         );
@@ -3570,7 +3566,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
 
         if (rulesLayout.syncProgressButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "SYNC", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "SYNC CA/AD", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review",

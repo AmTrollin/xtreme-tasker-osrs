@@ -36,11 +36,8 @@ public class RulesTabRendererTest
                     40,
                     new Rectangle(0, 0, 690, 460),
                     RulesTabLayout.SubTab.DATA_SYNCS,
-                    "Account progress sync done! 1 new completed task(s) found.",
+                    "CA/AD sync done! 1 new completed task(s) found.",
                     "Jun 26, 2026 1:23 PM",
-                    null,
-                    null,
-                    false,
                     1,
                     0
             );

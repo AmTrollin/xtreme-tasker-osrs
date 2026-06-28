@@ -193,6 +193,36 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void collectionLogCompletionCandidateSurvivesCaAdSyncRefresh() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_candidate_preserve_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+
+        collectionLogService.storeItem(10878);
+        assertEquals("Opening CLOG should populate CLOG completion candidates",
+                List.of(task.getId()),
+                taskIds(plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG)));
+
+        invokeRefreshCollectionLogNonItemSyncState(plugin);
+
+        assertEquals("CA/AD sync refresh should not clear CLOG candidates captured from opening CLOG",
+                List.of(task.getId()),
+                taskIds(plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG)));
+    }
+
+    @Test
     public void collectionLogMismatchSyncEvidencePersistsAcrossSessions() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -231,43 +261,6 @@ public class CollectionLogMismatchTest
         assertTrue("Persisted CLOG sync evidence should keep the mismatch helper visible after login",
                 restoredPlugin.isCollectionLogTaskSyncMismatch(task));
         assertEquals(List.of(task.getId()), restoredPlugin.syncMismatchTaskIdsForTesting());
-    }
-
-    @Test
-    public void manualCollectionLogSyncDoesNotStoreDiaryMismatchRows() throws Exception
-    {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        CollectionLogService collectionLogService = new CollectionLogService();
-        plugin.setCollectionLogServiceForTesting(collectionLogService);
-
-        XtremeTask diaryTask = achievementDiaryTask(
-                "collection_log_easy_complete-the-ardougne-easy-diary_001_manual_sync_test",
-                "Complete the Ardougne easy diary"
-        );
-        XtremeTask clogTask = collectionLogTask(
-                "collection_log_easy_get-a-green-satchel_001_manual_sync_test",
-                "Get a Green satchel",
-                TaskTier.EASY,
-                new int[]{10878},
-                1
-        );
-
-        plugin.tasksForTesting().clear();
-        plugin.tasksForTesting().add(diaryTask);
-        plugin.tasksForTesting().add(clogTask);
-        plugin.manualCompletedTaskIdsForTesting().clear();
-        plugin.manualCompletedTaskIdsForTesting().add(diaryTask.getId());
-        plugin.manualCompletedTaskIdsForTesting().add(clogTask.getId());
-
-        collectionLogService.markFullSyncSeen();
-        assertEquals(List.of(clogTask.getId()), plugin.syncMismatchTaskIdsForTesting());
-
-        Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCollectionLogSyncState");
-        refresh.setAccessible(true);
-        refresh.invoke(plugin);
-
-        assertEquals("Manual CLOG/AD sync should only store CLOG item mismatches, never diary rows",
-                List.of(clogTask.getId()), plugin.syncMismatchTaskIdsForTesting());
     }
 
     @Test
@@ -1080,6 +1073,18 @@ public class CollectionLogMismatchTest
         Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCombatAchievementSyncState");
         refresh.setAccessible(true);
         refresh.invoke(plugin);
+    }
+
+    private static void invokeRefreshCollectionLogNonItemSyncState(XtremeTaskerPlugin plugin) throws Exception
+    {
+        Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCollectionLogNonItemSyncState");
+        refresh.setAccessible(true);
+        refresh.invoke(plugin);
+    }
+
+    private static List<String> taskIds(List<XtremeTask> tasks)
+    {
+        return tasks.stream().map(XtremeTask::getId).collect(java.util.stream.Collectors.toList());
     }
 
     private static final class StubCombatAchievementService extends CombatAchievementService
