@@ -141,7 +141,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final EnumMap<TaskTier, Integer> totalByTier = new EnumMap<>(TaskTier.class);
     private final EnumMap<TaskTier, Integer> doneByTier = new EnumMap<>(TaskTier.class);
 
-    @Getter
     @Setter
     private XtremeTask currentTask;
 
@@ -503,6 +502,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public List<XtremeTask> getTasks() {
         return Collections.unmodifiableList(tasks);
+    }
+
+    @Override
+    public XtremeTask getCurrentTask()
+    {
+        if (currentTask == null && currentTaskId != null && !tasks.isEmpty())
+        {
+            resolveCurrentTaskIfPossible();
+        }
+        return currentTask;
     }
 
     public int getLoadedPackVersion() {
@@ -1679,11 +1688,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         String id = currentTaskId;
-        currentTask = tasks.stream()
-                .filter(t -> id.equals(t.getId()))
-                .findFirst()
-                .map(this::decorateCurrentSequenceTask)
-                .orElse(null);
+        XtremeTask resolvedTask = findTaskById(id);
+        if (resolvedTask == null)
+        {
+            resolvedTask = findTaskByLegacyGeneratedId(id);
+            if (resolvedTask != null)
+            {
+                migrateTaskId(id, resolvedTask.getId());
+            }
+        }
+
+        currentTask = decorateCurrentSequenceTask(resolvedTask);
 
         // If we can't resolve it (pack changed), don't keep saving a dead ID forever
         if (currentTask == null)
@@ -1697,6 +1712,81 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (undoableTask == null || !isTaskCompleted(undoableTask))
         {
             undoableCompletedTaskId = null;
+        }
+    }
+
+    private XtremeTask findTaskByLegacyGeneratedId(String id)
+    {
+        if (id == null || id.trim().isEmpty())
+        {
+            return null;
+        }
+
+        return tasks.stream()
+                .filter(task -> id.equals(ensureId(null, task.getName(), task.getSource(), task.getTier())))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private void migrateTaskId(String oldId, String newId)
+    {
+        if (oldId == null || newId == null || oldId.equals(newId))
+        {
+            return;
+        }
+
+        currentTaskId = newId;
+        if (oldId.equals(undoableCompletedTaskId))
+        {
+            undoableCompletedTaskId = newId;
+        }
+
+        migrateSetId(manualCompletedTaskIds, oldId, newId);
+        migrateSetId(syncedCompletedTaskIds, oldId, newId);
+        migrateSetId(retiredTaskIds, oldId, newId);
+        migrateSetId(completedBeforeRolledTaskIds, oldId, newId);
+        migrateMapId(manualCompletionTimestamps, oldId, newId);
+        migrateMapId(syncedCompletionTimestamps, oldId, newId);
+        migrateMapId(taskTimeTicksById, oldId, newId);
+        migrateMapId(completedTaskTimeTicksById, oldId, newId);
+        replaceListId(syncCompletionCandidateTaskIds, oldId, newId);
+        replaceListId(syncMismatchTaskIds, oldId, newId);
+        syncMismatchTasksCacheValid = false;
+        dirty = true;
+    }
+
+    private static void migrateSetId(Set<String> ids, String oldId, String newId)
+    {
+        if (ids != null && ids.remove(oldId))
+        {
+            ids.add(newId);
+        }
+    }
+
+    private static <V> void migrateMapId(Map<String, V> valuesById, String oldId, String newId)
+    {
+        if (valuesById == null || !valuesById.containsKey(oldId))
+        {
+            return;
+        }
+
+        V oldValue = valuesById.remove(oldId);
+        valuesById.putIfAbsent(newId, oldValue);
+    }
+
+    private static void replaceListId(List<String> ids, String oldId, String newId)
+    {
+        if (ids == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < ids.size(); i++)
+        {
+            if (oldId.equals(ids.get(i)))
+            {
+                ids.set(i, newId);
+            }
         }
     }
 
