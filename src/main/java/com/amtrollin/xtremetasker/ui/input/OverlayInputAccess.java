@@ -173,18 +173,6 @@ public interface OverlayInputAccess
     void requestSyncMismatchApplyConfirm();
     void closeSyncMismatchApplyConfirm();
 
-    boolean isTaskResolveOpen();
-    Rectangle taskResolveBounds();
-    Rectangle taskResolveCloseBounds();
-    Rectangle taskResolveSaveBounds();
-    Rectangle taskResolveCancelBounds();
-    Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds();
-    void closeTaskResolve();
-    void saveTaskResolve();
-    void toggleTaskResolveTaskIncomplete(XtremeTask task);
-    boolean canToggleTaskResolveTaskIncomplete(XtremeTask task);
-    boolean hasTaskResolveChanges();
-
     boolean isTaskDetailsIncompleteConfirmOpen();
     Rectangle taskDetailsIncompleteConfirmBounds();
     Rectangle taskDetailsIncompleteConfirmYesBounds();
