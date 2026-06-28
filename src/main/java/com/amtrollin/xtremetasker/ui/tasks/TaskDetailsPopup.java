@@ -492,7 +492,7 @@ public final class TaskDetailsPopup
             totalPx += ROW_HEIGHT; // collection log requirement header
             if (requirementPreview.showSummaryText())
             {
-                totalPx += ROW_HEIGHT; // counter summary
+                totalPx += ROW_HEIGHT * summaryTextLineCount(requirementPreview.summaryText()); // counter summary
             }
             if (requirementPreview.showTierSections())
             {
@@ -664,8 +664,7 @@ public final class TaskDetailsPopup
 
             if (requirementPreview.showSummaryText())
             {
-                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
-                y += ROW_HEIGHT;
+                y = drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
                 if (requirementPreview.showTierSections())
                 {
                     y += TIER_SECTION_ICON_GAP;
@@ -1415,9 +1414,26 @@ public final class TaskDetailsPopup
         g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 180)), x, baseline);
     }
 
-    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    private int drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
     {
         String text = safe(summaryText);
+        for (String line : summaryTextLines(text))
+        {
+            drawCollectionLogSummaryLine(g, fm, line, x, y, maxWidth);
+            y += ROW_HEIGHT;
+        }
+        return y;
+    }
+
+    private void drawCollectionLogSummaryLine(Graphics2D g, FontMetrics fm, String text, int x, int y, int maxWidth)
+    {
+        if (isPendingOpenClogSummaryLine(text))
+        {
+            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+            g.drawString(TextUtils.truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
         String separator = " | ";
         int separatorIndex = text.indexOf(separator);
         if (separatorIndex < 0)
@@ -1440,6 +1456,29 @@ public final class TaskDetailsPopup
         g.setColor(palette.UI_TEXT_DIM);
         g.drawString(prefix, x, y);
         drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
+    }
+
+    private static int summaryTextLineCount(String summaryText)
+    {
+        return summaryTextLines(summaryText).size();
+    }
+
+    private static List<String> summaryTextLines(String summaryText)
+    {
+        String text = safe(summaryText);
+        if (text.isEmpty())
+        {
+            return List.of();
+        }
+        return List.of(text.split("\\R"));
+    }
+
+    private static boolean isPendingOpenClogSummaryLine(String text)
+    {
+        return text != null
+                && text.startsWith("+")
+                && text.contains(" obtained item")
+                && text.endsWith(" pending, open in-game clog to sync");
     }
 
     private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)

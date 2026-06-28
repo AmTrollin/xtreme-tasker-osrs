@@ -75,8 +75,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private static final String STATE_CORRUPT_SUFFIX = "_corrupt";
     private static final String STATE_FILE_DIR_NAME = "xtreme-tasker-states";
     private static final String STATE_FILE_SUFFIX = ".json";
-    private static final String LOCAL_METAL_BOOTS_RESET_TRIGGER_SUFFIX = ".reset-metal-boots";
-    private static final Set<Integer> METAL_BOOTS_ITEM_IDS = Set.of(4119, 4121, 4123, 4125, 4127, 4129, 4131);
     private static final DateTimeFormatter SAVE_TIME_FORMATTER = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     private static final List<TaskTier> PROGRESSION = List.of(
@@ -1138,7 +1136,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 applyPersistedState(legacyState);
                 loadedStateAccountKey = accountKey;
                 loadedStateAtMillis = System.currentTimeMillis();
-                applyLocalStateRepairTriggers(accountKey);
                 resolveCurrentTaskIfPossible();
                 rebuildTierCounts();
                 return;
@@ -1154,7 +1151,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 applyPersistedState(backup);
                 loadedStateAccountKey = accountKey;
                 loadedStateAtMillis = System.currentTimeMillis();
-                applyLocalStateRepairTriggers(accountKey);
                 resolveCurrentTaskIfPossible();
                 rebuildTierCounts();
                 return;
@@ -1193,94 +1189,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         applyPersistedState(state);
         loadedStateAccountKey = accountKey;
         loadedStateAtMillis = System.currentTimeMillis();
-        applyLocalStateRepairTriggers(accountKey);
         resolveCurrentTaskIfPossible();
         rebuildTierCounts();
-    }
-
-    private void applyLocalStateRepairTriggers(String accountKey)
-    {
-        applyMetalBootsResetTrigger(accountKey);
-    }
-
-    private void applyMetalBootsResetTrigger(String accountKey)
-    {
-        Path trigger = localStateRepairTriggerFile(accountKey, LOCAL_METAL_BOOTS_RESET_TRIGGER_SUFFIX);
-        if (!Files.isRegularFile(trigger))
-        {
-            return;
-        }
-
-        int tasksReset = resetMetalBootsTaskState();
-        int itemsReset = resetMetalBootsCollectionLogCache();
-        try
-        {
-            Files.deleteIfExists(trigger);
-        }
-        catch (IOException e)
-        {
-            log.warn("Failed to delete XtremeTasker metal boots reset trigger {}", trigger, e);
-        }
-
-        saveStateForAccount(accountKey);
-        rebuildTierCounts();
-        log.info("Applied local XtremeTasker metal boots reset trigger for account {} (tasks={}, items={})",
-                accountKey, tasksReset, itemsReset);
-        chat("[Xtreme Tasker] Metal boots test state reset to not obtained.");
-    }
-
-    private Path localStateRepairTriggerFile(String accountKey, String suffix)
-    {
-        Path stateFile = stateFileForAccount(accountKey);
-        return stateFile.resolveSibling(stateFile.getFileName() + suffix);
-    }
-
-    private int resetMetalBootsTaskState()
-    {
-        int reset = 0;
-        for (XtremeTask task : tasks)
-        {
-            if (task == null || task.getId() == null || !isMetalBootsTask(task))
-            {
-                continue;
-            }
-
-            String id = task.getId();
-            boolean wasComplete = manualCompletedTaskIds.contains(id) || syncedCompletedTaskIds.contains(id)
-                    || manualCompletionTimestamps.containsKey(id) || syncedCompletionTimestamps.containsKey(id)
-                    || taskTimeTicksById.containsKey(id) || completedTaskTimeTicksById.containsKey(id)
-                    || completedBeforeRolledTaskIds.contains(id);
-            markTaskIncomplete(id);
-            syncCompletionCandidateTaskIds.remove(id);
-            syncMismatchTaskIds.remove(id);
-            if (wasComplete)
-            {
-                reset++;
-            }
-        }
-        return reset;
-    }
-
-    private int resetMetalBootsCollectionLogCache()
-    {
-        int before = 0;
-        for (Integer itemId : METAL_BOOTS_ITEM_IDS)
-        {
-            if (itemId != null && collectionLogService.isItemObtained(itemId))
-            {
-                before++;
-            }
-        }
-        collectionLogService.removeCachedItemIds(METAL_BOOTS_ITEM_IDS);
-        collectionLogStateVersion++;
-        return before;
-    }
-
-    private static boolean isMetalBootsTask(XtremeTask task)
-    {
-        String id = task == null ? "" : String.valueOf(task.getId()).toLowerCase(Locale.ROOT);
-        String name = task == null ? "" : String.valueOf(task.getName()).toLowerCase(Locale.ROOT);
-        return id.contains("next-tier-of-metal-boots") || name.contains("metal boots");
     }
 
     private PersistedState buildPersistedState() {
@@ -3876,7 +3786,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public String getLastSyncResult()
     {
-        return cleanSyncResultForDisplay(shouldShowCombatAchievementSyncResult()
+        return safeTrim(shouldShowCombatAchievementSyncResult()
                 ? lastCombatAchievementSyncResult
                 : lastCollectionLogSyncResult);
     }
@@ -3899,7 +3809,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public String getLastCombatAchievementSyncResult()
     {
-        return cleanSyncResultForDisplay(lastCombatAchievementSyncResult);
+        return safeTrim(lastCombatAchievementSyncResult);
     }
 
     @Override
@@ -3911,22 +3821,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public String getLastCollectionLogSyncResult()
     {
-        return cleanSyncResultForDisplay(lastCollectionLogSyncResult);
-    }
-
-    private static String cleanSyncResultForDisplay(String result)
-    {
-        String clean = safeTrim(result);
-        if (clean == null)
-        {
-            return null;
-        }
-        String prefix = "Sync test staged:";
-        if (clean.startsWith(prefix))
-        {
-            return clean.substring(prefix.length()).trim();
-        }
-        return clean;
+        return safeTrim(lastCollectionLogSyncResult);
     }
 
     @Override

@@ -782,7 +782,7 @@ public final class CurrentTabRenderer
             totalPx += rowHeight;
             if (requirementPreview.showSummaryText())
             {
-                totalPx += rowHeight;
+                totalPx += rowHeight * summaryTextLineCount(requirementPreview.summaryText());
             }
             if (requirementPreview.showTierSections())
             {
@@ -1230,8 +1230,7 @@ public final class CurrentTabRenderer
 
         if (requirementPreview.showSummaryText())
         {
-            drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
-            y += rowHeight;
+            y = drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
             if (requirementPreview.showTierSections())
             {
                 y += TIER_SECTION_ICON_GAP;
@@ -1428,9 +1427,26 @@ public final class CurrentTabRenderer
         g.drawString(truncateToWidth(text, fm, Math.max(0, 160)), x, baseline);
     }
 
-    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    private int drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
     {
         String text = safe(summaryText);
+        for (String line : summaryTextLines(text))
+        {
+            drawCollectionLogSummaryLine(g, fm, line, x, y, maxWidth);
+            y += rowHeight;
+        }
+        return y;
+    }
+
+    private void drawCollectionLogSummaryLine(Graphics2D g, FontMetrics fm, String text, int x, int y, int maxWidth)
+    {
+        if (isPendingOpenClogSummaryLine(text))
+        {
+            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
         String separator = " | ";
         int separatorIndex = text.indexOf(separator);
         if (separatorIndex < 0)
@@ -1453,6 +1469,29 @@ public final class CurrentTabRenderer
         g.setColor(uiTextDim);
         g.drawString(prefix, x, y);
         drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
+    }
+
+    private static int summaryTextLineCount(String summaryText)
+    {
+        return summaryTextLines(summaryText).size();
+    }
+
+    private static List<String> summaryTextLines(String summaryText)
+    {
+        String text = safe(summaryText);
+        if (text.isEmpty())
+        {
+            return List.of();
+        }
+        return List.of(text.split("\\R"));
+    }
+
+    private static boolean isPendingOpenClogSummaryLine(String text)
+    {
+        return text != null
+                && text.startsWith("+")
+                && text.contains(" obtained item")
+                && text.endsWith(" pending, open in-game clog to sync");
     }
 
     private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)

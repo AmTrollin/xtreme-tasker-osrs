@@ -781,15 +781,14 @@ public class XtremeTaskerOverlay extends Overlay {
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        String pendingAncientPageSummary = ancientPageRequirement ? pendingAncientPageSummary() : "";
-        if (!pendingAncientPageSummary.isEmpty())
+        String pendingSummary = ancientPageRequirement
+                ? pendingOpenClogSummary(plugin.getPendingAncientPageDropCountSinceLastSync())
+                : medallionFragmentRequirement
+                ? pendingOpenClogSummary(plugin.getPendingMedallionFragmentDropCountSinceLastSync())
+                : "";
+        if (!pendingSummary.isEmpty())
         {
-            summaryText = summaryText.isEmpty() ? pendingAncientPageSummary : summaryText + "  " + pendingAncientPageSummary;
-        }
-        String pendingMedallionFragmentSummary = medallionFragmentRequirement ? pendingMedallionFragmentSummary() : "";
-        if (!pendingMedallionFragmentSummary.isEmpty())
-        {
-            summaryText = summaryText.isEmpty() ? pendingMedallionFragmentSummary : summaryText + "  " + pendingMedallionFragmentSummary;
+            summaryText = summaryText.isEmpty() ? pendingSummary : pendingSummary + "\n" + summaryText;
         }
         String titleText;
         if (showSequenceTierSections)
@@ -811,7 +810,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 summaryText,
                 titleText,
                 !summaryText.isEmpty() && (!singleEligibleItem && !hasCompletionItem && (sameNameFamily || repeatedDistinctPool)
-                        || !pendingMedallionFragmentSummary.isEmpty() || showSequenceTierSections),
+                        || !pendingSummary.isEmpty() || showSequenceTierSections),
                 !showSequenceTierSections,
                 items,
                 8,
@@ -907,28 +906,15 @@ public class XtremeTaskerOverlay extends Overlay {
         return plugin.getItemName(itemId);
     }
 
-    private String pendingMedallionFragmentSummary()
+    private static String pendingOpenClogSummary(int pendingDrops)
     {
-        int pendingDrops = plugin.getPendingMedallionFragmentDropCountSinceLastSync();
         if (pendingDrops <= 0)
         {
             return "";
         }
 
-        return pendingDrops + " Medallion fragment " + (pendingDrops == 1 ? "drop needs" : "drops need")
-                + " CLOG sync to identify fragment number.";
-    }
-
-    private String pendingAncientPageSummary()
-    {
-        int pendingDrops = plugin.getPendingAncientPageDropCountSinceLastSync();
-        if (pendingDrops <= 0)
-        {
-            return "";
-        }
-
-        return pendingDrops + " Ancient page " + (pendingDrops == 1 ? "drop needs" : "drops need")
-                + " CLOG sync to identify page number.";
+        return "+" + pendingDrops + " obtained " + (pendingDrops == 1 ? "item" : "items")
+                + " pending, open in-game clog to sync";
     }
 
     private static int ancientPageNumber(int itemId)
