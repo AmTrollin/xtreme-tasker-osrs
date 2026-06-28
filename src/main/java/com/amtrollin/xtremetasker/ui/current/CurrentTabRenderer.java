@@ -969,10 +969,19 @@ public final class CurrentTabRenderer
         g.drawString(label, x, y);
         y += lineH;
 
-        String name = truncateToWidth(task.getName() + completionSourceSuffix(info), fm, innerW);
         g.setColor(uiText);
-        g.drawString(name, x, y);
-        y += lineH;
+        List<String> nameLines = wrapText(task.getName() + completionSourceSuffix(info), fm, innerW);
+        int maxNameLines = 3;
+        for (int i = 0; i < nameLines.size() && i < maxNameLines; i++)
+        {
+            String line = nameLines.get(i);
+            if (i == maxNameLines - 1 && nameLines.size() > maxNameLines)
+            {
+                line = truncateToWidth(line + "...", fm, innerW);
+            }
+            g.drawString(line, x, y);
+            y += lineH;
+        }
 
         String completed = formatCompletionSummary(info);
         completed = truncateToWidth(completed, fm, innerW);
