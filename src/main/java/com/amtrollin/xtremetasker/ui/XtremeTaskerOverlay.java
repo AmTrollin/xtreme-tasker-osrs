@@ -3567,7 +3567,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
 
         if (rulesLayout.syncProgressButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "SYNC CA/AD", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "Sync CAs + ADs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review",

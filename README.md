@@ -14,8 +14,8 @@ Starting your own Xtreme Tasker series? Let us know and we'll add it here!
 * Progress through Easy, Medium, Hard, Elite, and Master tiers
 * Track your current task, elapsed time, completion date, requirements, and tier progress
 * Search, filter, and sort the full task list
-* Sync existing account progress with review before applying changes
-* Open task-specific wiki pages directly from the plugin
+* Optional HUD overlay to keep your current task visible while playing
+* Compact View for a smaller plugin panel
 
 ## Additional Documentation
 
@@ -40,6 +40,11 @@ Then head to Current tab to roll your first task!
 View requirements, open relevant wiki pages, track elapsed time, and roll your next task after completion.
 
 <img src="docs/images/CurrentTab.png" alt="Current Task" width="550">
+
+#### Optional HUD Overlay
+
+Keep your current task visible without leaving the game.
+<img src="docs/images/HUD.png" alt="HUD" width="320">
 
 ### Task List
 
