@@ -1254,7 +1254,10 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int[] knownOrder = {
                 4119, 4121, 4123, 4125, 4127, 4129, 4131,
-                6908, 6910, 6912, 6914
+                6908, 6910, 6912, 6914,
+                31732, 31733, 31734,
+                31744, 31745, 31746,
+                31756, 31757, 31758
         };
         for (int i = 0; i < knownOrder.length; i++)
         {

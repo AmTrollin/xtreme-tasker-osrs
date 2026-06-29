@@ -959,6 +959,38 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void currentSailingSequenceTasksUseExactStepIconAndLabel() throws Exception
+    {
+        assertSequenceDecoration(
+                "collection_log_easy_get-the-next-reward-from-the-tempor-tant_002_test",
+                "Get the next reward from The Tempor Tantrum",
+                TaskTier.EASY,
+                new int[]{31732, 31733, 31734},
+                2,
+                31733,
+                "Barrel stand"
+        );
+        assertSequenceDecoration(
+                "collection_log_medium_get-the-next-reward-from-the-jubbly-jive_003_test",
+                "Get the next reward from The Jubbly Jive",
+                TaskTier.MEDIUM,
+                new int[]{31744, 31745, 31746},
+                3,
+                31746,
+                "Gurtob's fabric roll"
+        );
+        assertSequenceDecoration(
+                "collection_log_hard_get-the-next-reward-from-the-gwyneth-gli_001_test",
+                "Get the next reward from The Gwenith Glide",
+                TaskTier.HARD,
+                new int[]{31756, 31757, 31758},
+                1,
+                31756,
+                "Serrated key"
+        );
+    }
+
+    @Test
     public void currentSingleCollectionLogTaskAlreadyCompleteAtRollUsesExistingCacheWithoutSync() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -1053,6 +1085,29 @@ public class CollectionLogMismatchTest
                 verification,
                 null
         );
+    }
+
+    private static void assertSequenceDecoration(
+            String id,
+            String name,
+            TaskTier tier,
+            int[] itemIds,
+            int count,
+            int expectedIconItemId,
+            String expectedLabel
+    ) throws Exception
+    {
+        XtremeTask task = collectionLogTask(id, name, tier, itemIds, count);
+        Method decorate = XtremeTaskerPlugin.class.getDeclaredMethod("decorateCurrentSequenceTask", XtremeTask.class);
+        decorate.setAccessible(true);
+
+        XtremeTask decorated = (XtremeTask) decorate.invoke(new XtremeTaskerPlugin(), task);
+
+        assertEquals("Decorated sequence task should use the exact current step icon",
+                Integer.valueOf(expectedIconItemId),
+                decorated.getIconItemId());
+        assertTrue("Decorated sequence task should include the exact current step label",
+                decorated.getName().contains("(" + expectedLabel + ")"));
     }
 
     private static XtremeTask achievementDiaryTask(String id, String name)
