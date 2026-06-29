@@ -1,6 +1,20 @@
 ```md
 # Xtreme Tasker Release Notes
 
+## v2.1 — XX.XX.2026
+
+### Sync & Task Completion
+- Collection Log syncing now occurs automatically when opening the in-game Collection Log
+- Added timer support for tasks already completed when rolled
+
+### UI & Quality of Life
+- Added a new Compact View
+- Various UI improvements and QoL enhancements
+
+### Bug Fixes
+- Fixed sequential Collection Log task progression
+
+
 ## v2.0 — 06.25.2026
 
 ### Sync & Task Completion
