@@ -539,7 +539,7 @@ public final class TaskRowsRenderer {
         if (minutes < 60) return remSeconds > 0 ? minutes + "m" : minutes + "m";
         long hours = minutes / 60;
         long remMinutes = minutes % 60;
-        if (hours < 24) return remMinutes > 0 ? hours + "h" : hours + "h";
+        if (hours < 24) return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
         long days = hours / 24;
         return days + "d";
     }
