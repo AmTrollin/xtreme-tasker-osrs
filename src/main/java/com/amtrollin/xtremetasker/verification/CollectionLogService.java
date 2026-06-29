@@ -430,6 +430,12 @@ public class CollectionLogService
         this.lastSyncSeenAtMillis = Math.max(0L, lastSyncSeenAtMillis);
     }
 
+    public void restorePendingDropCounts(int pendingAncientPageDrops, int pendingMedallionFragmentDrops)
+    {
+        pendingAncientPageDropCountSinceLastSync = Math.max(0, pendingAncientPageDrops);
+        pendingMedallionFragmentDropCountSinceLastSync = Math.max(0, pendingMedallionFragmentDrops);
+    }
+
     public Set<Integer> getCachedItemIds()
     {
         return java.util.Collections.unmodifiableSet(obtainedItems);

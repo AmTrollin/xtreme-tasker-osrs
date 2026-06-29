@@ -1239,6 +1239,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setCollectionLogItemOrder(new HashMap<>(collectionLogService.getCachedItemOrder()));
         state.setCollectionLogFullSyncSeen(collectionLogService.hasFullSyncSeen());
         state.setCollectionLogLastSyncSeenAtMillis(collectionLogService.getLastSyncSeenAtMillis());
+        state.setPendingAncientPageDropCountSinceLastCollectionLogSync(collectionLogService.getPendingAncientPageDropCountSinceLastSync());
+        state.setPendingMedallionFragmentDropCountSinceLastCollectionLogSync(collectionLogService.getPendingMedallionFragmentDropCountSinceLastSync());
         return state;
     }
 
@@ -1562,6 +1564,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         collectionLogService.restoreSyncEvidence(
                 state.isCollectionLogFullSyncSeen(),
                 state.getCollectionLogLastSyncSeenAtMillis());
+        collectionLogService.restorePendingDropCounts(
+                state.getPendingAncientPageDropCountSinceLastCollectionLogSync(),
+                state.getPendingMedallionFragmentDropCountSinceLastCollectionLogSync());
         collectionLogStateVersion++;
 
         currentTaskId = safeTrim(state.getCurrentTaskId());

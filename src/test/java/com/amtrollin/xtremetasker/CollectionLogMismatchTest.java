@@ -264,6 +264,43 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void pendingAmbiguousCollectionLogDropCountsPersistUntilFullSync() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+        collectionLogService.restorePendingDropCounts(2, 1);
+
+        Method buildState = XtremeTaskerPlugin.class.getDeclaredMethod("buildPersistedState");
+        buildState.setAccessible(true);
+        PersistedState state = (PersistedState) buildState.invoke(plugin);
+
+        XtremeTaskerPlugin restoredPlugin = new XtremeTaskerPlugin();
+        CollectionLogService restoredCollectionLogService = new CollectionLogService();
+        restoredPlugin.setCollectionLogServiceForTesting(restoredCollectionLogService);
+
+        Method applyState = XtremeTaskerPlugin.class.getDeclaredMethod("applyPersistedState", PersistedState.class);
+        applyState.setAccessible(true);
+        applyState.invoke(restoredPlugin, state);
+
+        assertEquals("Pending Ancient page drops should survive restore until CLOG sync",
+                2,
+                restoredPlugin.getPendingAncientPageDropCountSinceLastSync());
+        assertEquals("Pending Medallion fragment drops should survive restore until CLOG sync",
+                1,
+                restoredPlugin.getPendingMedallionFragmentDropCountSinceLastSync());
+
+        restoredCollectionLogService.markFullSyncSeen();
+
+        assertEquals("Full CLOG sync should clear restored pending Ancient page drops",
+                0,
+                restoredPlugin.getPendingAncientPageDropCountSinceLastSync());
+        assertEquals("Full CLOG sync should clear restored pending Medallion fragment drops",
+                0,
+                restoredPlugin.getPendingMedallionFragmentDropCountSinceLastSync());
+    }
+
+    @Test
     public void combatAchievementMismatchRequiresSyncAfterCompletion() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

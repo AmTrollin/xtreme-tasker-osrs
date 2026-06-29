@@ -63,4 +63,8 @@ public class PersistedState {
     private boolean collectionLogFullSyncSeen = false;
     /** Epoch millis of the latest Collection Log sync used to validate completed CLOG tasks. */
     private long collectionLogLastSyncSeenAtMillis = 0L;
+    /** Ambiguous Ancient page drops seen in chat that need a full Collection Log sync to resolve. */
+    private int pendingAncientPageDropCountSinceLastCollectionLogSync = 0;
+    /** Ambiguous Medallion fragment drops seen in chat that need a full Collection Log sync to resolve. */
+    private int pendingMedallionFragmentDropCountSinceLastCollectionLogSync = 0;
 }

@@ -1476,9 +1476,7 @@ public final class TaskDetailsPopup
     private static boolean isPendingOpenClogSummaryLine(String text)
     {
         return text != null
-                && text.startsWith("+")
-                && text.contains(" obtained item")
-                && text.endsWith(" pending, open in-game clog to sync");
+                && text.matches("\\+\\d+ obtained items? pending, open in-game clog to sync");
     }
 
     private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)
