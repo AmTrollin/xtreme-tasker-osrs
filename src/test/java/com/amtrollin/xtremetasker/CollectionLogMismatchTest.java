@@ -928,6 +928,37 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void currentDisplaySequenceTaskRequiresItsExactSequenceItem() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask bronzeBootsTask = countedCollectionLogTask(
+                "collection_log_easy_get-the-next-tier-of-metal-boots_001_exact_item_test",
+                "Get the next tier of metal boots",
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(bronzeBootsTask);
+
+        collectionLogService.storeItem(4121);
+        plugin.setCurrentTaskForTesting(bronzeBootsTask);
+
+        assertTrue("Obtaining a later sequence item should not complete the current earlier step",
+                !plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Task should keep normal time tracking when its exact sequence item is missing",
+                null,
+                plugin.getTaskTimeTicks(bronzeBootsTask));
+
+        collectionLogService.storeItem(4119);
+
+        assertTrue("Exact sequence item should complete the current step",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
     public void currentSingleCollectionLogTaskAlreadyCompleteAtRollUsesExistingCacheWithoutSync() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

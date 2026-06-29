@@ -2031,6 +2031,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return new ItemRequirement(new int[]{verification.getCompletionItemId()}, 1);
         }
 
+        if (isDisplaySequenceTask(task.getName()) && verification.getCount() != null)
+        {
+            int[] itemIds = verification.getItemIds();
+            int index = verification.getCount() - 1;
+            if (itemIds != null && index >= 0 && index < itemIds.length)
+            {
+                return new ItemRequirement(new int[]{itemIds[index]}, 1);
+            }
+        }
+
         return resolveCollectionLogRequirement(task);
     }
 
