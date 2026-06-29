@@ -2,9 +2,8 @@
 
 Xtreme Tasker is a community game mode powered by a dedicated RuneLite plugin. It extends the official Tasker game mode by adding Combat Achievements, Collection Log goals, Achievement Diaries, and additional rules.
 
-Check out AmTrollin's **[Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H)** series to see the plugin in action. 
-
-Starting your own Xtreme Tasker series? Let us know and we'll add it here!
+<img src="https://cdn.simpleicons.org/youtube/FF0000" alt="" width="18" style="vertical-align: -4px;"> Check out AmTrollin's **[Xtreme Tasker](https://www.youtube.com/playlist?list=PLyKVvPO_c8ffVO0H73Kxnnwz5J6DZir4H)** series to see the plugin in action.<br>
+<span style="margin-left: 22px;">Starting your own Xtreme Tasker series? Let us know and we'll add it here!</span>
 
 <img src="https://cdn.simpleicons.org/discord/5865F2" alt="" width="18" style="vertical-align: -4px;"> Join the XT community on [Discord](https://discord.gg/cPYdzpP8YU)
 
@@ -19,7 +18,6 @@ Starting your own Xtreme Tasker series? Let us know and we'll add it here!
 
 ## Additional Documentation
 
-* Detailed Guide (todo)
 * [Release Notes](docs/RELEASE_NOTES.md)
 * [Rules](docs/RULES.md)
 
@@ -29,7 +27,7 @@ Open the Xtreme Tasker overlay. If importing progress from an existing account, 
 
 Collection Log item progress is refreshed automatically whenever you open your in-game Collection Log. This updates the underlying Collection Log data used by Xtreme Tasker, but does not automatically mark tasks as complete. Instead, any newly eligible Collection Log tasks will appear in the Help → Sync review panel alongside Combat Achievement and Achievement Diary tasks for you to review and apply manually.
 
-Then head to Current tab to roll your first task! 
+Then, just head to Current tab to roll your first task! 
 
 <img src="docs/gifs/RollTask.gif" alt="Open overlay, complete a task, and roll a new one" width="550">
 
@@ -44,7 +42,7 @@ View requirements, open relevant wiki pages, track elapsed time, and roll your n
 #### Optional HUD Overlay
 
 Keep your current task visible without leaving the game.
-<img src="docs/images/HUD.png" alt="HUD" width="320">
+<img src="docs/images/HUD.png" alt="HUD" width="240">
 
 ### Task List
 
