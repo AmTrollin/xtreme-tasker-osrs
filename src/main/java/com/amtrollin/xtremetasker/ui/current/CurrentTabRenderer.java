@@ -8,7 +8,7 @@ import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
 import com.amtrollin.xtremetasker.ui.style.*;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
-import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
+import com.amtrollin.xtremetasker.ui.tasks.CollectionLogRequirementRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.text.UiText;
 import java.awt.*;
@@ -27,13 +27,6 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.*;
 public final class CurrentTabRenderer
 {
     private static final String ACHIEVEMENT_DIARY_NOTE = UiText.get("current.achievement_diary_note");
-    private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
-    private static final int SECONDARY_SECTION_GAP = 6;
-    private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
-    private static final int TIER_SECTION_ICON_GAP = 5;
-    private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
-    private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
-    private static final String OTHER_SEQUENCE_CLOGS_LABEL = UiText.get("current.other_sequence_clogs");
     private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = UiDraw.loadImage("/icons/notifications/OSRS_question.png");
     private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
@@ -48,6 +41,7 @@ public final class CurrentTabRenderer
     private final Color uiTextDim;
     private final Color edgeLight;
     private final Color edgeDark;
+    private final CollectionLogRequirementRenderer collectionLogRequirementRenderer;
 
     public CurrentTabRenderer(
             int panelWidth,
@@ -68,6 +62,14 @@ public final class CurrentTabRenderer
         this.uiTextDim = uiTextDim;
         this.edgeLight = edgeLight;
         this.edgeDark = edgeDark;
+        this.collectionLogRequirementRenderer = new CollectionLogRequirementRenderer(
+                rowHeight,
+                160,
+                uiGold,
+                uiText,
+                uiTextDim,
+                edgeLight,
+                edgeDark);
     }
 
     /**
@@ -771,31 +773,7 @@ public final class CurrentTabRenderer
                 totalPx += measureTipHeight(tip, fm, maxW, 5);
                 totalPx += 6;
             }
-            totalPx += rowHeight;
-            if (requirementPreview.showSummaryText())
-            {
-                totalPx += rowHeight * summaryTextLineCount(requirementPreview.summaryText());
-            }
-            if (requirementPreview.showTierSections())
-            {
-                totalPx += measureCollectionLogTierSections(requirementPreview, fm, maxW);
-            }
-            else if (requirementPreview.showItemList())
-            {
-                totalPx += CollectionLogIconGridRenderer.measureHeight(
-                        requirementPreview.getItems().size(),
-                        maxW,
-                        requirementPreview.iconColumns());
-            }
-            if (requirementPreview.showSecondaryItemList())
-            {
-                totalPx += secondarySectionGap(requirementPreview);
-                totalPx += rowHeight;
-                totalPx += CollectionLogIconGridRenderer.measureHeight(
-                        requirementPreview.secondaryItems().size(),
-                        maxW,
-                        requirementPreview.secondaryIconColumns());
-            }
+            totalPx += collectionLogRequirementRenderer.measure(requirementPreview, fm, maxW);
             totalPx += rowHeight;
         }
 
@@ -862,7 +840,16 @@ public final class CurrentTabRenderer
                 y = drawTaskTip(g, fm, tip, x, y, maxW, 5);
                 y += 6;
             }
-            y = drawCollectionLogRequirementPreview(g, fm, x, y, maxW, requirementPreview, collectionLogItemImageProvider, mousePoint);
+            y = collectionLogRequirementRenderer.render(
+                    g,
+                    fm,
+                    x,
+                    y,
+                    maxW,
+                    requirementPreview,
+                    collectionLogItemImageProvider,
+                    mousePoint,
+                    g.getClipBounds());
             y += rowHeight;
         }
 
@@ -1168,336 +1155,6 @@ public final class CurrentTabRenderer
         return y;
     }
 
-    private int drawCollectionLogRequirementPreview(
-            Graphics2D g,
-            FontMetrics fm,
-            int x,
-            int yBaseline,
-            int maxWidth,
-            CollectionLogRequirementPreview requirementPreview,
-            Function<Integer, BufferedImage> collectionLogItemImageProvider,
-            java.awt.Point mousePoint
-    )
-    {
-        int y = yBaseline;
-
-        g.setColor(uiGold);
-        g.drawString(collectionLogRequirementTitle(requirementPreview), x, y);
-        y += rowHeight;
-
-        if (requirementPreview.showSummaryText())
-        {
-            y = drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
-            if (requirementPreview.showTierSections())
-            {
-                y += TIER_SECTION_ICON_GAP;
-            }
-        }
-
-        if (requirementPreview.showTierSections())
-        {
-            y = drawCollectionLogTierSections(
-                    g,
-                    fm,
-                    requirementPreview,
-                    x,
-                    y,
-                    maxWidth,
-                    collectionLogItemImageProvider,
-                    mousePoint);
-        }
-        else if (requirementPreview.showItemList())
-        {
-            y = CollectionLogIconGridRenderer.render(
-                    g,
-                    fm,
-                    x,
-                    y,
-                    maxWidth,
-                    requirementPreview.getItems(),
-                    collectionLogItemImageProvider,
-                    mousePoint,
-                    g.getClipBounds(),
-                    uiText,
-                    uiTextDim,
-                    edgeLight,
-                    edgeDark,
-                    requirementPreview.iconColumns());
-        }
-
-        if (requirementPreview.showSecondaryItemList())
-        {
-            y += secondarySectionGap(requirementPreview);
-            g.setColor(uiGold);
-            g.drawString(truncateToWidth(requirementPreview.secondaryTitleText(), fm, maxWidth), x, y);
-            y += rowHeight;
-            y = CollectionLogIconGridRenderer.render(
-                    g,
-                    fm,
-                    x,
-                    y,
-                    maxWidth,
-                    requirementPreview.secondaryItems(),
-                    collectionLogItemImageProvider,
-                    mousePoint,
-                    g.getClipBounds(),
-                    uiText,
-                    uiTextDim,
-                    edgeLight,
-                    edgeDark,
-                    requirementPreview.secondaryIconColumns());
-        }
-
-        return y;
-    }
-
-    private static int secondarySectionGap(CollectionLogRequirementPreview requirementPreview)
-    {
-        String title = requirementPreview == null ? "" : safe(requirementPreview.secondaryTitleText()).trim();
-        return title.startsWith(MEDALLION_ASSEMBLY_TITLE_PREFIX)
-                && title.toLowerCase().contains("fragments to assemble")
-                ? MEDALLION_ASSEMBLY_SECTION_GAP
-                : SECONDARY_SECTION_GAP;
-    }
-
-    private int measureCollectionLogTierSections(CollectionLogRequirementPreview requirementPreview, FontMetrics fm, int maxWidth)
-    {
-        if (requirementPreview == null || !requirementPreview.showTierSections())
-        {
-            return 0;
-        }
-
-        int total = 0;
-        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
-        if (current != null)
-        {
-            total += CollectionLogIconGridRenderer.measureHeight(current.items().size(), maxWidth, current.iconColumns());
-        }
-
-        List<CollectionLogRequirementPreview.TierSection> otherSections = requirementPreview.otherTierSectionsHardestFirst();
-        if (!otherSections.isEmpty())
-        {
-            total += SECONDARY_SECTION_GAP;
-            total += rowHeight;
-            total += OTHER_SEQUENCE_LABEL_TOP_GAP;
-            total += rowHeight * wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth).size();
-        }
-        for (int i = 0; i < otherSections.size(); i++)
-        {
-            CollectionLogRequirementPreview.TierSection section = otherSections.get(i);
-            if (i > 0)
-            {
-                total += SECONDARY_SECTION_GAP;
-            }
-            total += TIER_SECTION_LABEL_TOP_GAP;
-            total += rowHeight;
-            total += TIER_SECTION_ICON_GAP;
-            total += CollectionLogIconGridRenderer.measureHeight(section.items().size(), maxWidth, section.iconColumns());
-        }
-        return total;
-    }
-
-    private int drawCollectionLogTierSections(
-            Graphics2D g,
-            FontMetrics fm,
-            CollectionLogRequirementPreview requirementPreview,
-            int x,
-            int y,
-            int maxWidth,
-            Function<Integer, BufferedImage> collectionLogItemImageProvider,
-            java.awt.Point mousePoint)
-    {
-        CollectionLogRequirementPreview.TierSection current = requirementPreview.currentTierSection();
-        if (current != null)
-        {
-            y = CollectionLogIconGridRenderer.render(
-                    g,
-                    fm,
-                    x,
-                    y,
-                    maxWidth,
-                    current.items(),
-                    collectionLogItemImageProvider,
-                    mousePoint,
-                    g.getClipBounds(),
-                    uiText,
-                    uiTextDim,
-                    edgeLight,
-                    edgeDark,
-                    current.iconColumns());
-        }
-
-        List<CollectionLogRequirementPreview.TierSection> sections = requirementPreview.otherTierSectionsHardestFirst();
-        if (!sections.isEmpty())
-        {
-            y += SECONDARY_SECTION_GAP;
-            y += rowHeight;
-            y += OTHER_SEQUENCE_LABEL_TOP_GAP;
-            g.setColor(uiTextDim);
-            for (String line : wrapText(OTHER_SEQUENCE_CLOGS_LABEL, fm, maxWidth))
-            {
-                g.drawString(truncateToWidth(line, fm, maxWidth), x, y);
-                y += rowHeight;
-            }
-        }
-        for (int i = 0; i < sections.size(); i++)
-        {
-            CollectionLogRequirementPreview.TierSection section = sections.get(i);
-            if (i > 0)
-            {
-                y += SECONDARY_SECTION_GAP;
-            }
-            y += TIER_SECTION_LABEL_TOP_GAP;
-
-            drawCollectionLogTierLabel(g, fm, section, x, y);
-            y += rowHeight;
-            y += TIER_SECTION_ICON_GAP;
-            Composite oldComposite = g.getComposite();
-            if (!section.currentTier())
-            {
-                g.setComposite(AlphaComposite.SrcOver.derive(0.45f));
-            }
-            y = CollectionLogIconGridRenderer.render(
-                    g,
-                    fm,
-                    x,
-                    y,
-                    maxWidth,
-                    section.items(),
-                    collectionLogItemImageProvider,
-                    mousePoint,
-                    g.getClipBounds(),
-                    uiText,
-                    uiTextDim,
-                    edgeLight,
-                    edgeDark,
-                    section.iconColumns());
-            g.setComposite(oldComposite);
-        }
-        return y;
-    }
-
-    private void drawCollectionLogTierLabel(Graphics2D g, FontMetrics fm, CollectionLogRequirementPreview.TierSection section, int x, int baseline)
-    {
-        String text = section.tier() == null ? "TIER" : tierLabel(section.tier()).toUpperCase();
-        g.setColor(uiTextDim);
-        g.drawString(truncateToWidth(text, fm, Math.max(0, 160)), x, baseline);
-    }
-
-    private int drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
-    {
-        String text = safe(summaryText);
-        for (String line : summaryTextLines(text))
-        {
-            drawCollectionLogSummaryLine(g, fm, line, x, y, maxWidth);
-            y += rowHeight;
-        }
-        return y;
-    }
-
-    private void drawCollectionLogSummaryLine(Graphics2D g, FontMetrics fm, String text, int x, int y, int maxWidth)
-    {
-        if (isPendingOpenClogSummaryLine(text))
-        {
-            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
-            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
-            return;
-        }
-
-        String separator = " | ";
-        int separatorIndex = text.indexOf(separator);
-        if (separatorIndex < 0)
-        {
-            g.setColor(uiTextDim);
-            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
-            return;
-        }
-
-        String prefix = text.substring(0, separatorIndex + separator.length());
-        String suffix = text.substring(separatorIndex + separator.length());
-        int prefixWidth = fm.stringWidth(prefix);
-        if (prefixWidth >= maxWidth)
-        {
-            g.setColor(uiTextDim);
-            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
-            return;
-        }
-
-        g.setColor(uiTextDim);
-        g.drawString(prefix, x, y);
-        drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
-    }
-
-    private static int summaryTextLineCount(String summaryText)
-    {
-        return summaryTextLines(summaryText).size();
-    }
-
-    private static List<String> summaryTextLines(String summaryText)
-    {
-        String text = safe(summaryText);
-        if (text.isEmpty())
-        {
-            return List.of();
-        }
-        return List.of(text.split("\\R"));
-    }
-
-    private static boolean isPendingOpenClogSummaryLine(String text)
-    {
-        return text != null && text.matches(UiText.get("clog.pending_summary.regex"));
-    }
-
-    private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)
-    {
-        String currentTaskPrefix = "current task: ";
-        if (!suffix.startsWith(currentTaskPrefix))
-        {
-            g.setColor(uiTextDim);
-            g.drawString(truncateToWidth(suffix, fm, maxWidth), x, y);
-            return;
-        }
-
-        int prefixWidth = fm.stringWidth(currentTaskPrefix);
-        if (prefixWidth >= maxWidth)
-        {
-            g.setColor(uiTextDim);
-            g.drawString(truncateToWidth(suffix, fm, maxWidth), x, y);
-            return;
-        }
-
-        String progress = suffix.substring(currentTaskPrefix.length());
-        g.setColor(uiTextDim);
-        g.drawString(currentTaskPrefix, x, y);
-        g.setColor(isCollectionLogProgressComplete(progress) ? UiPalette.TIER_COMPLETE_GLOW : uiTextDim);
-        g.drawString(truncateToWidth(progress, fm, maxWidth - prefixWidth), x + prefixWidth, y);
-    }
-
-    private static boolean isCollectionLogProgressComplete(String progress)
-    {
-        if (progress == null)
-        {
-            return false;
-        }
-
-        String[] parts = progress.trim().split("/");
-        if (parts.length != 2)
-        {
-            return false;
-        }
-
-        try
-        {
-            int current = Integer.parseInt(parts[0].trim());
-            int required = Integer.parseInt(parts[1].trim());
-            return required > 0 && current >= required;
-        }
-        catch (NumberFormatException e)
-        {
-            return false;
-        }
-    }
-
     private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport, CurrentTabLayout layout)
     {
         layout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
@@ -1549,17 +1206,6 @@ public final class CurrentTabRenderer
         g.setColor(withAlpha(uiGold, 62));
         g.drawLine(x, y, x + w, y);
         g.drawLine(x, y + h, x + w, y + h);
-    }
-
-    private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)
-    {
-        if (requirementPreview != null && requirementPreview.titleText() != null && !requirementPreview.titleText().trim().isEmpty())
-        {
-            return requirementPreview.titleText();
-        }
-        return requirementPreview != null && requirementPreview.showSummaryText() && !requirementPreview.showItemList()
-                ? "Collection Log Progress"
-                : "Eligible Collection Log items";
     }
 
     private void drawBadgesRightAligned(Graphics2D g, FontMetrics fm, int rightX, int yTop, TaskSource src, TaskTier tier, java.awt.Point mousePoint)
