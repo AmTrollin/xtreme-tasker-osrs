@@ -10,6 +10,7 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.tasks.models.TasksTabState;
+import com.amtrollin.xtremetasker.ui.style.UiDraw;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import net.runelite.client.ui.FontManager;
 
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class TasksTabRenderer {
@@ -312,11 +314,7 @@ public final class TasksTabRenderer {
     }
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill) {
-        TaskRowsRenderer.drawBevelBoxLogic(g, r, fill, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT);
-    }
-
-    private int centeredTextBaseline(Rectangle bounds, FontMetrics fm) {
-        return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
+        UiDraw.drawBevelBox(g, r, fill, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT);
     }
 
     private void drawRsProgressBar(Graphics2D g, FontMetrics fm, int x, int y, int w, int h, int pctVal, String label) {

@@ -38,6 +38,7 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskListViewController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskSelectionModel;
+import com.amtrollin.xtremetasker.ui.style.UiDraw;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
 import com.amtrollin.xtremetasker.ui.text.UiText;
@@ -78,6 +79,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
@@ -2807,7 +2809,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int closeW = 28;
         int buttonH = ROW_HEIGHT + 8;
         syncMismatchCloseBounds.setBounds(x + w - pad - closeW, y + pad - 2, closeW, buttonH);
-        drawPopupCloseX(g, syncMismatchCloseBounds);
+        UiDraw.drawCloseX(g, syncMismatchCloseBounds);
 
         boolean reviewingCompletionCandidates = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
         boolean hasCollectionLogReview = mismatches.stream()
@@ -2967,8 +2969,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
         if (needsScrollbar)
         {
-            ButtonRenderer.drawScrollbar(g, new Rectangle(syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW,
-                            syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height),
+            UiDraw.drawScrollbar(g, new Rectangle(syncMismatchViewportBounds.x + syncMismatchViewportBounds.width - scrollBarW,
+                    syncMismatchViewportBounds.y, scrollBarW, syncMismatchViewportBounds.height),
                     mismatches.size(), visible, syncMismatchScroll.offsetRows, syncMismatchScrollbarRailBounds,
                     syncMismatchScrollbarThumbBounds, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD);
             syncMismatchScrollbarRailBounds.setBounds(
@@ -3124,7 +3126,7 @@ public class XtremeTaskerOverlay extends Overlay {
         g.drawRect(box.x + 1, box.y + 1, box.width - 3, box.height - 3);
         if (checked && !disabled)
         {
-            ButtonRenderer.drawCheckmark(g, box, 5);
+            UiDraw.drawCheckmark(g, box, 5);
         }
     }
 
@@ -3132,22 +3134,6 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         g.setColor(P.UI_GOLD);
         g.drawRect(box.x + 1, box.y + 1, box.width - 3, box.height - 3);
-    }
-
-    private void drawPopupCloseX(Graphics2D g, Rectangle bounds)
-    {
-        g.setColor(new Color(200, 200, 200, 180));
-        int ccx = bounds.x + bounds.width / 2;
-        int ccy = bounds.y + bounds.height / 2;
-        int carm = 6;
-        Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        Stroke oldStroke = g.getStroke();
-        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(ccx - carm, ccy - carm, ccx + carm, ccy + carm);
-        g.drawLine(ccx + carm, ccy - carm, ccx - carm, ccy + carm);
-        g.setStroke(oldStroke);
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
     }
 
     private String syncReviewRowLabel(XtremeTask task)
@@ -3414,7 +3400,7 @@ public class XtremeTaskerOverlay extends Overlay {
             if (markIncompleteDontShowChecked)
             {
                 g.setColor(P.UI_GOLD);
-                ButtonRenderer.drawCheckmark(g, new Rectangle(checkboxX, boxY, boxSize, boxSize), 2);
+                UiDraw.drawCheckmark(g, new Rectangle(checkboxX, boxY, boxSize, boxSize), 2);
             }
 
             g.setColor(P.UI_TEXT_DIM);
@@ -4814,10 +4800,6 @@ public class XtremeTaskerOverlay extends Overlay {
         int buttonsW = buttonW * 2 + gap;
         left.setBounds(x + (w - buttonsW) / 2, y, buttonW, buttonH);
         right.setBounds(left.x + buttonW + gap, y, buttonW, buttonH);
-    }
-
-    private int centeredTextBaseline(Rectangle bounds, FontMetrics fm) {
-        return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
     }
 
     private Point computeIconPosition(int canvasWidth, int canvasHeight) {

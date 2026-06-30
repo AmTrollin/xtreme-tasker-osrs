@@ -7,6 +7,7 @@ import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.TaskGroupProgress;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
+import com.amtrollin.xtremetasker.ui.style.UiDraw;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
@@ -20,10 +21,8 @@ import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import net.runelite.api.Skill;
 import net.runelite.client.ui.FontManager;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -34,7 +33,10 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.safe;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.titleCase;
 
 public final class TaskDetailsPopup
 {
@@ -48,7 +50,7 @@ public final class TaskDetailsPopup
     private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
     private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
     private static final String OTHER_SEQUENCE_CLOGS_LABEL = UiText.get("current.other_sequence_clogs");
-    private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
+    private static final BufferedImage QUESTION_ICON = UiDraw.loadImage("/icons/notifications/OSRS_question.png");
     private static final DateTimeFormatter COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
@@ -381,11 +383,11 @@ public final class TaskDetailsPopup
 
         if (mouse != null && srcBadgeBounds.contains(mouse.getX(), mouse.getY()))
         {
-            drawBadgeHoverText(g, fm, TaskLabelFormatter.sourceLabel(task.getSource()), srcBadgeBounds);
+            UiDraw.drawHoverText(g, fm, TaskLabelFormatter.sourceLabel(task.getSource()), srcBadgeBounds, palette.UI_TEXT_DIM);
         }
         if (mouse != null && markIncompleteBounds.contains(mouse.getX(), mouse.getY()))
         {
-            drawBadgeHoverText(g, fm, "Mark incomplete", markIncompleteBounds);
+            UiDraw.drawHoverText(g, fm, "Mark incomplete", markIncompleteBounds, palette.UI_TEXT_DIM);
         }
 
         // Content area
@@ -818,7 +820,7 @@ public final class TaskDetailsPopup
         g.setClip(oldClip);
 
         // Scrollbar (drawn outside clip)
-        ButtonRenderer.drawScrollbar(g, new Rectangle(bounds.x + bounds.width - pad / 2 - scrollBarW, viewportTop, scrollBarW, viewportH),
+        UiDraw.drawScrollbar(g, new Rectangle(bounds.x + bounds.width - pad / 2 - scrollBarW, viewportTop, scrollBarW, viewportH),
                 totalContentRows, visibleRows, scroll.offsetRows, scrollbarRailBounds, scrollbarThumbBounds,
                 palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT, palette.UI_GOLD);
         int footerX = bounds.x + footerPad;
@@ -1006,22 +1008,6 @@ public final class TaskDetailsPopup
         drawGroupProgressHelpIcon(g, fm, helpX, rowTop, rowH, x + contentW, mouse);
     }
 
-    private void drawBadgeHoverText(Graphics2D g, FontMetrics fm, String text, Rectangle badgeBounds)
-    {
-        g.setColor(palette.UI_TEXT_DIM);
-        int x = badgeBounds.x;
-        int y = badgeBounds.y - 4;
-        g.drawString(text, x, y);
-    }
-
-    private void drawRightAlignedHoverText(Graphics2D g, FontMetrics fm, String text, int minX, int rightX, Rectangle anchorBounds)
-    {
-        g.setColor(palette.UI_TEXT_DIM);
-        int x = Math.max(minX, rightX - fm.stringWidth(text));
-        int y = anchorBounds.y + 1;
-        g.drawString(text, x, y);
-    }
-
     private void drawPrerequisiteStatusLine(
             Graphics2D g,
             FontMetrics fm,
@@ -1148,7 +1134,7 @@ public final class TaskDetailsPopup
         drawMarkIncompleteAction(g, actionBounds, hover);
         if (hover)
         {
-            drawRightAlignedHoverText(g, fm, "Mark incomplete", x, x + contentW, actionBounds);
+            UiDraw.drawRightAlignedHoverText(g, fm, "Mark incomplete", x, x + contentW, actionBounds, palette.UI_TEXT_DIM);
         }
     }
 
@@ -1189,47 +1175,12 @@ public final class TaskDetailsPopup
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill)
     {
-        TaskRowsRenderer.drawBevelBoxLogic(g, r, fill, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT);
-    }
-
-    private int centeredTextBaseline(Rectangle bounds, FontMetrics fm)
-    {
-        return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
-    }
-
-    private void drawCenteredQuestionMark(Graphics2D g, int x, int y, int size)
-    {
-        java.awt.font.GlyphVector glyph = g.getFont().createGlyphVector(g.getFontRenderContext(), "?");
-        java.awt.geom.Rectangle2D visualBounds = glyph.getVisualBounds();
-        float textX = (float) (x + (size - visualBounds.getWidth()) / 2.0 - visualBounds.getX());
-        float textY = (float) (y + (size - visualBounds.getHeight()) / 2.0 - visualBounds.getY());
-        g.drawString("?", textX, textY);
+        UiDraw.drawBevelBox(g, r, fill, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT);
     }
 
     private void drawQuestionIcon(Graphics2D g, int x, int y, int size)
     {
-        if (QUESTION_ICON != null)
-        {
-            g.drawImage(QUESTION_ICON, x, y, size, size, null);
-            return;
-        }
-
-        g.setColor(withAlpha(palette.UI_GOLD, 140));
-        g.fillOval(x, y, size, size);
-        g.setColor(new Color(20, 15, 10, 220));
-        drawCenteredQuestionMark(g, x, y, size);
-    }
-
-    private static BufferedImage loadQuestionIconSafe()
-    {
-        try (InputStream in = TaskDetailsPopup.class.getResourceAsStream("/icons/notifications/OSRS_question.png"))
-        {
-            return in == null ? null : ImageIO.read(in);
-        }
-        catch (Exception ignored)
-        {
-            return null;
-        }
+        UiDraw.drawQuestionIcon(g, QUESTION_ICON, x, y, size, withAlpha(palette.UI_GOLD, 140), new Color(20, 15, 10, 220));
     }
 
     private void drawTooltip(Graphics2D g, FontMetrics fm, String text, int anchorX, int anchorY, boolean alignLeft)
@@ -1272,11 +1223,6 @@ public final class TaskDetailsPopup
         }
 
         g.setClip(oldClip);
-    }
-
-    private static String safe(String s)
-    {
-        return s == null ? "" : s;
     }
 
     private static int secondarySectionGap(CollectionLogRequirementPreview requirementPreview)
@@ -1563,32 +1509,6 @@ public final class TaskDetailsPopup
         }
 
         return achievementDiaryDescription(task);
-    }
-
-    private static String titleCase(String value)
-    {
-        if (value == null || value.trim().isEmpty())
-        {
-            return null;
-        }
-
-        String trimmed = value.trim().replace('-', ' ').replace('_', ' ');
-        StringBuilder out = new StringBuilder(trimmed.length());
-        boolean capitalize = true;
-        for (int i = 0; i < trimmed.length(); i++)
-        {
-            char ch = trimmed.charAt(i);
-            if (Character.isWhitespace(ch))
-            {
-                out.append(ch);
-                capitalize = true;
-                continue;
-            }
-
-            out.append(capitalize ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
-            capitalize = false;
-        }
-        return out.toString();
     }
 
     private static String collectionLogRequirementTitle(CollectionLogRequirementPreview requirementPreview)

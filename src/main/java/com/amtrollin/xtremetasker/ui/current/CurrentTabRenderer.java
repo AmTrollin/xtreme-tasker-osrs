@@ -11,25 +11,27 @@ import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
+import com.amtrollin.xtremetasker.ui.style.UiDraw;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.text.UiText;
 import net.runelite.api.Skill;
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
 
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.sourceLabel;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.safe;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.titleCase;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
 
@@ -44,7 +46,7 @@ public final class CurrentTabRenderer
     private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
     private static final String OTHER_SEQUENCE_CLOGS_LABEL = UiText.get("current.other_sequence_clogs");
     private static final int DETAILS_INSET_X = 10;
-    private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
+    private static final BufferedImage QUESTION_ICON = UiDraw.loadImage("/icons/notifications/OSRS_question.png");
     private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, h:mm a").withZone(ZoneId.systemDefault());
 
@@ -914,39 +916,9 @@ public final class CurrentTabRenderer
         return tierLabel(t);
     }
 
-    private void drawCenteredQuestionMark(Graphics2D g, int x, int y, int size)
-    {
-        java.awt.font.GlyphVector glyph = g.getFont().createGlyphVector(g.getFontRenderContext(), "?");
-        java.awt.geom.Rectangle2D visualBounds = glyph.getVisualBounds();
-        float textX = (float) (x + (size - visualBounds.getWidth()) / 2.0 - visualBounds.getX());
-        float textY = (float) (y + (size - visualBounds.getHeight()) / 2.0 - visualBounds.getY());
-        g.drawString("?", textX, textY);
-    }
-
     private void drawQuestionIcon(Graphics2D g, int x, int y, int size)
     {
-        if (QUESTION_ICON != null)
-        {
-            g.drawImage(QUESTION_ICON, x, y, size, size, null);
-            return;
-        }
-
-        g.setColor(withAlpha(uiGold, 140));
-        g.fillOval(x, y, size, size);
-        g.setColor(new Color(20, 15, 10, 220));
-        drawCenteredQuestionMark(g, x, y, size);
-    }
-
-    private static BufferedImage loadQuestionIconSafe()
-    {
-        try (InputStream in = CurrentTabRenderer.class.getResourceAsStream("/icons/notifications/OSRS_question.png"))
-        {
-            return in == null ? null : ImageIO.read(in);
-        }
-        catch (Exception ignored)
-        {
-            return null;
-        }
+        UiDraw.drawQuestionIcon(g, QUESTION_ICON, x, y, size, withAlpha(uiGold, 140), new Color(20, 15, 10, 220));
     }
 
     private int drawRecentCompletionSummary(
@@ -1053,12 +1025,7 @@ public final class CurrentTabRenderer
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill)
     {
-        TaskRowsRenderer.drawBevelBoxLogic(g, r, fill, edgeDark, edgeLight);
-    }
-
-    private int centeredTextBaseline(Rectangle bounds, FontMetrics fm)
-    {
-        return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
+        UiDraw.drawBevelBox(g, r, fill, edgeDark, edgeLight);
     }
 
     private int drawWrapped(Graphics2D g, FontMetrics fm, String text, int x, int yBaseline, int maxWidth, int maxLines)
@@ -1624,7 +1591,7 @@ public final class CurrentTabRenderer
             Rectangle srcBounds = new Rectangle(x, yTop, actualW, rowHeight + 4);
             if (mousePoint != null && srcBounds.contains(mousePoint))
             {
-                drawBadgeHoverText(g, fm, sourceLabel(src), srcBounds, rightX);
+                UiDraw.drawHoverText(g, fm, sourceLabel(src), srcBounds, rightX, uiTextDim);
             }
             x += actualW + badgeGap;
         }
@@ -1634,24 +1601,12 @@ public final class CurrentTabRenderer
         }
     }
 
-    private void drawBadgeHoverText(Graphics2D g, FontMetrics fm, String text, Rectangle badgeBounds, int maxRight)
-    {
-        int x = Math.min(badgeBounds.x, maxRight - fm.stringWidth(text));
-        g.setColor(uiTextDim);
-        g.drawString(text, x, badgeBounds.y - 4);
-    }
-
     private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)
     {
         int lineW = fm.stringWidth(text);
         int strikeY = baselineY - (fm.getAscent() * 3 / 5);
         g.setColor(withAlpha(uiTextDim, 170));
         g.drawLine(x, strikeY, x + lineW, strikeY);
-    }
-
-    private static String safe(String text)
-    {
-        return text == null ? "" : text;
     }
 
     private static String normalizePrereqs(String prereqs)
@@ -1696,32 +1651,6 @@ public final class CurrentTabRenderer
         }
 
         return achievementDiaryDescription(task);
-    }
-
-    private static String titleCase(String value)
-    {
-        if (value == null || value.trim().isEmpty())
-        {
-            return null;
-        }
-
-        String trimmed = value.trim().replace('-', ' ').replace('_', ' ');
-        StringBuilder out = new StringBuilder(trimmed.length());
-        boolean capitalize = true;
-        for (int i = 0; i < trimmed.length(); i++)
-        {
-            char ch = trimmed.charAt(i);
-            if (Character.isWhitespace(ch))
-            {
-                out.append(ch);
-                capitalize = true;
-                continue;
-            }
-
-            out.append(capitalize ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
-            capitalize = false;
-        }
-        return out.toString();
     }
 
 }
