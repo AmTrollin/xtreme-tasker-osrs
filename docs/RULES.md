@@ -40,8 +40,7 @@ It is heavily recommended to be strategic when choosing slayer masters for suppl
 
 Xtreme Tasker can sync supported account progress into the plugin, but sync exists to catch already completed progress. It does not change the rules for how tasks should be completed after they are rolled.
 
-Collection Log syncing only includes entries RuneLite has seen. For best results, open your in-game Collection Log before syncing.
+Collection Log progress refreshes when you open your in-game Collection Log. This only includes entries RuneLite has seen, and any newly eligible tasks are staged for review.
 
 Sync results are staged for review before they are applied.
-
 

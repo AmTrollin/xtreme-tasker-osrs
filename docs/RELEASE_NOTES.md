@@ -1,7 +1,6 @@
-```md
 # Xtreme Tasker Release Notes
 
-## v2.1 — XX.XX.2026
+## v2.1 — 06.30.2026
 
 ### Sync & Task Completion
 - Collection Log syncing now occurs automatically when opening the in-game Collection Log
@@ -9,7 +8,7 @@
 
 ### UI & Quality of Life
 - Added a new Compact View
-- Various UI improvements and QoL enhancements
+- Various UI and QoL Improvements 
 
 ### Bug Fixes
 - Fixed sequential Collection Log task progression
@@ -38,5 +37,3 @@
 ### Bug Fixes
 - Fixed a potential RuneLite crash when used alongside Collection Log Master
 - Fixed syncing and tracking for Tea Flask, Karamja Diary, and Giants' Foundry tasks
-
-```
