@@ -1,5 +1,6 @@
 package com.amtrollin.xtremetasker.ui.input;
 
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
 import com.amtrollin.xtremetasker.ui.text.UiText;
 import java.awt.event.KeyEvent;
 import lombok.RequiredArgsConstructor;
@@ -7,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public final class CurrentTabKeyHandler
 {
-    private final OverlayInputAccess a;
+    private final XtremeTaskerOverlay a;
 
     private static final long MSG_COOLDOWN_MS = 900;
     private long lastMsgAtMs = 0;

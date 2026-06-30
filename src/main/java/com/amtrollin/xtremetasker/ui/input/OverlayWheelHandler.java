@@ -1,5 +1,6 @@
 package com.amtrollin.xtremetasker.ui.input;
 
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import java.awt.*;
 import java.awt.event.MouseWheelEvent;
@@ -10,7 +11,7 @@ import net.runelite.client.input.MouseWheelListener;
 @RequiredArgsConstructor
 public final class OverlayWheelHandler implements MouseWheelListener
 {
-    private final OverlayInputAccess a;
+    private final XtremeTaskerOverlay a;
 
     @Override
     public MouseWheelEvent mouseWheelMoved(MouseWheelEvent e)
@@ -46,7 +47,6 @@ public final class OverlayWheelHandler implements MouseWheelListener
         // ------------------------------------------
         // DETAILS POPUP scroll (highest priority)
         // ------------------------------------------
-        // Requires the popup hooks on OverlayInputAccess (see below).
         if (a.isTaskDetailsOpen() && a.taskDetailsViewportBounds().contains(p))
         {
             if (a.taskDetailsViewportBounds().height <= 0)
@@ -67,7 +67,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
 
 
         // TASKS scroll
-        if (a.activeTab() == OverlayInputAccess.MainTab.TASKS && a.taskListViewportBounds().contains(p))
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.TASKS && a.taskListViewportBounds().contains(p))
         {
             Rectangle vp = a.taskListViewportBounds();
             if (vp.height <= 0)
@@ -89,7 +89,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
         }
 
         // CURRENT scroll
-        if (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && a.currentViewportBounds().contains(p))
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.CURRENT && a.currentViewportBounds().contains(p))
         {
             Rectangle cvp = a.currentViewportBounds();
             if (cvp.height <= 0) return e;

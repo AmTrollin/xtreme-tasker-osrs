@@ -1,12 +1,13 @@
 package com.amtrollin.xtremetasker.ui.input;
 
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
 import java.awt.event.KeyEvent;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public final class TasksTabKeyHandler
 {
-    private final OverlayInputAccess a;
+    private final XtremeTaskerOverlay a;
 
     public boolean handleKeyPressed(KeyEvent e)
     {

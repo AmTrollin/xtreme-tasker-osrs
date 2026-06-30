@@ -273,7 +273,7 @@ public class XtremeTaskerOverlay extends Overlay {
     @Getter
     private final KeyListener keyListener;
 
-    private enum MainTab {CURRENT, TASKS, RULES}
+    public enum MainTab {CURRENT, TASKS, RULES}
 
     private static final MainTab[] MAIN_TABS = {MainTab.CURRENT, MainTab.TASKS, MainTab.RULES};
     private static final String[] MAIN_TAB_LABELS = {"Current", "Tasks", "Help"};
@@ -1781,14 +1781,9 @@ public class XtremeTaskerOverlay extends Overlay {
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.UNDER_WIDGETS);
 
-// -----------------------------
-// Extracted input handlers
-// -----------------------------
-        OverlayInputAccess access = buildInputAccess();
+        this.keyListener = new OverlayKeyHandler(this);
 
-        this.keyListener = new OverlayKeyHandler(access);
-
-        this.mouseAdapter = new OverlayMouseHandler(access, () -> {
+        this.mouseAdapter = new OverlayMouseHandler(this, () -> {
             draggingPanel = false;
             activeTab = MainTab.CURRENT;
 
@@ -1797,7 +1792,7 @@ public class XtremeTaskerOverlay extends Overlay {
             taskQuery.searchFocused = false;
         });
 
-        this.mouseWheelListener = new OverlayWheelHandler(access);
+        this.mouseWheelListener = new OverlayWheelHandler(this);
     }
 
     /** Returns true while the roll animation is in progress. */
@@ -1805,7 +1800,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return animations.isRolling();
     }
 
-    private void requestRollTask()
+    public void requestRollTask()
     {
         if (rollExecutionPending || animations.isRolling())
         {
@@ -1884,11 +1879,11 @@ public class XtremeTaskerOverlay extends Overlay {
     // -----------------------------
     // rowBlock accessors (for wheel)
     // -----------------------------
-    int tasksRowBlock() {
+    public int tasksRowBlock() {
         return scaleInputValue(taskRowsRendererTasks.rowBlock());
     }
 
-    private int currentRowBlock() {
+    public int currentRowBlock() {
         return scaleInputValue(ROW_HEIGHT);
     }
 
@@ -2278,7 +2273,7 @@ public class XtremeTaskerOverlay extends Overlay {
         );
     }
 
-    private List<WikiLink> taskDetailsWikiLinks(XtremeTask task)
+    public List<WikiLink> taskDetailsWikiLinks(XtremeTask task)
     {
         if (task == null)
         {
@@ -2610,7 +2605,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return SYNC_REVIEW_COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
-    private void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
+    public void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
     {
         if (task == null || !isTaskCompletedForIncompleteAction(task))
         {
@@ -2626,7 +2621,7 @@ public class XtremeTaskerOverlay extends Overlay {
         taskDetailsIncompleteConfirmOpen = true;
     }
 
-    private void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task)
+    public void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task)
     {
         if (task == null || task.getId() == null || !plugin.isTaskCompleted(task))
         {
@@ -2659,7 +2654,7 @@ public class XtremeTaskerOverlay extends Overlay {
         closeTaskDetailsIncompleteConfirm();
     }
 
-    private void confirmTaskDetailsIncompleteSelection()
+    public void confirmTaskDetailsIncompleteSelection()
     {
         List<XtremeTask> tasksToMarkIncomplete = selectedIncompleteTasksForDetails();
         if (!tasksToMarkIncomplete.isEmpty())
@@ -2691,12 +2686,12 @@ public class XtremeTaskerOverlay extends Overlay {
                 .collect(Collectors.toList());
     }
 
-    private boolean isTaskDetailsIncompleteConfirmOpen()
+    public boolean isTaskDetailsIncompleteConfirmOpen()
     {
         return taskDetailsIncompleteConfirmOpen;
     }
 
-    private void closeTaskDetailsIncompleteConfirm()
+    public void closeTaskDetailsIncompleteConfirm()
     {
         selectedTaskDetailsIncompleteTaskIds.clear();
         taskDetailsIncompleteConfirmOpen = false;
@@ -3567,7 +3562,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
 
     // --------- keyboard navigation ---------
-    private boolean handleTasksKey(KeyEvent e) {
+    public boolean handleTasksKey(KeyEvent e) {
         int code = e.getKeyCode();
 
         if (code == KeyEvent.VK_LEFT) {
@@ -3639,7 +3634,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
 
-    private boolean handleCurrentKey(KeyEvent e) {
+    public boolean handleCurrentKey(KeyEvent e) {
         int code = e.getKeyCode();
 
         XtremeTask current = plugin.getCurrentTask();
@@ -3676,7 +3671,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return false;
     }
 
-    private void shiftTier(int delta) {
+    public void shiftTier(int delta) {
         int idx = TIER_TABS.indexOf(activeTierTab);
         if (idx < 0) idx = 0;
 
@@ -3686,7 +3681,7 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
 
-    private void resetTaskListViewAfterQueryChange() {
+    public void resetTaskListViewAfterQueryChange() {
         List<XtremeTask> tasks = getSortedTasksForTier(activeTierTab);
         taskListView.resetAfterQueryChange(activeTierTab, tasks, plugin::isTaskCompleted);
     }
@@ -3740,7 +3735,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return out;
     }
 
-    private List<XtremeTask> getSortedTasksForTier(TaskTier tier) {
+    public List<XtremeTask> getSortedTasksForTier(TaskTier tier) {
         String cacheKey = sortedTaskListCacheKey(tier);
         List<XtremeTask> cached = sortedTaskListCache.get(cacheKey);
         if (cached != null)
@@ -3764,7 +3759,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return immutableResult;
     }
 
-    private boolean useCondensedTaskRows()
+    public boolean useCondensedTaskRows()
     {
         return plugin.condenseRepeatedTasks();
     }
@@ -3835,789 +3830,583 @@ public class XtremeTaskerOverlay extends Overlay {
     }
 
     // -----------------------------
-    // OverlayInputAccess bridge
-    // -----------------------------
-    private OverlayInputAccess buildInputAccess() {
-        return new OverlayInputAccess() {
-            @Override
-            public Client client() {
-                return client;
-            }
-
-            @Override
-            public XtremeTaskerPlugin plugin() {
-                return (XtremeTaskerPlugin) plugin;
-            }
-
-            @Override
-            public OverlayAnimations animations() {
-                return animations;
-            }
-
-            @Override
-            public boolean isPanelOpen() {
-                return panelOpen;
-            }
-
-            @Override
-            public TaskControlsLayout controlsLayout() {
-                return controls;
-            }
-
-            @Override
-            public void setPanelOpen(boolean open) {
-                panelOpen = open;
-                if (!open) {
-                    cancelPendingRollExecution();
-                }
-            }
-
-            @Override
-            public boolean isCompactPanelMode() {
-                return compactPanelMode;
-            }
-
-            @Override
-            public void setCompactPanelMode(boolean compact) {
-                recenterPanelForMode(compact);
-                compactPanelMode = compact;
-                taskDetailsPopup.close();
-                syncMismatchReviewOpen = false;
-                currentScroll.reset();
-                if (compact) {
-                    activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
-                }
-            }
-
-            @Override
-            public Rectangle panelModeToggleBounds() {
-                return panelModeToggleBounds;
-            }
-
-            @Override
-            public boolean isDraggingPanel() {
-                return draggingPanel;
-            }
-
-            @Override
-            public void setDraggingPanel(boolean dragging) {
-                draggingPanel = dragging;
-            }
-
-            @Override
-            public void setDragOffset(int dx, int dy) {
-                dragOffsetX = dx;
-                dragOffsetY = dy;
-            }
-
-            @Override
-            public int dragOffsetX() {
-                return dragOffsetX;
-            }
-
-            @Override
-            public int dragOffsetY() {
-                return dragOffsetY;
-            }
-
-            @Override
-            public void setPanelOverride(Integer x, Integer y) {
-                panelXOverride = x;
-                panelYOverride = y;
-            }
-
-            @Override
-            public OverlayInputAccess.MainTab activeTab() {
-                return OverlayInputAccess.MainTab.valueOf(activeTab.name());
-            }
-
-            @Override
-            public void setActiveTab(OverlayInputAccess.MainTab tab) {
-                activeTab = XtremeTaskerOverlay.MainTab.valueOf(tab.name());
-                if (activeTab == XtremeTaskerOverlay.MainTab.TASKS)
-                {
-                    prepareTasksTabOnOpen();
-                }
-            }
-
-
-            @Override
-            public TaskTier activeTier() {
-                return activeTierTab;
-            }
-
-            @Override
-            public void setActiveTier(TaskTier tier) {
-                activeTierTab = tier;
-            }
-
-            @Override
-            public Rectangle iconBounds() {
-                return iconBounds;
-            }
-
-            @Override
-            public Rectangle panelBounds() {
-                return panelBounds;
-            }
-
-            @Override
-            public Point toPanelLogicalPoint(Point point) {
-                if (point == null || panelScale == 1.0) {
-                    return point;
-                }
-                int x = panelInputAnchorX + (int) Math.round((point.x - panelInputAnchorX) / panelScale);
-                int y = panelInputAnchorY + (int) Math.round((point.y - panelInputAnchorY) / panelScale);
-                return new Point(x, y);
-            }
-
-            @Override
-            public Rectangle panelDragBarBounds() {
-                return panelDragBarBounds;
-            }
-
-            @Override
-            public Rectangle panelCloseBounds() {
-                return panelCloseBounds;
-            }
-
-            @Override
-            public Rectangle currentTabBounds() {
-                return currentTabBounds;
-            }
-
-            @Override
-            public Rectangle tasksTabBounds() {
-                return tasksTabBounds;
-            }
-
-            @Override
-            public Rectangle rulesTabBounds() {
-                return rulesTabBounds;
-            }
-
-            @Override
-            public Rectangle taskListViewportBounds() {
-                return taskListViewportBounds;
-            }
-
-            @Override
-            public Rectangle taskScrollbarRailBounds() {
-                return taskScrollbarRailBounds;
-            }
-
-            @Override
-            public Rectangle taskScrollbarThumbBounds() {
-                return taskScrollbarThumbBounds;
-            }
-
-            @Override
-            public Map<TaskTier, Rectangle> tierTabBounds() {
-                return tierTabBounds;
-            }
-
-            @Override
-            public Map<XtremeTask, Rectangle> taskRowBounds() {
-                return taskRowBounds;
-            }
-
-            @Override
-            public CurrentTabLayout currentLayout() {
-                return currentLayout;
-            }
-
-            @Override
-            public RulesTabLayout rulesLayout() {
-                return rulesLayout;
-            }
-
-            @Override
-            public RulesTabLayout.SubTab rulesSubTab() {
-                return rulesSubTab;
-            }
-
-            @Override
-            public void setRulesSubTab(RulesTabLayout.SubTab subTab) {
-                if (subTab != rulesSubTab) {
-                    rulesSubTab = subTab;
-                }
-            }
-
-            @Override
-            public void openSyncCompletionCandidateReview(TaskSource source) {
-                if (!plugin.getSyncCompletionCandidateTasks(source).isEmpty()) {
-                    syncMismatchReviewSource = source;
-                    syncReviewMode = SyncReviewMode.COMPLETION_CANDIDATES;
-                    syncMismatchReviewOpen = true;
-                    syncMismatchScroll.reset();
-                    selectedSyncMismatchTaskIds.clear();
-                    syncMismatchApplyConfirmOpen = false;
-                }
-            }
-
-            @Override
-            public void openSyncMismatchReview() {
-                openSyncMismatchReview(null);
-            }
-
-            @Override
-            public void openSyncMismatchReview(TaskSource source) {
-                if (!plugin.getSyncMismatchTasks(source).isEmpty()) {
-                    syncMismatchReviewSource = source;
-                    syncReviewMode = SyncReviewMode.MISMATCH;
-                    syncMismatchReviewOpen = true;
-                    syncMismatchScroll.reset();
-                    selectedSyncMismatchTaskIds.clear();
-                    syncMismatchApplyConfirmOpen = false;
-                }
-            }
-
-            @Override
-            public void closeSyncMismatchReview() {
-                syncMismatchReviewOpen = false;
-                syncReviewMode = SyncReviewMode.MISMATCH;
-                syncMismatchReviewSource = null;
-                selectedSyncMismatchTaskIds.clear();
-                syncMismatchApplyConfirmOpen = false;
-            }
-
-            @Override
-            public TaskSource syncMismatchReviewSource() {
-                return syncMismatchReviewSource;
-            }
-
-            @Override
-            public TaskListQuery taskQuery() {
-                return taskQuery;
-            }
-
-            @Override
-            public TaskSelectionModel selectionModel() {
-                return selectionModel;
-            }
-
-            @Override
-            public TaskListScrollController tasksScroll() {
-                return tasksScroll;
-            }
-
-            @Override
-            public TaskListScrollController currentScroll() {
-                return currentScroll;
-            }
-
-            @Override
-            public Rectangle currentViewportBounds() {
-                return currentLayout.viewportBounds;
-            }
-
-            @Override
-            public int currentRowBlock() {
-                return XtremeTaskerOverlay.this.currentRowBlock();
-            }
-
-            @Override
-            public TaskListViewController taskListView() {
-                return taskListView;
-            }
-
-            @Override
-            public void resetTaskListViewAfterQueryChange() {
-                XtremeTaskerOverlay.this.resetTaskListViewAfterQueryChange();
-            }
-
-            @Override
-            public int taskRowBlock() {
-                return XtremeTaskerOverlay.this.tasksRowBlock();
-            }
-
-            @Override
-            public boolean useCondensedTaskRows() {
-                return XtremeTaskerOverlay.this.useCondensedTaskRows();
-            }
-
-            @Override
-            public void shiftTier(int delta) {
-                XtremeTaskerOverlay.this.shiftTier(delta);
-            }
-
-            @Override
-            public void requestRollTask() {
-                XtremeTaskerOverlay.this.requestRollTask();
-            }
-
-            @Override
-            public boolean handleTasksKey(KeyEvent e) {
-                return XtremeTaskerOverlay.this.handleTasksKey(e);
-            }
-
-            @Override
-            public boolean handleCurrentKey(KeyEvent e) {
-                return XtremeTaskerOverlay.this.handleCurrentKey(e);
-            }
-
-
-            @Override
-            public List<XtremeTask> getSortedTasksForTier(TaskTier tier) {
-                return XtremeTaskerOverlay.this.getSortedTasksForTier(tier);
-            }
-
-            @Override
-            public Map<XtremeTask, Rectangle> taskCheckboxBounds() {
-                return taskCheckboxBounds;
-            }
-
-
-            // -----------------------------
-            // rowBlock accessors for wheel
-            // -----------------------------
-            @Override
-            public int tasksRowBlock() {
-                return XtremeTaskerOverlay.this.tasksRowBlock();
-            }
-
-            @Override
-            public boolean isTaskDetailsOpen() {
-                return taskDetailsPopup.isOpen();
-            }
-
-            @Override
-            public void openTaskDetails(XtremeTask task) {
-                selectedTaskDetailsIncompleteTaskIds.clear();
-                closeTaskDetailsIncompleteConfirm();
-                taskDetailsPopup.open(task);
-                plugin.refreshTaskSyncMismatchForTask(task);
-            }
-
-            @Override
-            public void closeTaskDetails() {
-                closeTaskDetailsWithPendingIncompleteCheck();
-            }
-
-            @Override
-            public XtremeTask taskDetailsTask() {
-                return taskDetailsPopup.task();
-            }
-
-            @Override
-            public Rectangle taskDetailsBounds() {
-                return taskDetailsPopup.bounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsViewportBounds() {
-                return taskDetailsPopup.viewportBounds();
-            }
-
-            @Override
-            public int taskDetailsTotalContentRows() {
-                return taskDetailsPopup.totalContentRows();
-            }
-
-            @Override
-            public int taskDetailsRowBlock() {
-                return ROW_HEIGHT; // popup is rendered unscaled in screen coordinates
-            }
-
-            @Override
-            public TaskListScrollController taskDetailsScroll() {
-                return taskDetailsPopup.scroll();
-            }
-
-            @Override
-            public Rectangle taskDetailsCloseBounds() {
-                return taskDetailsPopup.closeBounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsWikiBounds() {
-                return taskDetailsPopup.wikiBounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsWikiMenuBounds() {
-                return taskDetailsPopup.wikiMenuBounds();
-            }
-
-            @Override
-            public boolean isTaskDetailsWikiMenuOpen() {
-                return taskDetailsPopup.isWikiMenuOpen();
-            }
-
-            @Override
-            public void openTaskDetailsWikiMenu() {
-                taskDetailsPopup.openWikiMenu();
-            }
-
-            @Override
-            public void closeTaskDetailsWikiMenu() {
-                taskDetailsPopup.closeWikiMenu();
-            }
-
-            @Override
-            public WikiLink taskDetailsWikiLinkAt(Point point) {
-                return taskDetailsPopup.wikiLinkAt(point);
-            }
-
-            @Override
-            public List<WikiLink> taskDetailsWikiLinks(XtremeTask task) {
-                return XtremeTaskerOverlay.this.taskDetailsWikiLinks(task);
-            }
-
-            @Override
-            public Rectangle taskDetailsMarkIncompleteBounds() {
-                return taskDetailsPopup.markIncompleteBounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsScrollbarRailBounds() {
-                return taskDetailsPopup.scrollbarRailBounds();
-            }
-
-            @Override
-            public Rectangle taskDetailsScrollbarThumbBounds() {
-                return taskDetailsPopup.scrollbarThumbBounds();
-            }
-
-            @Override
-            public Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds() {
-                return taskDetailsPopup.instanceRemoveBounds();
-            }
-
-            @Override
-            public void handleTaskDetailsMarkIncompleteButton(XtremeTask task) {
-                XtremeTaskerOverlay.this.handleTaskDetailsMarkIncompleteButton(task);
-            }
-
-            @Override
-            public void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task) {
-                XtremeTaskerOverlay.this.handleTaskDetailsInstanceMarkIncompleteButton(task);
-            }
-
-            @Override
-            public boolean isMarkAllIncompleteConfirmOpen() {
-                return pendingMarkAllIncompleteTask != null;
-            }
-
-            @Override
-            public void requestMarkAllIncompleteConfirmation(XtremeTask task) {
-                requestMarkAllIncompleteConfirmation(task, false);
-            }
-
-            @Override
-            public void requestMarkAllIncompleteConfirmation(XtremeTask task, boolean groupMode) {
-                pendingMarkAllIncompleteTask = task;
-                pendingMarkAllIncompleteGroupMode = groupMode;
-                markIncompleteDontShowChecked = false;
-            }
-
-            @Override
-            public void closeMarkAllIncompleteConfirmation() {
-                pendingMarkAllIncompleteTask = null;
-                pendingMarkAllIncompleteGroupMode = false;
-                clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
-                        markAllIncompleteNoBounds, markIncompleteDontShowBounds);
-                markIncompleteDontShowChecked = false;
-            }
-
-            @Override
-            public XtremeTask markAllIncompleteConfirmationTask() {
-                return pendingMarkAllIncompleteTask;
-            }
-
-            @Override
-            public boolean markAllIncompleteConfirmationGroupMode() {
-                return pendingMarkAllIncompleteGroupMode;
-            }
-
-            @Override
-            public Rectangle markAllIncompleteConfirmBounds() {
-                return markAllIncompleteConfirmBounds;
-            }
-
-            @Override
-            public Rectangle markAllIncompleteYesBounds() {
-                return markAllIncompleteYesBounds;
-            }
-
-            @Override
-            public Rectangle markAllIncompleteNoBounds() {
-                return markAllIncompleteNoBounds;
-            }
-
-            @Override
-            public Rectangle markIncompleteDontShowBounds() {
-                return markIncompleteDontShowBounds;
-            }
-
-            @Override
-            public boolean markIncompleteDontShowChecked() {
-                return markIncompleteDontShowChecked;
-            }
-
-            @Override
-            public void setMarkIncompleteDontShowChecked(boolean checked) {
-                markIncompleteDontShowChecked = checked;
-            }
-
-            @Override
-            public boolean isSyncMismatchReviewOpen() {
-                return syncMismatchReviewOpen && !visibleSyncMismatchTasks().isEmpty();
-            }
-
-            @Override
-            public boolean isSyncCompletionCandidateReviewOpen() {
-                return syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
-            }
-
-            @Override
-            public Rectangle syncMismatchReviewBounds() {
-                return syncMismatchReviewBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchViewportBounds() {
-                return syncMismatchViewportBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchCloseBounds() {
-                return syncMismatchCloseBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchMarkAllBounds() {
-                return syncMismatchMarkAllBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchApplyBounds() {
-                return syncMismatchApplyBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchCancelBounds() {
-                return syncMismatchCancelBounds;
-            }
-
-            @Override
-            public boolean isSyncMismatchApplyConfirmOpen() {
-                return syncMismatchApplyConfirmOpen;
-            }
-
-            @Override
-            public Rectangle syncMismatchConfirmBounds() {
-                return syncMismatchConfirmBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchConfirmYesBounds() {
-                return syncMismatchConfirmYesBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchConfirmNoBounds() {
-                return syncMismatchConfirmNoBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchScrollbarRailBounds() {
-                return syncMismatchScrollbarRailBounds;
-            }
-
-            @Override
-            public Rectangle syncMismatchScrollbarThumbBounds() {
-                return syncMismatchScrollbarThumbBounds;
-            }
-
-            @Override
-            public Map<XtremeTask, Rectangle> syncMismatchTaskBounds() {
-                return syncMismatchTaskBounds;
-            }
-
-            @Override
-            public TaskListScrollController syncMismatchScroll() {
-                return syncMismatchScroll;
-            }
-
-            @Override
-            public int syncMismatchRowBlock() {
-                return scaleInputValue(ROW_HEIGHT + 8 + LIST_ROW_SPACING);
-            }
-
-            @Override
-            public int syncMismatchVisibleTaskCount() {
-                return visibleSyncMismatchTasks().size();
-            }
-
-            @Override
-            public boolean isSyncMismatchTaskSelected(XtremeTask task) {
-                return task != null
-                        && task.getId() != null
-                        && !isCurrentTask(task)
-                        && selectedSyncMismatchTaskIds.contains(task.getId());
-            }
-
-            @Override
-            public void toggleSyncMismatchTaskSelected(XtremeTask task) {
-                if (task == null || task.getId() == null || isCurrentTask(task)) return;
-                if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
-                    selectedSyncMismatchTaskIds.add(task.getId());
-                }
-                syncMismatchApplyConfirmOpen = false;
-            }
-
-            @Override
-            public void selectAllSyncMismatchTasks() {
-                for (XtremeTask task : visibleSyncMismatchTasks()) {
-                    if (task == null || task.getId() == null || isCurrentTask(task)) {
-                        continue;
-                    }
-                    selectedSyncMismatchTaskIds.add(task.getId());
-                }
-                syncMismatchApplyConfirmOpen = false;
-            }
-
-            @Override
-            public void clearSyncMismatchSelection() {
-                selectedSyncMismatchTaskIds.clear();
-                syncMismatchApplyConfirmOpen = false;
-            }
-
-            @Override
-            public int syncMismatchSelectedCount() {
-                return selectedVisibleSyncMismatchCount(visibleSyncMismatchTasks());
-            }
-
-            @Override
-            public int syncMismatchSelectableCount() {
-                return selectableVisibleSyncMismatchCount(visibleSyncMismatchTasks());
-            }
-
-            @Override
-            public List<XtremeTask> selectedSyncMismatchTasks() {
-                List<XtremeTask> out = new ArrayList<>();
-                Set<String> seen = new HashSet<>();
-                for (XtremeTask task : visibleSyncMismatchTasks()) {
-                    if (task == null || task.getId() == null) {
-                        continue;
-                    }
-                    if (!isCurrentTask(task)
-                            && selectedSyncMismatchTaskIds.contains(task.getId())
-                            && seen.add(task.getId())) {
-                        out.add(task);
-                    }
-                }
-                return out;
-            }
-
-            @Override
-            public void requestSyncMismatchApplyConfirm() {
-                if (syncMismatchSelectedCount() > 0) {
-                    syncMismatchApplyConfirmOpen = true;
-                }
-            }
-
-            @Override
-            public void closeSyncMismatchApplyConfirm() {
-                syncMismatchApplyConfirmOpen = false;
-            }
-
-            @Override
-            public boolean isTaskDetailsIncompleteConfirmOpen() {
-                return XtremeTaskerOverlay.this.isTaskDetailsIncompleteConfirmOpen();
-            }
-
-            @Override
-            public Rectangle taskDetailsIncompleteConfirmBounds() {
-                return taskDetailsIncompleteConfirmBounds;
-            }
-
-            @Override
-            public Rectangle taskDetailsIncompleteConfirmYesBounds() {
-                return taskDetailsIncompleteConfirmYesBounds;
-            }
-
-            @Override
-            public Rectangle taskDetailsIncompleteConfirmNoBounds() {
-                return taskDetailsIncompleteConfirmNoBounds;
-            }
-
-            @Override
-            public void confirmTaskDetailsIncompleteSelection() {
-                XtremeTaskerOverlay.this.confirmTaskDetailsIncompleteSelection();
-            }
-
-            @Override
-            public void closeTaskDetailsIncompleteConfirm() {
-                XtremeTaskerOverlay.this.closeTaskDetailsIncompleteConfirm();
-            }
-
-            @Override
-            public boolean isDraggingIcon() {
-                return draggingIcon;
-            }
-
-            @Override
-            public void setDraggingIcon(boolean dragging) {
-                draggingIcon = dragging;
-            }
-
-            @Override
-            public void setIconDragOffset(int dx, int dy) {
-                iconDragOffsetX = dx;
-                iconDragOffsetY = dy;
-            }
-
-            @Override
-            public int iconDragOffsetX() {
-                return iconDragOffsetX;
-            }
-
-            @Override
-            public int iconDragOffsetY() {
-                return iconDragOffsetY;
-            }
-
-            @Override
-            public void setIconOverride(int x, int y) {
-                iconXOverride = x;
-                iconYOverride = y;
-            }
-
-            @Override
-            public void persistIconPosition() {
-                if (iconXOverride == null || iconYOverride == null) return;
-                if (client.isResized()) {
-                    // Convert drag absolute position to canvas-right-relative.
-                    resizableOffsetX = client.getCanvasWidth() - (iconXOverride - ICON_RESIZABLE_NUDGE_RIGHT) - ICON_WIDTH;
-                    resizableOffsetY = iconYOverride - ICON_RESIZABLE_NUDGE_DOWN;
-                    resizableOffsetInitialized = true;
-                    plugin.saveIconPosition(resizableOffsetX, resizableOffsetY, true);
-                } else {
-                    fixedOffsetX = client.getCanvasWidth() - iconXOverride - ICON_WIDTH;
-                    fixedOffsetY = iconYOverride;
-                    fixedOffsetInitialized = true;
-                    plugin.saveIconPosition(fixedOffsetX, fixedOffsetY, false);
-                }
-                iconXOverride = null;
-                iconYOverride = null;
-            }
-
-            @Override
-            public void clearIconPosition() {
-                clearIconPositionState(true);
-            }
-
-            @Override
-            public void persistPanelPosition() {
-                if (panelXOverride != null && panelYOverride != null) {
-                    plugin.savePanelPosition(panelXOverride, panelYOverride);
-                }
-            }
-
-
-        };
+    // Input handler access
+    public Client client() {
+        return client;
+    }
+
+    public XtremeTaskerPlugin plugin() {
+        return plugin;
+    }
+
+    public OverlayAnimations animations() {
+        return animations;
+    }
+
+    public boolean isPanelOpen() {
+        return panelOpen;
+    }
+
+    public TaskControlsLayout controlsLayout() {
+        return controls;
+    }
+
+    public void setPanelOpen(boolean open) {
+        panelOpen = open;
+        if (!open) {
+            cancelPendingRollExecution();
+        }
+    }
+
+    public boolean isCompactPanelMode() {
+        return compactPanelMode;
+    }
+
+    public void setCompactPanelMode(boolean compact) {
+        recenterPanelForMode(compact);
+        compactPanelMode = compact;
+        taskDetailsPopup.close();
+        syncMismatchReviewOpen = false;
+        currentScroll.reset();
+        if (compact) {
+            activeTab = MainTab.CURRENT;
+        }
+    }
+
+    public Rectangle panelModeToggleBounds() {
+        return panelModeToggleBounds;
+    }
+
+    public boolean isDraggingPanel() {
+        return draggingPanel;
+    }
+
+    public void setDraggingPanel(boolean dragging) {
+        draggingPanel = dragging;
+    }
+
+    public void setDragOffset(int dx, int dy) {
+        dragOffsetX = dx;
+        dragOffsetY = dy;
+    }
+
+    public int dragOffsetX() {
+        return dragOffsetX;
+    }
+
+    public int dragOffsetY() {
+        return dragOffsetY;
+    }
+
+    public void setPanelOverride(Integer x, Integer y) {
+        panelXOverride = x;
+        panelYOverride = y;
+    }
+
+    public MainTab activeTab() {
+        return MainTab.valueOf(activeTab.name());
+    }
+
+    public void setActiveTab(MainTab tab) {
+        activeTab = MainTab.valueOf(tab.name());
+        if (activeTab == MainTab.TASKS)
+        {
+            prepareTasksTabOnOpen();
+        }
+    }
+
+
+    public TaskTier activeTier() {
+        return activeTierTab;
+    }
+
+    public void setActiveTier(TaskTier tier) {
+        activeTierTab = tier;
+    }
+
+    public Rectangle iconBounds() {
+        return iconBounds;
+    }
+
+    public Rectangle panelBounds() {
+        return panelBounds;
+    }
+
+    public Point toPanelLogicalPoint(Point point) {
+        if (point == null || panelScale == 1.0) {
+            return point;
+        }
+        int x = panelInputAnchorX + (int) Math.round((point.x - panelInputAnchorX) / panelScale);
+        int y = panelInputAnchorY + (int) Math.round((point.y - panelInputAnchorY) / panelScale);
+        return new Point(x, y);
+    }
+
+    public Rectangle panelDragBarBounds() {
+        return panelDragBarBounds;
+    }
+
+    public Rectangle panelCloseBounds() {
+        return panelCloseBounds;
+    }
+
+    public Rectangle currentTabBounds() {
+        return currentTabBounds;
+    }
+
+    public Rectangle tasksTabBounds() {
+        return tasksTabBounds;
+    }
+
+    public Rectangle rulesTabBounds() {
+        return rulesTabBounds;
+    }
+
+    public Rectangle taskListViewportBounds() {
+        return taskListViewportBounds;
+    }
+
+    public Rectangle taskScrollbarRailBounds() {
+        return taskScrollbarRailBounds;
+    }
+
+    public Rectangle taskScrollbarThumbBounds() {
+        return taskScrollbarThumbBounds;
+    }
+
+    public Map<TaskTier, Rectangle> tierTabBounds() {
+        return tierTabBounds;
+    }
+
+    public Map<XtremeTask, Rectangle> taskRowBounds() {
+        return taskRowBounds;
+    }
+
+    public CurrentTabLayout currentLayout() {
+        return currentLayout;
+    }
+
+    public RulesTabLayout rulesLayout() {
+        return rulesLayout;
+    }
+
+    public RulesTabLayout.SubTab rulesSubTab() {
+        return rulesSubTab;
+    }
+
+    public void setRulesSubTab(RulesTabLayout.SubTab subTab) {
+        if (subTab != rulesSubTab) {
+            rulesSubTab = subTab;
+        }
+    }
+
+    public void openSyncCompletionCandidateReview(TaskSource source) {
+        if (!plugin.getSyncCompletionCandidateTasks(source).isEmpty()) {
+            syncMismatchReviewSource = source;
+            syncReviewMode = SyncReviewMode.COMPLETION_CANDIDATES;
+            syncMismatchReviewOpen = true;
+            syncMismatchScroll.reset();
+            selectedSyncMismatchTaskIds.clear();
+            syncMismatchApplyConfirmOpen = false;
+        }
+    }
+
+    public void openSyncMismatchReview() {
+        openSyncMismatchReview(null);
+    }
+
+    public void openSyncMismatchReview(TaskSource source) {
+        if (!plugin.getSyncMismatchTasks(source).isEmpty()) {
+            syncMismatchReviewSource = source;
+            syncReviewMode = SyncReviewMode.MISMATCH;
+            syncMismatchReviewOpen = true;
+            syncMismatchScroll.reset();
+            selectedSyncMismatchTaskIds.clear();
+            syncMismatchApplyConfirmOpen = false;
+        }
+    }
+
+    public void closeSyncMismatchReview() {
+        syncMismatchReviewOpen = false;
+        syncReviewMode = SyncReviewMode.MISMATCH;
+        syncMismatchReviewSource = null;
+        selectedSyncMismatchTaskIds.clear();
+        syncMismatchApplyConfirmOpen = false;
+    }
+
+    public TaskSource syncMismatchReviewSource() {
+        return syncMismatchReviewSource;
+    }
+
+    public TaskListQuery taskQuery() {
+        return taskQuery;
+    }
+
+    public TaskSelectionModel selectionModel() {
+        return selectionModel;
+    }
+
+    public TaskListScrollController tasksScroll() {
+        return tasksScroll;
+    }
+
+    public TaskListScrollController currentScroll() {
+        return currentScroll;
+    }
+
+    public Rectangle currentViewportBounds() {
+        return currentLayout.viewportBounds;
+    }
+
+    public TaskListViewController taskListView() {
+        return taskListView;
+    }
+
+    public int taskRowBlock() {
+        return tasksRowBlock();
+    }
+
+    public Map<XtremeTask, Rectangle> taskCheckboxBounds() {
+        return taskCheckboxBounds;
+    }
+
+
+    public boolean isTaskDetailsOpen() {
+        return taskDetailsPopup.isOpen();
+    }
+
+    public void openTaskDetails(XtremeTask task) {
+        selectedTaskDetailsIncompleteTaskIds.clear();
+        closeTaskDetailsIncompleteConfirm();
+        taskDetailsPopup.open(task);
+        plugin.refreshTaskSyncMismatchForTask(task);
+    }
+
+    public void closeTaskDetails() {
+        closeTaskDetailsWithPendingIncompleteCheck();
+    }
+
+    public XtremeTask taskDetailsTask() {
+        return taskDetailsPopup.task();
+    }
+
+    public Rectangle taskDetailsBounds() {
+        return taskDetailsPopup.bounds();
+    }
+
+    public Rectangle taskDetailsViewportBounds() {
+        return taskDetailsPopup.viewportBounds();
+    }
+
+    public int taskDetailsTotalContentRows() {
+        return taskDetailsPopup.totalContentRows();
+    }
+
+    public int taskDetailsRowBlock() {
+        return ROW_HEIGHT; // popup is rendered unscaled in screen coordinates
+    }
+
+    public TaskListScrollController taskDetailsScroll() {
+        return taskDetailsPopup.scroll();
+    }
+
+    public Rectangle taskDetailsCloseBounds() {
+        return taskDetailsPopup.closeBounds();
+    }
+
+    public Rectangle taskDetailsWikiBounds() {
+        return taskDetailsPopup.wikiBounds();
+    }
+
+    public Rectangle taskDetailsWikiMenuBounds() {
+        return taskDetailsPopup.wikiMenuBounds();
+    }
+
+    public boolean isTaskDetailsWikiMenuOpen() {
+        return taskDetailsPopup.isWikiMenuOpen();
+    }
+
+    public void openTaskDetailsWikiMenu() {
+        taskDetailsPopup.openWikiMenu();
+    }
+
+    public void closeTaskDetailsWikiMenu() {
+        taskDetailsPopup.closeWikiMenu();
+    }
+
+    public WikiLink taskDetailsWikiLinkAt(Point point) {
+        return taskDetailsPopup.wikiLinkAt(point);
+    }
+
+    public Rectangle taskDetailsMarkIncompleteBounds() {
+        return taskDetailsPopup.markIncompleteBounds();
+    }
+
+    public Rectangle taskDetailsScrollbarRailBounds() {
+        return taskDetailsPopup.scrollbarRailBounds();
+    }
+
+    public Rectangle taskDetailsScrollbarThumbBounds() {
+        return taskDetailsPopup.scrollbarThumbBounds();
+    }
+
+    public Map<XtremeTask, Rectangle> taskDetailsInstanceRemoveBounds() {
+        return taskDetailsPopup.instanceRemoveBounds();
+    }
+
+    public boolean isMarkAllIncompleteConfirmOpen() {
+        return pendingMarkAllIncompleteTask != null;
+    }
+
+    public void requestMarkAllIncompleteConfirmation(XtremeTask task) {
+        requestMarkAllIncompleteConfirmation(task, false);
+    }
+
+    public void requestMarkAllIncompleteConfirmation(XtremeTask task, boolean groupMode) {
+        pendingMarkAllIncompleteTask = task;
+        pendingMarkAllIncompleteGroupMode = groupMode;
+        markIncompleteDontShowChecked = false;
+    }
+
+    public void closeMarkAllIncompleteConfirmation() {
+        pendingMarkAllIncompleteTask = null;
+        pendingMarkAllIncompleteGroupMode = false;
+        clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
+                markAllIncompleteNoBounds, markIncompleteDontShowBounds);
+        markIncompleteDontShowChecked = false;
+    }
+
+    public XtremeTask markAllIncompleteConfirmationTask() {
+        return pendingMarkAllIncompleteTask;
+    }
+
+    public boolean markAllIncompleteConfirmationGroupMode() {
+        return pendingMarkAllIncompleteGroupMode;
+    }
+
+    public Rectangle markAllIncompleteConfirmBounds() {
+        return markAllIncompleteConfirmBounds;
+    }
+
+    public Rectangle markAllIncompleteYesBounds() {
+        return markAllIncompleteYesBounds;
+    }
+
+    public Rectangle markAllIncompleteNoBounds() {
+        return markAllIncompleteNoBounds;
+    }
+
+    public Rectangle markIncompleteDontShowBounds() {
+        return markIncompleteDontShowBounds;
+    }
+
+    public boolean markIncompleteDontShowChecked() {
+        return markIncompleteDontShowChecked;
+    }
+
+    public void setMarkIncompleteDontShowChecked(boolean checked) {
+        markIncompleteDontShowChecked = checked;
+    }
+
+    public boolean isSyncMismatchReviewOpen() {
+        return syncMismatchReviewOpen && !visibleSyncMismatchTasks().isEmpty();
+    }
+
+    public boolean isSyncCompletionCandidateReviewOpen() {
+        return syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES;
+    }
+
+    public Rectangle syncMismatchReviewBounds() {
+        return syncMismatchReviewBounds;
+    }
+
+    public Rectangle syncMismatchViewportBounds() {
+        return syncMismatchViewportBounds;
+    }
+
+    public Rectangle syncMismatchCloseBounds() {
+        return syncMismatchCloseBounds;
+    }
+
+    public Rectangle syncMismatchMarkAllBounds() {
+        return syncMismatchMarkAllBounds;
+    }
+
+    public Rectangle syncMismatchApplyBounds() {
+        return syncMismatchApplyBounds;
+    }
+
+    public Rectangle syncMismatchCancelBounds() {
+        return syncMismatchCancelBounds;
+    }
+
+    public boolean isSyncMismatchApplyConfirmOpen() {
+        return syncMismatchApplyConfirmOpen;
+    }
+
+    public Rectangle syncMismatchConfirmBounds() {
+        return syncMismatchConfirmBounds;
+    }
+
+    public Rectangle syncMismatchConfirmYesBounds() {
+        return syncMismatchConfirmYesBounds;
+    }
+
+    public Rectangle syncMismatchConfirmNoBounds() {
+        return syncMismatchConfirmNoBounds;
+    }
+
+    public Rectangle syncMismatchScrollbarRailBounds() {
+        return syncMismatchScrollbarRailBounds;
+    }
+
+    public Rectangle syncMismatchScrollbarThumbBounds() {
+        return syncMismatchScrollbarThumbBounds;
+    }
+
+    public Map<XtremeTask, Rectangle> syncMismatchTaskBounds() {
+        return syncMismatchTaskBounds;
+    }
+
+    public TaskListScrollController syncMismatchScroll() {
+        return syncMismatchScroll;
+    }
+
+    public int syncMismatchRowBlock() {
+        return scaleInputValue(ROW_HEIGHT + 8 + LIST_ROW_SPACING);
+    }
+
+    public int syncMismatchVisibleTaskCount() {
+        return visibleSyncMismatchTasks().size();
+    }
+
+    public boolean isSyncMismatchTaskSelected(XtremeTask task) {
+        return task != null
+                && task.getId() != null
+                && !isCurrentTask(task)
+                && selectedSyncMismatchTaskIds.contains(task.getId());
+    }
+
+    public void toggleSyncMismatchTaskSelected(XtremeTask task) {
+        if (task == null || task.getId() == null || isCurrentTask(task)) return;
+        if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
+            selectedSyncMismatchTaskIds.add(task.getId());
+        }
+        syncMismatchApplyConfirmOpen = false;
+    }
+
+    public void selectAllSyncMismatchTasks() {
+        for (XtremeTask task : visibleSyncMismatchTasks()) {
+            if (task == null || task.getId() == null || isCurrentTask(task)) {
+                continue;
+            }
+            selectedSyncMismatchTaskIds.add(task.getId());
+        }
+        syncMismatchApplyConfirmOpen = false;
+    }
+
+    public void clearSyncMismatchSelection() {
+        selectedSyncMismatchTaskIds.clear();
+        syncMismatchApplyConfirmOpen = false;
+    }
+
+    public int syncMismatchSelectedCount() {
+        return selectedVisibleSyncMismatchCount(visibleSyncMismatchTasks());
+    }
+
+    public int syncMismatchSelectableCount() {
+        return selectableVisibleSyncMismatchCount(visibleSyncMismatchTasks());
+    }
+
+    public List<XtremeTask> selectedSyncMismatchTasks() {
+        List<XtremeTask> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (XtremeTask task : visibleSyncMismatchTasks()) {
+            if (task == null || task.getId() == null) {
+                continue;
+            }
+            if (!isCurrentTask(task)
+                    && selectedSyncMismatchTaskIds.contains(task.getId())
+                    && seen.add(task.getId())) {
+                out.add(task);
+            }
+        }
+        return out;
+    }
+
+    public void requestSyncMismatchApplyConfirm() {
+        if (syncMismatchSelectedCount() > 0) {
+            syncMismatchApplyConfirmOpen = true;
+        }
+    }
+
+    public void closeSyncMismatchApplyConfirm() {
+        syncMismatchApplyConfirmOpen = false;
+    }
+
+    public Rectangle taskDetailsIncompleteConfirmBounds() {
+        return taskDetailsIncompleteConfirmBounds;
+    }
+
+    public Rectangle taskDetailsIncompleteConfirmYesBounds() {
+        return taskDetailsIncompleteConfirmYesBounds;
+    }
+
+    public Rectangle taskDetailsIncompleteConfirmNoBounds() {
+        return taskDetailsIncompleteConfirmNoBounds;
+    }
+
+    public boolean isDraggingIcon() {
+        return draggingIcon;
+    }
+
+    public void setDraggingIcon(boolean dragging) {
+        draggingIcon = dragging;
+    }
+
+    public void setIconDragOffset(int dx, int dy) {
+        iconDragOffsetX = dx;
+        iconDragOffsetY = dy;
+    }
+
+    public int iconDragOffsetX() {
+        return iconDragOffsetX;
+    }
+
+    public int iconDragOffsetY() {
+        return iconDragOffsetY;
+    }
+
+    public void setIconOverride(int x, int y) {
+        iconXOverride = x;
+        iconYOverride = y;
+    }
+
+    public void persistIconPosition() {
+        if (iconXOverride == null || iconYOverride == null) return;
+        if (client.isResized()) {
+            // Convert drag absolute position to canvas-right-relative.
+            resizableOffsetX = client.getCanvasWidth() - (iconXOverride - ICON_RESIZABLE_NUDGE_RIGHT) - ICON_WIDTH;
+            resizableOffsetY = iconYOverride - ICON_RESIZABLE_NUDGE_DOWN;
+            resizableOffsetInitialized = true;
+            plugin.saveIconPosition(resizableOffsetX, resizableOffsetY, true);
+        } else {
+            fixedOffsetX = client.getCanvasWidth() - iconXOverride - ICON_WIDTH;
+            fixedOffsetY = iconYOverride;
+            fixedOffsetInitialized = true;
+            plugin.saveIconPosition(fixedOffsetX, fixedOffsetY, false);
+        }
+        iconXOverride = null;
+        iconYOverride = null;
+    }
+
+    public void clearIconPosition() {
+        clearIconPositionState(true);
+    }
+
+    public void persistPanelPosition() {
+        if (panelXOverride != null && panelYOverride != null) {
+            plugin.savePanelPosition(panelXOverride, panelYOverride);
+        }
     }
 
     private void clearIconPositionState(boolean clearPersisted) {
