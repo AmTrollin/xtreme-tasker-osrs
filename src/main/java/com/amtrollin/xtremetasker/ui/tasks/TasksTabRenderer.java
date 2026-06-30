@@ -5,21 +5,16 @@ import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.anim.OverlayAnimations;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsLayout;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
-import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
-import com.amtrollin.xtremetasker.ui.text.TextUtils;
+import com.amtrollin.xtremetasker.ui.style.*;
+import com.amtrollin.xtremetasker.ui.tasklist.*;
 import com.amtrollin.xtremetasker.ui.tasks.models.TasksTabState;
-import com.amtrollin.xtremetasker.ui.style.UiDraw;
-import com.amtrollin.xtremetasker.ui.style.UiPalette;
-import net.runelite.client.ui.FontManager;
-
+import com.amtrollin.xtremetasker.ui.text.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
+import net.runelite.client.ui.FontManager;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;

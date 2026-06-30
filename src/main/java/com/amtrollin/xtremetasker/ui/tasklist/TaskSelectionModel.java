@@ -3,11 +3,9 @@ package com.amtrollin.xtremetasker.ui.tasklist;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.TaskGroupUtils;
-import lombok.Getter;
-
-import java.util.EnumMap;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
+import lombok.Getter;
 
 public final class TaskSelectionModel implements SelectionModel
 {

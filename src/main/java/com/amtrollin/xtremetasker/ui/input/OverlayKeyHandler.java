@@ -1,13 +1,11 @@
 package com.amtrollin.xtremetasker.ui.input;
 
+import java.awt.Toolkit;
+import java.awt.datatransfer.*;
+import java.awt.event.KeyEvent;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.VarClientInt;
 import net.runelite.client.input.KeyListener;
-
-import java.awt.Toolkit;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.KeyEvent;
 
 public final class OverlayKeyHandler implements KeyListener {
     private final OverlayInputAccess a;

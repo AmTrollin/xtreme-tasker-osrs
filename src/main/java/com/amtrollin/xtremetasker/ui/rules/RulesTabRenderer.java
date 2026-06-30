@@ -1,21 +1,15 @@
 package com.amtrollin.xtremetasker.ui.rules;
 
-import com.amtrollin.xtremetasker.ui.text.TextUtils;
-import com.amtrollin.xtremetasker.ui.text.UiText;
-import net.runelite.client.ui.FontManager;
-
+import com.amtrollin.xtremetasker.ui.text.*;
 import java.awt.*;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.time.*;
+import java.time.format.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
-import static java.awt.Color.white;
+import net.runelite.client.ui.FontManager;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
+import static java.awt.Color.white;
 
 public final class RulesTabRenderer {
     private final int panelWidth;

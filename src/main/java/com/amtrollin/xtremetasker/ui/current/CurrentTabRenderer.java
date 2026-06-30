@@ -1,39 +1,28 @@
 package com.amtrollin.xtremetasker.ui.current;
 
 import com.amtrollin.xtremetasker.XtremeTaskerConfig;
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.enums.TaskTier;
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import net.runelite.client.ui.FontManager;
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.enums.*;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
-import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
-import com.amtrollin.xtremetasker.ui.style.UiDraw;
-import com.amtrollin.xtremetasker.ui.style.UiPalette;
+import com.amtrollin.xtremetasker.ui.style.*;
+import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.text.UiText;
-import net.runelite.api.Skill;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.time.Instant;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
-
+import net.runelite.api.Skill;
+import net.runelite.client.ui.FontManager;
 import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
-import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.sourceLabel;
-import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.shortSource;
-import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.tierLabel;
-import static com.amtrollin.xtremetasker.ui.text.TextUtils.safe;
-import static com.amtrollin.xtremetasker.ui.text.TextUtils.titleCase;
-import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
-import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
+import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.*;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.*;
 
 public final class CurrentTabRenderer
 {

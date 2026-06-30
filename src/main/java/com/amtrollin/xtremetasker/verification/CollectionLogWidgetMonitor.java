@@ -1,22 +1,12 @@
 package com.amtrollin.xtremetasker.verification;
+import java.util.*;
+import javax.inject.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.MenuAction;
-import net.runelite.api.ScriptID;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.events.ScriptPreFired;
+import net.runelite.api.*;
+import net.runelite.api.events.*;
 import net.runelite.api.gameval.VarbitID;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Set;
+import net.runelite.api.widgets.*;
+import net.runelite.client.eventbus.*;
 
 /**
  * Captures obtained collection log item IDs by listening to script 4100, which fires

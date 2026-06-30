@@ -1,42 +1,30 @@
 package com.amtrollin.xtremetasker.ui.tasks;
 
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
-import com.amtrollin.xtremetasker.models.TaskGroupProgress;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
-import com.amtrollin.xtremetasker.ui.style.UiDraw;
-import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
-import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
-import com.amtrollin.xtremetasker.ui.text.TextUtils;
-import com.amtrollin.xtremetasker.ui.text.UiText;
-import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
-import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
+import com.amtrollin.xtremetasker.ui.style.*;
+import com.amtrollin.xtremetasker.ui.tasklist.*;
+import com.amtrollin.xtremetasker.ui.tasks.models.*;
+import com.amtrollin.xtremetasker.ui.text.*;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
-import net.runelite.api.Skill;
-import net.runelite.client.ui.FontManager;
-
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.time.Instant;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
+import net.runelite.api.Skill;
+import net.runelite.client.ui.FontManager;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
 import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
-import static com.amtrollin.xtremetasker.ui.text.TextUtils.safe;
-import static com.amtrollin.xtremetasker.ui.text.TextUtils.titleCase;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.*;
 
 public final class TaskDetailsPopup
 {

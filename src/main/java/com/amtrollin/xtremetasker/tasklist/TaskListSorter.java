@@ -1,15 +1,10 @@
 package com.amtrollin.xtremetasker.tasklist;
 
-import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.enums.*;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.enums.TaskTier;
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 

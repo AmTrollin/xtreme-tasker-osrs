@@ -3,10 +3,7 @@ package com.amtrollin.xtremetasker.ui.tasks.models;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskListViewController;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskSelectionModel;
-
+import com.amtrollin.xtremetasker.ui.tasklist.*;
 import java.awt.Rectangle;
 import java.util.Map;
 

@@ -1,8 +1,7 @@
 package com.amtrollin.xtremetasker.ui.input;
 
-import lombok.RequiredArgsConstructor;
-
 import java.awt.event.KeyEvent;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public final class TasksTabKeyHandler

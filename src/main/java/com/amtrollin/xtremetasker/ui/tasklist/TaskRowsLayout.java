@@ -1,10 +1,8 @@
 package com.amtrollin.xtremetasker.ui.tasklist;
 
 import com.amtrollin.xtremetasker.models.XtremeTask;
-
 import java.awt.Rectangle;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public final class TaskRowsLayout
 {

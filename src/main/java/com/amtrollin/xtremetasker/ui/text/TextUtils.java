@@ -1,11 +1,7 @@
 package com.amtrollin.xtremetasker.ui.text;
 
 import java.awt.FontMetrics;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class TextUtils
 {

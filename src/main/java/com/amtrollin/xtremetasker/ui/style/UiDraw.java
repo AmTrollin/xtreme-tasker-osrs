@@ -1,10 +1,9 @@
 package com.amtrollin.xtremetasker.ui.style;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
-
+import javax.imageio.ImageIO;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class UiDraw

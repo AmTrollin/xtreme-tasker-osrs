@@ -1,27 +1,15 @@
 package com.amtrollin.xtremetasker.verification;
 
+import java.util.*;
+import java.util.regex.*;
+import javax.inject.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
+import net.runelite.api.*;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.api.widgets.*;
+import net.runelite.client.eventbus.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.http.api.item.ItemPrice;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Singleton

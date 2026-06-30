@@ -1,14 +1,8 @@
 package com.amtrollin.xtremetasker.ui.widgets;
 
-import com.amtrollin.xtremetasker.ui.style.UiPalette;
-import com.amtrollin.xtremetasker.ui.style.UiDraw;
+import com.amtrollin.xtremetasker.ui.style.*;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
-
-import java.awt.Color;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
-
+import java.awt.*;
 import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 

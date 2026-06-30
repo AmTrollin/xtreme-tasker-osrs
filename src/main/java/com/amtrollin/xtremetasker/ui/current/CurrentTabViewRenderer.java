@@ -1,22 +1,18 @@
 package com.amtrollin.xtremetasker.ui.current;
 
 import com.amtrollin.xtremetasker.XtremeTaskerConfig;
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.enums.TaskTier;
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.enums.*;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
-import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.ui.current.models.CurrentTabState;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
-import net.runelite.api.Skill;
-
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.Function;
+import net.runelite.api.Skill;
 
 public final class CurrentTabViewRenderer
 {

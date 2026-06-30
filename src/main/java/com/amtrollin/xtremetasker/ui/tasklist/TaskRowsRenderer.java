@@ -1,22 +1,16 @@
 package com.amtrollin.xtremetasker.ui.tasklist;
 
 import com.amtrollin.xtremetasker.enums.TaskTier;
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import com.amtrollin.xtremetasker.models.TaskGroupProgress;
-import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.style.UiDraw;
-import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
-import com.amtrollin.xtremetasker.ui.text.TextUtils;
-import net.runelite.client.ui.FontManager;
-
+import com.amtrollin.xtremetasker.ui.text.*;
 import java.awt.*;
-import java.time.Instant;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
-
+import net.runelite.client.ui.FontManager;
 import static com.amtrollin.xtremetasker.tasklist.TaskListPipeline.safe;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 

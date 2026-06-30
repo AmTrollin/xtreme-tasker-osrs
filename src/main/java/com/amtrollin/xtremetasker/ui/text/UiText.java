@@ -1,7 +1,6 @@
 package com.amtrollin.xtremetasker.ui.text;
 
-import java.util.Locale;
-import java.util.ResourceBundle;
+import java.util.*;
 
 public final class UiText
 {

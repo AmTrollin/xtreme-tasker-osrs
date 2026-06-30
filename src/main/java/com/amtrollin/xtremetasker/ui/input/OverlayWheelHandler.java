@@ -1,12 +1,11 @@
 package com.amtrollin.xtremetasker.ui.input;
 
 import com.amtrollin.xtremetasker.models.XtremeTask;
-import lombok.RequiredArgsConstructor;
-import net.runelite.client.input.MouseWheelListener;
-
 import java.awt.*;
 import java.awt.event.MouseWheelEvent;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import net.runelite.client.input.MouseWheelListener;
 
 @RequiredArgsConstructor
 public final class OverlayWheelHandler implements MouseWheelListener

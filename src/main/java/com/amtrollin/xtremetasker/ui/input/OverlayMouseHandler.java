@@ -3,21 +3,16 @@ package com.amtrollin.xtremetasker.ui.input;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
-import com.amtrollin.xtremetasker.ui.rules.RulesTabLayout;
-import com.amtrollin.xtremetasker.ui.rules.RulesTabRenderer;
-import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
-import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
-import lombok.RequiredArgsConstructor;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.input.MouseAdapter;
-import net.runelite.client.util.LinkBrowser;
-
+import com.amtrollin.xtremetasker.ui.rules.*;
+import com.amtrollin.xtremetasker.ui.tasks.models.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
-
+import lombok.RequiredArgsConstructor;
+import net.runelite.api.widgets.*;
+import net.runelite.client.input.MouseAdapter;
+import net.runelite.client.util.LinkBrowser;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.ICON_ANCHOR_PAD;
 
 @RequiredArgsConstructor

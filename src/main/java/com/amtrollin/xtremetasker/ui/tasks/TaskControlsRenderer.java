@@ -4,15 +4,9 @@ import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.style.UiDraw;
 import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
 import com.amtrollin.xtremetasker.ui.text.UiText;
-
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import net.runelite.client.ui.FontManager;
-
 import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;

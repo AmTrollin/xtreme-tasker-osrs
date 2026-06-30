@@ -1,10 +1,8 @@
 package com.amtrollin.xtremetasker.models;
 
-import net.runelite.api.Skill;
+import java.util.*;
 import lombok.Getter;
-
-import java.util.Collections;
-import java.util.List;
+import net.runelite.api.Skill;
 
 @Getter
 public class PrerequisiteStatus
