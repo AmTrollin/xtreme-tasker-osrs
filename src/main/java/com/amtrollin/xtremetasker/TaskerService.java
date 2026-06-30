@@ -56,8 +56,6 @@ public interface TaskerService
 
     void syncAccountProgressAndPersist();
 
-    void syncCollectionLogTaskAndPersist(XtremeTask task);
-
     String getLastSyncResult();
 
     String getLastSyncResultAtLocalTime();
@@ -65,12 +63,6 @@ public interface TaskerService
     String getLastCombatAchievementSyncResult();
 
     String getLastCombatAchievementSyncResultAtLocalTime();
-
-    String getLastCollectionLogSyncResult();
-
-    String getLastCollectionLogSyncResultAtLocalTime();
-
-    boolean isCollectionLogSyncPending();
 
     List<XtremeTask> getSyncCompletionCandidateTasks(TaskSource source);
 

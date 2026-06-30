@@ -14,8 +14,8 @@ public class TaskDetailsPopupTest
     {
         XtremeTask task = task(TaskSource.COLLECTION_LOG);
 
-        assertEquals("Not enough Collection Log items obtained", TaskDetailsPopup.syncMismatchTitle(task));
-        assertEquals("Sync your Collection Log via Help tab or mark task incomplete",
+        assertEquals("You do not have enough CLOGs", TaskDetailsPopup.syncMismatchTitle(task));
+        assertEquals("Open your Collection Log or mark task incomplete",
                 TaskDetailsPopup.syncMismatchAction(task));
     }
 
@@ -25,9 +25,9 @@ public class TaskDetailsPopupTest
         XtremeTask combatAchievement = task(TaskSource.COMBAT_ACHIEVEMENT);
         XtremeTask diary = task(TaskSource.DIARY_ACHIEVEMENT);
 
-        assertEquals("Task not completed in game", TaskDetailsPopup.syncMismatchTitle(combatAchievement));
+        assertEquals("Task not completed in-game", TaskDetailsPopup.syncMismatchTitle(combatAchievement));
         assertEquals("Mark task incomplete to keep task tracking accurate", TaskDetailsPopup.syncMismatchAction(combatAchievement));
-        assertEquals("Task not completed in game", TaskDetailsPopup.syncMismatchTitle(diary));
+        assertEquals("Task not completed in-game", TaskDetailsPopup.syncMismatchTitle(diary));
         assertEquals("Mark task incomplete to keep task tracking accurate", TaskDetailsPopup.syncMismatchAction(diary));
     }
 

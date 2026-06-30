@@ -98,8 +98,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final int SORTED_TASK_LIST_CACHE_LIMIT = 48;
     private static final int PREREQUISITE_STATUS_CACHE_LIMIT = 512;
     private static final int SYNC_REVIEW_VISIBLE_TASKS_CACHE_LIMIT = 8;
-    private static final int TASK_RESOLVE_TOGGLE_SIZE = 18;
-    private static final int TASK_RESOLVE_TOGGLE_GAP = 6;
     private static final long SLOW_PREVIEW_LOG_THRESHOLD_NANOS = 8_000_000L;
     private static final long SLOW_PREVIEW_LOG_INTERVAL_MS = 2_000L;
     private static final long SLOW_TASK_LIST_LOG_THRESHOLD_NANOS = 8_000_000L;
@@ -110,10 +108,20 @@ public class XtremeTaskerOverlay extends Overlay {
             new WikiLink("Zamorak hood", "https://oldschool.runescape.wiki/w/Castlewars_hood_(Zamorak)"),
             new WikiLink("Zamorak cloak", "https://oldschool.runescape.wiki/w/Castlewars_cloak_(Zamorak)")
     );
+    private static final List<WikiLink> SARADOMIN_HOOD_CLOAK_WIKI_LINKS = List.of(
+            new WikiLink("Saradomin hood", "https://oldschool.runescape.wiki/w/Castlewars_hood_(Saradomin)"),
+            new WikiLink("Saradomin cloak", "https://oldschool.runescape.wiki/w/Castlewars_cloak_(Saradomin)")
+    );
+    private static final List<WikiLink> FRESH_CRAB_CLAW_SHELL_WIKI_LINKS = List.of(
+            new WikiLink("Fresh crab claw", "https://oldschool.runescape.wiki/w/Fresh_crab_claw"),
+            new WikiLink("Fresh crab shell", "https://oldschool.runescape.wiki/w/Fresh_crab_shell")
+    );
+    private static final List<WikiLink> MOLE_CLAW_SKIN_WIKI_LINKS = List.of(
+            new WikiLink("Mole claw", "https://oldschool.runescape.wiki/w/Mole_claw"),
+            new WikiLink("Mole skin", "https://oldschool.runescape.wiki/w/Mole_skin")
+    );
     private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_ID = createTaskDetailsWikiLinksById();
     private static final Map<String, List<WikiLink>> TASK_DETAILS_WIKI_LINKS_BY_NAME = createTaskDetailsWikiLinksByName();
-    private static final DateTimeFormatter TASK_RESOLVE_COMPLETION_DATE_FORMAT =
-            DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter SYNC_REVIEW_COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yy").withZone(ZoneId.systemDefault());
 
@@ -129,6 +137,11 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         Map<String, List<WikiLink>> links = new HashMap<>();
         links.put(normalizeWikiTaskName("Get the Zamorak hood & cloak"), ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get the Castle Wars Zamorak hood & cloak"), ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get the Saradomin hood & cloak"), SARADOMIN_HOOD_CLOAK_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get a Fresh crab claw & Fresh crab shell"), FRESH_CRAB_CLAW_SHELL_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get a Mole claw + skin"), MOLE_CLAW_SKIN_WIKI_LINKS);
+        links.put(normalizeWikiTaskName("Get a Mole claw & skin"), MOLE_CLAW_SKIN_WIKI_LINKS);
         return Collections.unmodifiableMap(links);
     }
 
@@ -136,6 +149,9 @@ public class XtremeTaskerOverlay extends Overlay {
     {
         Map<String, List<WikiLink>> links = new HashMap<>();
         links.put("collection_log_easy_get-the-zamorak-hood-cloak_001_53931281fb", ZAMORAK_HOOD_CLOAK_WIKI_LINKS);
+        links.put("collection_log_easy_get-the-saradomin-hood-cloak_001_9827fe8228", SARADOMIN_HOOD_CLOAK_WIKI_LINKS);
+        links.put("collection_log_easy_get-a-fresh-crab-claw-fresh-crab-shell_001_0b0bfc6713", FRESH_CRAB_CLAW_SHELL_WIKI_LINKS);
+        links.put("collection_log_easy_get-a-mole-claw-skin_001_79bd65ec5d", MOLE_CLAW_SKIN_WIKI_LINKS);
         return Collections.unmodifiableMap(links);
     }
 
@@ -168,6 +184,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle panelBounds = new Rectangle();
     private final Rectangle panelDragBarBounds = new Rectangle();
     private final Rectangle panelCloseBounds = new Rectangle();
+    private final Rectangle panelModeToggleBounds = new Rectangle();
     private final Rectangle iconBounds = new Rectangle();
 
     private final Rectangle currentTabBounds = new Rectangle();
@@ -192,10 +209,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Rectangle syncMismatchConfirmNoBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarRailBounds = new Rectangle();
     private final Rectangle syncMismatchScrollbarThumbBounds = new Rectangle();
-    private final Rectangle taskResolveBounds = new Rectangle();
-    private final Rectangle taskResolveCloseBounds = new Rectangle();
-    private final Rectangle taskResolveSaveBounds = new Rectangle();
-    private final Rectangle taskResolveCancelBounds = new Rectangle();
     private final Rectangle taskDetailsIncompleteConfirmBounds = new Rectangle();
     private final Rectangle taskDetailsIncompleteConfirmYesBounds = new Rectangle();
     private final Rectangle taskDetailsIncompleteConfirmNoBounds = new Rectangle();
@@ -203,10 +216,8 @@ public class XtremeTaskerOverlay extends Overlay {
     private final Map<TaskTier, Rectangle> tierTabBounds = Collections.synchronizedMap(new EnumMap<>(TaskTier.class));
     private final Map<XtremeTask, Rectangle> taskRowBounds = Collections.synchronizedMap(new HashMap<>());
     private final Map<XtremeTask, Rectangle> syncMismatchTaskBounds = Collections.synchronizedMap(new HashMap<>());
-    private final Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds = Collections.synchronizedMap(new HashMap<>());
     private final Set<String> selectedSyncMismatchTaskIds = Collections.synchronizedSet(new HashSet<>());
-    private final Set<String> selectedTaskResolveIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
-    private final Set<String> taskResolveOriginalIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> selectedTaskDetailsIncompleteTaskIds = Collections.synchronizedSet(new HashSet<>());
 
     // Current tab bounds (now come from CurrentTabLayout)
     private final CurrentTabLayout currentLayout = new CurrentTabLayout();
@@ -215,6 +226,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private RulesTabLayout.SubTab rulesSubTab = RulesTabLayout.SubTab.RULES;
 
     private boolean panelOpen = false;
+    private boolean compactPanelMode = true;
     private boolean draggingPanel = false;
     private boolean markIncompleteDontShowChecked = false;
     private boolean syncMismatchApplyConfirmOpen = false;
@@ -226,7 +238,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private int dragOffsetY = 0;
     private XtremeTask pendingMarkAllIncompleteTask = null;
     private boolean pendingMarkAllIncompleteGroupMode = false;
-    private XtremeTask taskResolveTask = null;
     private boolean taskDetailsIncompleteConfirmOpen = false;
     private boolean taskDetailsIncompleteConfirmCloseAfter = true;
 
@@ -259,13 +270,13 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private static final int PANEL_W_TASKS = 690;
     private static final int PANEL_H_TASKS = 460;
-    private static final double PANEL_SCALE_MIN = 0.95;
+    private static final int PANEL_W_COMPACT = 370;
+    private static final int PANEL_H_COMPACT = 260;
+    private static final double PANEL_SCALE_MIN = 0.82;
     private static final double PANEL_SCALE_AUTO_START_W = 1400.0;
     private static final double PANEL_SCALE_AUTO_START_H = 900.0;
     private static final double PANEL_SCALE_AUTO_RANGE_W = 1000.0;
     private static final double PANEL_SCALE_AUTO_RANGE_H = 700.0;
-
-
     // ---- animations (extracted) ----
     private final OverlayAnimations animations = new OverlayAnimations(COMPLETE_ANIM_MS, ROLL_ANIM_MS);
 
@@ -285,6 +296,9 @@ public class XtremeTaskerOverlay extends Overlay {
     private long lastSlowPreviewLogMs = 0L;
     private long lastSlowTaskListLogMs = 0L;
     private long lastSlowPanelRenderLogMs = 0L;
+    private boolean rollExecutionPending = false;
+    private TaskTier rollingDisplayTier = null;
+    private List<XtremeTask> rollingDisplayPool = Collections.emptyList();
 
     @Getter
     private final MouseAdapter mouseAdapter;
@@ -552,7 +566,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|applyAll=" + completedInstanceCanApplyAll
                 + "|items=" + canonicalItemIds
                 + "|taskState=" + plugin.getTaskListRenderStateHash()
-                + "|pendingIncomplete=" + pendingTaskResolveIncompleteSignature()
+                + "|pendingIncomplete=" + pendingTaskDetailsIncompleteSignature()
                 + "|clState=" + plugin.getCollectionLogStateVersion()
                 + "|current=" + safeTaskId(current)
                 + "|baseline=" + baselineCount
@@ -579,13 +593,13 @@ public class XtremeTaskerOverlay extends Overlay {
         return task == null || task.getId() == null ? "" : task.getId();
     }
 
-    private String pendingTaskResolveIncompleteSignature()
+    private String pendingTaskDetailsIncompleteSignature()
     {
-        if (selectedTaskResolveIncompleteTaskIds.isEmpty())
+        if (selectedTaskDetailsIncompleteTaskIds.isEmpty())
         {
             return "";
         }
-        List<String> ids = new ArrayList<>(selectedTaskResolveIncompleteTaskIds);
+        List<String> ids = new ArrayList<>(selectedTaskDetailsIncompleteTaskIds);
         Collections.sort(ids);
         return String.join(",", ids);
     }
@@ -601,7 +615,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return true;
         }
         String id = task.getId();
-        return id == null || !selectedTaskResolveIncompleteTaskIds.contains(id);
+        return id == null || !selectedTaskDetailsIncompleteTaskIds.contains(id);
     }
 
     private boolean isTaskCompletedForTaskDetails(XtremeTask task)
@@ -614,7 +628,7 @@ public class XtremeTaskerOverlay extends Overlay {
         TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
         if (progress == null
                 || !progress.isGrouped()
-                || selectedTaskResolveIncompleteTaskIds.isEmpty()
+                || selectedTaskDetailsIncompleteTaskIds.isEmpty()
                 || taskDetailsIncompleteConfirmOpen)
         {
             return progress;
@@ -631,7 +645,7 @@ public class XtremeTaskerOverlay extends Overlay {
         {
             String id = groupedTask == null ? null : groupedTask.getId();
             if (id != null
-                    && selectedTaskResolveIncompleteTaskIds.contains(id)
+                    && selectedTaskDetailsIncompleteTaskIds.contains(id)
                     && plugin.isTaskCompleted(groupedTask))
             {
                 stagedIncompleteCompletedCount++;
@@ -767,15 +781,14 @@ public class XtremeTaskerOverlay extends Overlay {
             : sameNameFamily
                 ? shownObtainedCount + "/" + requiredCount + " " + pluralizeRequirementName(items.get(0).getName(), requiredCount) + " obtained"
             : "";
-        String pendingAncientPageSummary = ancientPageRequirement ? pendingAncientPageSummary() : "";
-        if (!pendingAncientPageSummary.isEmpty())
+        String pendingSummary = ancientPageRequirement
+                ? pendingOpenClogSummary(plugin.getPendingAncientPageDropCountSinceLastSync())
+                : medallionFragmentRequirement
+                ? pendingOpenClogSummary(plugin.getPendingMedallionFragmentDropCountSinceLastSync())
+                : "";
+        if (!pendingSummary.isEmpty())
         {
-            summaryText = summaryText.isEmpty() ? pendingAncientPageSummary : summaryText + "  " + pendingAncientPageSummary;
-        }
-        String pendingMedallionFragmentSummary = medallionFragmentRequirement ? pendingMedallionFragmentSummary() : "";
-        if (!pendingMedallionFragmentSummary.isEmpty())
-        {
-            summaryText = summaryText.isEmpty() ? pendingMedallionFragmentSummary : summaryText + "  " + pendingMedallionFragmentSummary;
+            summaryText = summaryText.isEmpty() ? pendingSummary : pendingSummary + "\n" + summaryText;
         }
         String titleText;
         if (showSequenceTierSections)
@@ -797,7 +810,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 summaryText,
                 titleText,
                 !summaryText.isEmpty() && (!singleEligibleItem && !hasCompletionItem && (sameNameFamily || repeatedDistinctPool)
-                        || !pendingMedallionFragmentSummary.isEmpty() || showSequenceTierSections),
+                        || !pendingSummary.isEmpty() || showSequenceTierSections),
                 !showSequenceTierSections,
                 items,
                 8,
@@ -893,28 +906,15 @@ public class XtremeTaskerOverlay extends Overlay {
         return plugin.getItemName(itemId);
     }
 
-    private String pendingMedallionFragmentSummary()
+    private static String pendingOpenClogSummary(int pendingDrops)
     {
-        int pendingDrops = plugin.getPendingMedallionFragmentDropCountSinceLastSync();
         if (pendingDrops <= 0)
         {
             return "";
         }
 
-        return pendingDrops + " Medallion fragment " + (pendingDrops == 1 ? "drop needs" : "drops need")
-                + " CLOG sync to identify fragment number.";
-    }
-
-    private String pendingAncientPageSummary()
-    {
-        int pendingDrops = plugin.getPendingAncientPageDropCountSinceLastSync();
-        if (pendingDrops <= 0)
-        {
-            return "";
-        }
-
-        return pendingDrops + " Ancient page " + (pendingDrops == 1 ? "drop needs" : "drops need")
-                + " CLOG sync to identify page number.";
+        return "+" + pendingDrops + " obtained " + (pendingDrops == 1 ? "item" : "items")
+                + " pending, open in-game clog to sync";
     }
 
     private static int ancientPageNumber(int itemId)
@@ -1254,7 +1254,10 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int[] knownOrder = {
                 4119, 4121, 4123, 4125, 4127, 4129, 4131,
-                6908, 6910, 6912, 6914
+                6908, 6910, 6912, 6914,
+                31732, 31733, 31734,
+                31744, 31745, 31746,
+                31756, 31757, 31758
         };
         for (int i = 0; i < knownOrder.length; i++)
         {
@@ -1837,6 +1840,48 @@ public class XtremeTaskerOverlay extends Overlay {
         return animations.isRolling();
     }
 
+    private void requestRollTask()
+    {
+        if (rollExecutionPending || animations.isRolling())
+        {
+            return;
+        }
+
+        XtremeTask current = plugin.getCurrentTask();
+        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        if (current != null && !currentCompleted)
+        {
+            return;
+        }
+
+        rollingDisplayTier = current == null ? plugin.getCurrentTier() : current.getTier();
+        if (rollingDisplayTier == null)
+        {
+            rollingDisplayTier = TaskTier.EASY;
+        }
+        rollingDisplayPool = Collections.unmodifiableList(new ArrayList<>(getTasksForTier(rollingDisplayTier)));
+        animations.startRoll();
+        rollExecutionPending = true;
+    }
+
+    private void processPendingRollExecution()
+    {
+        if (!rollExecutionPending)
+        {
+            return;
+        }
+
+        rollExecutionPending = false;
+        plugin.rollRandomTaskAndPersist();
+    }
+
+    private void cancelPendingRollExecution()
+    {
+        rollExecutionPending = false;
+        rollingDisplayTier = null;
+        rollingDisplayPool = Collections.emptyList();
+    }
+
     /** Resets the draggable icon to its default position (clears overrides + persisted config). */
     public void resetIconPosition() {
         clearIconPositionState(true);
@@ -2039,8 +2084,8 @@ public class XtremeTaskerOverlay extends Overlay {
         synchronized (tierTabBounds) {
             tierTabBounds.clear();
         }
-        int panelW = PANEL_W_TASKS;
-        int panelHeight = PANEL_H_TASKS;
+        int panelW = compactPanelMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
+        int panelHeight = compactPanelMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
         panelScale = computePanelScale(canvasW, canvasH, panelW, panelHeight);
 
         int physicalPanelW = Math.max(1, (int) Math.round(panelW * panelScale));
@@ -2150,6 +2195,13 @@ public class XtremeTaskerOverlay extends Overlay {
 
         int cursorY = panelY + headerH;
 
+        int modeW = closeSize;
+        int modeH = closeSize;
+        int modeX = panelX + closeInset;
+        int modeY = closeY;
+        panelModeToggleBounds.setBounds(modeX, modeY, modeW, modeH);
+        drawPanelModeToggle(g, fm, rlMouse);
+
         // gold divider under header
         g.setColor(withAlpha(P.UI_GOLD, 180));
         g.fillRect(panelX + 1, cursorY, panelW - 2, 1);
@@ -2158,6 +2210,27 @@ public class XtremeTaskerOverlay extends Overlay {
         panelDragBarBounds.setBounds(panelX, panelY, panelW, cursorY - panelY);
 
         cursorY += 4;
+
+        if (compactPanelMode) {
+            clearFullPanelTabBounds();
+            activeTab = MainTab.CURRENT;
+            renderCompactPanel(g, fm, panelX, cursorY);
+
+            if (pendingMarkAllIncompleteTask != null) {
+                renderMarkAllIncompleteConfirm(g, fm);
+            } else {
+                clearBounds(markAllIncompleteConfirmBounds, markAllIncompleteYesBounds,
+                        markAllIncompleteNoBounds, markIncompleteDontShowBounds);
+            }
+
+            animations.prune();
+            g.setTransform(oldTransform);
+            scalePanelInputBounds(panelTransform);
+            panelRenderMouse = null;
+            logSlowPanelRender(panelRenderStartNanos);
+            processPendingRollExecution();
+            return new Dimension(physicalPanelW, physicalPanelH);
+        }
 
         // tabs
         int tabH = ROW_HEIGHT + 6;
@@ -2201,9 +2274,6 @@ public class XtremeTaskerOverlay extends Overlay {
         scalePanelInputBounds(panelTransform);
         panelRenderMouse = null;
         renderTaskDetailsPopupUnscaled(g, fm);
-        if (isTaskResolveOpen()) {
-            renderTaskResolvePopup(g, fm);
-        }
         if (isTaskDetailsIncompleteConfirmOpen()) {
             renderTaskDetailsIncompleteConfirm(g, fm);
         }
@@ -2211,6 +2281,7 @@ public class XtremeTaskerOverlay extends Overlay {
             renderMarkAllIncompleteConfirm(g, fm);
         }
         logSlowPanelRender(panelRenderStartNanos);
+        processPendingRollExecution();
         return new Dimension(physicalPanelW, physicalPanelH);
     }
 
@@ -2269,236 +2340,284 @@ public class XtremeTaskerOverlay extends Overlay {
         return List.of(new WikiLink("Wiki", url));
     }
 
-    private void renderTaskResolvePopup(Graphics2D g, FontMetrics fm)
-    {
-        XtremeTask task = taskResolveTask;
-        if (task == null)
-        {
+    private void renderCompactPanel(Graphics2D g, FontMetrics fm, int panelX, int contentTop) {
+        resetCurrentLayoutBounds();
+        int innerX = panelX + PANEL_PADDING;
+        int innerW = panelBounds.width - PANEL_PADDING * 2;
+        int bottom = panelBounds.y + panelBounds.height - PANEL_PADDING;
+        int cardH = Math.max(120, bottom - contentTop);
+        Rectangle card = new Rectangle(innerX, contentTop, innerW, cardH);
+        drawBevelBox(g, card, new Color(26, 17, 10, 225));
+
+        if (!plugin.hasTaskPackLoaded()) {
+            drawCompactCenteredText(g, fm, card, "No tasks loaded.", P.UI_TEXT_DIM);
             return;
         }
 
-        drawScrim(g, panelBounds, 135);
+        XtremeTask current = plugin.getCurrentTask();
+        boolean rolling = animations.isRolling();
+        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        boolean showCurrentTask = current != null && !rolling;
+        boolean showCompleteAction = showCurrentTask && !currentCompleted;
+        boolean currentCompletionCriteriaMet = showCompleteAction && plugin.isCurrentTaskCompletionCriteriaMet();
 
-        List<XtremeTask> resolveTasks = resolveTasksForTask(task);
-        int pad = 12;
-        int rowGap = 4;
-        int rowH = ROW_HEIGHT + rowGap;
-        int buttonH = ROW_HEIGHT + 8;
-        int listRows = Math.max(1, resolveTasks.size());
-        String title = "Mark instance(s) incomplete";
-        String taskLine = "Task: " + task.getName();
-        int w = taskResolvePopupWidth(fm, task, resolveTasks, title, taskLine, pad);
-        int h = Math.min(panelBounds.height - 48,
-                Math.max(132, pad * 2 + fm.getHeight() * 2 + 14 + listRows * rowH + 12 + buttonH));
-        int x = panelBounds.x + (panelBounds.width - w) / 2;
-        int y = panelBounds.y + (panelBounds.height - h) / 2;
-        taskResolveBounds.setBounds(x, y, w, h);
-        drawBevelBox(g, taskResolveBounds, POPUP_BG);
-        taskResolveCloseBounds.setBounds(0, 0, 0, 0);
+        Shape oldClip = g.getClip();
+        g.setClip(new Rectangle(card.x + 2, card.y + 2, card.width - 4, card.height - 4));
+        if (rolling) {
+            drawCompactRolling(g, fm, card, current);
+        } else if (showCurrentTask) {
+            drawCompactCurrentIdentity(g, fm, card, current);
+        } else {
+            drawCompactEmptyIdentity(g, fm, card);
+        }
+        g.setClip(oldClip);
+
+        if (rolling) {
+            return;
+        }
+
+        int actionH = ROW_HEIGHT + 8;
+        int actionY = card.y + card.height - actionH - 14;
+        if (showCompleteAction) {
+            int actionW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Mark complete") + 58));
+            int actionX = card.x + (card.width - actionW) / 2;
+            currentLayout.completeButtonBounds.setBounds(actionX, actionY, actionW, actionH);
+            buttonRenderer.drawPrimaryButton(
+                    g,
+                    currentLayout.completeButtonBounds,
+                    "Mark complete",
+                    currentCompletionCriteriaMet ? UiPalette.TIER_COMPLETE_GLOW : null);
+        } else {
+            int rollW = Math.max(260, Math.min(card.width - 36, fm.stringWidth("Roll task") + 58));
+            currentLayout.rollButtonBounds.setBounds(card.x + (card.width - rollW) / 2, actionY, rollW, actionH);
+            buttonRenderer.drawPrimaryButton(g, currentLayout.rollButtonBounds, "Roll task");
+        }
+    }
+
+    private void drawCompactRolling(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current) {
+        int x = card.x + 14;
+        int innerW = card.width - 28;
+        g.setColor(Color.WHITE);
+        g.drawString("Rolling...", x, card.y + 12 + fm.getAscent());
+
+        Font oldFont = g.getFont();
+        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
+        g.setFont(nameFont);
+        FontMetrics nameFm = g.getFontMetrics();
+        String name = computeCurrentLineForRender(current, false, nameFm);
+        List<String> nameLines = TextUtils.wrapText(name, nameFm, innerW);
+        int lineCount = Math.max(1, Math.min(2, nameLines.size()));
+        int blockH = lineCount * nameFm.getHeight();
+        int nameY = card.y + (card.height - blockH) / 2 + nameFm.getAscent();
 
         g.setColor(P.UI_GOLD);
-        g.drawString(title, x + pad, y + pad + fm.getAscent());
+        for (int i = 0; i < lineCount; i++) {
+            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, innerW);
+            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
+            g.drawString(line, lineX, nameY);
+            nameY += nameFm.getHeight();
+        }
+        g.setFont(oldFont);
+    }
+
+    private void drawCompactEmptyIdentity(Graphics2D g, FontMetrics fm, Rectangle card) {
+        Font oldFont = g.getFont();
+        Font titleFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f);
+        g.setFont(titleFont);
+        FontMetrics titleFm = g.getFontMetrics();
+        String title = TextUtils.truncateToWidth("No current task", titleFm, card.width - 28);
+        int titleY = card.y + (card.height - titleFm.getHeight()) / 2 + titleFm.getAscent();
+        g.setColor(Color.WHITE);
+        g.drawString(title, card.x + (card.width - titleFm.stringWidth(title)) / 2, titleY);
+        g.setFont(oldFont);
+    }
+
+    private void drawCompactCurrentIdentity(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask current) {
+        int pad = 14;
+        int textW = card.width - pad * 2;
+        int y = card.y + pad;
+
+        y = Math.max(y, drawCompactBadges(g, fm, card, current) + 6);
+        y = drawCompactTaskIcon(g, current, card.x + pad, y, textW) + 8;
+
+        Font oldFont = g.getFont();
+        Font nameFont = FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 17f);
+        g.setFont(nameFont);
+        FontMetrics nameFm = g.getFontMetrics();
+        List<String> nameLines = TextUtils.wrapText(compactTaskTitle(current), nameFm, textW);
+        int textY = y + nameFm.getAscent();
+        g.setColor(P.UI_GOLD);
+        for (int i = 0; i < Math.min(2, nameLines.size()); i++) {
+            String line = TextUtils.truncateToWidth(nameLines.get(i), nameFm, textW);
+            int lineX = card.x + (card.width - nameFm.stringWidth(line)) / 2;
+            g.drawString(line, lineX, textY);
+            textY += nameFm.getHeight();
+        }
+
+        g.setFont(oldFont);
+        Long ticks = plugin.getTaskTimeTicks(current);
+        String time = ticks != null && ticks < 0
+                ? "Completed before rolled"
+                : compactFormatTicks(Math.round((ticks == null ? 0L : ticks) * 0.6));
+        time = TextUtils.truncateToWidth(time, fm, textW);
+        int timeX = card.x + (card.width - fm.stringWidth(time)) / 2;
         g.setColor(P.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(taskLine, fm, w - pad * 2),
-                x + pad, y + pad + fm.getAscent() + fm.getHeight());
-        int cursorY = y + pad + fm.getAscent() + fm.getHeight() * 3;
-        taskResolveInstanceToggleBounds.clear();
-        if (!resolveTasks.isEmpty())
-        {
-            for (XtremeTask instance : resolveTasks)
-            {
-                if (instance == null)
-                {
-                    continue;
-                }
-                boolean selectedIncomplete = instance.getId() != null && selectedTaskResolveIncompleteTaskIds.contains(instance.getId());
-                boolean enabled = canToggleTaskResolveTaskIncomplete(instance);
-                Rectangle toggle = new Rectangle(x + pad, cursorY - fm.getAscent() - 2,
-                        TASK_RESOLVE_TOGGLE_SIZE, TASK_RESOLVE_TOGGLE_SIZE);
-                taskResolveInstanceToggleBounds.put(instance, toggle);
-                drawResolveIncompleteToggleGlyph(g, toggle, selectedIncomplete, enabled);
-                String detailText = taskResolveCompletionDateText(instance)
-                        + " | " + taskResolveTimeSpentText(instance);
-                int lineX = toggle.x + toggle.width + TASK_RESOLVE_TOGGLE_GAP;
-                int lineW = w - (pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad);
-                drawTaskResolveInstanceRow(g, fm, taskResolveInstanceMarker(task, instance), detailText, lineX, cursorY, lineW, enabled);
-                cursorY += rowH;
-            }
-        }
-
-        int actionY = y + h - pad - buttonH;
-        int buttonW = 72;
-        int gap = 8;
-        layoutButtonPair(taskResolveSaveBounds, taskResolveCancelBounds, x, w, actionY, buttonW, buttonH, gap);
-        buttonRenderer.drawPlainButton(g, taskResolveSaveBounds, "Save",
-                hasTaskResolveChanges() ? P.BTN_ENABLED_BG : P.BTN_DISABLED_BG,
-                hasTaskResolveChanges() ? P.UI_TEXT : P.UI_TEXT_DIM,
-                hasTaskResolveChanges() ? P.UI_GOLD : null);
-        buttonRenderer.drawPlainButton(g, taskResolveCancelBounds, "Cancel", P.BTN_DISABLED_BG);
+        g.drawString(time, timeX, textY + 2);
     }
 
-    private int taskResolvePopupWidth(FontMetrics fm, XtremeTask task, List<XtremeTask> resolveTasks,
-                                      String title, String taskLine, int pad)
-    {
-        int desiredW = 255;
-        desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(title));
-        desiredW = Math.max(desiredW, pad * 2 + fm.stringWidth(taskLine));
+    private int drawCompactBadges(Graphics2D g, FontMetrics fm, Rectangle card, XtremeTask task) {
+        String sourceText = shortSource(task.getSource());
+        String tierText = tierLabel(task.getTier());
+        int gap = 5;
+        int y = card.y + 8;
+        Font oldFont = g.getFont();
+        g.setFont(FontManager.getRunescapeSmallFont());
+        FontMetrics badgeFm = g.getFontMetrics();
+        int sourceW = Math.max(24, badgeFm.stringWidth(sourceText) + 14);
+        int tierW = Math.max(24, badgeFm.stringWidth(tierText) + 14);
+        int x = card.x + card.width - 12 - sourceW - gap - tierW;
+        g.setFont(oldFont);
 
-        int rowReserve = pad + TASK_RESOLVE_TOGGLE_SIZE + TASK_RESOLVE_TOGGLE_GAP + pad;
-        int fitBuffer = fm.charWidth('W');
-        for (XtremeTask instance : resolveTasks)
-        {
-            if (instance == null)
-            {
-                continue;
-            }
-            String detailText = taskResolveCompletionDateText(instance)
-                    + " | " + taskResolveTimeSpentText(instance);
-            String rowText = taskResolveInstanceLine(taskResolveInstanceMarker(task, instance), detailText);
-            desiredW = Math.max(desiredW, rowReserve + fm.stringWidth(rowText) + fitBuffer);
-        }
-
-        return Math.min(Math.max(180, panelBounds.width - 50), desiredW);
+        x += TaskRowsRenderer.drawSourceBadge(g, x, y, sourceText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT) + gap;
+        TaskRowsRenderer.drawSourceBadge(g, x, y, tierText, P.UI_EDGE_DARK, P.UI_EDGE_LIGHT, P.UI_GOLD, P.UI_TEXT);
+        return y + 18;
     }
 
-    private void drawTaskResolveInstanceRow(
-            Graphics2D g,
-            FontMetrics fm,
-            String marker,
-            String detailText,
-            int x,
-            int baseline,
-            int maxW,
-            boolean enabled)
-    {
-        String cleanDetail = detailText == null ? "" : detailText.trim();
-        String cleanMarker = marker == null ? "" : marker.trim();
-        if (cleanMarker.isEmpty())
-        {
-            g.setColor(P.UI_TEXT_DIM);
-            g.drawString(TextUtils.truncateToWidth(cleanDetail, fm, maxW), x, baseline);
-            return;
+    private int drawCompactTaskIcon(Graphics2D g, XtremeTask task, int x, int y, int maxW) {
+        int iconSize = 44;
+        int iconX = x + (maxW - iconSize) / 2;
+        BufferedImage taskIcon = resolveTaskIcon(task);
+        if (taskIcon != null) {
+            g.drawImage(taskIcon, iconX, y, iconSize, iconSize, null);
         }
-
-        if (cleanDetail.isEmpty())
-        {
-            g.setColor(enabled ? P.UI_TEXT : P.UI_TEXT_DIM);
-            g.drawString(TextUtils.truncateToWidth(cleanMarker, fm, maxW), x, baseline);
-            return;
-        }
-
-        String prefix = cleanMarker + ": ";
-        String drawPrefix = TextUtils.truncateToWidth(prefix, fm, maxW);
-        g.setColor(enabled ? P.UI_TEXT : P.UI_TEXT_DIM);
-        g.drawString(drawPrefix, x, baseline);
-
-        int detailX = x + fm.stringWidth(drawPrefix);
-        int detailW = Math.max(0, maxW - fm.stringWidth(drawPrefix));
-        if (detailW <= 0)
-        {
-            return;
-        }
-        g.setColor(P.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(cleanDetail, fm, detailW), detailX, baseline);
+        return y + iconSize;
     }
 
-    private String taskResolveInstanceLine(String marker, String detailText)
-    {
-        String cleanMarker = marker == null ? "" : marker.trim();
-        String cleanDetail = detailText == null ? "" : detailText.trim();
-        if (cleanMarker.isEmpty())
-        {
-            return cleanDetail;
-        }
-        if (cleanDetail.isEmpty())
-        {
-            return cleanMarker;
-        }
-        return cleanMarker + ": " + cleanDetail;
+    private String compactTaskTitle(XtremeTask task) {
+        return task == null ? "" : task.getName();
     }
 
-    private String taskResolveInstanceMarker(XtremeTask task, XtremeTask instance)
-    {
-        String sequenceSuffix = collectionLogSequenceSuffix(instance);
-        if (!sequenceSuffix.isEmpty())
-        {
-            return titleCaseSequenceMarker(sequenceSuffix);
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        int total = Math.max(1, group == null || group.isEmpty() ? 1 : group.size());
-        int index = -1;
-        if (group != null)
-        {
-            for (int i = 0; i < group.size(); i++)
-            {
-                XtremeTask groupedTask = group.get(i);
-                if (sameTask(groupedTask, instance))
-                {
-                    index = i;
-                    break;
-                }
-            }
-        }
-
-        if (index < 0)
-        {
-            index = 0;
-            total = 1;
-        }
-        if (index == 0 && total == 1)
-        {
-            return "";
-        }
-        return (index + 1) + "/" + total;
+    private void drawCompactCenteredText(Graphics2D g, FontMetrics fm, Rectangle card, String text, Color color) {
+        String drawText = TextUtils.truncateToWidth(text, fm, card.width - 28);
+        int x = card.x + (card.width - fm.stringWidth(drawText)) / 2;
+        int y = card.y + (card.height - fm.getHeight()) / 2 + fm.getAscent();
+        g.setColor(color);
+        g.drawString(drawText, x, y);
     }
 
-    private String collectionLogSequenceSuffix(XtremeTask task)
-    {
-        String suffix = plugin.getCollectionLogSequenceStepLabel(task);
-        return suffix == null ? "" : suffix.trim();
+    private void drawPanelModeToggle(Graphics2D g, FontMetrics fm, net.runelite.api.Point rlMouse) {
+        boolean hovered = rlMouse != null && panelModeToggleBounds.contains(rlMouse.getX(), rlMouse.getY());
+        g.setColor(hovered ? new Color(22, 17, 11, 235) : new Color(18, 14, 9, 185));
+        g.fillRoundRect(
+                panelModeToggleBounds.x - 2,
+                panelModeToggleBounds.y - 2,
+                panelModeToggleBounds.width + 4,
+                panelModeToggleBounds.height + 4,
+                4,
+                4
+        );
+        g.setColor(withAlpha(P.UI_EDGE_LIGHT, hovered ? 95 : 55));
+        g.drawRoundRect(
+                panelModeToggleBounds.x - 2,
+                panelModeToggleBounds.y - 2,
+                panelModeToggleBounds.width + 4,
+                panelModeToggleBounds.height + 4,
+                4,
+                4
+        );
+
+        g.setColor(hovered ? Color.WHITE : new Color(200, 200, 200, 180));
+        int cx = panelModeToggleBounds.x + panelModeToggleBounds.width / 2;
+        int cy = panelModeToggleBounds.y + panelModeToggleBounds.height / 2;
+        int arm = panelModeToggleBounds.width / 2 - 2;
+        int x = cx - arm;
+        int y = cy - arm;
+        int w = arm * 2;
+        int h = arm * 2;
+        Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        Stroke oldStroke = g.getStroke();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setStroke(new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+        if (compactPanelMode) {
+            int leg = Math.max(4, arm - 1);
+            g.drawLine(x, y + leg, x, y);
+            g.drawLine(x, y, x + leg, y);
+            g.drawLine(x + w - leg, y, x + w, y);
+            g.drawLine(x + w, y, x + w, y + leg);
+            g.drawLine(x, y + h - leg, x, y + h);
+            g.drawLine(x, y + h, x + leg, y + h);
+            g.drawLine(x + w - leg, y + h, x + w, y + h);
+            g.drawLine(x + w, y + h, x + w, y + h - leg);
+        } else {
+            int inset = 4;
+            g.drawLine(x, y, x + inset, y);
+            g.drawLine(x, y, x, y + inset);
+            g.drawLine(x + w - inset, y, x + w, y);
+            g.drawLine(x + w, y, x + w, y + inset);
+            g.drawLine(x, y + h - inset, x, y + h);
+            g.drawLine(x, y + h, x + inset, y + h);
+            g.drawLine(x + w - inset, y + h, x + w, y + h);
+            g.drawLine(x + w, y + h - inset, x + w, y + h);
+            g.drawLine(x + inset + 1, y + inset + 1, x + w - inset - 1, y + h - inset - 1);
+            g.drawLine(x + w - inset - 1, y + inset + 1, x + inset + 1, y + h - inset - 1);
+        }
+        g.setStroke(oldStroke);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
+
+        if (hovered) {
+            drawSmallTooltip(g, fm, compactPanelMode ? "Full view" : "Compact view", panelModeToggleBounds);
+        }
     }
 
-    private static String titleCaseSequenceMarker(String value)
-    {
-        String clean = value == null ? "" : value.trim();
-        if (clean.isEmpty())
-        {
-            return "";
+    private void drawSmallTooltip(Graphics2D g, FontMetrics fm, String text, Rectangle anchor) {
+        int padX = 6;
+        int padY = 4;
+        String label = text == null ? "" : text.replace('\n', ' ').trim();
+        int textW = fm.stringWidth(label);
+        int w = textW + padX * 2;
+        int h = fm.getHeight() + padY * 2;
+        int x = anchor.x;
+        int y = anchor.y + anchor.height + 5;
+        if (x + w > panelBounds.x + panelBounds.width - PANEL_PADDING) {
+            x = panelBounds.x + panelBounds.width - PANEL_PADDING - w;
+        }
+        if (y + h > panelBounds.y + panelBounds.height - PANEL_PADDING) {
+            y = anchor.y - h - 5;
         }
 
-        StringBuilder out = new StringBuilder(clean.length());
-        boolean capitalizeNext = true;
-        for (int i = 0; i < clean.length(); i++)
-        {
-            char c = clean.charAt(i);
-            if (Character.isLetter(c))
-            {
-                out.append(capitalizeNext ? Character.toUpperCase(c) : c);
-                capitalizeNext = false;
-            }
-            else
-            {
-                out.append(c);
-                capitalizeNext = Character.isWhitespace(c) || c == '-' || c == '\'';
-            }
-        }
-        return out.toString();
+        g.setColor(new Color(75, 75, 75, 235));
+        g.fillRoundRect(x, y, w, h, 4, 4);
+        g.setColor(new Color(155, 155, 155, 220));
+        g.drawRoundRect(x, y, w, h, 4, 4);
+        g.setColor(Color.WHITE);
+        g.drawString(label, x + padX, y + padY + fm.getAscent());
     }
 
-    private boolean sameTask(XtremeTask a, XtremeTask b)
-    {
-        if (a == b)
-        {
-            return true;
-        }
-        if (a == null || b == null)
-        {
-            return false;
-        }
-        String aId = a.getId();
-        String bId = b.getId();
-        return aId != null && aId.equals(bId);
+    private void resetCurrentLayoutBounds() {
+        clearBounds(currentLayout.wikiButtonBounds, currentLayout.rollButtonBounds,
+                currentLayout.completeButtonBounds, currentLayout.undoButtonBounds,
+                currentLayout.rollSourceIconBounds, currentLayout.viewportBounds,
+                currentLayout.scrollbarRailBounds, currentLayout.scrollbarThumbBounds);
+        currentLayout.totalContentPx = 0;
+    }
+
+    private void clearFullPanelTabBounds() {
+        clearBounds(currentTabBounds, tasksTabBounds, rulesTabBounds, taskListViewportBounds,
+                taskScrollbarRailBounds, taskScrollbarThumbBounds);
+    }
+
+    private static String compactFormatTicks(long seconds) {
+        if (seconds < 60) return seconds + "s";
+        long minutes = seconds / 60;
+        long remSeconds = seconds % 60;
+        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
+        long hours = minutes / 60;
+        long remMinutes = minutes % 60;
+        if (hours < 24) return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
+        long days = hours / 24;
+        long remHours = hours % 24;
+        return remHours > 0 ? days + "d " + remHours + "h" : days + "d";
     }
 
     private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
@@ -2516,46 +2635,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 "Completion dates and time spent will be cleared.");
     }
 
-    private void drawResolveIncompleteToggleGlyph(Graphics2D g, Rectangle bounds, boolean selectedIncomplete, boolean enabled)
-    {
-        drawResolveToggleFrame(g, bounds, selectedIncomplete, enabled,
-                new Color(82, 36, 30, 230), new Color(48, 34, 32, 210), new Color(245, 92, 82, 245));
-        if (!selectedIncomplete)
-        {
-            return;
-        }
-
-        Stroke oldStroke = g.getStroke();
-        g.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(bounds.x + 5, bounds.y + 5, bounds.x + bounds.width - 5, bounds.y + bounds.height - 5);
-        g.drawLine(bounds.x + bounds.width - 5, bounds.y + 5, bounds.x + 5, bounds.y + bounds.height - 5);
-        g.setStroke(oldStroke);
-    }
-
-    private void drawResolveToggleFrame(Graphics2D g, Rectangle bounds, boolean selected, boolean enabled,
-                                        Color selectedBg, Color disabledSelectedBg, Color selectedStroke)
-    {
-        Color bg = enabled
-                ? (selected ? selectedBg : P.INPUT_BG)
-                : (selected ? disabledSelectedBg : new Color(28, 28, 28, 185));
-        Color strokeColor = enabled
-                ? (selected ? selectedStroke : withAlpha(P.UI_GOLD, 185))
-                : new Color(135, 135, 135, selected ? 185 : 95);
-        drawBevelBox(g, bounds, bg);
-        g.setColor(strokeColor);
-        g.drawRect(bounds.x + 1, bounds.y + 1, bounds.width - 3, bounds.height - 3);
-    }
-
-    private String taskResolveCompletionDateText(XtremeTask task)
-    {
-        CompletionInfo info = plugin.getCompletionInfo(task);
-        if (info == null || info.timestamp <= 0)
-        {
-            return "date unknown";
-        }
-        return TASK_RESOLVE_COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
-    }
-
     private String syncReviewCompletionDateText(XtremeTask task)
     {
         CompletionInfo info = plugin.getCompletionInfo(task);
@@ -2566,42 +2645,6 @@ public class XtremeTaskerOverlay extends Overlay {
         return SYNC_REVIEW_COMPLETION_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
-    private String taskResolveTimeSpentText(XtremeTask task)
-    {
-        Long ticks = plugin.getTaskTimeTicks(task);
-        if (ticks == null || ticks <= 0)
-        {
-            return "time unknown";
-        }
-        return formatShortDuration(Math.round(ticks * 0.6));
-    }
-
-    private boolean isMultiInstanceTask(XtremeTask task)
-    {
-        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
-        if (progress != null && progress.getTotal() > 1)
-        {
-            return true;
-        }
-
-        List<XtremeTask> group = plugin.getTaskGroupInstances(task);
-        if (group != null && group.size() > 1)
-        {
-            return true;
-        }
-
-        TaskVerification verification = task == null ? null : task.getVerification();
-        Integer count = verification == null ? null : verification.getCount();
-        if (count != null && count > 1)
-        {
-            return true;
-        }
-
-        String name = task == null ? "" : String.valueOf(task.getName());
-        return name.matches(".*\\b\\d+\\s*/\\s*\\d+\\b.*")
-                || name.matches(".*\\b\\d+\\s*/\\s*#.*");
-    }
-
     private void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
     {
         if (task == null || !isTaskCompletedForIncompleteAction(task))
@@ -2609,21 +2652,13 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        if (task.getSource() == TaskSource.COLLECTION_LOG && isMultiInstanceTask(task))
-        {
-            openTaskResolve(task);
-            return;
-        }
-
-        selectedTaskResolveIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.clear();
+        selectedTaskDetailsIncompleteTaskIds.clear();
         if (task.getId() != null)
         {
-            selectedTaskResolveIncompleteTaskIds.add(task.getId());
+            selectedTaskDetailsIncompleteTaskIds.add(task.getId());
         }
         taskDetailsIncompleteConfirmCloseAfter = false;
         taskDetailsIncompleteConfirmOpen = true;
-        closeTaskResolveWithoutRestoring();
     }
 
     private void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task)
@@ -2633,12 +2668,10 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        selectedTaskResolveIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.clear();
-        selectedTaskResolveIncompleteTaskIds.add(task.getId());
+        selectedTaskDetailsIncompleteTaskIds.clear();
+        selectedTaskDetailsIncompleteTaskIds.add(task.getId());
         taskDetailsIncompleteConfirmCloseAfter = false;
         taskDetailsIncompleteConfirmOpen = true;
-        closeTaskResolveWithoutRestoring();
     }
 
     private boolean isTaskCompletedForIncompleteAction(XtremeTask task)
@@ -2657,9 +2690,7 @@ public class XtremeTaskerOverlay extends Overlay {
     private void closeTaskDetailsNow()
     {
         taskDetailsPopup.close();
-        selectedTaskResolveIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.clear();
-        closeTaskResolveWithoutRestoring();
+        selectedTaskDetailsIncompleteTaskIds.clear();
         closeTaskDetailsIncompleteConfirm();
     }
 
@@ -2676,16 +2707,14 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
-        selectedTaskResolveIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.clear();
-        closeTaskResolveWithoutRestoring();
+        selectedTaskDetailsIncompleteTaskIds.clear();
         closeTaskDetailsIncompleteConfirm();
     }
 
     private List<XtremeTask> selectedIncompleteTasksForDetails()
     {
         XtremeTask task = taskDetailsPopup.task();
-        if (task == null || selectedTaskResolveIncompleteTaskIds.isEmpty())
+        if (task == null || selectedTaskDetailsIncompleteTaskIds.isEmpty())
         {
             return Collections.emptyList();
         }
@@ -2693,7 +2722,7 @@ public class XtremeTaskerOverlay extends Overlay {
         return resolveTasksForTask(task).stream()
                 .filter(candidate -> candidate != null
                         && candidate.getId() != null
-                        && selectedTaskResolveIncompleteTaskIds.contains(candidate.getId()))
+                        && selectedTaskDetailsIncompleteTaskIds.contains(candidate.getId()))
                 .collect(Collectors.toList());
     }
 
@@ -2704,83 +2733,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void closeTaskDetailsIncompleteConfirm()
     {
-        selectedTaskResolveIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.clear();
+        selectedTaskDetailsIncompleteTaskIds.clear();
         taskDetailsIncompleteConfirmOpen = false;
         taskDetailsIncompleteConfirmCloseAfter = true;
         clearBounds(taskDetailsIncompleteConfirmBounds, taskDetailsIncompleteConfirmYesBounds,
                 taskDetailsIncompleteConfirmNoBounds);
-    }
-
-    private void openTaskResolve(XtremeTask task)
-    {
-        if (task == null)
-        {
-            return;
-        }
-        taskResolveTask = task;
-        taskResolveOriginalIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.addAll(selectedTaskResolveIncompleteTaskIds);
-        selectedTaskResolveIncompleteTaskIds.clear();
-        selectedTaskResolveIncompleteTaskIds.addAll(taskResolveOriginalIncompleteTaskIds);
-    }
-
-    private void closeTaskResolve()
-    {
-        selectedTaskResolveIncompleteTaskIds.clear();
-        selectedTaskResolveIncompleteTaskIds.addAll(taskResolveOriginalIncompleteTaskIds);
-        closeTaskResolveWithoutRestoring();
-    }
-
-    private void closeTaskResolveWithoutRestoring()
-    {
-        taskResolveTask = null;
-        taskResolveOriginalIncompleteTaskIds.clear();
-        clearBounds(taskResolveBounds, taskResolveCloseBounds, taskResolveSaveBounds, taskResolveCancelBounds);
-        taskResolveInstanceToggleBounds.clear();
-    }
-
-    private boolean isTaskResolveOpen()
-    {
-        return taskResolveTask != null;
-    }
-
-    private void toggleTaskResolveTaskIncomplete(XtremeTask task)
-    {
-        if (task == null || task.getId() == null)
-        {
-            return;
-        }
-        if (!canToggleTaskResolveTaskIncomplete(task))
-        {
-            return;
-        }
-        if (!selectedTaskResolveIncompleteTaskIds.remove(task.getId()))
-        {
-            selectedTaskResolveIncompleteTaskIds.add(task.getId());
-        }
-    }
-
-    private void saveTaskResolve()
-    {
-        List<XtremeTask> tasksToMarkIncomplete = selectedIncompleteTasksForDetails();
-        if (!tasksToMarkIncomplete.isEmpty())
-        {
-            plugin.markSyncMismatchTasksIncompleteAndPersist(tasksToMarkIncomplete);
-        }
-        selectedTaskResolveIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.clear();
-        closeTaskResolveWithoutRestoring();
-    }
-
-    private boolean hasTaskResolveChanges()
-    {
-        return !selectedTaskResolveIncompleteTaskIds.equals(taskResolveOriginalIncompleteTaskIds);
-    }
-
-    private boolean canToggleTaskResolveTaskIncomplete(XtremeTask task)
-    {
-        return taskResolveTask != null && task != null && task.getId() != null;
     }
 
     private List<XtremeTask> resolveTasksForTask(XtremeTask task)
@@ -2866,7 +2823,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (showCollectionLogRefreshHint)
         {
             g.setColor(P.UI_TEXT);
-            String refreshHint = "If new CLOG items are missing, open your Collection Log in game, then sync again.";
+            String refreshHint = "If new CLOG items are missing, open your Collection Log in-game to refresh CLOG review rows.";
             g.drawString(TextUtils.truncateToWidth(refreshHint, fm, w - pad * 2),
                     x + pad, nextY + fm.getAscent());
             nextY += fm.getHeight();
@@ -2944,10 +2901,16 @@ public class XtremeTaskerOverlay extends Overlay {
         for (int i = syncMismatchScroll.offsetRows; i < end; i++)
         {
             XtremeTask task = mismatches.get(i);
+            boolean currentTask = isCurrentTask(task);
+            boolean selected = !currentTask && selectedSyncMismatchTaskIds.contains(task.getId());
             Rectangle row = new Rectangle(syncMismatchViewportBounds.x, rowY,
                     rowW, reviewRowHeight);
 
             Color rowFill = i % 2 == 0 ? new Color(62, 50, 34, 235) : new Color(53, 43, 31, 235);
+            if (currentTask)
+            {
+                rowFill = i % 2 == 0 ? new Color(48, 43, 36, 215) : new Color(43, 38, 33, 215);
+            }
             g.setColor(rowFill);
             g.fillRect(row.x, row.y, row.width, row.height);
             g.setColor(new Color(30, 24, 18, 170));
@@ -2976,7 +2939,7 @@ public class XtremeTaskerOverlay extends Overlay {
             String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm,
                     actionColumnX - rowTextX - dateW - dateGap - 8);
             int textY = row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent();
-            g.setColor(P.UI_TEXT);
+            g.setColor(currentTask ? P.UI_TEXT_DIM : P.UI_TEXT);
             g.drawString(label, rowTextX, textY);
             if (!completedDate.isEmpty())
             {
@@ -2992,9 +2955,12 @@ public class XtremeTaskerOverlay extends Overlay {
                     rowCheckboxSize);
             Rectangle hitTarget = new Rectangle(actionColumnX, row.y, actionColumnW, row.height);
             synchronized (syncMismatchTaskBounds) {
-                syncMismatchTaskBounds.put(task, hitTarget);
+                if (!currentTask)
+                {
+                    syncMismatchTaskBounds.put(task, hitTarget);
+                }
             }
-            drawSyncMismatchCheckbox(g, btn, selectedSyncMismatchTaskIds.contains(task.getId()));
+            drawSyncMismatchCheckbox(g, btn, selected, currentTask);
             rowY += rowBlock;
         }
         g.setClip(oldClip);
@@ -3054,8 +3020,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 ? "Tasks"
                 : hasCollectionLogReview ? "Collection Log + Achievement Diary tasks" : "Combat Achievement tasks";
         String suffix = completionCandidates
-                ? "found completed in game via sync, but not marked completed in plugin."
-                : "marked completed in plugin, but not found completed in game via sync.";
+                ? "found completed in-game via sync, but not marked completed in plugin."
+                : "marked completed in plugin, but not found completed in-game via sync.";
         return prefix + " " + suffix;
     }
 
@@ -3091,8 +3057,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|taskState=" + plugin.getTaskListRenderStateHash()
                 + "|clState=" + plugin.getCollectionLogStateVersion()
                 + "|lastSync=" + plugin.getLastSyncResultAtLocalTime()
-                + "|lastCa=" + plugin.getLastCombatAchievementSyncResultAtLocalTime()
-                + "|lastCl=" + plugin.getLastCollectionLogSyncResultAtLocalTime();
+                + "|lastCa=" + plugin.getLastCombatAchievementSyncResultAtLocalTime();
     }
 
     private int selectedVisibleSyncMismatchCount(List<XtremeTask> mismatches)
@@ -3105,7 +3070,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (selectedSyncMismatchTaskIds.contains(task.getId()))
+            if (!isCurrentTask(task) && selectedSyncMismatchTaskIds.contains(task.getId()))
             {
                 count++;
             }
@@ -3128,6 +3093,11 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
+            if (isCurrentTask(task))
+            {
+                continue;
+            }
+
             count++;
         }
         return count;
@@ -3143,10 +3113,15 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked)
     {
-        drawBevelBox(g, box, checked ? P.BTN_ENABLED_BG : P.INPUT_BG);
-        g.setColor(checked ? P.UI_GOLD : P.UI_TEXT_DIM);
+        drawSyncMismatchCheckbox(g, box, checked, false);
+    }
+
+    private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked, boolean disabled)
+    {
+        drawBevelBox(g, box, disabled ? P.BTN_DISABLED_BG : checked ? P.BTN_ENABLED_BG : P.INPUT_BG);
+        g.setColor(disabled ? new Color(110, 104, 96, 170) : checked ? P.UI_GOLD : P.UI_TEXT_DIM);
         g.drawRect(box.x + 1, box.y + 1, box.width - 3, box.height - 3);
-        if (checked)
+        if (checked && !disabled)
         {
             ButtonRenderer.drawCheckmark(g, box, 5);
         }
@@ -3181,27 +3156,29 @@ public class XtremeTaskerOverlay extends Overlay {
             return "";
         }
 
+        String currentTaskSuffix = isCurrentTask(task) ? " (Current task)" : "";
+
         if (isDecoratedSequenceTaskName(task.getName()))
         {
-            return task.getName();
+            return task.getName() + currentTaskSuffix;
         }
 
         List<XtremeTask> group = plugin.getTaskGroupInstances(task);
         if (group == null || group.size() <= 1)
         {
-            return task.getName();
+            return task.getName() + currentTaskSuffix;
         }
 
         TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
         if (progress == null || !progress.isGrouped())
         {
-            return task.getName();
+            return task.getName() + currentTaskSuffix;
         }
 
         String sequenceSuffix = collectionLogSequenceSuffix(task);
         if (!sequenceSuffix.isEmpty())
         {
-            return task.getName() + ": " + sequenceSuffix;
+            return task.getName() + currentTaskSuffix + ": " + sequenceSuffix;
         }
 
         int instanceOrdinal = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
@@ -3209,9 +3186,23 @@ public class XtremeTaskerOverlay extends Overlay {
                 : completedInstanceOrdinalInGroup(group, task);
         if (instanceOrdinal <= 0)
         {
-            return task.getName() + ": " + progress.label();
+            return task.getName() + currentTaskSuffix + ": " + progress.label();
         }
-        return task.getName() + ": " + instanceOrdinal + "/" + group.size();
+        return task.getName() + currentTaskSuffix + ": " + instanceOrdinal + "/" + group.size();
+    }
+
+    private String collectionLogSequenceSuffix(XtremeTask task)
+    {
+        String suffix = plugin.getCollectionLogSequenceStepLabel(task);
+        return suffix == null ? "" : suffix.trim();
+    }
+
+    private boolean isCurrentTask(XtremeTask task)
+    {
+        XtremeTask current = plugin.getCurrentTask();
+        String currentId = current == null ? null : current.getId();
+        String taskId = task == null ? null : task.getId();
+        return currentId != null && taskId != null && currentId.equals(taskId);
     }
 
     private static boolean isDecoratedSequenceTaskName(String name)
@@ -3566,37 +3557,24 @@ public class XtremeTaskerOverlay extends Overlay {
                 rulesSubTab,
                 plugin.getLastSyncResult(),
                 plugin.getLastSyncResultAtLocalTime(),
-                null,
-                null,
-                plugin.isCollectionLogSyncPending(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COMBAT_ACHIEVEMENT).size(),
                 plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).size()
         );
 
         rulesLayout.viewportBounds.setBounds(layout.viewportBounds);
-        rulesLayout.reloadButtonBounds.setBounds(layout.reloadButtonBounds);
-        rulesLayout.taskerFaqLinkBounds.setBounds(layout.taskerFaqLinkBounds);
         rulesLayout.githubReadmeLinkBounds.setBounds(layout.githubReadmeLinkBounds);
         rulesLayout.syncProgressButtonBounds.setBounds(layout.syncProgressButtonBounds);
         rulesLayout.syncCaFoundReviewButtonBounds.setBounds(layout.syncCaFoundReviewButtonBounds);
-        rulesLayout.syncCaReviewButtonBounds.setBounds(layout.syncCaReviewButtonBounds);
-        rulesLayout.syncCaReviewIgnoreButtonBounds.setBounds(layout.syncCaReviewIgnoreButtonBounds);
         rulesLayout.subTabRulesBounds.setBounds(layout.subTabRulesBounds);
         rulesLayout.subTabDataSyncsBounds.setBounds(layout.subTabDataSyncsBounds);
 
 
         if (rulesLayout.syncProgressButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "SYNC", P.BTN_DISABLED_BG);
+            buttonRenderer.drawPlainButton(g, rulesLayout.syncProgressButtonBounds, "Sync CAs + ADs", P.BTN_DISABLED_BG);
         }
         if (rulesLayout.syncCaFoundReviewButtonBounds.width > 0) {
             buttonRenderer.drawPlainButton(g, rulesLayout.syncCaFoundReviewButtonBounds, "Review",
                     P.BTN_ENABLED_BG, P.UI_TEXT, new Color(111, 190, 92));
-        }
-        if (rulesLayout.syncCaReviewButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewButtonBounds, "Review", P.BTN_ENABLED_BG, P.UI_TEXT, P.UI_GOLD);
-        }
-        if (rulesLayout.syncCaReviewIgnoreButtonBounds.width > 0) {
-            buttonRenderer.drawPlainButton(g, rulesLayout.syncCaReviewIgnoreButtonBounds, "Ignore", P.BTN_DISABLED_BG, P.UI_TEXT_DIM, null);
         }
     }
 
@@ -3605,6 +3583,8 @@ public class XtremeTaskerOverlay extends Overlay {
         final int maxW = panelInnerTextMaxWidth();
 
         if (!animations.isRolling()) {
+            rollingDisplayTier = null;
+            rollingDisplayPool = Collections.emptyList();
             if (current == null) {
                 return TextUtils.truncateToWidth("Click \"Roll task\" to get a task", fm, maxW);
             }
@@ -3612,10 +3592,12 @@ public class XtremeTaskerOverlay extends Overlay {
             return TextUtils.truncateToWidth(current.getName(), fm, maxW); // prefix drawn by renderer
         }
 
-        TaskTier tier = (current != null) ? current.getTier() : plugin.getCurrentTier();
+        TaskTier tier = rollingDisplayTier != null ? rollingDisplayTier : (current != null) ? current.getTier() : plugin.getCurrentTier();
         if (tier == null) tier = TaskTier.EASY;
 
-        List<XtremeTask> pool = getTasksForTier(tier);
+        List<XtremeTask> pool = !rollingDisplayPool.isEmpty() && rollingDisplayTier == tier
+                ? rollingDisplayPool
+                : getTasksForTier(tier);
         if (pool.isEmpty()) {
             return TextUtils.truncateToWidth("Rolling...", fm, maxW);
         }
@@ -3700,9 +3682,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return false;
         }
 
-        selectedTaskResolveIncompleteTaskIds.clear();
-        taskResolveOriginalIncompleteTaskIds.clear();
-        closeTaskResolveWithoutRestoring();
+        selectedTaskDetailsIncompleteTaskIds.clear();
         closeTaskDetailsIncompleteConfirm();
         taskDetailsPopup.open(task);
         return true;
@@ -3719,8 +3699,7 @@ public class XtremeTaskerOverlay extends Overlay {
         boolean completeEnabled = (current != null) && !currentCompleted;
 
         if (code == KeyEvent.VK_R && rollEnabled) {
-            animations.startRoll();
-            plugin.rollRandomTaskAndPersist();
+            requestRollTask();
             return true;
         }
 
@@ -3855,7 +3834,16 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|showSpent=" + taskQuery.showTimeSpentColumn
                 + "|newOnly=" + taskQuery.showNewTasksFilter
                 + "|condensed=" + useCondensedTaskRows()
-                + "|state=" + plugin.getTaskListRenderStateHash();
+                + "|state=" + plugin.getTaskListRenderStateHash()
+                + "|timerState=" + taskListTimerCacheState();
+    }
+
+    private int taskListTimerCacheState()
+    {
+        return taskQuery.sortColumn == TaskListQuery.SortColumn.SPENT
+                && taskQuery.sortDirection != TaskListQuery.SortDirection.OFF
+                ? plugin.getTaskListTimerStateVersion()
+                : 0;
     }
 
     private void logSlowTaskListBuild(long startNanos, TaskTier tier, int inputCount, int outputCount)
@@ -3929,6 +3917,31 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void setPanelOpen(boolean open) {
                 panelOpen = open;
+                if (!open) {
+                    cancelPendingRollExecution();
+                }
+            }
+
+            @Override
+            public boolean isCompactPanelMode() {
+                return compactPanelMode;
+            }
+
+            @Override
+            public void setCompactPanelMode(boolean compact) {
+                recenterPanelForMode(compact);
+                compactPanelMode = compact;
+                taskDetailsPopup.close();
+                syncMismatchReviewOpen = false;
+                currentScroll.reset();
+                if (compact) {
+                    activeTab = XtremeTaskerOverlay.MainTab.CURRENT;
+                }
+            }
+
+            @Override
+            public Rectangle panelModeToggleBounds() {
+                return panelModeToggleBounds;
             }
 
             @Override
@@ -4179,6 +4192,11 @@ public class XtremeTaskerOverlay extends Overlay {
             }
 
             @Override
+            public void requestRollTask() {
+                XtremeTaskerOverlay.this.requestRollTask();
+            }
+
+            @Override
             public boolean handleTasksKey(KeyEvent e) {
                 return XtremeTaskerOverlay.this.handleTasksKey(e);
             }
@@ -4215,9 +4233,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public void openTaskDetails(XtremeTask task) {
-                selectedTaskResolveIncompleteTaskIds.clear();
-                taskResolveOriginalIncompleteTaskIds.clear();
-                closeTaskResolveWithoutRestoring();
+                selectedTaskDetailsIncompleteTaskIds.clear();
                 closeTaskDetailsIncompleteConfirm();
                 taskDetailsPopup.open(task);
                 plugin.refreshTaskSyncMismatchForTask(task);
@@ -4486,12 +4502,15 @@ public class XtremeTaskerOverlay extends Overlay {
 
             @Override
             public boolean isSyncMismatchTaskSelected(XtremeTask task) {
-                return task != null && task.getId() != null && selectedSyncMismatchTaskIds.contains(task.getId());
+                return task != null
+                        && task.getId() != null
+                        && !isCurrentTask(task)
+                        && selectedSyncMismatchTaskIds.contains(task.getId());
             }
 
             @Override
             public void toggleSyncMismatchTaskSelected(XtremeTask task) {
-                if (task == null || task.getId() == null) return;
+                if (task == null || task.getId() == null || isCurrentTask(task)) return;
                 if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
                     selectedSyncMismatchTaskIds.add(task.getId());
                 }
@@ -4501,7 +4520,7 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void selectAllSyncMismatchTasks() {
                 for (XtremeTask task : visibleSyncMismatchTasks()) {
-                    if (task == null || task.getId() == null) {
+                    if (task == null || task.getId() == null || isCurrentTask(task)) {
                         continue;
                     }
                     selectedSyncMismatchTaskIds.add(task.getId());
@@ -4533,7 +4552,9 @@ public class XtremeTaskerOverlay extends Overlay {
                     if (task == null || task.getId() == null) {
                         continue;
                     }
-                    if (selectedSyncMismatchTaskIds.contains(task.getId()) && seen.add(task.getId())) {
+                    if (!isCurrentTask(task)
+                            && selectedSyncMismatchTaskIds.contains(task.getId())
+                            && seen.add(task.getId())) {
                         out.add(task);
                     }
                 }
@@ -4550,61 +4571,6 @@ public class XtremeTaskerOverlay extends Overlay {
             @Override
             public void closeSyncMismatchApplyConfirm() {
                 syncMismatchApplyConfirmOpen = false;
-            }
-
-            @Override
-            public boolean isTaskResolveOpen() {
-                return XtremeTaskerOverlay.this.isTaskResolveOpen();
-            }
-
-            @Override
-            public Rectangle taskResolveBounds() {
-                return taskResolveBounds;
-            }
-
-            @Override
-            public Rectangle taskResolveCloseBounds() {
-                return taskResolveCloseBounds;
-            }
-
-            @Override
-            public Rectangle taskResolveSaveBounds() {
-                return taskResolveSaveBounds;
-            }
-
-            @Override
-            public Rectangle taskResolveCancelBounds() {
-                return taskResolveCancelBounds;
-            }
-
-            @Override
-            public Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds() {
-                return taskResolveInstanceToggleBounds;
-            }
-
-            @Override
-            public void closeTaskResolve() {
-                XtremeTaskerOverlay.this.closeTaskResolve();
-            }
-
-            @Override
-            public void saveTaskResolve() {
-                XtremeTaskerOverlay.this.saveTaskResolve();
-            }
-
-            @Override
-            public void toggleTaskResolveTaskIncomplete(XtremeTask task) {
-                XtremeTaskerOverlay.this.toggleTaskResolveTaskIncomplete(task);
-            }
-
-            @Override
-            public boolean canToggleTaskResolveTaskIncomplete(XtremeTask task) {
-                return XtremeTaskerOverlay.this.canToggleTaskResolveTaskIncomplete(task);
-            }
-
-            @Override
-            public boolean hasTaskResolveChanges() {
-                return XtremeTaskerOverlay.this.hasTaskResolveChanges();
             }
 
             @Override
@@ -4724,7 +4690,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         transformRects(transform,
-                panelBounds, panelDragBarBounds, panelCloseBounds,
+                panelBounds, panelDragBarBounds, panelCloseBounds, panelModeToggleBounds,
                 currentTabBounds, tasksTabBounds, rulesTabBounds,
                 taskListViewportBounds, taskScrollbarRailBounds, taskScrollbarThumbBounds,
                 markAllIncompleteConfirmBounds, markAllIncompleteYesBounds, markAllIncompleteNoBounds,
@@ -4732,15 +4698,31 @@ public class XtremeTaskerOverlay extends Overlay {
                 syncMismatchCloseBounds, syncMismatchMarkAllBounds, syncMismatchApplyBounds,
                 syncMismatchCancelBounds, syncMismatchConfirmBounds, syncMismatchConfirmYesBounds,
                 syncMismatchConfirmNoBounds, syncMismatchScrollbarRailBounds, syncMismatchScrollbarThumbBounds,
-                taskResolveBounds, taskResolveCloseBounds,
-                taskResolveSaveBounds, taskResolveCancelBounds, taskDetailsIncompleteConfirmBounds,
+                taskDetailsIncompleteConfirmBounds,
                 taskDetailsIncompleteConfirmYesBounds, taskDetailsIncompleteConfirmNoBounds);
         transformCurrentLayoutBounds(transform);
         transformRulesLayoutBounds(transform);
         transformRectMap(taskRowBounds, transform);
         transformRectMap(taskCheckboxBounds, transform);
         transformRectMap(syncMismatchTaskBounds, transform);
-        transformRectMap(taskResolveInstanceToggleBounds, transform);
+    }
+
+    private void recenterPanelForMode(boolean targetCompactMode) {
+        if (!panelOpen || panelBounds.width <= 0 || panelBounds.height <= 0) {
+            return;
+        }
+
+        int canvasW = client.getCanvasWidth();
+        int canvasH = client.getCanvasHeight();
+        int targetW = targetCompactMode ? PANEL_W_COMPACT : PANEL_W_TASKS;
+        int targetH = targetCompactMode ? PANEL_H_COMPACT : PANEL_H_TASKS;
+        double targetScale = computePanelScale(canvasW, canvasH, targetW, targetH);
+        int physicalTargetW = Math.max(1, (int) Math.round(targetW * targetScale));
+        int physicalTargetH = Math.max(1, (int) Math.round(targetH * targetScale));
+
+        int centerX = panelBounds.x + panelBounds.width / 2;
+        panelXOverride = Math.max(0, Math.min(centerX - physicalTargetW / 2, Math.max(0, canvasW - physicalTargetW)));
+        panelYOverride = Math.max(0, Math.min(panelBounds.y, Math.max(0, canvasH - physicalTargetH)));
     }
 
     private void transformCurrentLayoutBounds(AffineTransform transform) {
@@ -4753,10 +4735,9 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void transformRulesLayoutBounds(AffineTransform transform) {
         transformRects(transform,
-                rulesLayout.viewportBounds, rulesLayout.reloadButtonBounds,
-                rulesLayout.taskerFaqLinkBounds, rulesLayout.githubReadmeLinkBounds,
+                rulesLayout.viewportBounds,
+                rulesLayout.githubReadmeLinkBounds,
                 rulesLayout.syncProgressButtonBounds, rulesLayout.syncCaFoundReviewButtonBounds,
-                rulesLayout.syncCaReviewButtonBounds, rulesLayout.syncCaReviewIgnoreButtonBounds,
                 rulesLayout.subTabRulesBounds, rulesLayout.subTabDataSyncsBounds);
     }
 

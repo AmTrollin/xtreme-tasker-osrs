@@ -38,7 +38,7 @@ import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in game diary completion.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
@@ -225,7 +225,7 @@ public final class TaskDetailsPopup
             Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
             Function<XtremeTask, CollectionLogRequirementPreview> collectionLogRequirementPreviewProvider,
             Function<XtremeTask, String> collectionLogSequenceLabelProvider,
-            Function<XtremeTask, Boolean> collectionLogSyncMismatchProvider,
+            Function<XtremeTask, Boolean> syncMismatchProvider,
             Function<Integer, BufferedImage> collectionLogItemImageProvider,
             Function<XtremeTask, List<WikiLink>> wikiLinksProvider,
             net.runelite.api.Point mouse,
@@ -287,8 +287,8 @@ public final class TaskDetailsPopup
         g.setColor(palette.UI_GOLD);
 
         final int wikiW = Math.max(headerFm.stringWidth(wikiOpenText), headerFm.stringWidth(wikiCloseText)) + 20;
-        boolean collectionLogMismatch = collectionLogSyncMismatchProvider != null
-                && Boolean.TRUE.equals(collectionLogSyncMismatchProvider.apply(task));
+        boolean syncMismatch = syncMismatchProvider != null
+                && Boolean.TRUE.equals(syncMismatchProvider.apply(task));
 
         // Icon in header
         int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - iconReserve - completeReserve);
@@ -441,14 +441,14 @@ public final class TaskDetailsPopup
         boolean tipInDescriptionSection = hasTaskTip && showDescriptionSection && !hasRequirementPreview;
         boolean tipInRequirementSection = hasTaskTip && hasRequirementPreview;
         boolean showGroupedProgressSection = groupProgress != null && groupProgress.isGrouped();
-        boolean showGroupedCollectionLogMismatch = showGroupedProgressSection && collectionLogMismatch;
-        boolean showStandaloneSyncMismatch = collectionLogMismatch && !showGroupedProgressSection;
+        boolean showGroupedSyncMismatch = showGroupedProgressSection && syncMismatch;
+        boolean showStandaloneSyncMismatch = syncMismatch && !showGroupedProgressSection;
         int totalPx = 0;
         if (showGroupedProgressSection)
         {
             totalPx += ROW_HEIGHT; // "Progress" header
             totalPx += ROW_HEIGHT + 8; // progress editor
-            if (showGroupedCollectionLogMismatch)
+            if (showGroupedSyncMismatch)
             {
                 totalPx += ROW_HEIGHT; // blank line before warning
                 totalPx += ROW_HEIGHT; // warning text
@@ -492,7 +492,7 @@ public final class TaskDetailsPopup
             totalPx += ROW_HEIGHT; // collection log requirement header
             if (requirementPreview.showSummaryText())
             {
-                totalPx += ROW_HEIGHT; // counter summary
+                totalPx += ROW_HEIGHT * summaryTextLineCount(requirementPreview.summaryText()); // counter summary
             }
             if (requirementPreview.showTierSections())
             {
@@ -584,7 +584,7 @@ public final class TaskDetailsPopup
             drawGroupProgressEditor(g, fm, contentLeft, y - fm.getAscent() + 1, contentW, groupProgress, mouse);
             y += ROW_HEIGHT + 8;
 
-            if (showGroupedCollectionLogMismatch)
+            if (showGroupedSyncMismatch)
             {
                 y += ROW_HEIGHT;
                 y = drawSyncMismatchText(
@@ -628,9 +628,13 @@ public final class TaskDetailsPopup
             }
         }
 
-        if (showDescriptionSection)
+        if (showDescriptionSection && !showStandaloneSyncMismatch)
         {
             y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
+        }
+        else if (showDescriptionSection)
+        {
+            y += 6 + 12;
         }
 
         if (showStandaloneSyncMismatch)
@@ -660,8 +664,7 @@ public final class TaskDetailsPopup
 
             if (requirementPreview.showSummaryText())
             {
-                drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
-                y += ROW_HEIGHT;
+                y = drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), contentLeft, y, contentW);
                 if (requirementPreview.showTierSections())
                 {
                     y += TIER_SECTION_ICON_GAP;
@@ -965,14 +968,14 @@ public final class TaskDetailsPopup
     static String syncMismatchTitle(XtremeTask task)
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "Not enough Collection Log items obtained"
-                : "Task not completed in game";
+                ? "You do not have enough CLOGs"
+                : "Task not completed in-game";
     }
 
     static String syncMismatchAction(XtremeTask task)
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "Sync your Collection Log via Help tab or mark task incomplete"
+                ? "Open your Collection Log or mark task incomplete"
                 : "Mark task incomplete to keep task tracking accurate";
     }
 
@@ -1411,9 +1414,26 @@ public final class TaskDetailsPopup
         g.drawString(TextUtils.truncateToWidth(text, fm, Math.max(0, 180)), x, baseline);
     }
 
-    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    private int drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
     {
         String text = safe(summaryText);
+        for (String line : summaryTextLines(text))
+        {
+            drawCollectionLogSummaryLine(g, fm, line, x, y, maxWidth);
+            y += ROW_HEIGHT;
+        }
+        return y;
+    }
+
+    private void drawCollectionLogSummaryLine(Graphics2D g, FontMetrics fm, String text, int x, int y, int maxWidth)
+    {
+        if (isPendingOpenClogSummaryLine(text))
+        {
+            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+            g.drawString(TextUtils.truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
         String separator = " | ";
         int separatorIndex = text.indexOf(separator);
         if (separatorIndex < 0)
@@ -1436,6 +1456,27 @@ public final class TaskDetailsPopup
         g.setColor(palette.UI_TEXT_DIM);
         g.drawString(prefix, x, y);
         drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
+    }
+
+    private static int summaryTextLineCount(String summaryText)
+    {
+        return summaryTextLines(summaryText).size();
+    }
+
+    private static List<String> summaryTextLines(String summaryText)
+    {
+        String text = safe(summaryText);
+        if (text.isEmpty())
+        {
+            return List.of();
+        }
+        return List.of(text.split("\\R"));
+    }
+
+    private static boolean isPendingOpenClogSummaryLine(String text)
+    {
+        return text != null
+                && text.matches("\\+\\d+ obtained items? pending, open in-game clog to sync");
     }
 
     private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)
@@ -1647,6 +1688,11 @@ public final class TaskDetailsPopup
 
     private static String buildTimeSpentLine(CompletionInfo info, Long ticks)
     {
+        if (ticks != null && ticks < 0)
+        {
+            return "Time spent: N/A (Completed before rolled)";
+        }
+
         if (ticks != null && ticks > 0)
         {
             return "Time spent: " + formatDuration(Math.round(ticks * 0.6));
@@ -1658,7 +1704,7 @@ public final class TaskDetailsPopup
         }
         if (info != null && info.source == CompletionInfo.Source.SYNCED)
         {
-            return "Time spent: unknown (synced)";
+            return "Time spent: N/A (synced)";
         }
         return "Time spent: unknown";
     }
@@ -1707,6 +1753,11 @@ public final class TaskDetailsPopup
 
     private static String instanceTimeSpentText(CompletionInfo info, Long ticks)
     {
+        if (ticks != null && ticks < 0)
+        {
+            return "N/A (Completed before rolled)";
+        }
+
         if (ticks != null && ticks > 0)
         {
             return formatDuration(Math.round(ticks * 0.6));
@@ -1718,7 +1769,7 @@ public final class TaskDetailsPopup
         }
         if (info != null && info.source == CompletionInfo.Source.SYNCED)
         {
-            return "unknown (synced)";
+            return "N/A (synced)";
         }
         return "unknown";
     }

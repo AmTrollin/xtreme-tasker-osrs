@@ -294,7 +294,7 @@ public final class TaskRowsRenderer {
             if (query != null && query.showTimeSpentColumn)
             {
                 int spentX = nextBadgeRight - SPENT_COL_W;
-                drawSmallColumnText(g, sfm, timeSpentText(task, taskTicksProvider), spentX, pillTop, SPENT_COL_W, pillH);
+                drawSmallColumnText(g, sfm, timeSpentText(task, completionInfoProvider, taskTicksProvider), spentX, pillTop, SPENT_COL_W, pillH);
                 nextBadgeRight = spentX - COL_GAP;
             }
 
@@ -509,11 +509,23 @@ public final class TaskRowsRenderer {
         return ROW_DATE_FORMAT.format(Instant.ofEpochMilli(info.timestamp));
     }
 
-    private static String timeSpentText(XtremeTask task, Function<XtremeTask, Long> taskTicksProvider)
+    private static String timeSpentText(
+            XtremeTask task,
+            Function<XtremeTask, CompletionInfo> completionInfoProvider,
+            Function<XtremeTask, Long> taskTicksProvider)
     {
         Long ticks = taskTicksProvider == null || task == null ? null : taskTicksProvider.apply(task);
+        if (ticks != null && ticks < 0)
+        {
+            return "CBR";
+        }
         if (ticks == null || ticks <= 0)
         {
+            CompletionInfo info = completionInfoProvider == null || task == null ? null : completionInfoProvider.apply(task);
+            if (info != null && info.source == CompletionInfo.Source.SYNCED)
+            {
+                return "SYNC";
+            }
             return "??";
         }
         return formatDuration(Math.round(ticks * 0.6));
@@ -527,7 +539,7 @@ public final class TaskRowsRenderer {
         if (minutes < 60) return remSeconds > 0 ? minutes + "m" : minutes + "m";
         long hours = minutes / 60;
         long remMinutes = minutes % 60;
-        if (hours < 24) return remMinutes > 0 ? hours + "h" : hours + "h";
+        if (hours < 24) return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
         long days = hours / 24;
         return days + "d";
     }

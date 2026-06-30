@@ -99,7 +99,7 @@ public final class TextUtils
                 continue;
             }
 
-            String[] words = p.split("\\s+");
+            List<String> words = wrappingTokens(p);
             StringBuilder line = new StringBuilder();
 
             for (String w : words)
@@ -134,6 +134,73 @@ public final class TextUtils
         List<String> wrapped = Collections.unmodifiableList(new ArrayList<>(lines));
         WRAP_CACHE.put(cacheKey, wrapped);
         return wrapped;
+    }
+
+    private static List<String> wrappingTokens(String text)
+    {
+        List<String> tokens = new ArrayList<>();
+        StringBuilder word = new StringBuilder();
+
+        for (int i = 0; i < text.length(); i++)
+        {
+            char c = text.charAt(i);
+            if (Character.isWhitespace(c))
+            {
+                flushToken(tokens, word);
+                continue;
+            }
+
+            if (c == '(')
+            {
+                int close = findMatchingParen(text, i);
+                if (close > i)
+                {
+                    flushToken(tokens, word);
+                    tokens.add(text.substring(i, close + 1).trim());
+                    i = close;
+                    continue;
+                }
+            }
+
+            word.append(c);
+        }
+
+        flushToken(tokens, word);
+        return tokens;
+    }
+
+    private static int findMatchingParen(String text, int openIndex)
+    {
+        int depth = 0;
+        for (int i = openIndex; i < text.length(); i++)
+        {
+            char c = text.charAt(i);
+            if (c == '(')
+            {
+                depth++;
+            }
+            else if (c == ')')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return i;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private static void flushToken(List<String> tokens, StringBuilder word)
+    {
+        if (word.length() == 0)
+        {
+            return;
+        }
+
+        tokens.add(word.toString());
+        word.setLength(0);
     }
 
     private static String textCacheKey(String text, FontMetrics fm, int maxWidth)

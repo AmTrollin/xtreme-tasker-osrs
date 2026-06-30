@@ -30,6 +30,9 @@ public interface OverlayInputAccess
     // panel / drag / tab state
     boolean isPanelOpen();
     void setPanelOpen(boolean open);
+    boolean isCompactPanelMode();
+    void setCompactPanelMode(boolean compact);
+    Rectangle panelModeToggleBounds();
 
     boolean isDraggingPanel();
     void setDraggingPanel(boolean dragging);
@@ -92,6 +95,7 @@ public interface OverlayInputAccess
     // core behaviors handlers call
     void resetTaskListViewAfterQueryChange();
     void shiftTier(int delta);
+    void requestRollTask();
 
     boolean handleTasksKey(java.awt.event.KeyEvent e);
     boolean handleCurrentKey(java.awt.event.KeyEvent e);
@@ -168,18 +172,6 @@ public interface OverlayInputAccess
     List<XtremeTask> selectedSyncMismatchTasks();
     void requestSyncMismatchApplyConfirm();
     void closeSyncMismatchApplyConfirm();
-
-    boolean isTaskResolveOpen();
-    Rectangle taskResolveBounds();
-    Rectangle taskResolveCloseBounds();
-    Rectangle taskResolveSaveBounds();
-    Rectangle taskResolveCancelBounds();
-    Map<XtremeTask, Rectangle> taskResolveInstanceToggleBounds();
-    void closeTaskResolve();
-    void saveTaskResolve();
-    void toggleTaskResolveTaskIncomplete(XtremeTask task);
-    boolean canToggleTaskResolveTaskIncomplete(XtremeTask task);
-    boolean hasTaskResolveChanges();
 
     boolean isTaskDetailsIncompleteConfirmOpen();
     Rectangle taskDetailsIncompleteConfirmBounds();

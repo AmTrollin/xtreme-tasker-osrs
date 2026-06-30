@@ -34,7 +34,7 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
 
 public final class CurrentTabRenderer
 {
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in game diary completion.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
@@ -664,12 +664,14 @@ public final class CurrentTabRenderer
             drawn++;
         }
 
-        boolean showTimer = taskTimeTicks != null && taskTimeTicks > 0;
+        boolean completedBeforeRolled = taskTimeTicks != null && taskTimeTicks < 0;
+        boolean showTimer = completedBeforeRolled || (taskTimeTicks != null && taskTimeTicks > 0);
         if (showTimer)
         {
             y += Math.max(8, card.height / 36);
-            long seconds = Math.round(taskTimeTicks * 0.6);
-            String timerText = formatTicks(seconds);
+            String timerText = completedBeforeRolled
+                    ? "Completed before rolled"
+                    : formatTicks(Math.round(taskTimeTicks * 0.6));
             int timerX = x + Math.max(0, (innerW - timerFm.stringWidth(timerText)) / 2);
             g.setFont(timerFont);
             g.setColor(uiTextDim);
@@ -780,7 +782,7 @@ public final class CurrentTabRenderer
             totalPx += rowHeight;
             if (requirementPreview.showSummaryText())
             {
-                totalPx += rowHeight;
+                totalPx += rowHeight * summaryTextLineCount(requirementPreview.summaryText());
             }
             if (requirementPreview.showTierSections())
             {
@@ -967,10 +969,19 @@ public final class CurrentTabRenderer
         g.drawString(label, x, y);
         y += lineH;
 
-        String name = truncateToWidth(task.getName() + completionSourceSuffix(info), fm, innerW);
         g.setColor(uiText);
-        g.drawString(name, x, y);
-        y += lineH;
+        List<String> nameLines = wrapText(task.getName() + completionSourceSuffix(info), fm, innerW);
+        int maxNameLines = 3;
+        for (int i = 0; i < nameLines.size() && i < maxNameLines; i++)
+        {
+            String line = nameLines.get(i);
+            if (i == maxNameLines - 1 && nameLines.size() > maxNameLines)
+            {
+                line = truncateToWidth(line + "...", fm, innerW);
+            }
+            g.drawString(line, x, y);
+            y += lineH;
+        }
 
         String completed = formatCompletionSummary(info);
         completed = truncateToWidth(completed, fm, innerW);
@@ -978,7 +989,14 @@ public final class CurrentTabRenderer
         g.drawString(completed, x, y);
         y += lineH;
 
-        if (ticks != null && ticks > 0)
+        if (ticks != null && ticks < 0)
+        {
+            String time = "Time spent: N/A (Completed before rolled)";
+            time = truncateToWidth(time, fm, innerW);
+            g.drawString(time, x, y);
+            y += lineH;
+        }
+        else if (ticks != null && ticks > 0)
         {
             String time = "Time spent: " + formatTicks(Math.round(ticks * 0.6));
             time = truncateToWidth(time, fm, innerW);
@@ -1212,8 +1230,7 @@ public final class CurrentTabRenderer
 
         if (requirementPreview.showSummaryText())
         {
-            drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
-            y += rowHeight;
+            y = drawCollectionLogSummaryText(g, fm, requirementPreview.summaryText(), x, y, maxWidth);
             if (requirementPreview.showTierSections())
             {
                 y += TIER_SECTION_ICON_GAP;
@@ -1410,9 +1427,26 @@ public final class CurrentTabRenderer
         g.drawString(truncateToWidth(text, fm, Math.max(0, 160)), x, baseline);
     }
 
-    private void drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
+    private int drawCollectionLogSummaryText(Graphics2D g, FontMetrics fm, String summaryText, int x, int y, int maxWidth)
     {
         String text = safe(summaryText);
+        for (String line : summaryTextLines(text))
+        {
+            drawCollectionLogSummaryLine(g, fm, line, x, y, maxWidth);
+            y += rowHeight;
+        }
+        return y;
+    }
+
+    private void drawCollectionLogSummaryLine(Graphics2D g, FontMetrics fm, String text, int x, int y, int maxWidth)
+    {
+        if (isPendingOpenClogSummaryLine(text))
+        {
+            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
+            g.drawString(truncateToWidth(text, fm, maxWidth), x, y);
+            return;
+        }
+
         String separator = " | ";
         int separatorIndex = text.indexOf(separator);
         if (separatorIndex < 0)
@@ -1435,6 +1469,27 @@ public final class CurrentTabRenderer
         g.setColor(uiTextDim);
         g.drawString(prefix, x, y);
         drawCollectionLogSummarySuffix(g, fm, suffix, x + prefixWidth, y, maxWidth - prefixWidth);
+    }
+
+    private static int summaryTextLineCount(String summaryText)
+    {
+        return summaryTextLines(summaryText).size();
+    }
+
+    private static List<String> summaryTextLines(String summaryText)
+    {
+        String text = safe(summaryText);
+        if (text.isEmpty())
+        {
+            return List.of();
+        }
+        return List.of(text.split("\\R"));
+    }
+
+    private static boolean isPendingOpenClogSummaryLine(String text)
+    {
+        return text != null
+                && text.matches("\\+\\d+ obtained items? pending, open in-game clog to sync");
     }
 
     private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)

@@ -109,6 +109,8 @@ public class CollectionLogService
     private Runnable cacheChangeListener;
     private int cacheChangeBatchDepth = 0;
     private boolean cacheChangePending = false;
+    private boolean fullSyncSeen = false;
+    private long lastSyncSeenAtMillis = 0L;
     private final Map<String, Integer> resolvedChatItemIdsByName = new HashMap<>();
 
     public void setCacheChangeListener(Runnable cacheChangeListener)
@@ -132,7 +134,7 @@ public class CollectionLogService
     @Subscribe
     public void onChatMessage(ChatMessage event)
     {
-        // Capture newly obtained collection log items from the in game notification.
+        // Capture newly obtained collection log items from the in-game notification.
         // This fires even when the Collection Log interface is closed.
         ChatMessageType type = event.getType();
         if (type != ChatMessageType.GAMEMESSAGE && type != ChatMessageType.SPAM)
@@ -276,6 +278,8 @@ public class CollectionLogService
         {
             if (markObtainedItem(itemId, null))
             {
+                log.debug("XtremeTasker CLOG sync debug: cached obtained itemId={} canonical={} obtainedCount={} seenCount={}",
+                        itemId, canonicalCollectionLogItemId(itemId), obtainedItems.size(), seenItems.size());
                 notifyCacheChanged();
             }
         }
@@ -285,8 +289,15 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
-            seenItems.add(itemId);
-            seenItems.add(canonicalCollectionLogItemId(itemId));
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            boolean changed = seenItems.add(itemId);
+            changed |= seenItems.add(canonicalItemId);
+            if (changed)
+            {
+                log.debug("XtremeTasker CLOG sync debug: cached seen itemId={} canonical={} obtainedCount={} seenCount={}",
+                        itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
+                notifyCacheChanged();
+            }
         }
     }
 
@@ -370,6 +381,61 @@ public class CollectionLogService
         return obtainedItems.size();
     }
 
+    public int getSeenItemCount()
+    {
+        return seenItems.size();
+    }
+
+    public boolean hasFullSyncSeen()
+    {
+        return fullSyncSeen;
+    }
+
+    public long getLastSyncSeenAtMillis()
+    {
+        return lastSyncSeenAtMillis;
+    }
+
+    public void markSyncSeen()
+    {
+        lastSyncSeenAtMillis = System.currentTimeMillis();
+        notifyCacheChanged();
+    }
+
+    public void markFullSyncSeen()
+    {
+        long now = System.currentTimeMillis();
+        boolean changed = !fullSyncSeen || lastSyncSeenAtMillis != now;
+        fullSyncSeen = true;
+        lastSyncSeenAtMillis = now;
+        if (pendingAncientPageDropCountSinceLastSync > 0)
+        {
+            pendingAncientPageDropCountSinceLastSync = 0;
+            changed = true;
+        }
+        if (pendingMedallionFragmentDropCountSinceLastSync > 0)
+        {
+            pendingMedallionFragmentDropCountSinceLastSync = 0;
+            changed = true;
+        }
+        if (changed)
+        {
+            notifyCacheChanged();
+        }
+    }
+
+    public void restoreSyncEvidence(boolean fullSyncSeen, long lastSyncSeenAtMillis)
+    {
+        this.fullSyncSeen = fullSyncSeen;
+        this.lastSyncSeenAtMillis = Math.max(0L, lastSyncSeenAtMillis);
+    }
+
+    public void restorePendingDropCounts(int pendingAncientPageDrops, int pendingMedallionFragmentDrops)
+    {
+        pendingAncientPageDropCountSinceLastSync = Math.max(0, pendingAncientPageDrops);
+        pendingMedallionFragmentDropCountSinceLastSync = Math.max(0, pendingMedallionFragmentDrops);
+    }
+
     public Set<Integer> getCachedItemIds()
     {
         return java.util.Collections.unmodifiableSet(obtainedItems);
@@ -388,24 +454,6 @@ public class CollectionLogService
     public int getPendingMedallionFragmentDropCountSinceLastSync()
     {
         return Math.max(0, pendingMedallionFragmentDropCountSinceLastSync);
-    }
-
-    public void clearPendingAncientPageDropCountSinceLastSync()
-    {
-        if (pendingAncientPageDropCountSinceLastSync > 0)
-        {
-            pendingAncientPageDropCountSinceLastSync = 0;
-            notifyCacheChanged();
-        }
-    }
-
-    public void clearPendingMedallionFragmentDropCountSinceLastSync()
-    {
-        if (pendingMedallionFragmentDropCountSinceLastSync > 0)
-        {
-            pendingMedallionFragmentDropCountSinceLastSync = 0;
-            notifyCacheChanged();
-        }
     }
 
     public void restoreCachedItemIds(Set<Integer> itemIds)
@@ -441,36 +489,6 @@ public class CollectionLogService
         reset();
     }
 
-    public void removeCachedItemIds(Set<Integer> itemIds)
-    {
-        if (itemIds == null || itemIds.isEmpty())
-        {
-            return;
-        }
-
-        boolean changed = false;
-        for (Integer itemId : itemIds)
-        {
-            if (itemId == null || itemId <= 0)
-            {
-                continue;
-            }
-
-            int canonicalItemId = canonicalCollectionLogItemId(itemId);
-            changed |= obtainedItems.remove(itemId);
-            changed |= obtainedItems.remove(canonicalItemId);
-            changed |= seenItems.remove(itemId);
-            changed |= seenItems.remove(canonicalItemId);
-            changed |= obtainedItemOrder.remove(itemId) != null;
-            changed |= obtainedItemOrder.remove(canonicalItemId) != null;
-        }
-
-        if (changed)
-        {
-            notifyCacheChanged();
-        }
-    }
-
     private void reset()
     {
         obtainedItems.clear();
@@ -482,6 +500,8 @@ public class CollectionLogService
         cacheChangeBatchDepth = 0;
         cacheChangePending = false;
         resolvedChatItemIdsByName.clear();
+        fullSyncSeen = false;
+        lastSyncSeenAtMillis = 0L;
     }
 
     public long getObtainedItemOrder(int itemId)
@@ -500,6 +520,8 @@ public class CollectionLogService
         int canonicalItemId = canonicalCollectionLogItemId(itemId);
         boolean changed = obtainedItems.add(itemId);
         changed |= obtainedItems.add(canonicalItemId);
+        changed |= seenItems.add(itemId);
+        changed |= seenItems.add(canonicalItemId);
 
         Long order = restoredOrder != null && restoredOrder > 0 ? restoredOrder : existingOrder(itemId, canonicalItemId);
         if (order == null)
@@ -539,12 +561,21 @@ public class CollectionLogService
         if (cacheChangeBatchDepth > 0)
         {
             cacheChangePending = true;
+            log.debug("XtremeTasker CLOG sync debug: cache change batched depth={} obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={}",
+                    cacheChangeBatchDepth, obtainedItems.size(), seenItems.size(), fullSyncSeen, lastSyncSeenAtMillis);
             return;
         }
 
         if (cacheChangeListener != null)
         {
+            log.debug("XtremeTasker CLOG sync debug: notifying plugin cache listener obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={}",
+                    obtainedItems.size(), seenItems.size(), fullSyncSeen, lastSyncSeenAtMillis);
             cacheChangeListener.run();
+        }
+        else
+        {
+            log.debug("XtremeTasker CLOG sync debug: cache changed but no listener is attached obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={}",
+                    obtainedItems.size(), seenItems.size(), fullSyncSeen, lastSyncSeenAtMillis);
         }
     }
 }

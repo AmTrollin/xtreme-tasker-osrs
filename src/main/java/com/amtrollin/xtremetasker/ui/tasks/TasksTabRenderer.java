@@ -25,6 +25,8 @@ import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 public final class TasksTabRenderer {
     private static final int TASKS_CONTROLS_COLUMN_W = 228;
     private static final long TASK_NAME_TOOLTIP_DELAY_MS = 1000L;
+    private static final int TASK_NAME_TOOLTIP_CURSOR_OFFSET_X = 4;
+    private static final int TASK_NAME_TOOLTIP_CURSOR_OFFSET_Y = 5;
     private static final int DATE_COL_W = 58;
     private static final int SPENT_COL_W = 48;
     private static final int HEADER_COL_GAP = 6;
@@ -524,20 +526,17 @@ public final class TasksTabRenderer {
 
         int tooltipW = Math.min(maxW, contentW + pad * 2);
         int tooltipH = pad * 2 + lines.size() * fm.getHeight();
-        int tooltipX = hoverX + 10;
+        int tooltipX = hoverX + TASK_NAME_TOOLTIP_CURSOR_OFFSET_X;
         int rightLimit = panelBounds.x + panelBounds.width - PANEL_PADDING;
         if (tooltipX + tooltipW > rightLimit) {
-            tooltipX = rightLimit - tooltipW;
+            tooltipX = hoverX - tooltipW - TASK_NAME_TOOLTIP_CURSOR_OFFSET_X;
         }
         tooltipX = Math.max(panelBounds.x + PANEL_PADDING, tooltipX);
 
-        int tooltipY = hoverY - tooltipH - 8;
-        if (tooltipY < panelBounds.y + PANEL_PADDING) {
-            tooltipY = hoverY + 12;
-        }
+        int tooltipY = hoverY + TASK_NAME_TOOLTIP_CURSOR_OFFSET_Y;
         int bottomLimit = panelBounds.y + panelBounds.height - PANEL_PADDING;
         if (tooltipY + tooltipH > bottomLimit) {
-            tooltipY = bottomLimit - tooltipH;
+            tooltipY = hoverY - tooltipH - TASK_NAME_TOOLTIP_CURSOR_OFFSET_Y;
         }
         tooltipY = Math.max(panelBounds.y + PANEL_PADDING, tooltipY);
 

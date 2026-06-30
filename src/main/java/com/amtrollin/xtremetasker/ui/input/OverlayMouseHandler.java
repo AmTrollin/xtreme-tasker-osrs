@@ -126,10 +126,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (tryHandleTaskResolveClick(e, p, button)) {
-            return e;
-        }
-
         // ------------------------------------------------------------
         // DETAILS POPUP click handling (highest priority)
         // ------------------------------------------------------------
@@ -246,6 +242,13 @@ public final class OverlayMouseHandler extends MouseAdapter {
         // X close button
         if (button == MouseEvent.BUTTON1 && a.panelCloseBounds().contains(p)) {
             a.setPanelOpen(false);
+            e.consume();
+            return e;
+        }
+
+        if (button == MouseEvent.BUTTON1 && a.panelModeToggleBounds().contains(p)) {
+            a.setCompactPanelMode(!a.isCompactPanelMode());
+            a.setActiveTab(OverlayInputAccess.MainTab.CURRENT);
             e.consume();
             return e;
         }
@@ -500,8 +503,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
 
             if (rollEnabled && a.currentLayout().rollButtonBounds.contains(p)) {
-                a.animations().startRoll();
-                a.plugin().rollRandomTaskAndPersist();
+                a.requestRollTask();
                 e.consume();
                 return e;
             }
@@ -540,24 +542,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 e.consume();
                 return e;
             }
-            if (a.rulesLayout().syncCaReviewButtonBounds.contains(p)) {
-                a.openSyncMismatchReview(null);
-                syncMismatchReviewOpenedAt = e.getWhen();
-                rememberSyncMismatchClick(e, p, button);
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)) {
-                a.plugin().dismissSyncMismatchReview(null);
-                a.closeSyncMismatchReview();
-                e.consume();
-                return e;
-            }
-            if (a.rulesLayout().taskerFaqLinkBounds.contains(p)) {
-                LinkBrowser.browse(RulesTabRenderer.taskerFaqUrl());
-                e.consume();
-                return e;
-            }
             if (a.rulesLayout().githubReadmeLinkBounds.contains(p)) {
                 LinkBrowser.browse(RulesTabRenderer.githubReadmeUrl());
                 e.consume();
@@ -588,7 +572,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
             return e;
         }
 
-        if (a.isMarkAllIncompleteConfirmOpen() || a.isTaskDetailsOpen() || a.isTaskResolveOpen()) {
+        if (a.isMarkAllIncompleteConfirmOpen() || a.isTaskDetailsOpen()) {
             return e;
         }
 
@@ -667,64 +651,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
         suppressTaskDetailsIncompleteConfirmClickX = p.x;
         suppressTaskDetailsIncompleteConfirmClickY = p.y;
         suppressTaskDetailsIncompleteConfirmClickButton = button;
-    }
-
-    private boolean tryHandleTaskResolveClick(MouseEvent e, Point p, int button)
-    {
-        if (!a.isTaskResolveOpen() || button != MouseEvent.BUTTON1)
-        {
-            return false;
-        }
-
-        if (a.taskResolveCancelBounds().contains(p))
-        {
-            a.closeTaskResolve();
-            e.consume();
-            return true;
-        }
-
-        if (a.taskResolveSaveBounds().contains(p))
-        {
-            if (a.hasTaskResolveChanges())
-            {
-                a.saveTaskResolve();
-            }
-            e.consume();
-            return true;
-        }
-
-        XtremeTask instance = taskResolveInstanceAt(p);
-        if (instance != null)
-        {
-            a.toggleTaskResolveTaskIncomplete(instance);
-            e.consume();
-            return true;
-        }
-
-        if (a.taskResolveBounds().contains(p))
-        {
-            e.consume();
-            return true;
-        }
-
-        a.closeTaskResolve();
-        e.consume();
-        return true;
-    }
-
-    private XtremeTask taskResolveInstanceAt(Point p)
-    {
-        synchronized (a.taskResolveInstanceToggleBounds())
-        {
-            for (Map.Entry<XtremeTask, Rectangle> entry : a.taskResolveInstanceToggleBounds().entrySet())
-            {
-                if (entry.getValue() != null && entry.getValue().contains(p))
-                {
-                    return entry.getKey();
-                }
-            }
-        }
-        return null;
     }
 
     private boolean tryHandleSyncMismatchClick(MouseEvent e, Point p, int button)
@@ -1051,17 +977,6 @@ public final class OverlayMouseHandler extends MouseAdapter {
             }
         }
 
-        if (a.isTaskResolveOpen())
-        {
-            XtremeTask hoveredResolveInstance = taskResolveInstanceAt(p);
-            updateHandCursor(
-                    a.taskResolveCancelBounds().contains(p)
-                            || (a.hasTaskResolveChanges() && a.taskResolveSaveBounds().contains(p))
-                            || (hoveredResolveInstance != null && a.canToggleTaskResolveTaskIncomplete(hoveredResolveInstance))
-            );
-            return e;
-        }
-
         if (a.isTaskDetailsIncompleteConfirmOpen())
         {
             updateHandCursor(
@@ -1111,12 +1026,9 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || (a.activeTab() == OverlayInputAccess.MainTab.RULES && (
                         a.rulesLayout().subTabRulesBounds.contains(p)
                         || a.rulesLayout().subTabDataSyncsBounds.contains(p)
-                        || a.rulesLayout().taskerFaqLinkBounds.contains(p)
                         || a.rulesLayout().githubReadmeLinkBounds.contains(p)
                         || a.rulesLayout().syncProgressButtonBounds.contains(p)
                         || a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncCaReviewButtonBounds.contains(p)
-                        || a.rulesLayout().syncCaReviewIgnoreButtonBounds.contains(p)
                 ))
                 // CURRENT tab
                 || (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && (
