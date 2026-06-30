@@ -40,6 +40,7 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskSelectionModel;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
+import com.amtrollin.xtremetasker.ui.text.UiText;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import lombok.Getter;
 import net.runelite.api.Client;
@@ -913,8 +914,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return "";
         }
 
-        return "+" + pendingDrops + " obtained " + (pendingDrops == 1 ? "item" : "items")
-                + " pending, open in-game clog to sync";
+        return "+" + UiText.format("clog.pending_summary", pendingDrops, pendingDrops == 1 ? "item" : "items");
     }
 
     private static int ancientPageNumber(int itemId)
@@ -2632,7 +2632,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 taskDetailsIncompleteConfirmYesBounds,
                 taskDetailsIncompleteConfirmNoBounds,
                 "Mark " + count + " " + taskLabel + " incomplete?",
-                "Completion dates and time spent will be cleared.");
+                UiText.get("overlay.confirm.clear_completion_times"));
     }
 
     private String syncReviewCompletionDateText(XtremeTask task)
@@ -2823,7 +2823,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (showCollectionLogRefreshHint)
         {
             g.setColor(P.UI_TEXT);
-            String refreshHint = "If new CLOG items are missing, open your Collection Log in-game to refresh CLOG review rows.";
+            String refreshHint = UiText.get("overlay.sync_review.refresh_hint");
             g.drawString(TextUtils.truncateToWidth(refreshHint, fm, w - pad * 2),
                     x + pad, nextY + fm.getAscent());
             nextY += fm.getHeight();
@@ -3017,18 +3017,19 @@ public class XtremeTaskerOverlay extends Overlay {
     private String syncReviewIntroMessage(boolean completionCandidates, boolean hasCollectionLogReview, boolean hasCombatAchievementReview)
     {
         String prefix = hasCollectionLogReview && hasCombatAchievementReview
-                ? "Tasks"
-                : hasCollectionLogReview ? "Collection Log + Achievement Diary tasks" : "Combat Achievement tasks";
+                ? UiText.get("overlay.sync_review.completion_prefix.collection_and_ca")
+                : hasCollectionLogReview
+                ? UiText.get("overlay.sync_review.completion_prefix.collection")
+                : UiText.get("overlay.sync_review.completion_prefix.ca");
         String suffix = completionCandidates
-                ? "found completed in-game via sync, but not marked completed in plugin."
-                : "marked completed in plugin, but not found completed in-game via sync.";
+                ? UiText.get("overlay.sync_review.candidates_suffix")
+                : UiText.get("overlay.sync_review.mismatch_suffix");
         return prefix + " " + suffix;
     }
 
     private String syncReviewInstruction(boolean completionCandidates)
     {
-        return "Choose which tasks to mark " + (completionCandidates ? "complete" : "incomplete")
-                + " in plugin, then select Apply to save.";
+        return UiText.format("overlay.sync_review.instruction", completionCandidates ? "complete" : "incomplete");
     }
 
     private List<XtremeTask> visibleSyncMismatchTasks()
@@ -3302,8 +3303,8 @@ public class XtremeTaskerOverlay extends Overlay {
                 ? "Mark " + count + " task(s) complete?"
                 : "Mark " + count + " task(s) incomplete?";
         String warning = reviewingCompletionCandidates
-                ? "Completion source will be recorded as sync."
-                : "Completion dates and time spent will be cleared.";
+                ? UiText.get("overlay.sync_review.confirm_sync_source")
+                : UiText.get("overlay.confirm.clear_completion_times");
         drawConfirmationPopup(
                 g,
                 fm,
@@ -3357,11 +3358,11 @@ public class XtremeTaskerOverlay extends Overlay {
         XtremeTask pending = pendingMarkAllIncompleteTask;
         boolean multipleTasks = pending != null && pendingMarkAllIncompleteGroupMode;
         String message = multipleTasks
-                ? "Mark ALL repeated task instances incomplete?"
-                : "Are you sure you want to mark this task incomplete?";
+                ? UiText.get("overlay.mark_incomplete.all_instances")
+                : UiText.get("overlay.mark_incomplete.single");
         String warning = multipleTasks
-                ? "This clears every completed instance, including dates and time spent."
-                : "Completion date and time spent will be lost.";
+                ? UiText.get("overlay.mark_incomplete.all_warning")
+                : UiText.get("overlay.mark_incomplete.single_warning");
         String dontShowText = "Do not show this again";
         int textW = Math.max(fm.stringWidth(message), fm.stringWidth(warning));
         if (!multipleTasks)

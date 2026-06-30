@@ -1,5 +1,6 @@
 package com.amtrollin.xtremetasker.ui.input;
 
+import com.amtrollin.xtremetasker.ui.text.UiText;
 import lombok.RequiredArgsConstructor;
 
 import java.awt.event.KeyEvent;
@@ -26,7 +27,7 @@ public final class CurrentTabKeyHandler
 
             if (!rollEnabled)
             {
-                notifyUser("You can only roll a new task after completing the current one.");
+                notifyUser(UiText.get("input.roll_blocked"));
                 return true;
             }
 

@@ -14,6 +14,7 @@ import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasks.CollectionLogIconGridRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
+import com.amtrollin.xtremetasker.ui.text.UiText;
 import net.runelite.api.Skill;
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -34,14 +35,14 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.wrapText;
 
 public final class CurrentTabRenderer
 {
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = UiText.get("current.achievement_diary_note");
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
     private static final int TIER_SECTION_ICON_GAP = 5;
     private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
     private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
-    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
+    private static final String OTHER_SEQUENCE_CLOGS_LABEL = UiText.get("current.other_sequence_clogs");
     private static final int DETAILS_INSET_X = 10;
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
     private static final DateTimeFormatter COMPLETION_DATE_TIME_FORMAT =
@@ -548,7 +549,7 @@ public final class CurrentTabRenderer
 
             if (mousePoint != null && layout.rollSourceIconBounds.contains(mousePoint))
             {
-                String tip = "You can change this in the plugin settings";
+                String tip = UiText.get("current.roll_source_tip");
                 int tipW = smallFm.stringWidth(tip) + 10;
                 int tipX = iconX + (iconSize - tipW) / 2;
                 if (tipX < card.x + 8) tipX = card.x + 8;
@@ -991,7 +992,7 @@ public final class CurrentTabRenderer
 
         if (ticks != null && ticks < 0)
         {
-            String time = "Time spent: N/A (Completed before rolled)";
+            String time = UiText.get("current.time_spent_completed_before_roll");
             time = truncateToWidth(time, fm, innerW);
             g.drawString(time, x, y);
             y += lineH;
@@ -1488,8 +1489,7 @@ public final class CurrentTabRenderer
 
     private static boolean isPendingOpenClogSummaryLine(String text)
     {
-        return text != null
-                && text.matches("\\+\\d+ obtained items? pending, open in-game clog to sync");
+        return text != null && text.matches(UiText.get("clog.pending_summary.regex"));
     }
 
     private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)

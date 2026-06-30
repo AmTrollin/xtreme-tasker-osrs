@@ -3,6 +3,7 @@ package com.amtrollin.xtremetasker.ui.tasks;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
 import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
+import com.amtrollin.xtremetasker.ui.text.UiText;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -196,7 +197,7 @@ public class TaskControlsRenderer
             drawHelpIcon(g, fm, layout.filterNewTasksHelp);
             if (layout.filterNewTasksHelp.contains(mouseX, mouseY))
             {
-                drawTooltipBelowRightAligned(g, fm, "New tasks have been added since your last login", layout.filterNewTasksHelp, panelX + panelW + 5);
+                drawTooltipBelowRightAligned(g, fm, UiText.get("tasks.new_tasks_help"), layout.filterNewTasksHelp, panelX + panelW + 5);
             }
 
             cursorY += newRowH + fm.getHeight() + 8;

@@ -13,6 +13,7 @@ import com.amtrollin.xtremetasker.ui.tasklist.TaskListScrollController;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
+import com.amtrollin.xtremetasker.ui.text.UiText;
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
@@ -38,7 +39,7 @@ import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 public final class TaskDetailsPopup
 {
     private static final int INSTANCE_BLOCK_PAD_BOTTOM = 6;
-    private static final String ACHIEVEMENT_DIARY_NOTE = "Synced from in-game diary completion.";
+    private static final String ACHIEVEMENT_DIARY_NOTE = UiText.get("current.achievement_diary_note");
     private static final String MEDALLION_ASSEMBLY_TITLE_PREFIX = "Need all ";
     private static final int SECONDARY_SECTION_GAP = 6;
     private static final int MEDALLION_ASSEMBLY_SECTION_GAP = 12;
@@ -46,7 +47,7 @@ public final class TaskDetailsPopup
     private static final int TIER_SECTION_LABEL_TOP_GAP = 4;
     private static final int OTHER_SEQUENCE_LABEL_TOP_GAP = 5;
     private static final String OTHER_SEQUENCE_CLOGS_DIVIDER = "___";
-    private static final String OTHER_SEQUENCE_CLOGS_LABEL = "Other clogs in this task sequence, but different tier:";
+    private static final String OTHER_SEQUENCE_CLOGS_LABEL = UiText.get("current.other_sequence_clogs");
     private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
     private static final DateTimeFormatter COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault());
@@ -968,15 +969,15 @@ public final class TaskDetailsPopup
     static String syncMismatchTitle(XtremeTask task)
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "You do not have enough CLOGs"
-                : "Task not completed in-game";
+                ? UiText.get("task_details.sync_mismatch.collection_log_title")
+                : UiText.get("task_details.sync_mismatch.other_title");
     }
 
     static String syncMismatchAction(XtremeTask task)
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
-                ? "Open your Collection Log or mark task incomplete"
-                : "Mark task incomplete to keep task tracking accurate";
+                ? UiText.get("task_details.sync_mismatch.collection_log_action")
+                : UiText.get("task_details.sync_mismatch.other_action");
     }
 
     private void drawGroupProgressEditor(
@@ -1178,7 +1179,7 @@ public final class TaskDetailsPopup
             drawTooltip(
                     g,
                     fm,
-                    "Some tasks occur multiple times; this tracks completed instances.",
+                    UiText.get("task_details.group_progress_help"),
                     iconX + iconSize,
                     iconY,
                     true
@@ -1475,8 +1476,7 @@ public final class TaskDetailsPopup
 
     private static boolean isPendingOpenClogSummaryLine(String text)
     {
-        return text != null
-                && text.matches("\\+\\d+ obtained items? pending, open in-game clog to sync");
+        return text != null && text.matches(UiText.get("clog.pending_summary.regex"));
     }
 
     private void drawCollectionLogSummarySuffix(Graphics2D g, FontMetrics fm, String suffix, int x, int y, int maxWidth)
@@ -1690,7 +1690,7 @@ public final class TaskDetailsPopup
     {
         if (ticks != null && ticks < 0)
         {
-            return "Time spent: N/A (Completed before rolled)";
+            return UiText.get("current.time_spent_completed_before_roll");
         }
 
         if (ticks != null && ticks > 0)
@@ -1704,7 +1704,7 @@ public final class TaskDetailsPopup
         }
         if (info != null && info.source == CompletionInfo.Source.SYNCED)
         {
-            return "Time spent: N/A (synced)";
+            return UiText.get("current.time_spent_synced");
         }
         return "Time spent: unknown";
     }

@@ -1,6 +1,7 @@
 package com.amtrollin.xtremetasker.ui.rules;
 
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
+import com.amtrollin.xtremetasker.ui.text.UiText;
 import net.runelite.client.ui.FontManager;
 
 import java.awt.*;
@@ -28,8 +29,6 @@ public final class RulesTabRenderer {
     private static final String GITHUB_README_URL =
             "https://github.com/AmTrollin/xtreme-tasker-osrs/blob/master/docs/RULES.md";
     private static final String RULES_TITLE = "Rules";
-    private static final String RULES_SUMMARY_INTRO =
-            "Xtreme Tasker follows the official Tasker ruleset, with additional rules to support the expanded task list.";
     private static final String RULES_SUMMARY_LINK_PREFIX = "See the ";
     private static final String RULES_SUMMARY_LINK_TEXT = "Xtreme Tasker Rules GitHub README";
     private static final String RULES_SUMMARY_SUFFIX = ".";
@@ -43,12 +42,6 @@ public final class RulesTabRenderer {
     private static final String LINE_SYNC_HELPER_DIM_PREFIX = "[SYNC_HELPER_DIM]";
     private static final String LINE_SYNC_BUTTON_TOP_SPACER = "[SYNC_BUTTON_TOP_SPACER]";
     private static final String SYNC_TITLE_TEXT = "Sync & Review Task Completions";
-    private static final String SYNC_DESCRIPTION_TEXT =
-            "Find tasks already completed in-game for Combat Achievements and Achievement Diaries, then review and mark complete below.";
-    private static final String CLOG_SYNC_HELPER_TEXT =
-            "For Collection Log tasks, open your in-game Collection Log. The plugin refreshes your Collection Log progress and adds any newly eligible tasks to the review below.";
-    private static final String SYNC_LIMITATION_HELPER_TEXT =
-            "Note: rarely, some completed tasks may not be detected.";
     private static final DateTimeFormatter SYNC_DATE_FORMATTER = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US);
     private static final DateTimeFormatter SYNC_TIME_FORMATTER = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
     private static final Color SYNC_FOUND_GREEN = new Color(111, 190, 92);
@@ -219,10 +212,10 @@ public final class RulesTabRenderer {
         boolean hasCaResult = lastCombatAchievementSyncResult != null && !lastCombatAchievementSyncResult.trim().isEmpty();
 
         lines.add(LINE_SYNC_HELPER_GOLD_PREFIX + SYNC_TITLE_TEXT);
-        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, SYNC_DESCRIPTION_TEXT, fm, maxWidth));
+        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, UiText.get("rules.sync.description"), fm, maxWidth));
         lines.add("");
-        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, CLOG_SYNC_HELPER_TEXT, fm, maxWidth));
-        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, SYNC_LIMITATION_HELPER_TEXT, fm, maxWidth));
+        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, UiText.get("rules.sync.clog_helper"), fm, maxWidth));
+        lines.addAll(prefixWrappedLines(LINE_SYNC_HELPER_DIM_PREFIX, UiText.get("rules.sync.limitation"), fm, maxWidth));
         lines.add(LINE_SYNC_BUTTON_TOP_SPACER);
         lines.add(LINE_SYNC_PROGRESS_BUTTON_ROW);
         if (hasCaResult)
@@ -376,7 +369,7 @@ public final class RulesTabRenderer {
         int suffixW = fm.stringWidth(RULES_SUMMARY_SUFFIX);
 
         g.setColor(uiTextDim);
-        drawCenteredText(g, fm, RULES_SUMMARY_INTRO, x, lineY, maxWidth, 0);
+        drawCenteredText(g, fm, UiText.get("rules.summary.intro"), x, lineY, maxWidth, 0);
 
         lineY += rowBlock();
         String prefix = TextUtils.truncateToWidth(RULES_SUMMARY_LINK_PREFIX, fm, maxWidth);
@@ -426,8 +419,8 @@ public final class RulesTabRenderer {
         String prefix = foundCount > 0 ? LINE_SYNC_RESULT_FOUND_PREFIX : LINE_SYNC_RESULT_EMPTY_PREFIX;
         String completionNoun = foundCount == 1 ? "task completion" : "task completions";
         String message = foundCount > 0
-                ? "Result: review has " + foundCount + " new " + completionNoun + "!"
-                : "Result: review has no new task completions";
+                ? UiText.format("rules.sync.result_found", foundCount, completionNoun)
+                : UiText.get("rules.sync.result_empty");
         lines.addAll(prefixWrappedLines(prefix, message, fm, maxWidth));
     }
 
