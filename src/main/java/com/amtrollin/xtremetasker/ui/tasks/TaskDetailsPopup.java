@@ -4,7 +4,7 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
-import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
+import com.amtrollin.xtremetasker.ui.PrerequisiteSectionRenderer;
 import com.amtrollin.xtremetasker.ui.style.*;
 import com.amtrollin.xtremetasker.ui.tasklist.*;
 import com.amtrollin.xtremetasker.ui.tasks.models.*;
@@ -39,6 +39,7 @@ public final class TaskDetailsPopup
     private final UiPalette palette;
     private final TaskListScrollController scroll;
     private final CollectionLogRequirementRenderer collectionLogRequirementRenderer;
+    private final PrerequisiteSectionRenderer prerequisiteSectionRenderer;
 
     private XtremeTask task = null;
 
@@ -70,6 +71,7 @@ public final class TaskDetailsPopup
                 palette.UI_TEXT_DIM,
                 palette.UI_EDGE_LIGHT,
                 palette.UI_EDGE_DARK);
+        this.prerequisiteSectionRenderer = new PrerequisiteSectionRenderer(ROW_HEIGHT, palette.UI_TEXT, palette.UI_TEXT_DIM);
     }
 
     public boolean isOpen()
@@ -410,15 +412,10 @@ public final class TaskDetailsPopup
         viewportBounds.setBounds(contentLeft, viewportTop, contentW, viewportH);
 
         // Snapshot prereq data once (used for both counting and drawing)
-        String prereqs = safe(task.getPrereqs()).replace("\r", "").trim();
-        if (prereqs.equalsIgnoreCase("none") || prereqs.equalsIgnoreCase("n/a") || prereqs.equals("-")) prereqs = "";
+        String prereqs = PrerequisiteSectionRenderer.normalizeText(task.getPrereqs());
         List<PrerequisiteStatus> prerequisiteStatuses = (prerequisiteStatusProvider == null)
                 ? List.of()
                 : prerequisiteStatusProvider.apply(task);
-        if ((prerequisiteStatuses == null || prerequisiteStatuses.isEmpty()) && !prereqs.isEmpty())
-        {
-            prereqs = prereqs.replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
-        }
 
         // Count total content pixel height for scroll math
         boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
@@ -462,7 +459,7 @@ public final class TaskDetailsPopup
             if (tipInDescriptionSection)
             {
                 totalPx += ROW_HEIGHT; // blank line before tip
-                totalPx += measureTipHeight(taskTip, fm, contentW);
+                totalPx += prerequisiteSectionRenderer.measureTip(taskTip, fm, contentW, Integer.MAX_VALUE);
             }
         }
         if (showDescriptionSection)
@@ -478,36 +475,20 @@ public final class TaskDetailsPopup
         {
             if (tipInRequirementSection)
             {
-                totalPx += measureTipHeight(taskTip, fm, contentW);
+                totalPx += prerequisiteSectionRenderer.measureTip(taskTip, fm, contentW, Integer.MAX_VALUE);
                 totalPx += 6;
             }
             totalPx += collectionLogRequirementRenderer.measure(requirementPreview, fm, contentW);
             totalPx += 6 + 12; // divider gap before "Prereqs"
         }
         totalPx += ROW_HEIGHT; // "Prereqs" header
-        if ((prerequisiteStatuses == null || prerequisiteStatuses.isEmpty()) && prereqs.isEmpty())
-        {
-            totalPx += ROW_HEIGHT; // "None"
-        }
-        else if (prerequisiteStatuses != null && !prerequisiteStatuses.isEmpty())
-        {
-            for (PrerequisiteStatus status : prerequisiteStatuses)
-            {
-                BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
-                int lineHeight = PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, status);
-                totalPx += lineHeight * TextUtils.wrapText(status.getText(), fm,
-                        PrerequisiteIconRenderer.textWidth(fm, contentW, markerImage)).size();
-            }
-        }
-        else
-        {
-            for (String para : prereqs.split("\n"))
-            {
-                String p = para.trim();
-                if (p.isEmpty()) continue;
-                totalPx += ROW_HEIGHT * TextUtils.wrapText(p, fm, contentW).size();
-            }
-        }
+        totalPx += prerequisiteSectionRenderer.measure(
+                prereqs,
+                prerequisiteStatuses,
+                fm,
+                contentW,
+                prerequisiteSkillImageProvider,
+                prerequisiteMarkerImageProvider);
         if (!instanceHistoryLines.isEmpty())
         {
             totalPx += 6 + 12; // divider gap before completed instance history
@@ -592,7 +573,7 @@ public final class TaskDetailsPopup
             if (tipInDescriptionSection)
             {
                 y += ROW_HEIGHT;
-                y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
+                y = prerequisiteSectionRenderer.drawTip(g, fm, taskTip, contentLeft, y, contentW, Integer.MAX_VALUE);
             }
         }
 
@@ -622,7 +603,7 @@ public final class TaskDetailsPopup
         {
             if (tipInRequirementSection)
             {
-                y = drawTaskTip(g, fm, taskTip, contentLeft, y, contentW);
+                y = prerequisiteSectionRenderer.drawTip(g, fm, taskTip, contentLeft, y, contentW, Integer.MAX_VALUE);
                 y += 6;
             }
 
@@ -644,50 +625,17 @@ public final class TaskDetailsPopup
         g.drawString("Prereqs", contentLeft, y);
         y += ROW_HEIGHT;
 
-        if ((prerequisiteStatuses == null || prerequisiteStatuses.isEmpty()) && prereqs.isEmpty())
-        {
-            g.setColor(palette.UI_TEXT_DIM);
-            g.drawString("None", contentLeft, y);
-            y += ROW_HEIGHT;
-        }
-        else if (prerequisiteStatuses != null && !prerequisiteStatuses.isEmpty())
-        {
-            for (PrerequisiteStatus status : prerequisiteStatuses)
-            {
-                BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
-                int textX = PrerequisiteIconRenderer.textX(fm, contentLeft, markerImage);
-                int textW = PrerequisiteIconRenderer.textWidth(fm, contentW, markerImage);
-                int lineHeight = PrerequisiteIconRenderer.lineHeight(ROW_HEIGHT, status);
-                boolean firstLine = true;
-                for (String line : TextUtils.wrapText(status.getText(), fm, textW))
-                {
-                    if (firstLine)
-                    {
-                        PrerequisiteIconRenderer.drawMarker(g, fm, markerImage, contentLeft, y);
-                    }
-                    String drawLine = TextUtils.truncateToWidth(line, fm, textW);
-                    drawPrerequisiteStatusLine(g, fm, status, drawLine, textX, y);
-
-                    y += lineHeight;
-                    firstLine = false;
-                }
-            }
-        }
-        else
-        {
-            g.setColor(palette.UI_TEXT);
-            for (String para : prereqs.split("\n"))
-            {
-                String p = para.trim();
-                if (p.isEmpty()) continue;
-
-                for (String line : TextUtils.wrapText(p, fm, contentW))
-                {
-                    g.drawString(TextUtils.truncateToWidth(line, fm, contentW), contentLeft, y);
-                    y += ROW_HEIGHT;
-                }
-            }
-        }
+        y = prerequisiteSectionRenderer.render(
+                g,
+                fm,
+                contentLeft,
+                y,
+                contentW,
+                prereqs,
+                prerequisiteStatuses,
+                prerequisiteSkillImageProvider,
+                prerequisiteMarkerImageProvider,
+                palette.UI_TEXT);
 
         if (!instanceHistoryLines.isEmpty())
         {
@@ -824,23 +772,6 @@ public final class TaskDetailsPopup
         }
     }
 
-    private int measureTipHeight(String tip, FontMetrics fm, int maxWidth)
-    {
-        return ROW_HEIGHT * TextUtils.wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40)).size();
-    }
-
-    private int drawTaskTip(Graphics2D g, FontMetrics fm, String tip, int x, int y, int maxWidth)
-    {
-        List<String> tipLines = TextUtils.wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40));
-        g.setColor(palette.UI_TEXT_DIM);
-        for (String line : tipLines)
-        {
-            g.drawString(TextUtils.truncateToWidth(line, fm, maxWidth), x, y);
-            y += ROW_HEIGHT;
-        }
-        return y;
-    }
-
     private void drawMarkIncompleteAction(Graphics2D g, Rectangle bounds, boolean hover)
     {
         Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
@@ -914,77 +845,6 @@ public final class TaskDetailsPopup
 
         int helpX = textX + fm.stringWidth(drawText) + gap;
         drawGroupProgressHelpIcon(g, fm, helpX, rowTop, rowH, x + contentW, mouse);
-    }
-
-    private void drawPrerequisiteStatusLine(
-            Graphics2D g,
-            FontMetrics fm,
-            PrerequisiteStatus status,
-            String drawLine,
-            int x,
-            int baselineY
-    )
-    {
-        boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
-        Color textColor = !hasCheckSpans && status.isCompleted() ? palette.UI_TEXT_DIM : palette.UI_TEXT;
-        if (isStartQuestLine(status, drawLine))
-        {
-            String startText = "Start";
-            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
-            g.drawString(startText, x, baselineY);
-            g.setColor(textColor);
-            g.drawString(drawLine.substring(startText.length()), x + fm.stringWidth(startText), baselineY);
-        }
-        else
-        {
-            g.setColor(textColor);
-            g.drawString(drawLine, x, baselineY);
-        }
-
-        if (!hasCheckSpans)
-        {
-            if (status.isCompleted())
-            {
-                drawStrikeThrough(g, fm, drawLine, x, baselineY);
-            }
-            return;
-        }
-
-        for (PrerequisiteStatus.CheckSpan span : status.getCheckSpans())
-        {
-            if (!span.isCompleted() || span.getStart() < 0 || span.getEnd() > status.getText().length() || span.getStart() >= span.getEnd())
-            {
-                continue;
-            }
-
-            String spanText = status.getText().substring(span.getStart(), span.getEnd());
-            int lineIndex = drawLine.indexOf(spanText);
-            if (lineIndex < 0)
-            {
-                continue;
-            }
-
-            int spanX = x + fm.stringWidth(drawLine.substring(0, lineIndex));
-            g.setColor(palette.UI_TEXT_DIM);
-            g.drawString(spanText, spanX, baselineY);
-            drawStrikeThrough(g, fm, spanText, spanX, baselineY);
-        }
-    }
-
-    private static boolean isStartQuestLine(PrerequisiteStatus status, String drawLine)
-    {
-        return status.getMarkerIcons() != null
-                && status.getMarkerIcons().contains(MarkerIcon.START_QUEST)
-                && drawLine != null
-                && drawLine.startsWith("Start");
-    }
-
-    private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)
-    {
-        int lineW = fm.stringWidth(text);
-        int strikeY = baselineY - (fm.getAscent() * 3 / 5);
-        g.setColor(withAlpha(palette.UI_TEXT_DIM, 170));
-        g.drawLine(x, strikeY, x + lineW, strikeY);
     }
 
     private int drawSectionDivider(Graphics2D g, FontMetrics fm, int x, int y, int width)

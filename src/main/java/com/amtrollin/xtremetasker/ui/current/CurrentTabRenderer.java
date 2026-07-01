@@ -5,7 +5,7 @@ import com.amtrollin.xtremetasker.enums.*;
 import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
-import com.amtrollin.xtremetasker.ui.PrerequisiteIconRenderer;
+import com.amtrollin.xtremetasker.ui.PrerequisiteSectionRenderer;
 import com.amtrollin.xtremetasker.ui.style.*;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.tasks.CollectionLogRequirementRenderer;
@@ -42,6 +42,7 @@ public final class CurrentTabRenderer
     private final Color edgeLight;
     private final Color edgeDark;
     private final CollectionLogRequirementRenderer collectionLogRequirementRenderer;
+    private final PrerequisiteSectionRenderer prerequisiteSectionRenderer;
 
     public CurrentTabRenderer(
             int panelWidth,
@@ -70,6 +71,7 @@ public final class CurrentTabRenderer
                 uiTextDim,
                 edgeLight,
                 edgeDark);
+        this.prerequisiteSectionRenderer = new PrerequisiteSectionRenderer(rowHeight, uiText, uiTextDim);
     }
 
     /**
@@ -728,37 +730,26 @@ public final class CurrentTabRenderer
             if (tipInDescriptionSection)
             {
                 totalPx += rowHeight;
-                totalPx += measureTipHeight(tip, fm, maxW, 5);
+                totalPx += prerequisiteSectionRenderer.measureTip(tip, fm, maxW, 5);
             }
             totalPx += 8;
         }
 
         totalPx += rowHeight;
-        String prereqs = normalizePrereqs(current.getPrereqs());
+        String prereqs = PrerequisiteSectionRenderer.normalizeText(current.getPrereqs());
         boolean hasPrereqs = !prereqs.isEmpty();
         if (hasPrereqs)
         {
             List<PrerequisiteStatus> statuses = prerequisiteStatusProvider == null
                     ? List.of()
                     : prerequisiteStatusProvider.apply(current);
-            if (statuses == null || statuses.isEmpty())
-            {
-                String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
-                for (String line : formatted.split("\n"))
-                {
-                    totalPx += rowHeight * wrapText(line, fm, maxW).size();
-                }
-            }
-            else
-            {
-                for (PrerequisiteStatus status : statuses)
-                {
-                    BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
-                    int lineHeight = PrerequisiteIconRenderer.lineHeight(rowHeight, status);
-                    totalPx += lineHeight * wrapText(status.getText(), fm,
-                            PrerequisiteIconRenderer.textWidth(fm, maxW, markerImage)).size();
-                }
-            }
+            totalPx += prerequisiteSectionRenderer.measure(
+                    prereqs,
+                    statuses,
+                    fm,
+                    maxW,
+                    prerequisiteSkillImageProvider,
+                    prerequisiteMarkerImageProvider);
         }
         else
         {
@@ -770,7 +761,7 @@ public final class CurrentTabRenderer
         {
             if (tipInRequirementSection)
             {
-                totalPx += measureTipHeight(tip, fm, maxW, 5);
+                totalPx += prerequisiteSectionRenderer.measureTip(tip, fm, maxW, 5);
                 totalPx += 6;
             }
             totalPx += collectionLogRequirementRenderer.measure(requirementPreview, fm, maxW);
@@ -806,7 +797,7 @@ public final class CurrentTabRenderer
                 ? diaryTaskDescription(current)
                 : (hideDescription ? null : current.getDescription());
         boolean hasDesc = desc != null && !desc.trim().isEmpty();
-        String prereqs = normalizePrereqs(current.getPrereqs());
+        String prereqs = PrerequisiteSectionRenderer.normalizeText(current.getPrereqs());
         boolean hasPrereqs = !prereqs.isEmpty();
         String tip = showTips ? current.getTip() : null;
         boolean hasTip = tip != null && !tip.trim().isEmpty();
@@ -828,7 +819,7 @@ public final class CurrentTabRenderer
             if (tipInDescriptionSection)
             {
                 y += rowHeight;
-                y = drawTaskTip(g, fm, tip, x, y, maxW, 5);
+                y = prerequisiteSectionRenderer.drawTip(g, fm, tip, x, y, maxW, 5);
             }
             y += 8;
         }
@@ -837,7 +828,7 @@ public final class CurrentTabRenderer
         {
             if (tipInRequirementSection)
             {
-                y = drawTaskTip(g, fm, tip, x, y, maxW, 5);
+                y = prerequisiteSectionRenderer.drawTip(g, fm, tip, x, y, maxW, 5);
                 y += 6;
             }
             y = collectionLogRequirementRenderer.render(
@@ -857,30 +848,20 @@ public final class CurrentTabRenderer
         g.drawString("Prereqs", x, y);
         y += rowHeight;
 
-        if (hasPrereqs)
-        {
-            List<PrerequisiteStatus> statuses = prerequisiteStatusProvider == null
-                    ? List.of()
-                    : prerequisiteStatusProvider.apply(current);
-
-            if (statuses == null || statuses.isEmpty())
-            {
-                g.setColor(uiTextDim);
-                String formatted = prereqs.replace("\r", "").replaceAll("\\s*;\\s*", "\n").replaceAll("\n{2,}", "\n").trim();
-                y = drawWrapped(g, fm, formatted, x, y, maxW, Integer.MAX_VALUE);
-            }
-            else
-            {
-                g.setColor(uiTextDim);
-                y = drawPrerequisites(g, fm, x, y, maxW, statuses, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider, Integer.MAX_VALUE);
-            }
-        }
-        else
-        {
-            g.setColor(uiTextDim);
-            g.drawString("None", x, y);
-            y += rowHeight;
-        }
+        List<PrerequisiteStatus> statuses = hasPrereqs && prerequisiteStatusProvider != null
+                ? prerequisiteStatusProvider.apply(current)
+                : List.of();
+        y = prerequisiteSectionRenderer.render(
+                g,
+                fm,
+                x,
+                y,
+                maxW,
+                prereqs,
+                statuses,
+                prerequisiteSkillImageProvider,
+                prerequisiteMarkerImageProvider,
+                uiTextDim);
         y += 8;
 
         return y;
@@ -1029,132 +1010,6 @@ public final class CurrentTabRenderer
         return y;
     }
 
-    private int drawPrerequisites(
-            Graphics2D g,
-            FontMetrics fm,
-            int x,
-            int yBaseline,
-            int maxWidth,
-            List<PrerequisiteStatus> statuses,
-            Function<Skill, BufferedImage> prerequisiteSkillImageProvider,
-            Function<MarkerIcon, BufferedImage> prerequisiteMarkerImageProvider,
-            int maxLines
-    )
-    {
-        int y = yBaseline;
-        int drawn = 0;
-
-        for (PrerequisiteStatus status : statuses)
-        {
-            BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
-            int textX = PrerequisiteIconRenderer.textX(fm, x, markerImage);
-            int textWidth = PrerequisiteIconRenderer.textWidth(fm, maxWidth, markerImage);
-            int lineHeight = PrerequisiteIconRenderer.lineHeight(rowHeight, status);
-            boolean firstLine = true;
-            for (String line : wrapText(status.getText(), fm, textWidth))
-            {
-                if (drawn >= maxLines)
-                {
-                    return y;
-                }
-
-                if (firstLine)
-                {
-                    PrerequisiteIconRenderer.drawMarker(g, fm, markerImage, x, y);
-                }
-                String drawLine = truncateToWidth(line, fm, textWidth);
-                drawPrerequisiteStatusLine(g, fm, status, drawLine, textX, y);
-
-                y += lineHeight;
-                drawn++;
-                firstLine = false;
-            }
-        }
-
-        return y;
-    }
-
-    private void drawPrerequisiteStatusLine(
-            Graphics2D g,
-            FontMetrics fm,
-            PrerequisiteStatus status,
-            String drawLine,
-            int x,
-            int y
-    )
-    {
-        boolean hasCheckSpans = status.getCheckSpans() != null && !status.getCheckSpans().isEmpty();
-        Color textColor = !hasCheckSpans && status.isCompleted() ? uiTextDim : uiText;
-        if (isStartQuestLine(status, drawLine))
-        {
-            String startText = "Start";
-            g.setColor(UiPalette.TIER_COMPLETE_GLOW);
-            g.drawString(startText, x, y);
-            g.setColor(textColor);
-            g.drawString(drawLine.substring(startText.length()), x + fm.stringWidth(startText), y);
-        }
-        else
-        {
-            g.setColor(textColor);
-            g.drawString(drawLine, x, y);
-        }
-
-        if (!hasCheckSpans)
-        {
-            if (status.isCompleted())
-            {
-                drawStrikeThrough(g, fm, drawLine, x, y);
-            }
-            return;
-        }
-
-        for (PrerequisiteStatus.CheckSpan span : status.getCheckSpans())
-        {
-            if (!span.isCompleted() || span.getStart() < 0 || span.getEnd() > status.getText().length() || span.getStart() >= span.getEnd())
-            {
-                continue;
-            }
-
-            String spanText = status.getText().substring(span.getStart(), span.getEnd());
-            int lineIndex = drawLine.indexOf(spanText);
-            if (lineIndex < 0)
-            {
-                continue;
-            }
-
-            int spanX = x + fm.stringWidth(drawLine.substring(0, lineIndex));
-            g.setColor(uiTextDim);
-            g.drawString(spanText, spanX, y);
-            drawStrikeThrough(g, fm, spanText, spanX, y);
-        }
-    }
-
-    private static boolean isStartQuestLine(PrerequisiteStatus status, String drawLine)
-    {
-        return status.getMarkerIcons() != null
-                && status.getMarkerIcons().contains(MarkerIcon.START_QUEST)
-                && drawLine != null
-                && drawLine.startsWith("Start");
-    }
-
-    private int measureTipHeight(String tip, FontMetrics fm, int maxWidth, int maxLines)
-    {
-        return rowHeight * Math.min(wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40)).size(), maxLines);
-    }
-
-    private int drawTaskTip(Graphics2D g, FontMetrics fm, String tip, int x, int yBaseline, int maxWidth, int maxLines)
-    {
-        List<String> tipLines = wrapText("Tip: " + safe(tip), fm, Math.max(maxWidth, 40));
-        g.setColor(uiTextDim);
-        int y = yBaseline;
-        for (int i = 0; i < Math.min(tipLines.size(), maxLines); i++)
-        {
-            g.drawString(truncateToWidth(tipLines.get(i), fm, maxWidth), x, y);
-            y += rowHeight;
-        }
-        return y;
-    }
-
     private void drawCurrentScrollbar(Graphics2D g, int totalPx, int viewportH, int scrollPx, Rectangle viewport, CurrentTabLayout layout)
     {
         layout.scrollbarRailBounds.setBounds(0, 0, 0, 0);
@@ -1234,22 +1089,6 @@ public final class CurrentTabRenderer
         {
             TaskRowsRenderer.drawSourceBadge(g, x, yTop, tierText, edgeDark, edgeLight, uiGold, uiText);
         }
-    }
-
-    private void drawStrikeThrough(Graphics2D g, FontMetrics fm, String text, int x, int baselineY)
-    {
-        int lineW = fm.stringWidth(text);
-        int strikeY = baselineY - (fm.getAscent() * 3 / 5);
-        g.setColor(withAlpha(uiTextDim, 170));
-        g.drawLine(x, strikeY, x + lineW, strikeY);
-    }
-
-    private static String normalizePrereqs(String prereqs)
-    {
-        String normalized = safe(prereqs).replace("\r", "").trim();
-        return normalized.isEmpty() || normalized.equalsIgnoreCase("none") || normalized.equalsIgnoreCase("n/a") || normalized.equals("-")
-                ? ""
-                : normalized;
     }
 
     private static boolean isAchievementDiaryTask(XtremeTask task)
