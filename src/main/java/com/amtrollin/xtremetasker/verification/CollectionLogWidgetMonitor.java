@@ -1,4 +1,5 @@
 package com.amtrollin.xtremetasker.verification;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.GameTick;
@@ -20,6 +21,7 @@ import java.util.Set;
  * once per item slot whenever a collection log page is rendered. args[1] = item ID,
  * args[2] = quantity (0 means not yet obtained).
  */
+@Slf4j
 @Singleton
 public class CollectionLogWidgetMonitor
 {
@@ -122,6 +124,15 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
+        boolean wasObtained = itemId > 0 && collectionLogService.isItemObtained(itemId);
+        if (itemId > 0 && (quantity > 0 || wasObtained))
+        {
+            log.info("XtremeTasker CLOG diagnostic: script4100 itemId={} quantity={} cachedObtainedBefore={}",
+                    itemId,
+                    quantity,
+                    wasObtained);
+        }
+
         if (itemId > 0)
         {
             collectionLogService.storeSeenItem(itemId);
@@ -161,6 +172,14 @@ public class CollectionLogWidgetMonitor
         int itemId = widget.getItemId();
         if (itemId > 0)
         {
+            if (collectionLogService.isItemObtained(itemId))
+            {
+                log.info("XtremeTasker CLOG diagnostic: widget seen-only cachedObtained itemId={} widgetQuantity={} widgetId={} childIndex={}",
+                        itemId,
+                        widget.getItemQuantity(),
+                        widget.getId(),
+                        widget.getIndex());
+            }
             collectionLogService.storeSeenItem(itemId);
         }
 

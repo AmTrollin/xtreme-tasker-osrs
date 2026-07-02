@@ -1,5 +1,6 @@
 package com.amtrollin.xtremetasker.verification;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
@@ -20,6 +21,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Singleton
 public class CollectionLogService
 {
@@ -249,9 +251,17 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            boolean wasObtained = isItemObtained(itemId);
             boolean changed = markObtainedItem(itemId, null);
             if (changed)
             {
+                log.info("XtremeTasker CLOG diagnostic: obtained cached itemId={} canonical={} previouslyObtained={} obtainedCount={} seenCount={}",
+                        itemId,
+                        canonicalItemId,
+                        wasObtained,
+                        obtainedItems.size(),
+                        seenItems.size());
                 notifyCacheChanged();
             }
         }
@@ -279,10 +289,21 @@ public class CollectionLogService
         }
 
         int canonicalItemId = canonicalCollectionLogItemId(itemId);
+        boolean wasObtained = isItemObtained(itemId);
         boolean seenChanged = seenItems.add(itemId);
         seenChanged |= seenItems.add(canonicalItemId);
         boolean removedObtained = removeObtainedCanonicalItem(canonicalItemId);
         boolean changed = seenChanged | removedObtained;
+
+        if (removedObtained)
+        {
+            log.info("XtremeTasker CLOG diagnostic: obtained cleared itemId={} canonical={} previouslyObtained={} obtainedCount={} seenCount={}",
+                    itemId,
+                    canonicalItemId,
+                    wasObtained,
+                    obtainedItems.size(),
+                    seenItems.size());
+        }
 
         if (changed)
         {
@@ -457,6 +478,7 @@ public class CollectionLogService
             return;
         }
 
+        List<Integer> restoredItemIds = new ArrayList<>();
         for (Integer itemId : itemIds)
         {
             if (itemId != null && itemId > 0)
@@ -469,8 +491,13 @@ public class CollectionLogService
                 markObtainedItem(itemId, restoredOrder);
                 seenItems.add(itemId);
                 seenItems.add(canonicalCollectionLogItemId(itemId));
+                restoredItemIds.add(itemId);
             }
         }
+
+        log.info("XtremeTasker CLOG diagnostic: restored cached obtained items count={} sample={}",
+                restoredItemIds.size(),
+                sampleItemIds(restoredItemIds));
     }
 
     public void resetCachedItemIds()
@@ -540,6 +567,15 @@ public class CollectionLogService
             return order;
         }
         return obtainedItemOrder.get(canonicalItemId);
+    }
+
+    private static List<Integer> sampleItemIds(List<Integer> itemIds)
+    {
+        if (itemIds == null || itemIds.size() <= 40)
+        {
+            return itemIds;
+        }
+        return itemIds.subList(0, 40);
     }
 
     private int canonicalCollectionLogItemId(int itemId)

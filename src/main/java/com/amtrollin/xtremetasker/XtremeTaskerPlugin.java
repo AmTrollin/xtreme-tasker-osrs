@@ -381,13 +381,20 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private void refreshCollectionLogItemSyncStateFromCache()
     {
         List<String> completionCandidateTaskIds = new ArrayList<>();
-        findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds, true);
+        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds, true);
         setCollectionLogItemSyncCompletionCandidates(completionCandidateTaskIds);
 
         List<XtremeTask> syncMismatchTasks = findCollectionLogSyncMismatches(
                 hasCollectionLogSyncCacheEvidence(),
                 true);
         setCollectionLogItemSyncMismatchTasks(syncMismatchTasks);
+        if (completionCandidates > 0 || !syncMismatchTasks.isEmpty())
+        {
+            log.info("XtremeTasker CLOG diagnostic: cache refresh completionCandidates={} candidateIds={} mismatchIds={}",
+                    completionCandidates,
+                    completionCandidateTaskIds,
+                    syncMismatchTasks.stream().map(XtremeTask::getId).collect(Collectors.toList()));
+        }
     }
 
     private synchronized void saveActiveState(String reason) {
