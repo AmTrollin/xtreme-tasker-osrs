@@ -97,6 +97,12 @@ public class CollectionLogWidgetMonitor
     {
         if (event.getScriptId() == ScriptID.COLLECTION_DRAW_LIST)
         {
+            if (isViewingAnotherPlayersCollectionLog())
+            {
+                log.debug("XtremeTasker CLOG sync debug: skipped draw-list scan because POH host book varbit is set");
+                return;
+            }
+
             log.debug("XtremeTasker CLOG sync debug: collection draw-list script {} post-fired; scanning visible widget page",
                     ScriptID.COLLECTION_DRAW_LIST);
             scanCollectionLogEntryItemsWidget();
@@ -118,8 +124,7 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
-        // Don't scan when viewing another player's clog via POH adventure log.
-        if (client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
+        if (isViewingAnotherPlayersCollectionLog())
         {
             log.debug("XtremeTasker CLOG sync debug: skipped auto scan because POH host book varbit is set");
             return;
@@ -174,6 +179,12 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
+        if (isViewingAnotherPlayersCollectionLog())
+        {
+            log.debug("XtremeTasker CLOG sync debug: skipped item draw script because POH host book varbit is set");
+            return;
+        }
+
         tickClogScriptFired = client.getTickCount();
 
         Object[] args = event.getScriptEvent().getArguments();
@@ -216,6 +227,12 @@ public class CollectionLogWidgetMonitor
 
     private void scanCollectionLogEntryItemsWidget()
     {
+        if (isViewingAnotherPlayersCollectionLog())
+        {
+            log.debug("XtremeTasker CLOG sync debug: skipped widget fallback scan because POH host book varbit is set");
+            return;
+        }
+
         Widget items = client == null ? null : client.getWidget(ComponentID.COLLECTION_LOG_ENTRY_ITEMS);
         if (items == null || items.isHidden())
         {
@@ -329,5 +346,10 @@ public class CollectionLogWidgetMonitor
             collectionLogService.endCacheChangeBatch();
         }
         setupCacheBatchOpenedTick = -1;
+    }
+
+    private boolean isViewingAnotherPlayersCollectionLog()
+    {
+        return client != null && client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1;
     }
 }
