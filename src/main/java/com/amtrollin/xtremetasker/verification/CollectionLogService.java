@@ -167,7 +167,7 @@ public class CollectionLogService
         Integer cachedItemId = resolvedChatItemIdsByName.get(cacheKey);
         if (cachedItemId != null)
         {
-            log.info("XtremeTasker CLOG sync diagnostic: chat capture source=chat-cache itemName='{}' itemId={}",
+            log.debug("XtremeTasker CLOG sync debug: chat capture source=chat-cache itemName='{}' itemId={}",
                     itemName, cachedItemId);
             storeItem(cachedItemId);
             return;
@@ -200,7 +200,7 @@ public class CollectionLogService
         {
             if (itemName.equalsIgnoreCase(result.getName()))
             {
-                log.info("XtremeTasker CLOG sync diagnostic: chat capture source=chat itemName='{}' itemId={} match=exact",
+                log.debug("XtremeTasker CLOG sync debug: chat capture source=chat itemName='{}' itemId={} match=exact",
                         itemName, result.getId());
                 resolvedChatItemIdsByName.put(cacheKey, result.getId());
                 storeItem(result.getId());
@@ -221,7 +221,7 @@ public class CollectionLogService
         if (normalizedMatches.size() == 1)
         {
             ItemPrice resolved = normalizedMatches.get(0);
-            log.info("XtremeTasker CLOG sync diagnostic: chat capture source=chat itemName='{}' itemId={} match=normalized",
+            log.debug("XtremeTasker CLOG sync debug: chat capture source=chat itemName='{}' itemId={} match=normalized",
                     itemName, resolved.getId());
             resolvedChatItemIdsByName.put(cacheKey, resolved.getId());
             storeItem(resolved.getId());
@@ -317,7 +317,7 @@ public class CollectionLogService
     {
         if (itemId <= 0)
         {
-            log.info("XtremeTasker CLOG item state: storeUnobtained ignored itemId={} reason=non-positive", itemId);
+            log.debug("XtremeTasker CLOG item state: storeUnobtained ignored itemId={} reason=non-positive", itemId);
             return;
         }
 
@@ -330,17 +330,30 @@ public class CollectionLogService
         boolean changed = seenChanged | removedObtained;
         boolean afterObtained = isItemObtained(itemId);
 
-        log.info("XtremeTasker CLOG item state: storeUnobtained itemId={} canonical={} beforeObtained={} afterObtained={} removedObtained={} seenChanged={} beforeMatches={} afterMatches={} obtainedCount={} seenCount={}",
-                itemId,
-                canonicalItemId,
-                beforeObtained,
-                afterObtained,
-                removedObtained,
-                seenChanged,
-                beforeMatches,
-                obtainedCanonicalMatches(canonicalItemId),
-                obtainedItems.size(),
-                seenItems.size());
+        if (removedObtained)
+        {
+            log.info("XtremeTasker CLOG item state: storeUnobtained itemId={} canonical={} beforeObtained={} afterObtained={} beforeMatches={} afterMatches={} obtainedCount={} seenCount={}",
+                    itemId,
+                    canonicalItemId,
+                    beforeObtained,
+                    afterObtained,
+                    beforeMatches,
+                    obtainedCanonicalMatches(canonicalItemId),
+                    obtainedItems.size(),
+                    seenItems.size());
+        }
+        else
+        {
+            log.debug("XtremeTasker CLOG item state: storeUnobtained no-op itemId={} canonical={} beforeObtained={} afterObtained={} seenChanged={} matches={} obtainedCount={} seenCount={}",
+                    itemId,
+                    canonicalItemId,
+                    beforeObtained,
+                    afterObtained,
+                    seenChanged,
+                    beforeMatches,
+                    obtainedItems.size(),
+                    seenItems.size());
+        }
 
         if (changed)
         {

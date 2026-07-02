@@ -15,6 +15,7 @@ import net.runelite.client.eventbus.Subscribe;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Set;
 
@@ -49,7 +50,7 @@ public class CollectionLogWidgetMonitor
     private int openSetupCacheBatches = 0;
     private int setupCacheBatchOpenedTick = -1;
     private int loggedItemDrawCount = 0;
-    private int loggedWidgetFallbackCount = 0;
+    private final Set<Integer> loggedCollectionLogScriptIds = new HashSet<>();
     private int capturedSeenThisSession = 0;
     private int capturedObtainedThisSession = 0;
 
@@ -73,7 +74,7 @@ public class CollectionLogWidgetMonitor
         openSetupCacheBatches = 0;
         setupCacheBatchOpenedTick = -1;
         loggedItemDrawCount = 0;
-        loggedWidgetFallbackCount = 0;
+        loggedCollectionLogScriptIds.clear();
         capturedSeenThisSession = 0;
         capturedObtainedThisSession = 0;
     }
@@ -97,6 +98,8 @@ public class CollectionLogWidgetMonitor
     @Subscribe
     public void onScriptPostFired(ScriptPostFired event)
     {
+        logCollectionLogScriptDiscovery("post", event.getScriptId());
+
         if (event.getScriptId() == ScriptID.COLLECTION_DRAW_LIST)
         {
             log.debug("XtremeTasker CLOG sync debug: collection draw-list script {} post-fired; scanning visible widget page",
@@ -139,8 +142,8 @@ public class CollectionLogWidgetMonitor
         collectionLogService.beginCacheChangeBatch();
         try
         {
-            log.info("XtremeTasker CLOG sync diagnostic: starting full auto scan script={} searchComponent={} tick={}",
-                    CLOG_AUTO_SCAN_SCRIPT, CLOG_SEARCH_COMPONENT, tickClogScriptFired);
+            log.debug("XtremeTasker CLOG sync debug: starting full auto scan script={} searchComponent={}",
+                    CLOG_AUTO_SCAN_SCRIPT, CLOG_SEARCH_COMPONENT);
             client.menuAction(-1, CLOG_SEARCH_COMPONENT, MenuAction.CC_OP, 1, -1, "Search", null);
             client.runScript(CLOG_AUTO_SCAN_SCRIPT);
             scanCollectionLogEntryItemsWidget();
@@ -149,13 +152,12 @@ public class CollectionLogWidgetMonitor
         finally
         {
             collectionLogService.endCacheChangeBatch();
-            log.info("XtremeTasker CLOG sync diagnostic: finished full auto scan seen {}->{} obtained {}->{} scriptSlotDraws={} widgetSlotLogs={} seenCaptures={} obtainedCaptures={}",
+            log.info("XtremeTasker CLOG sync diagnostic: full auto scan seen {}->{} obtained {}->{} scriptSlotDraws={} seenCaptures={} obtainedCaptures={}",
                     seenBefore,
                     collectionLogService.getSeenItemCount(),
                     obtainedBefore,
                     collectionLogService.getCapturedItemCount(),
                     loggedItemDrawCount,
-                    loggedWidgetFallbackCount,
                     capturedSeenThisSession,
                     capturedObtainedThisSession);
         }
@@ -164,10 +166,11 @@ public class CollectionLogWidgetMonitor
     @Subscribe
     public void onScriptPreFired(ScriptPreFired event)
     {
+        logCollectionLogScriptDiscovery("pre", event.getScriptId());
+
         if (event.getScriptId() == CLOG_SETUP_SCRIPT)
         {
-            log.debug("XtremeTasker CLOG sync debug: setup script {} pre-fired at tick {}",
-                    CLOG_SETUP_SCRIPT, client.getTickCount());
+            log.debug("XtremeTasker CLOG sync debug: setup script {} pre-fired", CLOG_SETUP_SCRIPT);
             beginSetupCacheBatch();
             return;
         }
@@ -199,8 +202,8 @@ public class CollectionLogWidgetMonitor
         if (loggedItemDrawCount < 60)
         {
             loggedItemDrawCount++;
-            log.debug("XtremeTasker CLOG sync debug: item draw slot itemId={} quantity={} tick={} argsLength={}",
-                    itemId, quantity, tickClogScriptFired, args.length);
+            log.debug("XtremeTasker CLOG sync debug: item draw slot itemId={} quantity={} argsLength={}",
+                    itemId, quantity, args.length);
         }
 
         boolean wasObtained = itemId > 0 && collectionLogService.isItemObtained(itemId);
@@ -218,12 +221,10 @@ public class CollectionLogWidgetMonitor
             capturedObtainedThisSession++;
             if (!wasObtained)
             {
-                log.info("XtremeTasker CLOG sync diagnostic: marked obtained source=script{} itemId={} quantity={} tick={} args={}",
+                log.info("XtremeTasker CLOG sync diagnostic: marked obtained source=script{} itemId={} quantity={}",
                         CLOG_ITEM_DRAW_SCRIPT,
                         itemId,
-                        quantity,
-                        tickClogScriptFired,
-                        argsSummary(args));
+                        quantity);
             }
         }
         else
@@ -231,12 +232,10 @@ public class CollectionLogWidgetMonitor
             collectionLogService.storeUnobtainedItem(itemId);
             if (wasObtained)
             {
-                log.info("XtremeTasker CLOG sync diagnostic: cleared obtained source=script{} itemId={} quantity={} tick={} args={}",
+                log.info("XtremeTasker CLOG sync diagnostic: cleared obtained source=script{} itemId={} quantity={}",
                         CLOG_ITEM_DRAW_SCRIPT,
                         itemId,
-                        quantity,
-                        tickClogScriptFired,
-                        argsSummary(args));
+                        quantity);
             }
         }
         collectionLogService.markSyncSeen();
@@ -258,6 +257,61 @@ public class CollectionLogWidgetMonitor
                 count.itemWidgets, count.seenCaptured, count.obtainedCaptured);
     }
 
+    private void logCollectionLogScriptDiscovery(String phase, int scriptId)
+    {
+        if (client == null || !isCollectionLogInterfaceAvailable())
+        {
+            return;
+        }
+
+        if (!loggedCollectionLogScriptIds.add(scriptId))
+        {
+            return;
+        }
+
+        log.info("XtremeTasker CLOG script discovery: phase={} scriptId={} name={} collectionContainerVisible={} entryItemsVisible={}",
+                phase,
+                scriptId,
+                collectionLogScriptName(scriptId),
+                isWidgetVisible(ComponentID.COLLECTION_LOG_CONTAINER),
+                isWidgetVisible(ComponentID.COLLECTION_LOG_ENTRY_ITEMS));
+    }
+
+    private boolean isCollectionLogInterfaceAvailable()
+    {
+        return isWidgetVisible(ComponentID.COLLECTION_LOG_CONTAINER)
+                || isWidgetVisible(ComponentID.COLLECTION_LOG_ENTRY_ITEMS)
+                || openSetupCacheBatches > 0
+                || tickClogScriptFired == client.getTickCount();
+    }
+
+    private boolean isWidgetVisible(int componentId)
+    {
+        Widget widget = client.getWidget(componentId);
+        return widget != null && !widget.isHidden();
+    }
+
+    private static String collectionLogScriptName(int scriptId)
+    {
+        if (scriptId == ScriptID.COLLECTION_DRAW_LIST)
+        {
+            return "COLLECTION_DRAW_LIST";
+        }
+        if (scriptId == CLOG_SETUP_SCRIPT)
+        {
+            return "COLLECTION_LOG_SETUP";
+        }
+        if (scriptId == CLOG_AUTO_SCAN_SCRIPT)
+        {
+            return "COLLECTION_LOG_AUTO_SCAN";
+        }
+        if (scriptId == CLOG_ITEM_DRAW_SCRIPT)
+        {
+            return "COLLECTION_LOG_ITEM_DRAW";
+        }
+        return "unknown";
+    }
+
     private void scanCollectionLogItemWidget(Widget widget, Set<Widget> visited, WidgetScanCount count)
     {
         if (widget == null || !visited.add(widget))
@@ -270,42 +324,15 @@ public class CollectionLogWidgetMonitor
         if (itemId > 0)
         {
             count.itemWidgets++;
-            boolean wasObtained = collectionLogService.isItemObtained(itemId);
-            if (loggedWidgetFallbackCount < 120)
-            {
-                loggedWidgetFallbackCount++;
-                log.info("XtremeTasker CLOG sync diagnostic: widget fallback slot itemId={} quantity={} wasObtained={} widgetId={} childIndex={}",
-                        itemId,
-                        quantity,
-                        wasObtained,
-                        widget.getId(),
-                        widget.getIndex());
-            }
-
             collectionLogService.storeSeenItem(itemId);
             capturedSeenThisSession++;
             count.seenCaptured++;
 
-            if (quantity <= 0)
-            {
-                collectionLogService.storeUnobtainedItem(itemId);
-                if (wasObtained)
-                {
-                    log.info("XtremeTasker CLOG sync diagnostic: cleared obtained source=widget-fallback itemId={} quantity={} widgetId={} childIndex={}",
-                            itemId,
-                            quantity,
-                            widget.getId(),
-                            widget.getIndex());
-                }
-            }
-            else
-            {
-                log.debug("XtremeTasker CLOG sync debug: widget fallback saw positive quantity but did not mark obtained itemId={} quantity={} widgetId={} childIndex={}",
-                        itemId,
-                        quantity,
-                        widget.getId(),
-                        widget.getIndex());
-            }
+            log.debug("XtremeTasker CLOG sync debug: widget fallback recorded seen-only itemId={} quantity={} widgetId={} childIndex={}",
+                    itemId,
+                    quantity,
+                    widget.getId(),
+                    widget.getIndex());
         }
 
         scanCollectionLogItemWidgets(widget.getChildren(), visited, count);
