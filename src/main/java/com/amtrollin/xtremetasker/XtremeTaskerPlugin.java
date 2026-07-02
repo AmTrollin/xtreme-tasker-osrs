@@ -1992,8 +1992,54 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
+        if (isCurrentTaskCompleteInGame(task))
+        {
+            currentTaskCompletionCriteriaMet = true;
+            return;
+        }
+
         currentTaskCompletionCriteriaMet = (source == TaskSource.COMBAT_ACHIEVEMENT || isCollectionLogSyncSource(source))
                 && syncCompletionCandidateTaskIds.contains(id);
+    }
+
+    private boolean isCurrentTaskCompleteInGame(XtremeTask task)
+    {
+        if (task == null)
+        {
+            return false;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null)
+        {
+            return false;
+        }
+
+        if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT)
+        {
+            Integer taskId = resolveCombatAchievementTaskId(task);
+            return taskId != null
+                    && combatAchievementService != null
+                    && combatAchievementService.isTaskComplete(taskId);
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY)
+        {
+            return prerequisiteTrackerService != null
+                    && prerequisiteTrackerService.isDiaryComplete(
+                            verification.getRegion(), verification.getDifficulty());
+        }
+
+        if (verification.getType() == TaskVerification.VerificationType.SKILL
+                && verification.getExperience() != null
+                && verification.getCount() != null)
+        {
+            return prerequisiteTrackerService != null
+                    && prerequisiteTrackerService.countSkillsAt99(verification.getExperience().keySet())
+                    >= verification.getCount();
+        }
+
+        return false;
     }
 
     private boolean isCurrentCollectionLogTaskCompleteFromCache(XtremeTask task)
@@ -2176,11 +2222,27 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .collect(Collectors.toMap(XtremeTask::getId, task -> task, (first, ignored) -> first));
     }
 
+    private boolean isCurrentTaskId(String id)
+    {
+        return id != null && id.equals(currentTaskId);
+    }
+
+    private boolean hasStartedTaskTimer(String id)
+    {
+        Long ticks = id == null ? null : taskTimeTicksById.get(id);
+        return ticks != null && ticks > 0L;
+    }
+
     public Long getTaskTimeTicks(XtremeTask task)
     {
         if (task == null) return null;
         String id = task.getId();
         Long liveTicks = taskTimeTicksById.get(id);
+        if (id != null && id.equals(currentTaskId) && liveTicks != null && liveTicks > 0L)
+        {
+            return liveTicks;
+        }
+
         if (id != null && completedBeforeRolledTaskIds.contains(id))
         {
             return -1L;
@@ -2851,9 +2913,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         if (completedBeforeRolledTaskIds.contains(id))
         {
-            taskTimeTicksById.remove(id);
-            completedTaskTimeTicksById.remove(id);
-            bumpTaskListTimerStateVersion();
+            if (!hasStartedTaskTimer(id))
+            {
+                taskTimeTicksById.remove(id);
+                completedTaskTimeTicksById.remove(id);
+                bumpTaskListTimerStateVersion();
+                return;
+            }
+
+            completedBeforeRolledTaskIds.remove(id);
+            snapshotCompletedTaskTime(id);
             return;
         }
 
@@ -2881,6 +2950,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         if (!currentTaskCompletionCriteriaMet)
+        {
+            completedBeforeRolledTaskIds.remove(id);
+            return;
+        }
+
+        if (hasStartedTaskTimer(id))
+        {
+            completedBeforeRolledTaskIds.remove(id);
+            return;
+        }
+
+        if (task.getSource() == TaskSource.COLLECTION_LOG
+                && !isCurrentCollectionLogTaskCompleteAtRollBaseline(task))
         {
             completedBeforeRolledTaskIds.remove(id);
             return;
@@ -3013,7 +3095,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (currentTaskId != null
                 && current != null
                 && !isTaskCompleted(current)
-                && !completedBeforeRolledTaskIds.contains(currentTaskId))
+                && (!completedBeforeRolledTaskIds.contains(currentTaskId) || hasStartedTaskTimer(currentTaskId)))
         {
             return currentTaskId;
         }
@@ -3110,7 +3192,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         int completionCandidates = 0;
         for (XtremeTask task : tasks)
         {
-            if (task.getSource() != TaskSource.COMBAT_ACHIEVEMENT || isTaskCompleted(task))
+            if (task.getSource() != TaskSource.COMBAT_ACHIEVEMENT
+                    || isTaskCompleted(task)
+                    || isCurrentTaskId(task.getId()))
             {
                 continue;
             }
@@ -3203,7 +3287,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 continue;
             }
 
-            if (isTaskCompleted(task))
+            if (isTaskCompleted(task) || isCurrentTaskId(task.getId()))
             {
                 continue;
             }
@@ -3501,6 +3585,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             String id = groupedTask.getId();
             if (id == null || id.trim().isEmpty() || isTaskCompleted(groupedTask))
             {
+                continue;
+            }
+
+            if (isCurrentTaskId(id))
+            {
+                remainingToSync--;
                 continue;
             }
 
@@ -3915,6 +4005,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 XtremeTask task = byId.get(id);
                 if (task != null
                         && !isTaskCompleted(task)
+                        && !isCurrentTaskId(id)
                         && matchesSyncMismatchSource(task, source)
                         && id != null
                         && !id.trim().isEmpty()
@@ -3940,6 +4031,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 XtremeTask task = byId.get(id);
                 if (task != null
                         && !isTaskCompleted(task)
+                        && !isCurrentTaskId(id)
                         && isCollectionLogItemTask(task)
                         && id != null
                         && !id.trim().isEmpty()
@@ -3965,6 +4057,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 XtremeTask task = byId.get(id);
                 if (task != null
                         && !isTaskCompleted(task)
+                        && !isCurrentTaskId(id)
                         && isCollectionLogNonItemSyncTask(task)
                         && id != null
                         && !id.trim().isEmpty()
@@ -4553,7 +4646,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         for (String id : syncCompletionCandidateTaskIds)
         {
             XtremeTask task = byId.get(id);
-            if (task == null || isTaskCompleted(task))
+            if (task == null || isTaskCompleted(task) || isCurrentTaskId(id))
             {
                 changed = true;
                 continue;
@@ -4569,7 +4662,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             syncCompletionCandidateTaskIds.removeIf(id -> {
                 XtremeTask task = byId.get(id);
-                return task == null || isTaskCompleted(task);
+                return task == null || isTaskCompleted(task) || isCurrentTaskId(id);
             });
             markDirtyAndPersist();
         }
@@ -4605,6 +4698,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .filter(Objects::nonNull)
                 .map(XtremeTask::getId)
                 .filter(id -> id != null && !id.trim().isEmpty())
+                .filter(id -> !isCurrentTaskId(id))
                 .collect(Collectors.toSet());
         if (ids.isEmpty())
         {

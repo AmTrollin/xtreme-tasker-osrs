@@ -10,6 +10,7 @@ import com.amtrollin.xtremetasker.verification.CombatAchievementService;
 import com.google.gson.Gson;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1077,6 +1078,62 @@ public class CollectionLogMismatchTest
                 plugin.isCurrentTaskCompletionCriteriaMet());
     }
 
+    @Test
+    public void currentCollectionLogTaskKeepsTimerAfterRequiredItemIsSeen() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-right-skull-half_001_timer_test",
+                "Get a Right skull half",
+                TaskTier.EASY,
+                new int[]{9007},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+        taskTimeTicksById(plugin).put(task.getId(), 12L);
+
+        collectionLogService.storeItem(9007);
+
+        assertTrue("Current task should become markable complete from CLOG cache",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Timer should keep accumulated time until Mark complete is pressed",
+                Long.valueOf(12L),
+                plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
+    public void currentCollectionLogTaskIsNotAddedToCompletionReview() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-right-skull-half_001_current_review_test",
+                "Get a Right skull half",
+                TaskTier.EASY,
+                new int[]{9007},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+
+        collectionLogService.storeItem(9007);
+
+        assertTrue("Current task should still be markable complete",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertTrue("Current task should not appear in completion review",
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).isEmpty());
+    }
+
     private static XtremeTask countedCollectionLogTask(String id, String name, int count)
     {
         TaskVerification verification = new Gson().fromJson(
@@ -1203,6 +1260,14 @@ public class CollectionLogMismatchTest
         Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCollectionLogNonItemSyncState");
         refresh.setAccessible(true);
         refresh.invoke(plugin);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Long> taskTimeTicksById(XtremeTaskerPlugin plugin) throws Exception
+    {
+        Field field = XtremeTaskerPlugin.class.getDeclaredField("taskTimeTicksById");
+        field.setAccessible(true);
+        return (Map<String, Long>) field.get(plugin);
     }
 
     private static List<String> taskIds(List<XtremeTask> tasks)
