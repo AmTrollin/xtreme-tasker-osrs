@@ -4,8 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -35,10 +33,6 @@ public class CollectionLogService
     // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
             "New item added to your collection log:\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
-            Pattern.CASE_INSENSITIVE
-    );
-    private static final Pattern CLOG_RECEIVED_ITEM_PATTERN = Pattern.compile(
-            "^You have received\\s+(?:[\\d,]+\\s*x\\s*)?(.+?)\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN = Pattern.compile(
@@ -164,19 +158,6 @@ public class CollectionLogService
             resolveAndStoreByName(itemName);
             return;
         }
-
-        Matcher receivedMatcher = CLOG_RECEIVED_ITEM_PATTERN.matcher(clean);
-        if (isCollectionLogOpen() && receivedMatcher.find())
-        {
-            String itemName = receivedMatcher.group(1).trim();
-            resolveAndStoreByName(itemName);
-        }
-    }
-
-    private boolean isCollectionLogOpen()
-    {
-        Widget collectionLog = client == null ? null : client.getWidget(ComponentID.COLLECTION_LOG_CONTAINER);
-        return collectionLog != null && !collectionLog.isHidden();
     }
 
     private void resolveAndStoreByName(String itemName)
@@ -298,6 +279,26 @@ public class CollectionLogService
                         itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
                 notifyCacheChanged();
             }
+        }
+    }
+
+    public void storeUnobtainedItem(int itemId)
+    {
+        if (itemId <= 0)
+        {
+            return;
+        }
+
+        int canonicalItemId = canonicalCollectionLogItemId(itemId);
+        boolean changed = seenItems.add(itemId);
+        changed |= seenItems.add(canonicalItemId);
+        changed |= removeObtainedCanonicalItem(canonicalItemId);
+
+        if (changed)
+        {
+            log.debug("XtremeTasker CLOG sync debug: reconciled unobtained itemId={} canonical={} obtainedCount={} seenCount={}",
+                    itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
+            notifyCacheChanged();
         }
     }
 
@@ -533,6 +534,13 @@ public class CollectionLogService
         changed |= obtainedItemOrder.putIfAbsent(itemId, order) == null;
         changed |= obtainedItemOrder.putIfAbsent(canonicalItemId, order) == null;
         nextObtainedItemOrder = Math.max(nextObtainedItemOrder, order + 1);
+        return changed;
+    }
+
+    private boolean removeObtainedCanonicalItem(int canonicalItemId)
+    {
+        boolean changed = obtainedItems.removeIf(itemId -> canonicalCollectionLogItemId(itemId) == canonicalItemId);
+        changed |= obtainedItemOrder.keySet().removeIf(itemId -> canonicalCollectionLogItemId(itemId) == canonicalItemId);
         return changed;
     }
 

@@ -212,6 +212,10 @@ public class CollectionLogWidgetMonitor
             collectionLogService.storeItem(itemId);
             capturedObtainedThisSession++;
         }
+        else
+        {
+            collectionLogService.storeUnobtainedItem(itemId);
+        }
     }
 
     private void scanCollectionLogEntryItemsWidget()

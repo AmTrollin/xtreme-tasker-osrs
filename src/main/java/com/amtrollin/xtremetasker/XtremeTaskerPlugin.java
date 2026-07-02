@@ -3012,7 +3012,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         XtremeTask current = getCurrentTask();
         if (currentTaskId != null
                 && current != null
-                && !isTaskCompleted(current)
                 && !completedBeforeRolledTaskIds.contains(currentTaskId))
         {
             return currentTaskId;
@@ -3982,11 +3981,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         Map<String, XtremeTask> byId = tasksById();
         syncMismatchTaskIds.removeIf(id -> isCollectionLogItemTask(byId.get(id)));
 
+        boolean repairedSyncedOnlyCompletion = false;
         Set<String> seen = new HashSet<>();
         if (mismatches != null)
         {
             for (XtremeTask task : mismatches)
             {
+                if (removeSyncedOnlyCompletion(task))
+                {
+                    repairedSyncedOnlyCompletion = true;
+                    continue;
+                }
+
                 if (task != null
                         && isCollectionLogItemTask(task)
                         && task.getId() != null
@@ -3999,6 +4005,37 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         updateSyncMismatchTitle();
         syncMismatchTasksCacheValid = false;
+        if (repairedSyncedOnlyCompletion)
+        {
+            rebuildTierCounts();
+            refreshCurrentTaskCompletionCriteriaMet();
+            markDirtyAndPersist();
+        }
+    }
+
+    private boolean removeSyncedOnlyCompletion(XtremeTask task)
+    {
+        if (!isCollectionLogItemTask(task))
+        {
+            return false;
+        }
+
+        String id = task.getId();
+        if (id == null
+                || manualCompletedTaskIds.contains(id)
+                || !syncedCompletedTaskIds.remove(id))
+        {
+            return false;
+        }
+
+        syncedCompletionTimestamps.remove(id);
+        completedTaskTimeTicksById.remove(id);
+        if (id.equals(undoableCompletedTaskId))
+        {
+            undoableCompletedTaskId = null;
+        }
+        bumpTaskListTimerStateVersion();
+        return true;
     }
 
     private static boolean isCollectionLogItemTask(XtremeTask task)

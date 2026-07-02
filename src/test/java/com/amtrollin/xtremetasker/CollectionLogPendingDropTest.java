@@ -50,6 +50,48 @@ public class CollectionLogPendingDropTest
         assertEquals(0, service.getPendingAncientPageDropCountSinceLastSync());
     }
 
+    @Test
+    public void broadcastLikeMessagesDoNotMarkTomeOfWaterObtained()
+    {
+        CollectionLogService service = new CollectionLogService();
+
+        service.onChatMessage(chat("Player received a special drop: Tome of water (empty)."));
+
+        assertEquals(0, service.countObtained(new int[]{25576}));
+    }
+
+    @Test
+    public void genericReceivedMessagesDoNotMarkTomeOfWaterObtained()
+    {
+        CollectionLogService service = new CollectionLogService();
+
+        service.onChatMessage(chat("You have received Tome of water (empty)."));
+
+        assertEquals(0, service.countObtained(new int[]{25576}));
+    }
+
+    @Test
+    public void plainItemTextDoesNotMarkTomeOfWaterObtained()
+    {
+        CollectionLogService service = new CollectionLogService();
+
+        service.onChatMessage(chat("Tome of water (empty)"));
+
+        assertEquals(0, service.countObtained(new int[]{25576}));
+    }
+
+    @Test
+    public void publicChatDoesNotMarkTomeOfWaterObtained()
+    {
+        CollectionLogService service = new CollectionLogService();
+        ChatMessage message = chat("damn, still no tome of water");
+        message.setType(ChatMessageType.PUBLICCHAT);
+
+        service.onChatMessage(message);
+
+        assertEquals(0, service.countObtained(new int[]{25576}));
+    }
+
     private static ChatMessage chat(String text)
     {
         ChatMessage message = new ChatMessage();

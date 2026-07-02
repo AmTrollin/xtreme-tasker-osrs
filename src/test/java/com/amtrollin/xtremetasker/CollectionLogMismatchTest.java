@@ -53,19 +53,46 @@ public class CollectionLogMismatchTest
         tasks.clear();
         tasks.add(task);
 
-        Set<String> syncedCompletedTaskIds = plugin.syncedCompletedTaskIdsForTesting();
-        syncedCompletedTaskIds.clear();
-        syncedCompletedTaskIds.add(task.getId());
+        Set<String> manualCompletedTaskIds = plugin.manualCompletedTaskIdsForTesting();
+        manualCompletedTaskIds.clear();
+        manualCompletedTaskIds.add(task.getId());
 
         collectionLogService.storeSeenItem(10878);
         collectionLogService.markSyncSeen();
         List<XtremeTask> mismatchesWhenNotFound = plugin.findCollectionLogSyncMismatches(true);
-        assertEquals("Completed CLOG requirement not found by sync should mismatch", 1, mismatchesWhenNotFound.size());
+        assertEquals("Manually completed CLOG requirement not found by sync should mismatch", 1, mismatchesWhenNotFound.size());
         assertEquals(task.getId(), mismatchesWhenNotFound.get(0).getId());
 
         collectionLogService.storeItem(10878);
         List<XtremeTask> mismatchesWhenObtained = plugin.findCollectionLogSyncMismatches(true);
         assertTrue("Obtained requirement should no longer mismatch", mismatchesWhenObtained.isEmpty());
+    }
+
+    @Test
+    public void syncedOnlyCollectionLogCompletionIsAutoRepairedWhenLaterSyncDisprovesIt() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-green-satchel_001_synced_repair_test",
+                "Get a Green satchel",
+                TaskTier.EASY,
+                new int[]{10878},
+                1
+        );
+
+        plugin.tasksForTesting().add(task);
+        plugin.syncedCompletedTaskIdsForTesting().add(task.getId());
+
+        collectionLogService.storeSeenItem(10878);
+        collectionLogService.markSyncSeen();
+
+        assertTrue("Synced-only false positive should be removed when later sync disproves it",
+                !plugin.isTaskCompleted(task));
+        assertTrue("Auto-repaired synced-only false positive should not require mismatch review",
+                plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).isEmpty());
     }
 
     @Test
@@ -729,6 +756,36 @@ public class CollectionLogMismatchTest
             assertTrue("Charged and uncharged aliases in one requirement should be satisfied by either form",
                     collectionLogService.hasSeenAll(new int[]{canonicalItemId, alternateItemId}));
         }
+    }
+
+    @Test
+    public void chargedTomeOfWaterDoesNotCountAsEmptyTomeLogSlot()
+    {
+        CollectionLogService collectionLogService = new CollectionLogService();
+        collectionLogService.storeSeenItem(25574);
+        collectionLogService.storeItem(25574);
+
+        assertTrue("Charged Tome of water should not satisfy the empty Tome of water collection-log slot",
+                !collectionLogService.hasSeenAll(new int[]{25576}));
+        assertEquals("Charged Tome of water should not count as the empty Tome of water slot",
+                0, collectionLogService.countObtained(new int[]{25576}));
+    }
+
+    @Test
+    public void collectionLogZeroQuantityClearsStaleTomeOfWaterObtainedState()
+    {
+        CollectionLogService collectionLogService = new CollectionLogService();
+        collectionLogService.storeItem(25576);
+
+        assertEquals("Precondition: Tome of water starts cached as obtained",
+                1, collectionLogService.countObtained(new int[]{25576}));
+
+        collectionLogService.storeUnobtainedItem(25576);
+
+        assertTrue("Explicit zero-quantity sync should keep Tome of water seen",
+                collectionLogService.hasSeenAll(new int[]{25576}));
+        assertEquals("Explicit zero-quantity sync should clear stale Tome of water obtained state",
+                0, collectionLogService.countObtained(new int[]{25576}));
     }
 
     @Test
