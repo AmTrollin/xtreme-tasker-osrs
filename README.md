@@ -23,9 +23,9 @@ Xtreme Tasker is a community game mode powered by a dedicated RuneLite plugin. I
 
 ## Getting Started
 
-Open the Xtreme Tasker overlay. If importing progress from an existing account, go to Help → Sync before rolling your first task to import completed Combat Achievements and Achievement Diaries.
+Open the Xtreme Tasker overlay. If importing progress from an existing account, go to Help → Sync before rolling your first task to import completed Combat Achievements, Achievement Diaries, and known Collection Log task completions.
 
-Collection Log item progress is refreshed automatically whenever you open your in-game Collection Log. This updates the underlying Collection Log data used by Xtreme Tasker, but does not automatically mark tasks as complete. Instead, any newly eligible Collection Log tasks will appear in the Help → Sync review panel alongside Combat Achievement and Achievement Diary tasks for you to review and apply manually.
+Collection Log item progress is refreshed automatically whenever you open your in-game Collection Log. This only updates the underlying Collection Log item data used by Xtreme Tasker. Press Help → Sync to find task completions from Combat Achievements, Achievement Diaries, and the latest Collection Log item data, then review and apply them manually.
 
 Then, just head to Current tab to roll your first task! 
 
@@ -52,9 +52,9 @@ Browse the full task list with search, filtering, sorting, and progress tracking
 
 ### Account Sync
 
-Import completed Combat Achievements and Achievement Diaries into Xtreme Tasker, then review the proposed task completions before applying them. Account Sync also identifies tasks that no longer meet in-game requirements, helping keep your plugin progress accurate.
+Import completed Combat Achievements, Achievement Diaries, and Collection Log tasks into Xtreme Tasker, then review the proposed task completions before applying them. Account Sync also identifies tasks that no longer meet in-game requirements, helping keep your plugin progress accurate.
 
-Collection Log progress is refreshed automatically whenever you open your in-game Collection Log. This updates the underlying Collection Log data used to evaluate task completion. Any newly eligible Collection Log tasks are also added to the Help → Sync review panel and must be manually marked complete.
+Collection Log progress is refreshed automatically whenever you open your in-game Collection Log. This updates only the underlying Collection Log item data used to evaluate task completion. Newly eligible Collection Log tasks are added to the Help → Sync review panel when you press Sync and must be manually marked complete.
 
 <img src="docs/images/SyncTab.png" alt="Sync review" width="550">
 

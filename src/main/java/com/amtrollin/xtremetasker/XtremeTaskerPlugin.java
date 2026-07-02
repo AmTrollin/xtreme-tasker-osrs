@@ -109,7 +109,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private int syncMismatchTasksCacheSyncedHash = 0;
     private int syncMismatchTasksCacheTaskCount = 0;
     private int syncMismatchTasksCacheCapturedItemCount = -1;
-    private boolean collectionLogCompletionCandidateRefreshQueued = false;
+    private boolean collectionLogCacheRefreshQueued = false;
     private String syncMismatchTitle = "";
 
     private final EnumMap<TaskTier, Integer> totalByTier = new EnumMap<>(TaskTier.class);
@@ -322,32 +322,32 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 collectionLogService == null ? -1 : collectionLogService.getSeenItemCount(),
                 collectionLogService != null && collectionLogService.hasFullSyncSeen(),
                 tasks.size(),
-                collectionLogCompletionCandidateRefreshQueued);
-        queueCollectionLogCompletionCandidateRefresh();
+                collectionLogCacheRefreshQueued);
+        queueCollectionLogCacheRefresh();
     }
 
-    private void queueCollectionLogCompletionCandidateRefresh()
+    private void queueCollectionLogCacheRefresh()
     {
         if (clientThread == null)
         {
-            refreshCollectionLogCompletionCandidatesFromCache();
+            refreshCollectionLogStateFromCache();
             return;
         }
 
-        if (collectionLogCompletionCandidateRefreshQueued)
+        if (collectionLogCacheRefreshQueued)
         {
             return;
         }
 
-        collectionLogCompletionCandidateRefreshQueued = true;
+        collectionLogCacheRefreshQueued = true;
         clientThread.invokeLater(() ->
         {
-            collectionLogCompletionCandidateRefreshQueued = false;
-            refreshCollectionLogCompletionCandidatesFromCache();
+            collectionLogCacheRefreshQueued = false;
+            refreshCollectionLogStateFromCache();
         });
     }
 
-    private void refreshCollectionLogCompletionCandidatesFromCache()
+    private void refreshCollectionLogStateFromCache()
     {
         if (tasks.isEmpty() || collectionLogService == null)
         {
@@ -355,29 +355,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        refreshCollectionLogItemSyncStateFromCache();
         refreshCurrentTaskCompletionCriteriaMet();
-    }
-
-    private void refreshCollectionLogItemSyncStateFromCache()
-    {
-        List<String> completionCandidateTaskIds = new ArrayList<>();
-        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds, true);
-        setCollectionLogItemSyncCompletionCandidates(completionCandidateTaskIds);
-
-        List<XtremeTask> syncMismatchTasks = findCollectionLogSyncMismatches(
-                hasCollectionLogSyncCacheEvidence(),
-                true);
-        setCollectionLogItemSyncMismatchTasks(syncMismatchTasks);
-        log.debug("XtremeTasker CLOG sync debug: quiet cache refresh obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={} completionCandidates={} candidateIds={} mismatchCount={} mismatchIds={}",
-                collectionLogService.getCapturedItemCount(),
-                collectionLogService.getSeenItemCount(),
-                collectionLogService.hasFullSyncSeen(),
-                collectionLogService.getLastSyncSeenAtMillis(),
-                completionCandidates,
-                completionCandidateTaskIds,
-                syncMismatchTasks.size(),
-                syncMismatchTasks.stream().map(XtremeTask::getId).collect(Collectors.toList()));
     }
 
     private synchronized void saveActiveState(String reason) {
@@ -2054,7 +2032,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 return;
             }
 
-            refreshCollectionLogCompletionCandidatesFromCache();
+            refreshCollectionLogStateFromCache();
             return;
         }
 
@@ -3044,9 +3022,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         clientThread.invokeLater(() -> {
             int combatAchievementCandidates = refreshCombatAchievementSyncState();
-            int collectionLogNonItemCandidates = refreshCollectionLogNonItemSyncState();
+            int collectionLogCandidates = refreshCollectionLogSyncState();
             setCombinedSyncResultAndChat(accountProgressSyncMessage(
-                    combatAchievementCandidates + collectionLogNonItemCandidates));
+                    combatAchievementCandidates + collectionLogCandidates));
             finishSyncStateUpdate();
         });
     }
@@ -3055,9 +3033,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         if (completionCandidates > 0)
         {
-            return syncFoundMessage("CA/AD sync done! ", completionCandidates);
+            return syncFoundMessage("Sync done! ", completionCandidates);
         }
-        return UiText.get("sync.ca_ad.empty");
+        return UiText.get("sync.account.empty");
     }
 
     private int refreshCombatAchievementSyncState()
@@ -3130,41 +3108,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return mismatches;
     }
 
-    private int refreshCollectionLogNonItemSyncState()
+    private int refreshCollectionLogSyncState()
     {
         List<String> completionCandidateTaskIds = new ArrayList<>();
-        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(
-                completionCandidateTaskIds,
-                CollectionLogCompletionCandidateScope.NON_COLLECTION_LOG_ITEMS_ONLY);
-        setCollectionLogNonItemSyncCompletionCandidates(completionCandidateTaskIds);
+        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds);
+        setSyncCompletionCandidatesForSource(TaskSource.COLLECTION_LOG, completionCandidateTaskIds);
+        setSyncMismatchTasksForSource(TaskSource.COLLECTION_LOG, findCollectionLogSyncMismatches(hasCollectionLogSyncCacheEvidence()));
         return completionCandidates;
     }
 
     int findCollectionLogCompletionCandidatesFromCache(List<String> completionCandidateTaskIds)
     {
-        return findCollectionLogCompletionCandidatesFromCache(
-                completionCandidateTaskIds,
-                CollectionLogCompletionCandidateScope.ALL);
-    }
-
-    private int findCollectionLogCompletionCandidatesFromCache(List<String> completionCandidateTaskIds, boolean collectionLogItemsOnly)
-    {
-        return findCollectionLogCompletionCandidatesFromCache(
-                completionCandidateTaskIds,
-                collectionLogItemsOnly
-                        ? CollectionLogCompletionCandidateScope.COLLECTION_LOG_ITEMS_ONLY
-                        : CollectionLogCompletionCandidateScope.ALL);
-    }
-
-    private int findCollectionLogCompletionCandidatesFromCache(
-            List<String> completionCandidateTaskIds,
-            CollectionLogCompletionCandidateScope scope)
-    {
         int completionCandidates = 0;
         Set<String> processedCountedGroups = new HashSet<>();
-        CollectionLogCompletionCandidateScope effectiveScope = scope == null
-                ? CollectionLogCompletionCandidateScope.ALL
-                : scope;
 
         for (XtremeTask task : tasks)
         {
@@ -3180,17 +3136,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
             TaskVerification verification = task.getVerification();
             if (verification == null)
-            {
-                continue;
-            }
-            boolean collectionLogItemTask = verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG;
-            if (effectiveScope == CollectionLogCompletionCandidateScope.COLLECTION_LOG_ITEMS_ONLY
-                    && !collectionLogItemTask)
-            {
-                continue;
-            }
-            if (effectiveScope == CollectionLogCompletionCandidateScope.NON_COLLECTION_LOG_ITEMS_ONLY
-                    && collectionLogItemTask)
             {
                 continue;
             }
@@ -3266,13 +3211,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         return completionCandidates;
-    }
-
-    private enum CollectionLogCompletionCandidateScope
-    {
-        ALL,
-        COLLECTION_LOG_ITEMS_ONLY,
-        NON_COLLECTION_LOG_ITEMS_ONLY
     }
 
     private boolean isCountedCollectionLogSync(TaskVerification verification)
@@ -3894,98 +3832,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             }
         }
         refreshCurrentTaskCompletionCriteriaMet();
-    }
-
-    private void setCollectionLogItemSyncCompletionCandidates(List<String> candidateIds)
-    {
-        Map<String, XtremeTask> byId = tasksById();
-        syncCompletionCandidateTaskIds.removeIf(id -> isCollectionLogItemTask(byId.get(id)));
-
-        Set<String> seen = new HashSet<>();
-        if (candidateIds != null)
-        {
-            for (String id : candidateIds)
-            {
-                XtremeTask task = byId.get(id);
-                if (task != null
-                        && !isTaskCompleted(task)
-                        && isCollectionLogItemTask(task)
-                        && id != null
-                        && !id.trim().isEmpty()
-                        && seen.add(id))
-                {
-                    syncCompletionCandidateTaskIds.add(id);
-                }
-            }
-        }
-        refreshCurrentTaskCompletionCriteriaMet();
-    }
-
-    private void setCollectionLogNonItemSyncCompletionCandidates(List<String> candidateIds)
-    {
-        Map<String, XtremeTask> byId = tasksById();
-        syncCompletionCandidateTaskIds.removeIf(id -> isCollectionLogNonItemSyncTask(byId.get(id)));
-
-        Set<String> seen = new HashSet<>();
-        if (candidateIds != null)
-        {
-            for (String id : candidateIds)
-            {
-                XtremeTask task = byId.get(id);
-                if (task != null
-                        && !isTaskCompleted(task)
-                        && isCollectionLogNonItemSyncTask(task)
-                        && id != null
-                        && !id.trim().isEmpty()
-                        && seen.add(id))
-                {
-                    syncCompletionCandidateTaskIds.add(id);
-                }
-            }
-        }
-        refreshCurrentTaskCompletionCriteriaMet();
-    }
-
-    private void setCollectionLogItemSyncMismatchTasks(List<XtremeTask> mismatches)
-    {
-        Map<String, XtremeTask> byId = tasksById();
-        syncMismatchTaskIds.removeIf(id -> isCollectionLogItemTask(byId.get(id)));
-
-        Set<String> seen = new HashSet<>();
-        if (mismatches != null)
-        {
-            for (XtremeTask task : mismatches)
-            {
-                if (task != null
-                        && isCollectionLogItemTask(task)
-                        && task.getId() != null
-                        && seen.add(task.getId()))
-                {
-                    syncMismatchTaskIds.add(task.getId());
-                }
-            }
-        }
-
-        updateSyncMismatchTitle();
-        syncMismatchTasksCacheValid = false;
-    }
-
-    private static boolean isCollectionLogItemTask(XtremeTask task)
-    {
-        TaskVerification verification = task == null ? null : task.getVerification();
-        return task != null
-                && task.getSource() == TaskSource.COLLECTION_LOG
-                && verification != null
-                && verification.getType() == TaskVerification.VerificationType.COLLECTION_LOG;
-    }
-
-    private static boolean isCollectionLogNonItemSyncTask(XtremeTask task)
-    {
-        TaskVerification verification = task == null ? null : task.getVerification();
-        return task != null
-                && task.getSource() == TaskSource.COLLECTION_LOG
-                && verification != null
-                && verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG;
     }
 
     private boolean removeSyncIdsForSource(List<String> ids, TaskSource source, Map<String, XtremeTask> byId)

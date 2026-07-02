@@ -96,7 +96,7 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    public void quietCollectionLogOpenStoresMismatchForCompletedMissingClog() throws Exception
+    public void quietCollectionLogOpenStoresOnlyEvidenceUntilSyncButton() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
@@ -121,7 +121,12 @@ public class CollectionLogMismatchTest
         collectionLogService.storeSeenItem(10878);
         collectionLogService.markSyncSeen();
 
-        assertTrue("Opening CLOG and seeing the missing slot should show the CLOG mismatch helper",
+        assertTrue("Opening CLOG and seeing the missing slot should only store item evidence",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
+
+        invokeRefreshCollectionLogSyncState(plugin);
+
+        assertTrue("Sync button should show the CLOG mismatch helper from stored item evidence",
                 plugin.isCollectionLogTaskSyncMismatch(task));
         assertEquals(List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
     }
@@ -151,7 +156,12 @@ public class CollectionLogMismatchTest
 
         collectionLogService.markFullSyncSeen();
 
-        assertTrue("A full CLOG sync should prove a manually completed missing CLOG is mismatched",
+        assertTrue("A full CLOG sync should only store CLOG evidence until task sync is pressed",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
+
+        invokeRefreshCollectionLogSyncState(plugin);
+
+        assertTrue("Task sync should prove a manually completed missing CLOG is mismatched",
                 plugin.isCollectionLogTaskSyncMismatch(task));
         assertEquals(List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
     }
@@ -187,13 +197,18 @@ public class CollectionLogMismatchTest
         Thread.sleep(5L);
         collectionLogService.markFullSyncSeen();
 
-        assertTrue("A new CLOG sync after manual completion should show the CLOG mismatch helper",
+        assertTrue("A new CLOG sync after manual completion should only store CLOG evidence",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
+
+        invokeRefreshCollectionLogSyncState(plugin);
+
+        assertTrue("Task sync after new CLOG evidence should show the CLOG mismatch helper",
                 plugin.isCollectionLogTaskSyncMismatch(task));
         assertEquals(List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
     }
 
     @Test
-    public void collectionLogCompletionCandidateSurvivesCaAdSyncRefresh() throws Exception
+    public void collectionLogCompletionCandidateIsCreatedBySyncButtonNotClogOpen() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         CollectionLogService collectionLogService = new CollectionLogService();
@@ -211,13 +226,12 @@ public class CollectionLogMismatchTest
         plugin.tasksForTesting().add(task);
 
         collectionLogService.storeItem(10878);
-        assertEquals("Opening CLOG should populate CLOG completion candidates",
-                List.of(task.getId()),
-                taskIds(plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG)));
+        assertTrue("Opening CLOG should only update item evidence, not task completion candidates",
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).isEmpty());
 
-        invokeRefreshCollectionLogNonItemSyncState(plugin);
+        invokeRefreshCollectionLogSyncState(plugin);
 
-        assertEquals("CA/AD sync refresh should not clear CLOG candidates captured from opening CLOG",
+        assertEquals("Sync button should populate CLOG completion candidates from cached CLOG items",
                 List.of(task.getId()),
                 taskIds(plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG)));
     }
@@ -242,6 +256,7 @@ public class CollectionLogMismatchTest
         plugin.manualCompletedTaskIdsForTesting().add(task.getId());
         plugin.manualCompletionTimestampsForTesting().put(task.getId(), System.currentTimeMillis() - 1_000L);
         collectionLogService.markFullSyncSeen();
+        invokeRefreshCollectionLogSyncState(plugin);
         assertTrue(plugin.isCollectionLogTaskSyncMismatch(task));
 
         Method buildState = XtremeTaskerPlugin.class.getDeclaredMethod("buildPersistedState");
@@ -420,7 +435,12 @@ public class CollectionLogMismatchTest
 
         collectionLogService.storeSeenItem(9007);
         collectionLogService.markSyncSeen();
-        assertTrue("Missing right skull half should mismatch after sync sees the slot",
+        assertTrue("Opening CLOG should only store missing right skull half evidence",
+                !plugin.isCollectionLogTaskSyncMismatch(task));
+
+        invokeRefreshCollectionLogSyncState(plugin);
+
+        assertTrue("Missing right skull half should mismatch after task sync sees the stored slot evidence",
                 plugin.isCollectionLogTaskSyncMismatch(task));
 
         collectionLogService.storeItem(9007);
@@ -1198,9 +1218,9 @@ public class CollectionLogMismatchTest
         refresh.invoke(plugin);
     }
 
-    private static void invokeRefreshCollectionLogNonItemSyncState(XtremeTaskerPlugin plugin) throws Exception
+    private static void invokeRefreshCollectionLogSyncState(XtremeTaskerPlugin plugin) throws Exception
     {
-        Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCollectionLogNonItemSyncState");
+        Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCollectionLogSyncState");
         refresh.setAccessible(true);
         refresh.invoke(plugin);
     }

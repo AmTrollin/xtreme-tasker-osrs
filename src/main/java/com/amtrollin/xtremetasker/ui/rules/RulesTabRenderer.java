@@ -256,7 +256,7 @@ public final class RulesTabRenderer {
 
             if (LINE_SYNC_PROGRESS_BUTTON_ROW.equals(line))
             {
-                int btnW = Math.min(colW - 8, Math.max(164, fm.stringWidth("Sync CAs + ADs") + 72));
+                int btnW = Math.min(colW - 8, Math.max(164, fm.stringWidth("Sync Tasks") + 72));
                 int btnH = rowHeight + 14;
                 int btnX = x + Math.max(0, (colW - btnW) / 2);
                 int by = drawY - fm.getAscent();
