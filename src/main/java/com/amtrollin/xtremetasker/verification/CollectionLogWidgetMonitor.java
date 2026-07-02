@@ -1,12 +1,10 @@
 package com.amtrollin.xtremetasker.verification;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.MenuAction;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
-import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
@@ -31,10 +29,6 @@ public class CollectionLogWidgetMonitor
     private static final int CLOG_ITEM_DRAW_SCRIPT = 4100;
     // Script fired when the collection log interface is set up / a page is loaded.
     private static final int CLOG_SETUP_SCRIPT = 7797;
-    // Legacy script that refreshes CLOG item slots beyond the visible page.
-    private static final int CLOG_AUTO_SCAN_SCRIPT = 2240;
-    private static final int CLOG_SEARCH_COMPONENT = 40697932;
-
     @Inject
     private Client client;
 
@@ -45,7 +39,6 @@ public class CollectionLogWidgetMonitor
     private CollectionLogService collectionLogService;
 
     private int tickClogScriptFired = -1;
-    private boolean isAutoScanInProgress = false;
     private int openSetupCacheBatches = 0;
     private int setupCacheBatchOpenedTick = -1;
     private int loggedItemDrawCount = 0;
@@ -68,7 +61,6 @@ public class CollectionLogWidgetMonitor
     private void reset()
     {
         tickClogScriptFired = -1;
-        isAutoScanInProgress = false;
         openSetupCacheBatches = 0;
         setupCacheBatchOpenedTick = -1;
         loggedItemDrawCount = 0;
@@ -88,7 +80,6 @@ public class CollectionLogWidgetMonitor
         if (tickClogScriptFired != -1 && tickClogScriptFired + 2 < currentTick)
         {
             tickClogScriptFired = -1;
-            isAutoScanInProgress = false;
         }
     }
 
@@ -112,50 +103,8 @@ public class CollectionLogWidgetMonitor
                 CLOG_SETUP_SCRIPT, openSetupCacheBatches);
         endSetupCacheBatch();
 
-        if (isAutoScanInProgress)
-        {
-            log.debug("XtremeTasker CLOG sync debug: auto scan already in progress");
-            return;
-        }
-
-        // Don't scan when viewing another player's clog via POH adventure log.
-        if (client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
-        {
-            log.debug("XtremeTasker CLOG sync debug: skipped auto scan because POH host book varbit is set");
-            return;
-        }
-
-        runCollectionLogAutoScan();
-    }
-
-    private void runCollectionLogAutoScan()
-    {
-        isAutoScanInProgress = true;
-        tickClogScriptFired = client.getTickCount();
-        int seenBefore = collectionLogService.getSeenItemCount();
-        int obtainedBefore = collectionLogService.getCapturedItemCount();
-        collectionLogService.beginCacheChangeBatch();
-        try
-        {
-            log.debug("XtremeTasker CLOG sync debug: firing collection log search action component={} before full auto scan",
-                    CLOG_SEARCH_COMPONENT);
-            client.menuAction(-1, CLOG_SEARCH_COMPONENT, MenuAction.CC_OP, 1, -1, "Search", null);
-            client.runScript(CLOG_AUTO_SCAN_SCRIPT);
-            scanCollectionLogEntryItemsWidget();
-            collectionLogService.markFullSyncSeen();
-        }
-        finally
-        {
-            collectionLogService.endCacheChangeBatch();
-            log.debug("XtremeTasker CLOG sync debug: finished full auto scan; seen {}->{} obtained {}->{} slotDraws={} seenCaptures={} obtainedCaptures={}",
-                    seenBefore,
-                    collectionLogService.getSeenItemCount(),
-                    obtainedBefore,
-                    collectionLogService.getCapturedItemCount(),
-                    loggedItemDrawCount,
-                    capturedSeenThisSession,
-                    capturedObtainedThisSession);
-        }
+        // The visible page is scanned by COLLECTION_DRAW_LIST and item draw script 4100.
+        // Do not run the old full auto-scan here; it can report stale/off-page item state.
     }
 
     @Subscribe
@@ -216,6 +165,7 @@ public class CollectionLogWidgetMonitor
         {
             collectionLogService.storeUnobtainedItem(itemId);
         }
+        collectionLogService.markSyncSeen();
     }
 
     private void scanCollectionLogEntryItemsWidget()

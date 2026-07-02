@@ -2,10 +2,11 @@
 
 ## v2.1.1 — 07.02.2026
 
-### Bug Fixes
-- Fixed current task timer stopping when Collection Log sync incorrectly marked the active task complete.
-- Added reconciliation for Collection Log items later seen with `0` quantity, allowing false positives to be systematically corrected
-- Tightened chat based Collection Log detection
+### Hotfix
+
+- Fixed stale/incorrect Collection Log obtained states causing active CLOG tasks to appear complete.
+- Current task timer now continues until the user explicitly presses Complete, except for tasks already complete before roll.
+- Tightened Collection Log chat detection and added sync reconciliation for items later reported as unobtained.
 
 ## v2.1 — 06.30.2026
 
