@@ -33,6 +33,10 @@ public class CollectionLogService
             "^\\s*New collection log item:\\s*(.+?)\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern CLOG_REGIONAL_BROADCAST_PATTERN = Pattern.compile(
+            "^\\s*\\[[^\\]]+\\]\\s+(.+?)\\s+received\\s+a\\s+new\\s+collection\\s+log\\s+item:\\s*(.+?)\\s*\\.?\\s*$",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private static final Map<Integer, Integer> COLLECTION_LOG_ITEM_ALIASES = Map.ofEntries(
             Map.entry(24656, 20851), // Olmlet - Enraged Tektiny -> Olmlet
@@ -125,7 +129,9 @@ public class CollectionLogService
         // Capture newly obtained collection log items from the in-game notification.
         // This fires even when the Collection Log interface is closed.
         ChatMessageType type = event.getType();
-        if (type != ChatMessageType.GAMEMESSAGE && type != ChatMessageType.SPAM)
+        if (type != ChatMessageType.GAMEMESSAGE
+                && type != ChatMessageType.SPAM
+                && type != ChatMessageType.BROADCAST)
         {
             return;
         }
@@ -140,11 +146,54 @@ public class CollectionLogService
         String clean = raw.replaceAll("<[^>]+>", "").trim();
 
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
-        if (m.matches())
+        if (type != ChatMessageType.BROADCAST && m.matches())
         {
             String itemName = m.group(1).trim();
             resolveAndStoreByName(itemName);
+            return;
         }
+
+        Matcher regionalBroadcastMatcher = CLOG_REGIONAL_BROADCAST_PATTERN.matcher(clean);
+        if (type == ChatMessageType.BROADCAST
+                && regionalBroadcastMatcher.matches()
+                && isLocalPlayerName(regionalBroadcastMatcher.group(1)))
+        {
+            String itemName = regionalBroadcastMatcher.group(2).trim();
+            resolveAndStoreByName(itemName);
+        }
+    }
+
+    private boolean isLocalPlayerName(String playerName)
+    {
+        String localName;
+        try
+        {
+            localName = client == null || client.getLocalPlayer() == null
+                    ? null
+                    : client.getLocalPlayer().getName();
+        }
+        catch (RuntimeException e)
+        {
+            return false;
+        }
+
+        String normalizedLocal = normalizePlayerName(localName);
+        return !normalizedLocal.isEmpty() && normalizedLocal.equals(normalizePlayerName(playerName));
+    }
+
+    private static String normalizePlayerName(String value)
+    {
+        if (value == null)
+        {
+            return "";
+        }
+
+        return value
+                .replaceAll("<[^>]+>", "")
+                .replace('\u00A0', ' ')
+                .trim()
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
     }
 
     private void resolveAndStoreByName(String itemName)
