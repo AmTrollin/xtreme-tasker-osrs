@@ -167,6 +167,8 @@ public class CollectionLogService
         Integer cachedItemId = resolvedChatItemIdsByName.get(cacheKey);
         if (cachedItemId != null)
         {
+            log.info("XtremeTasker CLOG sync diagnostic: chat capture source=chat-cache itemName='{}' itemId={}",
+                    itemName, cachedItemId);
             storeItem(cachedItemId);
             return;
         }
@@ -198,7 +200,8 @@ public class CollectionLogService
         {
             if (itemName.equalsIgnoreCase(result.getName()))
             {
-                log.debug("Collection log chat capture: '{}' -> item ID {}", itemName, result.getId());
+                log.info("XtremeTasker CLOG sync diagnostic: chat capture source=chat itemName='{}' itemId={} match=exact",
+                        itemName, result.getId());
                 resolvedChatItemIdsByName.put(cacheKey, result.getId());
                 storeItem(result.getId());
                 return;
@@ -218,7 +221,8 @@ public class CollectionLogService
         if (normalizedMatches.size() == 1)
         {
             ItemPrice resolved = normalizedMatches.get(0);
-            log.debug("Collection log chat capture (normalized): '{}' -> item ID {}", itemName, resolved.getId());
+            log.info("XtremeTasker CLOG sync diagnostic: chat capture source=chat itemName='{}' itemId={} match=normalized",
+                    itemName, resolved.getId());
             resolvedChatItemIdsByName.put(cacheKey, resolved.getId());
             storeItem(resolved.getId());
             return;
@@ -258,11 +262,37 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
-            if (markObtainedItem(itemId, null))
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            boolean beforeObtained = isItemObtained(itemId);
+            Set<Integer> beforeMatches = obtainedCanonicalMatches(canonicalItemId);
+            boolean changed = markObtainedItem(itemId, null);
+            boolean afterObtained = isItemObtained(itemId);
+            if (changed)
             {
                 log.debug("XtremeTasker CLOG sync debug: cached obtained itemId={} canonical={} obtainedCount={} seenCount={}",
-                        itemId, canonicalCollectionLogItemId(itemId), obtainedItems.size(), seenItems.size());
+                        itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
+                log.info("XtremeTasker CLOG item state: storeItem itemId={} canonical={} beforeObtained={} afterObtained={} changed={} beforeMatches={} afterMatches={} obtainedCount={} seenCount={}",
+                        itemId,
+                        canonicalItemId,
+                        beforeObtained,
+                        afterObtained,
+                        true,
+                        beforeMatches,
+                        obtainedCanonicalMatches(canonicalItemId),
+                        obtainedItems.size(),
+                        seenItems.size());
                 notifyCacheChanged();
+            }
+            else
+            {
+                log.debug("XtremeTasker CLOG item state: storeItem no-op itemId={} canonical={} beforeObtained={} afterObtained={} matches={} obtainedCount={} seenCount={}",
+                        itemId,
+                        canonicalItemId,
+                        beforeObtained,
+                        afterObtained,
+                        beforeMatches,
+                        obtainedItems.size(),
+                        seenItems.size());
             }
         }
     }
@@ -287,13 +317,30 @@ public class CollectionLogService
     {
         if (itemId <= 0)
         {
+            log.info("XtremeTasker CLOG item state: storeUnobtained ignored itemId={} reason=non-positive", itemId);
             return;
         }
 
         int canonicalItemId = canonicalCollectionLogItemId(itemId);
-        boolean changed = seenItems.add(itemId);
-        changed |= seenItems.add(canonicalItemId);
-        changed |= removeObtainedCanonicalItem(canonicalItemId);
+        boolean beforeObtained = isItemObtained(itemId);
+        Set<Integer> beforeMatches = obtainedCanonicalMatches(canonicalItemId);
+        boolean seenChanged = seenItems.add(itemId);
+        seenChanged |= seenItems.add(canonicalItemId);
+        boolean removedObtained = removeObtainedCanonicalItem(canonicalItemId);
+        boolean changed = seenChanged | removedObtained;
+        boolean afterObtained = isItemObtained(itemId);
+
+        log.info("XtremeTasker CLOG item state: storeUnobtained itemId={} canonical={} beforeObtained={} afterObtained={} removedObtained={} seenChanged={} beforeMatches={} afterMatches={} obtainedCount={} seenCount={}",
+                itemId,
+                canonicalItemId,
+                beforeObtained,
+                afterObtained,
+                removedObtained,
+                seenChanged,
+                beforeMatches,
+                obtainedCanonicalMatches(canonicalItemId),
+                obtainedItems.size(),
+                seenItems.size());
 
         if (changed)
         {
@@ -543,6 +590,19 @@ public class CollectionLogService
         boolean changed = obtainedItems.removeIf(itemId -> canonicalCollectionLogItemId(itemId) == canonicalItemId);
         changed |= obtainedItemOrder.keySet().removeIf(itemId -> canonicalCollectionLogItemId(itemId) == canonicalItemId);
         return changed;
+    }
+
+    private Set<Integer> obtainedCanonicalMatches(int canonicalItemId)
+    {
+        Set<Integer> matches = new HashSet<>();
+        for (Integer itemId : obtainedItems)
+        {
+            if (itemId != null && canonicalCollectionLogItemId(itemId) == canonicalItemId)
+            {
+                matches.add(itemId);
+            }
+        }
+        return matches;
     }
 
     private Long existingOrder(int itemId, int canonicalItemId)
