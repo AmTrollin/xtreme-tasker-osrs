@@ -14,8 +14,8 @@ public class CollectionLogPendingDropTest
     {
         CollectionLogService service = new CollectionLogService();
 
-        service.onChatMessage(chat("New item added to your collection log: Ancient page."));
-        service.onChatMessage(chat("New item added to your collection log: Ancient page x1."));
+        service.onChatMessage(chat("New collection log item: Ancient page."));
+        service.onChatMessage(chat("New collection log item: Ancient page"));
 
         assertEquals(2, service.getPendingAncientPageDropCountSinceLastSync());
 
@@ -29,7 +29,7 @@ public class CollectionLogPendingDropTest
     {
         CollectionLogService service = new CollectionLogService();
 
-        service.onChatMessage(chat("New item added to your collection log: Medallion fragment."));
+        service.onChatMessage(chat("New collection log item: Medallion fragment."));
 
         assertEquals(1, service.getPendingMedallionFragmentDropCountSinceLastSync());
 
@@ -42,10 +42,22 @@ public class CollectionLogPendingDropTest
     public void nonGameMessagesDoNotCreatePendingDrops()
     {
         CollectionLogService service = new CollectionLogService();
-        ChatMessage message = chat("New item added to your collection log: Ancient page.");
+        ChatMessage message = chat("New collection log item: Ancient page.");
         message.setType(ChatMessageType.PUBLICCHAT);
 
         service.onChatMessage(message);
+
+        assertEquals(0, service.getPendingAncientPageDropCountSinceLastSync());
+    }
+
+    @Test
+    public void oldAndRewardMessagesDoNotCreatePendingDrops()
+    {
+        CollectionLogService service = new CollectionLogService();
+
+        service.onChatMessage(chat("New item added to your collection log: Ancient page."));
+        service.onChatMessage(chat("You have received Ancient page."));
+        service.onChatMessage(chat("Other player received: New collection log item: Ancient page."));
 
         assertEquals(0, service.getPendingAncientPageDropCountSinceLastSync());
     }

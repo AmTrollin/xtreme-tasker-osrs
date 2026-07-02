@@ -4,8 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
@@ -29,20 +27,10 @@ public class CollectionLogService
 {
     private static final String ANCIENT_PAGE_ITEM_NAME = "Ancient page";
     private static final String MEDALLION_FRAGMENT_ITEM_NAME = "Medallion fragment";
-    private static final int MEDALLION_OF_THE_DEEP_ITEM_ID = 32386;
 
-    // Matches "New item added to your collection log: Mark of grace x1."
-    // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
+    // Matches the local player unlock notification, e.g. "New collection log item: Mark of grace."
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
-            "New item added to your collection log:\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
-            Pattern.CASE_INSENSITIVE
-    );
-    private static final Pattern CLOG_RECEIVED_ITEM_PATTERN = Pattern.compile(
-            "^You have received\\s+(?:[\\d,]+\\s*x\\s*)?(.+?)\\s*\\.?\\s*$",
-            Pattern.CASE_INSENSITIVE
-    );
-    private static final Pattern MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN = Pattern.compile(
-            "\\byou\\s+assemble\\s+the\\s+Medallion\\s+of\\s+the\\s+Deep\\b",
+            "^\\s*New collection log item:\\s*(.+?)\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -151,32 +139,12 @@ public class CollectionLogService
         // Strip any HTML colour tags RuneLite may inject.
         String clean = raw.replaceAll("<[^>]+>", "").trim();
 
-        if (MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN.matcher(clean).find())
-        {
-            storeItem(MEDALLION_OF_THE_DEEP_ITEM_ID);
-            return;
-        }
-
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
-        if (m.find())
+        if (m.matches())
         {
             String itemName = m.group(1).trim();
             resolveAndStoreByName(itemName);
-            return;
         }
-
-        Matcher receivedMatcher = CLOG_RECEIVED_ITEM_PATTERN.matcher(clean);
-        if (isCollectionLogOpen() && receivedMatcher.find())
-        {
-            String itemName = receivedMatcher.group(1).trim();
-            resolveAndStoreByName(itemName);
-        }
-    }
-
-    private boolean isCollectionLogOpen()
-    {
-        Widget collectionLog = client == null ? null : client.getWidget(ComponentID.COLLECTION_LOG_CONTAINER);
-        return collectionLog != null && !collectionLog.isHidden();
     }
 
     private void resolveAndStoreByName(String itemName)
