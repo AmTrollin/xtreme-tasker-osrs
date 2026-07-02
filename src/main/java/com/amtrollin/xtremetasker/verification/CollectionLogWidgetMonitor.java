@@ -47,10 +47,12 @@ public class CollectionLogWidgetMonitor
 
     private int tickClogScriptFired = -1;
     private boolean isAutoScanInProgress = false;
+    private boolean isExecutingClogAutoScanScript = false;
     private int openSetupCacheBatches = 0;
     private int setupCacheBatchOpenedTick = -1;
     private int loggedItemDrawCount = 0;
     private final Set<Integer> loggedCollectionLogScriptIds = new HashSet<>();
+    private final Set<Integer> loggedAutoScanNestedScriptIds = new HashSet<>();
     private int capturedSeenThisSession = 0;
     private int capturedObtainedThisSession = 0;
 
@@ -71,10 +73,12 @@ public class CollectionLogWidgetMonitor
     {
         tickClogScriptFired = -1;
         isAutoScanInProgress = false;
+        isExecutingClogAutoScanScript = false;
         openSetupCacheBatches = 0;
         setupCacheBatchOpenedTick = -1;
         loggedItemDrawCount = 0;
         loggedCollectionLogScriptIds.clear();
+        loggedAutoScanNestedScriptIds.clear();
         capturedSeenThisSession = 0;
         capturedObtainedThisSession = 0;
     }
@@ -92,6 +96,7 @@ public class CollectionLogWidgetMonitor
         {
             tickClogScriptFired = -1;
             isAutoScanInProgress = false;
+            isExecutingClogAutoScanScript = false;
         }
     }
 
@@ -99,6 +104,11 @@ public class CollectionLogWidgetMonitor
     public void onScriptPostFired(ScriptPostFired event)
     {
         logCollectionLogScriptDiscovery("post", event.getScriptId());
+
+        if (event.getScriptId() == CLOG_AUTO_SCAN_SCRIPT)
+        {
+            isExecutingClogAutoScanScript = false;
+        }
 
         if (event.getScriptId() == ScriptID.COLLECTION_DRAW_LIST)
         {
@@ -167,6 +177,14 @@ public class CollectionLogWidgetMonitor
     public void onScriptPreFired(ScriptPreFired event)
     {
         logCollectionLogScriptDiscovery("pre", event.getScriptId());
+
+        if (event.getScriptId() == CLOG_AUTO_SCAN_SCRIPT)
+        {
+            isExecutingClogAutoScanScript = true;
+            return;
+        }
+
+        logClogAutoScanNestedScript(event);
 
         if (event.getScriptId() == CLOG_SETUP_SCRIPT)
         {
@@ -277,11 +295,40 @@ public class CollectionLogWidgetMonitor
                 isWidgetVisible(ComponentID.COLLECTION_LOG_ENTRY_ITEMS));
     }
 
+    private void logClogAutoScanNestedScript(ScriptPreFired event)
+    {
+        if (!isExecutingClogAutoScanScript)
+        {
+            return;
+        }
+
+        int scriptId = event.getScriptId();
+        if (scriptId == CLOG_SETUP_SCRIPT
+                || scriptId == CLOG_AUTO_SCAN_SCRIPT
+                || scriptId == ScriptID.COLLECTION_DRAW_LIST)
+        {
+            return;
+        }
+
+        if (!loggedAutoScanNestedScriptIds.add(scriptId))
+        {
+            return;
+        }
+
+        Object[] args = event.getScriptEvent() == null ? null : event.getScriptEvent().getArguments();
+        log.info("XtremeTasker CLOG autoscan nested script: scriptId={} name={} argsCount={} args={}",
+                scriptId,
+                collectionLogScriptName(scriptId),
+                args == null ? -1 : args.length,
+                argsSummary(args));
+    }
+
     private boolean isCollectionLogInterfaceAvailable()
     {
         return isWidgetVisible(ComponentID.COLLECTION_LOG_CONTAINER)
                 || isWidgetVisible(ComponentID.COLLECTION_LOG_ENTRY_ITEMS)
                 || openSetupCacheBatches > 0
+                || isExecutingClogAutoScanScript
                 || tickClogScriptFired == client.getTickCount();
     }
 
