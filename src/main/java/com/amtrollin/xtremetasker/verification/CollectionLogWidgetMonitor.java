@@ -286,21 +286,7 @@ public class CollectionLogWidgetMonitor
             capturedSeenThisSession++;
             count.seenCaptured++;
 
-            if (quantity > 0)
-            {
-                collectionLogService.storeItem(itemId);
-                capturedObtainedThisSession++;
-                count.obtainedCaptured++;
-                if (!wasObtained)
-                {
-                    log.info("XtremeTasker CLOG sync diagnostic: marked obtained source=widget-fallback itemId={} quantity={} widgetId={} childIndex={}",
-                            itemId,
-                            quantity,
-                            widget.getId(),
-                            widget.getIndex());
-                }
-            }
-            else
+            if (quantity <= 0)
             {
                 collectionLogService.storeUnobtainedItem(itemId);
                 if (wasObtained)
@@ -311,6 +297,14 @@ public class CollectionLogWidgetMonitor
                             widget.getId(),
                             widget.getIndex());
                 }
+            }
+            else
+            {
+                log.debug("XtremeTasker CLOG sync debug: widget fallback saw positive quantity but did not mark obtained itemId={} quantity={} widgetId={} childIndex={}",
+                        itemId,
+                        quantity,
+                        widget.getId(),
+                        widget.getIndex());
             }
         }
 
