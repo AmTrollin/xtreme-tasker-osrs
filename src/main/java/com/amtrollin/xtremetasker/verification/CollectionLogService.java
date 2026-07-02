@@ -293,10 +293,11 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
             if (markObtainedItem(itemId, null))
             {
                 log.debug("XtremeTasker CLOG sync debug: cached obtained itemId={} canonical={} obtainedCount={} seenCount={}",
-                        itemId, canonicalCollectionLogItemId(itemId), obtainedItems.size(), seenItems.size());
+                        itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
                 notifyCacheChanged();
             }
         }

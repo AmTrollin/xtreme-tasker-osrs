@@ -6,7 +6,6 @@ import net.runelite.api.ScriptID;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
-import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.eventbus.EventBus;
@@ -115,13 +114,6 @@ public class CollectionLogWidgetMonitor
         if (isAutoScanInProgress)
         {
             log.debug("XtremeTasker CLOG sync debug: auto scan already in progress");
-            return;
-        }
-
-        // Don't scan when viewing another player's clog via POH adventure log.
-        if (client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
-        {
-            log.debug("XtremeTasker CLOG sync debug: skipped auto scan because POH host book varbit is set");
             return;
         }
 
@@ -238,7 +230,6 @@ public class CollectionLogWidgetMonitor
         }
 
         int itemId = widget.getItemId();
-        int quantity = widget.getItemQuantity();
         if (itemId > 0)
         {
             count.itemWidgets++;
