@@ -93,7 +93,7 @@ public class PersistenceRegressionTest
     }
 
     @Test
-    public void syncCompletingCurrentTaskKeepsCurrentTimerEligible() throws Exception
+    public void syncCompletingCurrentTaskDoesNotMarkCurrentComplete() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
         plugin.setCollectionLogServiceForTesting(new CollectionLogService());
@@ -106,17 +106,21 @@ public class PersistenceRegressionTest
         );
 
         plugin.tasksForTesting().add(task);
+        plugin.syncedCompletedTaskIdsForTesting().add(task.getId());
         plugin.setCurrentTaskForTesting(task);
+
+        assertFalse("Stale synced state should be removed when the task is current",
+                plugin.isTaskCompleted(task));
 
         plugin.markSyncCompletionCandidateTasksCompleteAndPersist(List.of(task));
 
-        assertTrue("Sync completion should mark the task complete",
+        assertFalse("Sync completion should not mark the current task complete",
                 plugin.isTaskCompleted(task));
-        assertNotNull("Sync completion should not leave the Current slot",
+        assertNotNull("Sync completion should leave the Current slot active",
                 plugin.getCurrentTask());
         assertFalse("Sync completion should not become the undoable recent-completion state",
                 plugin.canUndoRecentTaskCompletion());
-        assertEquals("Synced current task should keep accruing timer ticks until the user hits Complete",
+        assertEquals("Current task should keep accruing timer ticks until the user hits Complete",
                 task.getId(), currentTimerTaskId(plugin));
     }
 

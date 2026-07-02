@@ -69,33 +69,6 @@ public class CollectionLogMismatchTest
     }
 
     @Test
-    public void syncedOnlyCollectionLogCompletionIsAutoRepairedWhenLaterSyncDisprovesIt() throws Exception
-    {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        CollectionLogService collectionLogService = new CollectionLogService();
-        plugin.setCollectionLogServiceForTesting(collectionLogService);
-
-        XtremeTask task = collectionLogTask(
-                "collection_log_easy_get-a-green-satchel_001_synced_repair_test",
-                "Get a Green satchel",
-                TaskTier.EASY,
-                new int[]{10878},
-                1
-        );
-
-        plugin.tasksForTesting().add(task);
-        plugin.syncedCompletedTaskIdsForTesting().add(task.getId());
-
-        collectionLogService.storeSeenItem(10878);
-        collectionLogService.markSyncSeen();
-
-        assertTrue("Synced-only false positive should be removed when later sync disproves it",
-                !plugin.isTaskCompleted(task));
-        assertTrue("Auto-repaired synced-only false positive should not require mismatch review",
-                plugin.getSyncMismatchTasks(TaskSource.COLLECTION_LOG).isEmpty());
-    }
-
-    @Test
     public void manuallyCompletedCollectionLogTaskIsNotMarkedMismatchBeforeSyncEvidence() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -952,6 +925,10 @@ public class CollectionLogMismatchTest
 
         assertTrue("Current CLOG task should highlight once its required item is cached",
                 plugin.isCurrentTaskCompletionCriteriaMet());
+        assertTrue("Current CLOG task should not appear in found-completed sync review",
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).isEmpty());
+        assertTrue("Current CLOG task should not be marked complete by sync",
+                !plugin.isTaskCompleted(tasks.get(0)));
     }
 
     @Test

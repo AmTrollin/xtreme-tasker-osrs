@@ -1,6 +1,5 @@
 package com.amtrollin.xtremetasker.verification;
 
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
@@ -21,7 +20,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Slf4j
 @Singleton
 public class CollectionLogService
 {
@@ -167,8 +165,6 @@ public class CollectionLogService
         Integer cachedItemId = resolvedChatItemIdsByName.get(cacheKey);
         if (cachedItemId != null)
         {
-            log.debug("XtremeTasker CLOG sync debug: chat capture source=chat-cache itemName='{}' itemId={}",
-                    itemName, cachedItemId);
             storeItem(cachedItemId);
             return;
         }
@@ -177,7 +173,6 @@ public class CollectionLogService
         {
             pendingAncientPageDropCountSinceLastSync++;
             notifyCacheChanged();
-            log.debug("Collection log chat capture deferred ambiguous Ancient page drop until CLOG sync");
             return;
         }
 
@@ -185,14 +180,12 @@ public class CollectionLogService
         {
             pendingMedallionFragmentDropCountSinceLastSync++;
             notifyCacheChanged();
-            log.debug("Collection log chat capture deferred ambiguous Medallion fragment drop until CLOG sync");
             return;
         }
 
         List<ItemPrice> results = itemManager.search(itemName);
         if (results == null || results.isEmpty())
         {
-            log.debug("Collection log chat capture could not resolve item ID for '{}'", itemName);
             return;
         }
 
@@ -200,8 +193,6 @@ public class CollectionLogService
         {
             if (itemName.equalsIgnoreCase(result.getName()))
             {
-                log.debug("XtremeTasker CLOG sync debug: chat capture source=chat itemName='{}' itemId={} match=exact",
-                        itemName, result.getId());
                 resolvedChatItemIdsByName.put(cacheKey, result.getId());
                 storeItem(result.getId());
                 return;
@@ -221,14 +212,10 @@ public class CollectionLogService
         if (normalizedMatches.size() == 1)
         {
             ItemPrice resolved = normalizedMatches.get(0);
-            log.debug("XtremeTasker CLOG sync debug: chat capture source=chat itemName='{}' itemId={} match=normalized",
-                    itemName, resolved.getId());
             resolvedChatItemIdsByName.put(cacheKey, resolved.getId());
             storeItem(resolved.getId());
             return;
         }
-
-        log.debug("Collection log chat capture ignored ambiguous match for '{}' ({} candidates)", itemName, results.size());
     }
 
     private static String chatItemNameCacheKey(String value)
@@ -262,37 +249,10 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
-            int canonicalItemId = canonicalCollectionLogItemId(itemId);
-            boolean beforeObtained = isItemObtained(itemId);
-            Set<Integer> beforeMatches = obtainedCanonicalMatches(canonicalItemId);
             boolean changed = markObtainedItem(itemId, null);
-            boolean afterObtained = isItemObtained(itemId);
             if (changed)
             {
-                log.debug("XtremeTasker CLOG sync debug: cached obtained itemId={} canonical={} obtainedCount={} seenCount={}",
-                        itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
-                log.info("XtremeTasker CLOG item state: storeItem itemId={} canonical={} beforeObtained={} afterObtained={} changed={} beforeMatches={} afterMatches={} obtainedCount={} seenCount={}",
-                        itemId,
-                        canonicalItemId,
-                        beforeObtained,
-                        afterObtained,
-                        true,
-                        beforeMatches,
-                        obtainedCanonicalMatches(canonicalItemId),
-                        obtainedItems.size(),
-                        seenItems.size());
                 notifyCacheChanged();
-            }
-            else
-            {
-                log.debug("XtremeTasker CLOG item state: storeItem no-op itemId={} canonical={} beforeObtained={} afterObtained={} matches={} obtainedCount={} seenCount={}",
-                        itemId,
-                        canonicalItemId,
-                        beforeObtained,
-                        afterObtained,
-                        beforeMatches,
-                        obtainedItems.size(),
-                        seenItems.size());
             }
         }
     }
@@ -306,8 +266,6 @@ public class CollectionLogService
             changed |= seenItems.add(canonicalItemId);
             if (changed)
             {
-                log.debug("XtremeTasker CLOG sync debug: cached seen itemId={} canonical={} obtainedCount={} seenCount={}",
-                        itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
                 notifyCacheChanged();
             }
         }
@@ -317,48 +275,17 @@ public class CollectionLogService
     {
         if (itemId <= 0)
         {
-            log.debug("XtremeTasker CLOG item state: storeUnobtained ignored itemId={} reason=non-positive", itemId);
             return;
         }
 
         int canonicalItemId = canonicalCollectionLogItemId(itemId);
-        boolean beforeObtained = isItemObtained(itemId);
-        Set<Integer> beforeMatches = obtainedCanonicalMatches(canonicalItemId);
         boolean seenChanged = seenItems.add(itemId);
         seenChanged |= seenItems.add(canonicalItemId);
         boolean removedObtained = removeObtainedCanonicalItem(canonicalItemId);
         boolean changed = seenChanged | removedObtained;
-        boolean afterObtained = isItemObtained(itemId);
-
-        if (removedObtained)
-        {
-            log.info("XtremeTasker CLOG item state: storeUnobtained itemId={} canonical={} beforeObtained={} afterObtained={} beforeMatches={} afterMatches={} obtainedCount={} seenCount={}",
-                    itemId,
-                    canonicalItemId,
-                    beforeObtained,
-                    afterObtained,
-                    beforeMatches,
-                    obtainedCanonicalMatches(canonicalItemId),
-                    obtainedItems.size(),
-                    seenItems.size());
-        }
-        else
-        {
-            log.debug("XtremeTasker CLOG item state: storeUnobtained no-op itemId={} canonical={} beforeObtained={} afterObtained={} seenChanged={} matches={} obtainedCount={} seenCount={}",
-                    itemId,
-                    canonicalItemId,
-                    beforeObtained,
-                    afterObtained,
-                    seenChanged,
-                    beforeMatches,
-                    obtainedItems.size(),
-                    seenItems.size());
-        }
 
         if (changed)
         {
-            log.debug("XtremeTasker CLOG sync debug: reconciled unobtained itemId={} canonical={} obtainedCount={} seenCount={}",
-                    itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
             notifyCacheChanged();
         }
     }
@@ -605,19 +532,6 @@ public class CollectionLogService
         return changed;
     }
 
-    private Set<Integer> obtainedCanonicalMatches(int canonicalItemId)
-    {
-        Set<Integer> matches = new HashSet<>();
-        for (Integer itemId : obtainedItems)
-        {
-            if (itemId != null && canonicalCollectionLogItemId(itemId) == canonicalItemId)
-            {
-                matches.add(itemId);
-            }
-        }
-        return matches;
-    }
-
     private Long existingOrder(int itemId, int canonicalItemId)
     {
         Long order = obtainedItemOrder.get(itemId);
@@ -643,21 +557,12 @@ public class CollectionLogService
         if (cacheChangeBatchDepth > 0)
         {
             cacheChangePending = true;
-            log.debug("XtremeTasker CLOG sync debug: cache change batched depth={} obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={}",
-                    cacheChangeBatchDepth, obtainedItems.size(), seenItems.size(), fullSyncSeen, lastSyncSeenAtMillis);
             return;
         }
 
         if (cacheChangeListener != null)
         {
-            log.debug("XtremeTasker CLOG sync debug: notifying plugin cache listener obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={}",
-                    obtainedItems.size(), seenItems.size(), fullSyncSeen, lastSyncSeenAtMillis);
             cacheChangeListener.run();
-        }
-        else
-        {
-            log.debug("XtremeTasker CLOG sync debug: cache changed but no listener is attached obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={}",
-                    obtainedItems.size(), seenItems.size(), fullSyncSeen, lastSyncSeenAtMillis);
         }
     }
 }
