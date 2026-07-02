@@ -6,6 +6,8 @@ import net.runelite.api.events.ChatMessage;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class CollectionLogPendingDropTest
 {
@@ -72,6 +74,50 @@ public class CollectionLogPendingDropTest
         service.onChatMessage(message);
 
         assertEquals(0, service.getPendingAncientPageDropCountSinceLastSync());
+    }
+
+    @Test
+    public void fullSyncPrunesObtainedItemsThatAreSeenMissing()
+    {
+        CollectionLogService service = new CollectionLogService();
+        service.storeItem(10878);
+
+        service.beginFullSyncCapture();
+        service.storeSeenItem(10878);
+        int pruned = service.finishFullSyncCapture();
+
+        assertEquals(1, pruned);
+        assertFalse(service.isItemObtained(10878));
+        assertTrue(service.hasSeenItem(10878));
+    }
+
+    @Test
+    public void fullSyncDoesNotPruneObtainedItemsThatWereNotSeen()
+    {
+        CollectionLogService service = new CollectionLogService();
+        service.storeItem(10878);
+
+        service.beginFullSyncCapture();
+        service.storeSeenItem(10879);
+        int pruned = service.finishFullSyncCapture();
+
+        assertEquals(0, pruned);
+        assertTrue(service.isItemObtained(10878));
+    }
+
+    @Test
+    public void fullSyncDoesNotPruneItemsSeenObtained()
+    {
+        CollectionLogService service = new CollectionLogService();
+        service.storeItem(10878);
+
+        service.beginFullSyncCapture();
+        service.storeSeenItem(10878);
+        service.storeItem(10878);
+        int pruned = service.finishFullSyncCapture();
+
+        assertEquals(0, pruned);
+        assertTrue(service.isItemObtained(10878));
     }
 
     private static ChatMessage chat(String text)

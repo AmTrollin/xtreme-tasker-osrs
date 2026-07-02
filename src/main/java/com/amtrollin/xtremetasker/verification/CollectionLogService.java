@@ -100,6 +100,9 @@ public class CollectionLogService
     private boolean fullSyncSeen = false;
     private long lastSyncSeenAtMillis = 0L;
     private final Map<String, Integer> resolvedChatItemIdsByName = new HashMap<>();
+    private boolean fullSyncCaptureActive = false;
+    private final Set<Integer> fullSyncSeenCanonicalItemIds = new HashSet<>();
+    private final Set<Integer> fullSyncObtainedCanonicalItemIds = new HashSet<>();
 
     public void setCacheChangeListener(Runnable cacheChangeListener)
     {
@@ -244,10 +247,17 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            if (fullSyncCaptureActive)
+            {
+                fullSyncSeenCanonicalItemIds.add(canonicalItemId);
+                fullSyncObtainedCanonicalItemIds.add(canonicalItemId);
+            }
+
             if (markObtainedItem(itemId, null))
             {
                 log.debug("XtremeTasker CLOG sync debug: cached obtained itemId={} canonical={} obtainedCount={} seenCount={}",
-                        itemId, canonicalCollectionLogItemId(itemId), obtainedItems.size(), seenItems.size());
+                        itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
                 notifyCacheChanged();
             }
         }
@@ -258,6 +268,11 @@ public class CollectionLogService
         if (itemId > 0)
         {
             int canonicalItemId = canonicalCollectionLogItemId(itemId);
+            if (fullSyncCaptureActive)
+            {
+                fullSyncSeenCanonicalItemIds.add(canonicalItemId);
+            }
+
             boolean changed = seenItems.add(itemId);
             changed |= seenItems.add(canonicalItemId);
             if (changed)
@@ -342,6 +357,22 @@ public class CollectionLogService
             }
         }
         return count;
+    }
+
+    public void beginFullSyncCapture()
+    {
+        fullSyncCaptureActive = true;
+        fullSyncSeenCanonicalItemIds.clear();
+        fullSyncObtainedCanonicalItemIds.clear();
+    }
+
+    public int finishFullSyncCapture()
+    {
+        int pruned = pruneObtainedItemsMissingFromFullSync();
+        fullSyncCaptureActive = false;
+        fullSyncSeenCanonicalItemIds.clear();
+        fullSyncObtainedCanonicalItemIds.clear();
+        return pruned;
     }
 
     public int getCapturedItemCount()
@@ -470,6 +501,46 @@ public class CollectionLogService
         resolvedChatItemIdsByName.clear();
         fullSyncSeen = false;
         lastSyncSeenAtMillis = 0L;
+        fullSyncCaptureActive = false;
+        fullSyncSeenCanonicalItemIds.clear();
+        fullSyncObtainedCanonicalItemIds.clear();
+    }
+
+    private int pruneObtainedItemsMissingFromFullSync()
+    {
+        if (fullSyncSeenCanonicalItemIds.isEmpty())
+        {
+            return 0;
+        }
+
+        Set<Integer> canonicalItemIdsToPrune = new HashSet<>();
+        for (Integer canonicalItemId : fullSyncSeenCanonicalItemIds)
+        {
+            if (canonicalItemId != null
+                    && canonicalItemId > 0
+                    && !fullSyncObtainedCanonicalItemIds.contains(canonicalItemId)
+                    && isItemObtained(canonicalItemId))
+            {
+                canonicalItemIdsToPrune.add(canonicalItemId);
+            }
+        }
+
+        if (canonicalItemIdsToPrune.isEmpty())
+        {
+            return 0;
+        }
+
+        boolean changed = obtainedItems.removeIf(itemId -> itemId != null
+                && canonicalItemIdsToPrune.contains(canonicalCollectionLogItemId(itemId)));
+        changed |= obtainedItemOrder.keySet().removeIf(itemId -> itemId != null
+                && canonicalItemIdsToPrune.contains(canonicalCollectionLogItemId(itemId)));
+        if (changed)
+        {
+            log.debug("XtremeTasker CLOG sync debug: pruned {} stale obtained CLOG item(s) after full sync",
+                    canonicalItemIdsToPrune.size());
+            notifyCacheChanged();
+        }
+        return changed ? canonicalItemIdsToPrune.size() : 0;
     }
 
     public long getObtainedItemOrder(int itemId)

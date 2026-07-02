@@ -140,6 +140,7 @@ public class CollectionLogWidgetMonitor
         int seenBefore = collectionLogService.getSeenItemCount();
         int obtainedBefore = collectionLogService.getCapturedItemCount();
         collectionLogService.beginCacheChangeBatch();
+        collectionLogService.beginFullSyncCapture();
         try
         {
             log.debug("XtremeTasker CLOG sync debug: firing collection log search action component={} before full auto scan",
@@ -151,12 +152,14 @@ public class CollectionLogWidgetMonitor
         }
         finally
         {
+            int prunedObtained = collectionLogService.finishFullSyncCapture();
             collectionLogService.endCacheChangeBatch();
-            log.debug("XtremeTasker CLOG sync debug: finished full auto scan; seen {}->{} obtained {}->{} slotDraws={} seenCaptures={} obtainedCaptures={}",
+            log.debug("XtremeTasker CLOG sync debug: finished full auto scan; seen {}->{} obtained {}->{} prunedObtained={} slotDraws={} seenCaptures={} obtainedCaptures={}",
                     seenBefore,
                     collectionLogService.getSeenItemCount(),
                     obtainedBefore,
                     collectionLogService.getCapturedItemCount(),
+                    prunedObtained,
                     loggedItemDrawCount,
                     capturedSeenThisSession,
                     capturedObtainedThisSession);
