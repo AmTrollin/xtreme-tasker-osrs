@@ -126,7 +126,7 @@ public class CollectionLogWidgetMonitor
 
         if (isViewingAnotherPlayersCollectionLog())
         {
-            log.debug("XtremeTasker CLOG sync debug: skipped auto scan because POH host book varbit is set");
+            log.info("XtremeTasker CLOG sync: skipped full sync because another player's Collection Log appears to be open");
             return;
         }
 
@@ -139,6 +139,11 @@ public class CollectionLogWidgetMonitor
         tickClogScriptFired = client.getTickCount();
         int seenBefore = collectionLogService.getSeenItemCount();
         int obtainedBefore = collectionLogService.getCapturedItemCount();
+        int slotDrawsBefore = loggedItemDrawCount;
+        int seenCapturesBefore = capturedSeenThisSession;
+        int obtainedCapturesBefore = capturedObtainedThisSession;
+        log.info("XtremeTasker CLOG sync: starting full sync; cachedSeen={} cachedObtained={}",
+                seenBefore, obtainedBefore);
         collectionLogService.beginCacheChangeBatch();
         collectionLogService.beginFullSyncCapture();
         try
@@ -154,15 +159,17 @@ public class CollectionLogWidgetMonitor
         {
             int prunedObtained = collectionLogService.finishFullSyncCapture();
             collectionLogService.endCacheChangeBatch();
-            log.debug("XtremeTasker CLOG sync debug: finished full auto scan; seen {}->{} obtained {}->{} prunedObtained={} slotDraws={} seenCaptures={} obtainedCaptures={}",
+            int seenAfter = collectionLogService.getSeenItemCount();
+            int obtainedAfter = collectionLogService.getCapturedItemCount();
+            log.info("XtremeTasker CLOG sync: finished full sync; cachedSeen {}->{}, cachedObtained {}->{}, prunedStaleObtained={}, slotDraws={}, seenCaptures={}, obtainedCaptures={}",
                     seenBefore,
-                    collectionLogService.getSeenItemCount(),
+                    seenAfter,
                     obtainedBefore,
-                    collectionLogService.getCapturedItemCount(),
+                    obtainedAfter,
                     prunedObtained,
-                    loggedItemDrawCount,
-                    capturedSeenThisSession,
-                    capturedObtainedThisSession);
+                    loggedItemDrawCount - slotDrawsBefore,
+                    capturedSeenThisSession - seenCapturesBefore,
+                    capturedObtainedThisSession - obtainedCapturesBefore);
         }
     }
 
@@ -265,6 +272,13 @@ public class CollectionLogWidgetMonitor
             collectionLogService.storeSeenItem(itemId);
             capturedSeenThisSession++;
             count.seenCaptured++;
+        }
+
+        if (itemId > 0 && quantity > 0)
+        {
+            collectionLogService.storeItem(itemId);
+            capturedObtainedThisSession++;
+            count.obtainedCaptured++;
         }
 
         scanCollectionLogItemWidgets(widget.getChildren(), visited, count);
