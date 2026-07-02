@@ -51,7 +51,6 @@ public class CollectionLogWidgetMonitor
     private int openSetupCacheBatches = 0;
     private int setupCacheBatchOpenedTick = -1;
     private int loggedItemDrawCount = 0;
-    private final Set<Integer> loggedCollectionLogScriptIds = new HashSet<>();
     private final Set<Integer> loggedAutoScanNestedScriptIds = new HashSet<>();
     private int capturedSeenThisSession = 0;
     private int capturedObtainedThisSession = 0;
@@ -77,7 +76,6 @@ public class CollectionLogWidgetMonitor
         openSetupCacheBatches = 0;
         setupCacheBatchOpenedTick = -1;
         loggedItemDrawCount = 0;
-        loggedCollectionLogScriptIds.clear();
         loggedAutoScanNestedScriptIds.clear();
         capturedSeenThisSession = 0;
         capturedObtainedThisSession = 0;
@@ -103,8 +101,6 @@ public class CollectionLogWidgetMonitor
     @Subscribe
     public void onScriptPostFired(ScriptPostFired event)
     {
-        logCollectionLogScriptDiscovery("post", event.getScriptId());
-
         if (event.getScriptId() == CLOG_AUTO_SCAN_SCRIPT)
         {
             isExecutingClogAutoScanScript = false;
@@ -176,11 +172,12 @@ public class CollectionLogWidgetMonitor
     @Subscribe
     public void onScriptPreFired(ScriptPreFired event)
     {
-        logCollectionLogScriptDiscovery("pre", event.getScriptId());
-
         if (event.getScriptId() == CLOG_AUTO_SCAN_SCRIPT)
         {
             isExecutingClogAutoScanScript = true;
+            log.info("XtremeTasker CLOG autoscan script: scriptId={} name={}",
+                    CLOG_AUTO_SCAN_SCRIPT,
+                    collectionLogScriptName(CLOG_AUTO_SCAN_SCRIPT));
             return;
         }
 
@@ -273,26 +270,6 @@ public class CollectionLogWidgetMonitor
         scanCollectionLogItemWidget(items, visited, count);
         log.debug("XtremeTasker CLOG sync debug: widget fallback scan found itemWidgets={} seenCaptured={} obtainedCaptured={}",
                 count.itemWidgets, count.seenCaptured, count.obtainedCaptured);
-    }
-
-    private void logCollectionLogScriptDiscovery(String phase, int scriptId)
-    {
-        if (client == null || !isCollectionLogInterfaceAvailable())
-        {
-            return;
-        }
-
-        if (!loggedCollectionLogScriptIds.add(scriptId))
-        {
-            return;
-        }
-
-        log.info("XtremeTasker CLOG script discovery: phase={} scriptId={} name={} collectionContainerVisible={} entryItemsVisible={}",
-                phase,
-                scriptId,
-                collectionLogScriptName(scriptId),
-                isWidgetVisible(ComponentID.COLLECTION_LOG_CONTAINER),
-                isWidgetVisible(ComponentID.COLLECTION_LOG_ENTRY_ITEMS));
     }
 
     private void logClogAutoScanNestedScript(ScriptPreFired event)
