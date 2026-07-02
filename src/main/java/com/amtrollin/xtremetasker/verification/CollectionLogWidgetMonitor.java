@@ -49,6 +49,7 @@ public class CollectionLogWidgetMonitor
     private int openSetupCacheBatches = 0;
     private int setupCacheBatchOpenedTick = -1;
     private int loggedItemDrawCount = 0;
+    private int loggedWidgetFallbackCount = 0;
     private int capturedSeenThisSession = 0;
     private int capturedObtainedThisSession = 0;
 
@@ -72,6 +73,7 @@ public class CollectionLogWidgetMonitor
         openSetupCacheBatches = 0;
         setupCacheBatchOpenedTick = -1;
         loggedItemDrawCount = 0;
+        loggedWidgetFallbackCount = 0;
         capturedSeenThisSession = 0;
         capturedObtainedThisSession = 0;
     }
@@ -147,12 +149,13 @@ public class CollectionLogWidgetMonitor
         finally
         {
             collectionLogService.endCacheChangeBatch();
-            log.info("XtremeTasker CLOG sync diagnostic: finished full auto scan seen {}->{} obtained {}->{} slotDraws={} seenCaptures={} obtainedCaptures={}",
+            log.info("XtremeTasker CLOG sync diagnostic: finished full auto scan seen {}->{} obtained {}->{} scriptSlotDraws={} widgetSlotLogs={} seenCaptures={} obtainedCaptures={}",
                     seenBefore,
                     collectionLogService.getSeenItemCount(),
                     obtainedBefore,
                     collectionLogService.getCapturedItemCount(),
                     loggedItemDrawCount,
+                    loggedWidgetFallbackCount,
                     capturedSeenThisSession,
                     capturedObtainedThisSession);
         }
@@ -267,9 +270,48 @@ public class CollectionLogWidgetMonitor
         if (itemId > 0)
         {
             count.itemWidgets++;
+            boolean wasObtained = collectionLogService.isItemObtained(itemId);
+            if (loggedWidgetFallbackCount < 120)
+            {
+                loggedWidgetFallbackCount++;
+                log.info("XtremeTasker CLOG sync diagnostic: widget fallback slot itemId={} quantity={} wasObtained={} widgetId={} childIndex={}",
+                        itemId,
+                        quantity,
+                        wasObtained,
+                        widget.getId(),
+                        widget.getIndex());
+            }
+
             collectionLogService.storeSeenItem(itemId);
             capturedSeenThisSession++;
             count.seenCaptured++;
+
+            if (quantity > 0)
+            {
+                collectionLogService.storeItem(itemId);
+                capturedObtainedThisSession++;
+                count.obtainedCaptured++;
+                if (!wasObtained)
+                {
+                    log.info("XtremeTasker CLOG sync diagnostic: marked obtained source=widget-fallback itemId={} quantity={} widgetId={} childIndex={}",
+                            itemId,
+                            quantity,
+                            widget.getId(),
+                            widget.getIndex());
+                }
+            }
+            else
+            {
+                collectionLogService.storeUnobtainedItem(itemId);
+                if (wasObtained)
+                {
+                    log.info("XtremeTasker CLOG sync diagnostic: cleared obtained source=widget-fallback itemId={} quantity={} widgetId={} childIndex={}",
+                            itemId,
+                            quantity,
+                            widget.getId(),
+                            widget.getIndex());
+                }
+            }
         }
 
         scanCollectionLogItemWidgets(widget.getChildren(), visited, count);
