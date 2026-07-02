@@ -29,10 +29,11 @@ public class CollectionLogService
     private static final String MEDALLION_FRAGMENT_ITEM_NAME = "Medallion fragment";
     private static final int MEDALLION_OF_THE_DEEP_ITEM_ID = 32386;
 
-    // Matches "New item added to your collection log: Mark of grace x1."
-    // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
+    // Matches the official in-game new-entry message:
+    // "New collection log item: Mark of grace."
+    // Also accepts the older wording previously used by this plugin.
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
-            "New item added to your collection log:\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
+            "^(?:New collection log item:|New item added to your collection log:)\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
     private static final Pattern MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN = Pattern.compile(
@@ -152,7 +153,7 @@ public class CollectionLogService
         }
 
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
-        if (m.find())
+        if (m.matches())
         {
             String itemName = m.group(1).trim();
             resolveAndStoreByName(itemName);

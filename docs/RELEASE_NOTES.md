@@ -1,5 +1,12 @@
 # Xtreme Tasker Release Notes
 
+## v2.1.1 — 07.02.2026
+
+### Bug Fixes
+- Fixed current task timer stopping when Collection Log sync incorrectly marked the active task complete.
+- Added reconciliation for Collection Log items later seen with `0` quantity, allowing false positives to be systematically corrected
+- Tightened chat based Collection Log detection
+
 ## v2.1 — 06.30.2026
 
 ### Sync & Task Completion

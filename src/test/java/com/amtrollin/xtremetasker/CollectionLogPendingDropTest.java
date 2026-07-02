@@ -14,8 +14,8 @@ public class CollectionLogPendingDropTest
     {
         CollectionLogService service = new CollectionLogService();
 
-        service.onChatMessage(chat("New item added to your collection log: Ancient page."));
-        service.onChatMessage(chat("New item added to your collection log: Ancient page x1."));
+        service.onChatMessage(chat("New collection log item: Ancient page."));
+        service.onChatMessage(chat("New collection log item: Ancient page x1."));
 
         assertEquals(2, service.getPendingAncientPageDropCountSinceLastSync());
 
@@ -29,7 +29,7 @@ public class CollectionLogPendingDropTest
     {
         CollectionLogService service = new CollectionLogService();
 
-        service.onChatMessage(chat("New item added to your collection log: Medallion fragment."));
+        service.onChatMessage(chat("New collection log item: Medallion fragment."));
 
         assertEquals(1, service.getPendingMedallionFragmentDropCountSinceLastSync());
 
@@ -42,7 +42,7 @@ public class CollectionLogPendingDropTest
     public void nonGameMessagesDoNotCreatePendingDrops()
     {
         CollectionLogService service = new CollectionLogService();
-        ChatMessage message = chat("New item added to your collection log: Ancient page.");
+        ChatMessage message = chat("New collection log item: Ancient page.");
         message.setType(ChatMessageType.PUBLICCHAT);
 
         service.onChatMessage(message);
@@ -51,11 +51,22 @@ public class CollectionLogPendingDropTest
     }
 
     @Test
+    public void legacyCollectionLogPopupStillCreatesPendingDrops()
+    {
+        CollectionLogService service = new CollectionLogService();
+
+        service.onChatMessage(chat("New item added to your collection log: Ancient page."));
+
+        assertEquals(1, service.getPendingAncientPageDropCountSinceLastSync());
+    }
+
+    @Test
     public void broadcastLikeMessagesDoNotMarkTomeOfWaterObtained()
     {
         CollectionLogService service = new CollectionLogService();
 
         service.onChatMessage(chat("Player received a special drop: Tome of water (empty)."));
+        service.onChatMessage(chat("[Player] New collection log item: Tome of water (empty)."));
 
         assertEquals(0, service.countObtained(new int[]{25576}));
     }
