@@ -334,6 +334,10 @@ public class XtremeTaskerOverlay extends Overlay {
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
         if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_GREEN_ACHIEVEMENT_DIARIES);
+        Integer exactSequenceItemId = task.getIconItemId();
+        if (exactSequenceItemId != null && exactSequenceItemId > 0 && isDecoratedSequenceTaskName(task.getName())) {
+            return getCachedItemImage(exactSequenceItemId);
+        }
         Integer sequenceItemId = sequencePreviewFocusItemId(task);
         if (sequenceItemId != null && sequenceItemId > 0) return getCachedItemImage(sequenceItemId);
         Integer id = task.getIconItemId();
@@ -557,6 +561,15 @@ public class XtremeTaskerOverlay extends Overlay {
     private static String safeTaskId(XtremeTask task)
     {
         return task == null || task.getId() == null ? "" : task.getId();
+    }
+
+    private boolean isPreviewingCurrentTask(XtremeTask task)
+    {
+        XtremeTask current = plugin.getCurrentTask();
+        return task != null
+                && task.getId() != null
+                && current != null
+                && Objects.equals(task.getId(), current.getId());
     }
 
     private String pendingTaskDetailsIncompleteSignature()
@@ -1011,7 +1024,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private String sequencePreviewSummaryText(XtremeTask task, int[] itemIds)
     {
-        if (!isDisplaySequenceTaskName(task == null ? null : task.getName()))
+        if (isPreviewingCurrentTask(task) || !isDisplaySequenceTaskName(task == null ? null : task.getName()))
         {
             return "";
         }
@@ -1038,6 +1051,11 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private String fullSequencePreviewSummaryText(XtremeTask task)
     {
+        if (isPreviewingCurrentTask(task))
+        {
+            return "";
+        }
+
         Integer itemId = fullSequencePreviewFocusItemId(task);
         if (itemId == null || itemId <= 0)
         {
@@ -1068,7 +1086,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (!plugin.isCollectionLogItemObtained(itemId))
+            if (!isTaskCompletedForCollectionLogPreview(sequenceTask))
             {
                 return itemId;
             }
@@ -1267,16 +1285,21 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         int completed = 0;
-        for (int i = 0; i < itemIds.length; i++)
+        List<XtremeTask> sequence = collectionLogRequirementSequence(task, itemIds);
+        if (sequence.isEmpty())
         {
-            boolean itemObtained = plugin.isCollectionLogItemObtained(itemIds[i]);
-            if (!itemObtained)
+            return 0;
+        }
+
+        for (XtremeTask sequenceTask : sequence)
+        {
+            if (!isTaskCompletedForCollectionLogPreview(sequenceTask))
             {
                 break;
             }
             completed++;
         }
-        return completed;
+        return Math.min(completed, itemIds.length);
     }
 
     private Map<Integer, CollectionLogRequirementItem.Status> collectionLogRequirementStatuses(

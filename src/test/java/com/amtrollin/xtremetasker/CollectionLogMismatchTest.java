@@ -5,6 +5,7 @@ import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.persistence.PersistedState;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
 import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.amtrollin.xtremetasker.verification.CombatAchievementService;
 import com.google.gson.Gson;
@@ -994,6 +995,49 @@ public class CollectionLogMismatchTest
 
         assertTrue("Exact sequence item should complete the current step",
                 plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
+    public void sequencePreviewNextItemUsesTaskCompletionNotCollectionLogState() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask first = countedCollectionLogTask(
+                "collection_log_easy_get-the-next-tier-of-metal-boots_001_next_preview_test",
+                "Get the next tier of metal boots",
+                1
+        );
+        XtremeTask second = countedCollectionLogTask(
+                "collection_log_easy_get-the-next-tier-of-metal-boots_002_next_preview_test",
+                "Get the next tier of metal boots",
+                2
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(first);
+        plugin.tasksForTesting().add(second);
+
+        collectionLogService.storeItem(4119);
+        collectionLogService.storeItem(4121);
+
+        XtremeTaskerOverlay overlay = new XtremeTaskerOverlay(null, plugin, null, null);
+        Method focusItem = XtremeTaskerOverlay.class.getDeclaredMethod(
+                "sequencePreviewFocusItemId",
+                XtremeTask.class,
+                int[].class);
+        focusItem.setAccessible(true);
+
+        assertEquals("Sequence preview should not skip an incomplete task just because its CLOG item is obtained",
+                Integer.valueOf(4119),
+                focusItem.invoke(overlay, second, new int[]{4119, 4121, 4123, 4125, 4127, 4129, 4131}));
+
+        plugin.manualCompletedTaskIdsForTesting().add(first.getId());
+
+        assertEquals("Sequence preview should advance only after the previous sequence task is marked complete",
+                Integer.valueOf(4121),
+                focusItem.invoke(overlay, second, new int[]{4119, 4121, 4123, 4125, 4127, 4129, 4131}));
     }
 
     @Test
