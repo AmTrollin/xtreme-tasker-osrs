@@ -1,7 +1,6 @@
 package com.amtrollin.xtremetasker.ui.text;
 
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.enums.*;
 
 public final class TaskLabelFormatter
 {

@@ -1,14 +1,7 @@
 package com.amtrollin.xtremetasker.models.persistence;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import lombok.*;
 
 @Data
 @NoArgsConstructor

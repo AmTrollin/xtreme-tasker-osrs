@@ -1,11 +1,7 @@
 package com.amtrollin.xtremetasker.ui;
 
-import net.runelite.client.ui.overlay.Overlay;
-import net.runelite.client.ui.overlay.OverlayLayer;
-import net.runelite.client.ui.overlay.OverlayPosition;
-
-import java.awt.Dimension;
-import java.awt.Graphics2D;
+import java.awt.*;
+import net.runelite.client.ui.overlay.*;
 
 /**
  * A thin ALWAYS_ON_TOP overlay that delegates panel rendering to XtremeTaskerOverlay.

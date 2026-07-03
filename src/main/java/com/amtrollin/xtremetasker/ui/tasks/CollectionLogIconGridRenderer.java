@@ -2,14 +2,11 @@ package com.amtrollin.xtremetasker.ui.tasks;
 
 import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem;
 import com.amtrollin.xtremetasker.ui.text.TextUtils;
-
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.Function;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import org.slf4j.*;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class CollectionLogIconGridRenderer

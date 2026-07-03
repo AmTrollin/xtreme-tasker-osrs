@@ -1,62 +1,36 @@
 package com.amtrollin.xtremetasker;
 
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.enums.TaskTier;
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
-import com.amtrollin.xtremetasker.models.TaskGroupProgress;
-import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.enums.*;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.persistence.PersistedState;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.tasklist.TaskGroupUtils;
-import com.amtrollin.xtremetasker.ui.TaskHudOverlay;
-import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
-import com.amtrollin.xtremetasker.ui.XtremeTaskerPanelOverlay;
-import com.amtrollin.xtremetasker.verification.CollectionLogService;
-import com.amtrollin.xtremetasker.verification.CombatAchievementService;
-import com.amtrollin.xtremetasker.verification.PrerequisiteTrackerService;
+import com.amtrollin.xtremetasker.ui.*;
+import com.amtrollin.xtremetasker.ui.text.UiText;
+import com.amtrollin.xtremetasker.verification.*;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.ItemComposition;
-import net.runelite.api.MenuAction;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.MenuOpened;
-import net.runelite.client.callback.ClientThread;
-import net.runelite.client.chat.ChatMessageBuilder;
-import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.chat.QueuedMessage;
-import net.runelite.client.config.ConfigManager;
-import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.ProfileChanged;
-import net.runelite.client.events.RuneScapeProfileChanged;
-import net.runelite.client.input.KeyManager;
-import net.runelite.client.input.MouseManager;
-import net.runelite.client.plugins.Plugin;
-import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.overlay.OverlayManager;
-
-import javax.inject.Inject;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.Instant;
-import java.time.ZoneId;
+import java.nio.file.*;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import javax.inject.Inject;
+import lombok.*;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.*;
+import net.runelite.api.events.*;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.*;
+import net.runelite.client.config.ConfigManager;
+import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.*;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.input.*;
+import net.runelite.client.plugins.*;
+import net.runelite.client.ui.overlay.OverlayManager;
 
 @Slf4j
 @PluginDescriptor(
@@ -805,8 +779,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (!newTaskIds.isEmpty())
         {
             int newTaskCount = newTaskIds.size();
-            chat("[Xtreme Tasker] You have " + newTaskCount + " new task"
-                    + (newTaskCount == 1 ? "" : "s") + "! Open the Tasks tab to see them.");
+            chat(UiText.format("plugin.new_tasks_notice", newTaskCount, newTaskCount == 1 ? "" : "s"));
         }
 
         markDirtyAndPersist();
@@ -1070,7 +1043,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         String json = gson.toJson(state);
         PersistedState parsed = parseAndValidateState(json, "new save");
         if (parsed == null) {
-            log.warn("Refusing to save XtremeTasker state because the new snapshot failed validation.");
+            log.warn(UiText.get("log.save.invalid"));
             return;
         }
         boolean shouldFlushToDisk = previousState == null || isRecoveryRelevantStateChange(previousState, parsed);
@@ -1095,21 +1068,19 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private boolean canSaveForAccount(String accountKey) {
         if (loadedStateAccountKey == null)
         {
-            log.warn("Refusing to save XtremeTasker state for account {} before account state has been loaded.", accountKey);
+            log.warn(UiText.format("log.save.unloaded", accountKey));
             return false;
         }
 
         if (!accountKey.equals(loadedStateAccountKey))
         {
-            log.warn("Refusing to save XtremeTasker state for account {} because loaded state belongs to {}.",
-                    accountKey, loadedStateAccountKey);
+            log.warn(UiText.format("log.save.loaded_mismatch", accountKey, loadedStateAccountKey));
             return false;
         }
 
         if (activeAccountKey != null && !accountKey.equals(activeAccountKey))
         {
-            log.warn("Refusing to save XtremeTasker state for account {} because active account is {}.",
-                    accountKey, activeAccountKey);
+            log.warn(UiText.format("log.save.active_mismatch", accountKey, activeAccountKey));
             return false;
         }
 
@@ -1141,7 +1112,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), legacyJson);
                 writeStateFileForAccount(accountKey, legacyJson);
                 flushConfigToDisk("legacy character save import");
-                chat("[Xtreme Tasker] Progress save was imported for " + getAccountDisplayNameForMessage() + ".");
+                chat(UiText.format("plugin.progress_imported", getAccountDisplayNameForMessage()));
                 applyPersistedState(legacyState);
                 loadedStateAccountKey = accountKey;
                 loadedStateAtMillis = System.currentTimeMillis();
@@ -1156,7 +1127,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), backupJson);
                 writeStateFileForAccount(accountKey, backupJson);
                 flushConfigToDisk("backup restore");
-                chat("[Xtreme Tasker] Progress save was restored from a backup.");
+                chat(UiText.get("plugin.progress_restored"));
                 applyPersistedState(backup);
                 loadedStateAccountKey = accountKey;
                 loadedStateAtMillis = System.currentTimeMillis();
@@ -1182,10 +1153,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 configManager.setConfiguration(CONFIG_GROUP, stateConfigKeyForAccount(accountKey), repairedJson);
                 writeStateFileForAccount(accountKey, repairedJson);
                 flushConfigToDisk("backup repair");
-                chat("[Xtreme Tasker] Progress save was repaired from a backup.");
+                chat(UiText.get("plugin.progress_repaired"));
             } else {
-                log.warn("Failed to parse persisted XtremeTasker state and no valid backup was found. Leaving progress empty for account {}.", accountKey);
-                chat("[Xtreme Tasker] Progress save could not be read, and no valid backup was found. The broken save was preserved.");
+                log.warn(UiText.format("log.progress_unreadable", accountKey));
+                chat(UiText.get("plugin.progress_unreadable"));
                 clearLoadedState();
                 loadedStateAccountKey = accountKey;
                 loadedStateAtMillis = System.currentTimeMillis();
@@ -1487,8 +1458,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         if (best != null) {
-            log.warn("Imported legacy XtremeTasker state for character {} from shared account hash {} (completed={})",
-                    characterName, legacyAccountKey, completedCount(best));
+            log.warn(UiText.format("log.legacy_import", characterName, legacyAccountKey, completedCount(best)));
         }
         return best;
     }
@@ -3169,7 +3139,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             return syncFoundMessage("CA/AD sync done! ", completionCandidates);
         }
-        return "CA/AD sync done! No new Combat Achievement or Achievement Diary completions found. Open your Collection Log in-game to update CLOG tasks.";
+        return UiText.get("sync.ca_ad.empty");
     }
 
     private int refreshCombatAchievementSyncState()
@@ -3713,8 +3683,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private static String syncFoundMessage(String prefix, int completionCandidates)
     {
-        return prefix + completionCandidates
-                + " new completed task(s) found. Tasks are not marked complete automatically, open review to update task(s).";
+        return UiText.format("sync.found", prefix, completionCandidates);
     }
 
     private void finishSyncStateUpdate()
@@ -4970,7 +4939,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             detectNewTaskIds(tasks, previousKnownCount);
             int newTaskCount = newTaskIds.size();
             if (!isFirstLoad && newTaskCount > 0) {
-                chat("[Xtreme Tasker] You have " + newTaskCount + " new task" + (newTaskCount == 1 ? "" : "s") + "! Open the Tasks tab to see them.");
+                chat(UiText.format("plugin.new_tasks_notice", newTaskCount, newTaskCount == 1 ? "" : "s"));
             } else if (!isFirstLoad) {
                 log.debug("Task list loaded with {} tasks.", tasks.size());
             }
@@ -4985,7 +4954,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             tasks.clear();
             taskPackLoaded = false;
             rebuildTierCounts();
-            chat("Failed to load tasks.json (see logs).");
+            chat(UiText.get("plugin.task_load_failed"));
         }
     }
 
@@ -5064,7 +5033,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             log.debug("Loaded {} combat achievement name-to-taskId mappings from {} structs", loaded, entries.length);
             if (loaded == 0)
             {
-                log.warn("CA mapping loaded 0 entries — struct cache may be cold. Mappings will be retried on the next CA sync.");
+                log.warn(UiText.get("log.ca_mapping_empty"));
             }
         }
         catch (Exception e)

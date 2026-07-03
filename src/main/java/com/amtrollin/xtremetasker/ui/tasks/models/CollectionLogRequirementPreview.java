@@ -1,10 +1,7 @@
 package com.amtrollin.xtremetasker.ui.tasks.models;
 
 import com.amtrollin.xtremetasker.enums.TaskTier;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 public final class CollectionLogRequirementPreview
 {

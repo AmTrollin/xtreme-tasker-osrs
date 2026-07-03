@@ -1,13 +1,14 @@
 package com.amtrollin.xtremetasker.ui.input;
 
-import lombok.RequiredArgsConstructor;
-
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
+import com.amtrollin.xtremetasker.ui.text.UiText;
 import java.awt.event.KeyEvent;
+import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public final class CurrentTabKeyHandler
 {
-    private final OverlayInputAccess a;
+    private final XtremeTaskerOverlay a;
 
     private static final long MSG_COOLDOWN_MS = 900;
     private long lastMsgAtMs = 0;
@@ -26,7 +27,7 @@ public final class CurrentTabKeyHandler
 
             if (!rollEnabled)
             {
-                notifyUser("You can only roll a new task after completing the current one.");
+                notifyUser(UiText.get("input.roll_blocked"));
                 return true;
             }
 

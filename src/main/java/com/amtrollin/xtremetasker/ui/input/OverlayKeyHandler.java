@@ -1,20 +1,19 @@
 package com.amtrollin.xtremetasker.ui.input;
 
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
+import java.awt.Toolkit;
+import java.awt.datatransfer.*;
+import java.awt.event.KeyEvent;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.VarClientInt;
 import net.runelite.client.input.KeyListener;
 
-import java.awt.Toolkit;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.KeyEvent;
-
 public final class OverlayKeyHandler implements KeyListener {
-    private final OverlayInputAccess a;
+    private final XtremeTaskerOverlay a;
     private final TasksTabKeyHandler tasksTabKeyHandler;
     private final CurrentTabKeyHandler currentTabKeyHandler;
 
-    public OverlayKeyHandler(OverlayInputAccess a)
+    public OverlayKeyHandler(XtremeTaskerOverlay a)
     {
         this.a = a;
         this.tasksTabKeyHandler = new TasksTabKeyHandler(a);
@@ -57,7 +56,7 @@ public final class OverlayKeyHandler implements KeyListener {
         }
 
         // If search is focused, handle ONLY non-text keys here
-        if (a.activeTab() == OverlayInputAccess.MainTab.TASKS && a.taskQuery().searchFocused) {
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.TASKS && a.taskQuery().searchFocused) {
             boolean ctrl = e.isControlDown() || e.isMetaDown();
 
             if (ctrl && code == KeyEvent.VK_A) {
@@ -143,14 +142,14 @@ public final class OverlayKeyHandler implements KeyListener {
         }
 
         // Normal key handling when search is NOT focused
-        if (a.activeTab() == OverlayInputAccess.MainTab.TASKS) {
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.TASKS) {
             if (tasksTabKeyHandler.handleKeyPressed(e)) {
                 e.consume();
             }
             return;
         }
 
-        if (a.activeTab() == OverlayInputAccess.MainTab.CURRENT) {
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.CURRENT) {
             if (currentTabKeyHandler.handleKeyPressed(e)) {
                 e.consume();
             }
@@ -170,7 +169,7 @@ public final class OverlayKeyHandler implements KeyListener {
 
         // If we're not actively typing into the overlay search box,
         // swallow typed characters so overlay hotkeys don't leak into chat.
-        if (a.activeTab() != OverlayInputAccess.MainTab.TASKS || !a.taskQuery().searchFocused) {
+        if (a.activeTab() != XtremeTaskerOverlay.MainTab.TASKS || !a.taskQuery().searchFocused) {
             e.consume();
             return;
         }

@@ -1,16 +1,10 @@
 package com.amtrollin.xtremetasker.tasklist;
 
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.*;
+import java.util.function.*;
 import java.util.regex.Pattern;
-
 
 public final class TaskListPipeline {
     private TaskListPipeline() {

@@ -1,11 +1,7 @@
 package com.amtrollin.xtremetasker.ui.text;
 
 import java.awt.FontMetrics;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class TextUtils
 {
@@ -31,6 +27,38 @@ public final class TextUtils
             });
 
     private TextUtils() {}
+
+    public static String safe(String text)
+    {
+        return text == null ? "" : text;
+    }
+
+    public static String titleCase(String value)
+    {
+        if (value == null || value.trim().isEmpty())
+        {
+            return null;
+        }
+
+        String trimmed = value.trim().replace('-', ' ').replace('_', ' ');
+        StringBuilder out = new StringBuilder(trimmed.length());
+        boolean capitalize = true;
+        for (int i = 0; i < trimmed.length(); i++)
+        {
+            char ch = trimmed.charAt(i);
+            if (Character.isWhitespace(ch))
+            {
+                out.append(ch);
+                capitalize = true;
+            }
+            else
+            {
+                out.append(capitalize ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
+                capitalize = false;
+            }
+        }
+        return out.toString();
+    }
 
     public static String truncateToWidth(String text, FontMetrics fm, int maxWidth)
     {

@@ -1,9 +1,8 @@
 package com.amtrollin.xtremetasker.models.verification;
 
 import com.google.gson.annotations.SerializedName;
-import lombok.Getter;
-
 import java.util.Map;
+import lombok.Getter;
 
 @Getter
 public class TaskVerification
