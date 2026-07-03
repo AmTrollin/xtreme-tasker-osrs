@@ -2316,7 +2316,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
         XtremeTask current = plugin.getCurrentTask();
         boolean rolling = animations.isRolling();
-        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        boolean currentCompleted = false;
         boolean showCurrentTask = current != null && !rolling;
         boolean showCompleteAction = showCurrentTask && !currentCompleted;
         boolean currentCompletionCriteriaMet = showCompleteAction && plugin.isCurrentTaskCompletionCriteriaMet();
@@ -3392,7 +3392,7 @@ public class XtremeTaskerOverlay extends Overlay {
     // ----------------------------
     private void renderCurrentTab(Graphics2D g, FontMetrics fm, int panelX, int cursorYBaseline) {
         XtremeTask current = plugin.getCurrentTask();
-        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        boolean currentCompleted = false;
         XtremeTask recentCompleted = current == null ? plugin.getMostRecentCompletedTask() : null;
 
         TaskTier tierForProgress = (current != null) ? current.getTier() : plugin.getCurrentTier();
@@ -3638,7 +3638,7 @@ public class XtremeTaskerOverlay extends Overlay {
         int code = e.getKeyCode();
 
         XtremeTask current = plugin.getCurrentTask();
-        boolean currentCompleted = current != null && plugin.isTaskCompleted(current);
+        boolean currentCompleted = false;
 
         boolean rollEnabled = (current == null) || currentCompleted;
         boolean completeEnabled = (current != null) && !currentCompleted;

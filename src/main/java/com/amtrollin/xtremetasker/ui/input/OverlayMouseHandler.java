@@ -477,7 +477,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 }
             }
 
-            boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
+            boolean currentCompleted = false;
             boolean rollEnabled = (current == null) || currentCompleted;
             boolean completeEnabled = (current != null) && !currentCompleted;
             boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
@@ -994,7 +994,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         // State needed for conditional clickability
         XtremeTask current = a.plugin().getCurrentTask();
-        boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
+        boolean currentCompleted = false;
         boolean rollEnabled = (current == null) || currentCompleted;
         boolean completeEnabled = (current != null) && !currentCompleted;
         boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
