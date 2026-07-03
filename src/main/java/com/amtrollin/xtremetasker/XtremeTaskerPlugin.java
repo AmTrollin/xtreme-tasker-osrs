@@ -203,6 +203,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         this.combatAchievementService = combatAchievementService;
     }
 
+    void setPrerequisiteTrackerServiceForTesting(PrerequisiteTrackerService prerequisiteTrackerService)
+    {
+        this.prerequisiteTrackerService = prerequisiteTrackerService;
+    }
+
     void setClientForTesting(Client client)
     {
         this.client = client;
@@ -214,7 +219,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTaskId = task == null ? null : task.getId();
         captureCurrentTaskCollectionLogBaseline();
         refreshCurrentTaskCompletionCandidatesForCurrentSource();
-        markCurrentTaskCompletedBeforeRolledIfReady();
+        refreshCurrentTaskCompletedBeforeRolledState();
     }
 
     void setSyncMismatchTitleForTesting(String syncMismatchTitle)
@@ -2688,7 +2693,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTaskId = (currentTask != null) ? currentTask.getId() : null;
         captureCurrentTaskCollectionLogBaseline();
         refreshCurrentTaskCompletionCandidatesForCurrentSource();
-        markCurrentTaskCompletedBeforeRolledIfReady();
+        refreshCurrentTaskCompletedBeforeRolledState();
         markDirtyAndPersist(); // writes immediately if activeAccountKey != null
     }
 
@@ -2908,6 +2913,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         completedTaskTimeTicksById.put(id, Math.max(0L, taskTimeTicksById.getOrDefault(id, 0L)));
         bumpTaskListTimerStateVersion();
+    }
+
+    private void refreshCurrentTaskCompletedBeforeRolledState()
+    {
+        XtremeTask task = getCurrentTask();
+        if (task != null
+                && !currentTaskCompletionCriteriaMet
+                && isCurrentTaskCompleteInGame(task))
+        {
+            currentTaskCompletionCriteriaMet = true;
+        }
+        markCurrentTaskCompletedBeforeRolledIfReady();
     }
 
     private void markCurrentTaskCompletedBeforeRolledIfReady()

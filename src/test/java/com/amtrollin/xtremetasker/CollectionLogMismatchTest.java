@@ -8,6 +8,7 @@ import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
 import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.amtrollin.xtremetasker.verification.CombatAchievementService;
+import com.amtrollin.xtremetasker.verification.PrerequisiteTrackerService;
 import com.google.gson.Gson;
 import org.junit.Test;
 
@@ -967,6 +968,51 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void currentCombatAchievementAlreadyCompleteAtRollUsesCompletedBeforeRolledTime() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(true));
+
+        XtremeTask task = combatAchievementTask(
+                "combat_achievement_easy_already_done_current_cbr_test",
+                "Already done CA",
+                12
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("Current CA should be markable complete when it was already complete in-game",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Already-complete CA should use CBR time sentinel",
+                Long.valueOf(-1L),
+                plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
+    public void currentAchievementDiaryAlreadyCompleteAtRollUsesCompletedBeforeRolledTime() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setPrerequisiteTrackerServiceForTesting(new StubPrerequisiteTrackerService(true));
+
+        XtremeTask task = diaryAchievementTask(
+                "achievement_diary_easy_complete-the-ardougne-easy-diary_current_cbr_test",
+                "Complete the Ardougne easy diary"
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("Current AD should be markable complete when it was already complete in-game",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Already-complete AD should use CBR time sentinel",
+                Long.valueOf(-1L),
+                plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
     public void currentDisplaySequenceTaskRequiresItsExactSequenceItem() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -1270,6 +1316,28 @@ public class CollectionLogMismatchTest
         );
     }
 
+    private static XtremeTask diaryAchievementTask(String id, String name)
+    {
+        TaskVerification verification = new Gson().fromJson(
+                "{\"method\":\"achievement-diary\",\"region\":\"ardougne\",\"difficulty\":\"easy\"}",
+                TaskVerification.class
+        );
+
+        return new XtremeTask(
+                id,
+                name,
+                TaskSource.DIARY_ACHIEVEMENT,
+                TaskTier.EASY,
+                null,
+                null,
+                null,
+                null,
+                null,
+                verification,
+                null
+        );
+    }
+
     private static XtremeTask combatAchievementTask(String id, String name, int taskId)
     {
         TaskVerification verification = new Gson().fromJson(
@@ -1332,6 +1400,22 @@ public class CollectionLogMismatchTest
         public boolean isTaskComplete(int sortId)
         {
             return complete;
+        }
+    }
+
+    private static final class StubPrerequisiteTrackerService extends PrerequisiteTrackerService
+    {
+        private final boolean diaryComplete;
+
+        private StubPrerequisiteTrackerService(boolean diaryComplete)
+        {
+            this.diaryComplete = diaryComplete;
+        }
+
+        @Override
+        public boolean isDiaryComplete(String region, String difficulty)
+        {
+            return diaryComplete;
         }
     }
 
