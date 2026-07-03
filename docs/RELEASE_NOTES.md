@@ -1,6 +1,24 @@
-# Xtreme Tasker Release Notes
+<div id="user-content-toc">
+  <ul style="list-style: none;">
+    <summary>
+      <h1>Xtreme Tasker Release Notes</h1>
+    </summary>
+  </ul>
+</div>
 
-## v2.1 — 06.30.2026
+
+## v2.1.1 — 07.03.2026
+
+### Reduce Codebase Size
+- Various refactors to reduce codebase size and improve code organization (no user-facing impact)
+
+### Bug Fixes
+- Tightened chat message parsing for detecting Collection Log drops in-game
+- Fixed task timer so it only stops when the Mark complete button is explicitly pressed
+- Removed the current task from sync review display
+
+
+## v2.1.0 — 06.30.2026
 
 ### Sync & Task Completion
 - Collection Log syncing now occurs automatically when opening the in-game Collection Log
@@ -14,7 +32,7 @@
 - Fixed sequential Collection Log task progression
 
 
-## v2.0 — 06.25.2026
+## v2.0.0 — 06.25.2026
 
 ### Sync & Task Completion
 - Combined Combat Achievement, Collection Log, and Achievement Diary syncing into a single action
