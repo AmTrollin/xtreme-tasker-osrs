@@ -2861,16 +2861,11 @@ public class XtremeTaskerOverlay extends Overlay {
         for (int i = syncMismatchScroll.offsetRows; i < end; i++)
         {
             XtremeTask task = mismatches.get(i);
-            boolean currentTask = isCurrentTask(task);
-            boolean selected = !currentTask && selectedSyncMismatchTaskIds.contains(task.getId());
+            boolean selected = selectedSyncMismatchTaskIds.contains(task.getId());
             Rectangle row = new Rectangle(syncMismatchViewportBounds.x, rowY,
                     rowW, reviewRowHeight);
 
             Color rowFill = i % 2 == 0 ? new Color(62, 50, 34, 235) : new Color(53, 43, 31, 235);
-            if (currentTask)
-            {
-                rowFill = i % 2 == 0 ? new Color(48, 43, 36, 215) : new Color(43, 38, 33, 215);
-            }
             g.setColor(rowFill);
             g.fillRect(row.x, row.y, row.width, row.height);
             g.setColor(new Color(30, 24, 18, 170));
@@ -2899,7 +2894,7 @@ public class XtremeTaskerOverlay extends Overlay {
             String label = TextUtils.truncateToWidth(syncReviewRowLabel(task), fm,
                     actionColumnX - rowTextX - dateW - dateGap - 8);
             int textY = row.y + ((row.height - fm.getHeight()) / 2) + fm.getAscent();
-            g.setColor(currentTask ? P.UI_TEXT_DIM : P.UI_TEXT);
+            g.setColor(P.UI_TEXT);
             g.drawString(label, rowTextX, textY);
             if (!completedDate.isEmpty())
             {
@@ -2915,12 +2910,9 @@ public class XtremeTaskerOverlay extends Overlay {
                     rowCheckboxSize);
             Rectangle hitTarget = new Rectangle(actionColumnX, row.y, actionColumnW, row.height);
             synchronized (syncMismatchTaskBounds) {
-                if (!currentTask)
-                {
-                    syncMismatchTaskBounds.put(task, hitTarget);
-                }
+                syncMismatchTaskBounds.put(task, hitTarget);
             }
-            drawSyncMismatchCheckbox(g, btn, selected, currentTask);
+            drawSyncMismatchCheckbox(g, btn, selected);
             rowY += rowBlock;
         }
         g.setClip(oldClip);
@@ -3031,7 +3023,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (!isCurrentTask(task) && selectedSyncMismatchTaskIds.contains(task.getId()))
+            if (selectedSyncMismatchTaskIds.contains(task.getId()))
             {
                 count++;
             }
@@ -3054,11 +3046,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 continue;
             }
 
-            if (isCurrentTask(task))
-            {
-                continue;
-            }
-
             count++;
         }
         return count;
@@ -3074,15 +3061,10 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked)
     {
-        drawSyncMismatchCheckbox(g, box, checked, false);
-    }
-
-    private void drawSyncMismatchCheckbox(Graphics2D g, Rectangle box, boolean checked, boolean disabled)
-    {
-        drawBevelBox(g, box, disabled ? P.BTN_DISABLED_BG : checked ? P.BTN_ENABLED_BG : P.INPUT_BG);
-        g.setColor(disabled ? new Color(110, 104, 96, 170) : checked ? P.UI_GOLD : P.UI_TEXT_DIM);
+        drawBevelBox(g, box, checked ? P.BTN_ENABLED_BG : P.INPUT_BG);
+        g.setColor(checked ? P.UI_GOLD : P.UI_TEXT_DIM);
         g.drawRect(box.x + 1, box.y + 1, box.width - 3, box.height - 3);
-        if (checked && !disabled)
+        if (checked)
         {
             UiDraw.drawCheckmark(g, box, 5);
         }
@@ -3101,29 +3083,27 @@ public class XtremeTaskerOverlay extends Overlay {
             return "";
         }
 
-        String currentTaskSuffix = isCurrentTask(task) ? " (Current task)" : "";
-
         if (isDecoratedSequenceTaskName(task.getName()))
         {
-            return task.getName() + currentTaskSuffix;
+            return task.getName();
         }
 
         List<XtremeTask> group = plugin.getTaskGroupInstances(task);
         if (group == null || group.size() <= 1)
         {
-            return task.getName() + currentTaskSuffix;
+            return task.getName();
         }
 
         TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
         if (progress == null || !progress.isGrouped())
         {
-            return task.getName() + currentTaskSuffix;
+            return task.getName();
         }
 
         String sequenceSuffix = collectionLogSequenceSuffix(task);
         if (!sequenceSuffix.isEmpty())
         {
-            return task.getName() + currentTaskSuffix + ": " + sequenceSuffix;
+            return task.getName() + ": " + sequenceSuffix;
         }
 
         int instanceOrdinal = syncReviewMode == SyncReviewMode.COMPLETION_CANDIDATES
@@ -3131,23 +3111,15 @@ public class XtremeTaskerOverlay extends Overlay {
                 : completedInstanceOrdinalInGroup(group, task);
         if (instanceOrdinal <= 0)
         {
-            return task.getName() + currentTaskSuffix + ": " + progress.label();
+            return task.getName() + ": " + progress.label();
         }
-        return task.getName() + currentTaskSuffix + ": " + instanceOrdinal + "/" + group.size();
+        return task.getName() + ": " + instanceOrdinal + "/" + group.size();
     }
 
     private String collectionLogSequenceSuffix(XtremeTask task)
     {
         String suffix = plugin.getCollectionLogSequenceStepLabel(task);
         return suffix == null ? "" : suffix.trim();
-    }
-
-    private boolean isCurrentTask(XtremeTask task)
-    {
-        XtremeTask current = plugin.getCurrentTask();
-        String currentId = current == null ? null : current.getId();
-        String taskId = task == null ? null : task.getId();
-        return currentId != null && taskId != null && currentId.equals(taskId);
     }
 
     private static boolean isDecoratedSequenceTaskName(String name)
@@ -4282,12 +4254,11 @@ public class XtremeTaskerOverlay extends Overlay {
     public boolean isSyncMismatchTaskSelected(XtremeTask task) {
         return task != null
                 && task.getId() != null
-                && !isCurrentTask(task)
                 && selectedSyncMismatchTaskIds.contains(task.getId());
     }
 
     public void toggleSyncMismatchTaskSelected(XtremeTask task) {
-        if (task == null || task.getId() == null || isCurrentTask(task)) return;
+        if (task == null || task.getId() == null) return;
         if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
             selectedSyncMismatchTaskIds.add(task.getId());
         }
@@ -4296,7 +4267,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     public void selectAllSyncMismatchTasks() {
         for (XtremeTask task : visibleSyncMismatchTasks()) {
-            if (task == null || task.getId() == null || isCurrentTask(task)) {
+            if (task == null || task.getId() == null) {
                 continue;
             }
             selectedSyncMismatchTaskIds.add(task.getId());
@@ -4324,8 +4295,7 @@ public class XtremeTaskerOverlay extends Overlay {
             if (task == null || task.getId() == null) {
                 continue;
             }
-            if (!isCurrentTask(task)
-                    && selectedSyncMismatchTaskIds.contains(task.getId())
+            if (selectedSyncMismatchTaskIds.contains(task.getId())
                     && seen.add(task.getId())) {
                 out.add(task);
             }
