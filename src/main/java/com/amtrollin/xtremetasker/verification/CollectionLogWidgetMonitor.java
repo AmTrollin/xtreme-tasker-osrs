@@ -35,6 +35,7 @@ public class CollectionLogWidgetMonitor
 
     private int tickClogScriptFired = -1;
     private boolean isAutoScanInProgress = false;
+    private int pendingAutoScanTick = -1;
     private int openSetupCacheBatches = 0;
     private int setupCacheBatchOpenedTick = -1;
     private int loggedItemDrawCount = 0;
@@ -58,6 +59,7 @@ public class CollectionLogWidgetMonitor
     {
         tickClogScriptFired = -1;
         isAutoScanInProgress = false;
+        pendingAutoScanTick = -1;
         openSetupCacheBatches = 0;
         setupCacheBatchOpenedTick = -1;
         loggedItemDrawCount = 0;
@@ -69,6 +71,15 @@ public class CollectionLogWidgetMonitor
     public void onGameTick(GameTick event)
     {
         int currentTick = client.getTickCount();
+        if (pendingAutoScanTick != -1 && currentTick >= pendingAutoScanTick)
+        {
+            pendingAutoScanTick = -1;
+            if (!isAutoScanInProgress)
+            {
+                runCollectionLogAutoScan();
+            }
+        }
+
         if (openSetupCacheBatches > 0 && setupCacheBatchOpenedTick + 2 < currentTick)
         {
             forceCloseSetupCacheBatches();
@@ -107,7 +118,13 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
-        runCollectionLogAutoScan();
+        scheduleCollectionLogAutoScan();
+    }
+
+    private void scheduleCollectionLogAutoScan()
+    {
+        pendingAutoScanTick = Math.max(client.getTickCount() + 1, pendingAutoScanTick);
+        log.debug("XtremeTasker CLOG sync debug: scheduled full auto scan for tick {}", pendingAutoScanTick);
     }
 
     private void runCollectionLogAutoScan()
