@@ -1,28 +1,24 @@
 package com.amtrollin.xtremetasker.ui.input;
 
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
-import com.amtrollin.xtremetasker.ui.rules.RulesTabLayout;
-import com.amtrollin.xtremetasker.ui.rules.RulesTabRenderer;
-import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
-import com.amtrollin.xtremetasker.ui.tasks.models.WikiLink;
-import lombok.RequiredArgsConstructor;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.input.MouseAdapter;
-import net.runelite.client.util.LinkBrowser;
-
+import com.amtrollin.xtremetasker.ui.rules.*;
+import com.amtrollin.xtremetasker.ui.tasks.models.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
-
+import lombok.RequiredArgsConstructor;
+import net.runelite.api.widgets.*;
+import net.runelite.client.input.MouseAdapter;
+import net.runelite.client.util.LinkBrowser;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.ICON_ANCHOR_PAD;
 
 @RequiredArgsConstructor
 public final class OverlayMouseHandler extends MouseAdapter {
-    private final OverlayInputAccess a;
+    private final XtremeTaskerOverlay a;
     private final Runnable onOpenPanel; // resets scroll, clears overrides, etc.
 
     // Transient icon press state — distinguishes click from drag.
@@ -248,7 +244,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         if (button == MouseEvent.BUTTON1 && a.panelModeToggleBounds().contains(p)) {
             a.setCompactPanelMode(!a.isCompactPanelMode());
-            a.setActiveTab(OverlayInputAccess.MainTab.CURRENT);
+            a.setActiveTab(XtremeTaskerOverlay.MainTab.CURRENT);
             e.consume();
             return e;
         }
@@ -258,7 +254,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
 
         // SEARCH box focus (only when panel is open and click is inside panel)
-        if (a.activeTab() == OverlayInputAccess.MainTab.TASKS && button == MouseEvent.BUTTON1) {
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.TASKS && button == MouseEvent.BUTTON1) {
             if (containsControl(a.controlsLayout().searchBox, p)) {
                 Point searchPoint = a.toPanelLogicalPoint(p);
                 a.taskQuery().searchFocused = true;
@@ -306,23 +302,23 @@ public final class OverlayMouseHandler extends MouseAdapter {
         // main tab switch
         if (button == MouseEvent.BUTTON1) {
             if (a.currentTabBounds().contains(p)) {
-                a.setActiveTab(OverlayInputAccess.MainTab.CURRENT);
+                a.setActiveTab(XtremeTaskerOverlay.MainTab.CURRENT);
                 e.consume();
                 return e;
             }
             if (a.tasksTabBounds().contains(p)) {
-                a.setActiveTab(OverlayInputAccess.MainTab.TASKS);
+                a.setActiveTab(XtremeTaskerOverlay.MainTab.TASKS);
                 e.consume();
                 return e;
             }
             if (a.rulesTabBounds().contains(p)) {
-                a.setActiveTab(OverlayInputAccess.MainTab.RULES);
+                a.setActiveTab(XtremeTaskerOverlay.MainTab.RULES);
                 e.consume();
                 return e;
             }
 
             // TASKS tab clicks
-            if (a.activeTab() == OverlayInputAccess.MainTab.TASKS) {
+            if (a.activeTab() == XtremeTaskerOverlay.MainTab.TASKS) {
                 boolean changed = false;
 
                 // ----------------------------
@@ -449,7 +445,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
 
         // CURRENT tab clicks
-        if (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && button == MouseEvent.BUTTON1) {
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.CURRENT && button == MouseEvent.BUTTON1) {
             XtremeTask current = a.plugin().getCurrentTask();
 
             if (a.currentLayout().scrollbarRailBounds.width > 0) {
@@ -481,7 +477,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 }
             }
 
-            boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
+            boolean currentCompleted = false;
             boolean rollEnabled = (current == null) || currentCompleted;
             boolean completeEnabled = (current != null) && !currentCompleted;
             boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
@@ -517,7 +513,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
         }
 
         // RULES button click
-        if (a.activeTab() == OverlayInputAccess.MainTab.RULES && button == MouseEvent.BUTTON1) {
+        if (a.activeTab() == XtremeTaskerOverlay.MainTab.RULES && button == MouseEvent.BUTTON1) {
             // Sub-tab toggles
             if (a.rulesLayout().subTabRulesBounds.contains(p)) {
                 a.setRulesSubTab(RulesTabLayout.SubTab.RULES);
@@ -882,7 +878,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
     private boolean tryHandleTaskRowClick(MouseEvent e, Point p, int button)
     {
-        if (a.activeTab() != OverlayInputAccess.MainTab.TASKS
+        if (a.activeTab() != XtremeTaskerOverlay.MainTab.TASKS
                 || a.isTaskDetailsOpen()
                 || (button != MouseEvent.BUTTON1 && button != MouseEvent.BUTTON3))
         {
@@ -998,7 +994,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         // State needed for conditional clickability
         XtremeTask current = a.plugin().getCurrentTask();
-        boolean currentCompleted = current != null && a.plugin().isTaskCompleted(current);
+        boolean currentCompleted = false;
         boolean rollEnabled = (current == null) || currentCompleted;
         boolean completeEnabled = (current != null) && !currentCompleted;
         boolean canUndoRecentCompletion = a.plugin().canUndoRecentTaskCompletion();
@@ -1023,7 +1019,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.taskDetailsScrollbarRailBounds().contains(p)
                 ))
                 // RULES tab
-                || (a.activeTab() == OverlayInputAccess.MainTab.RULES && (
+                || (a.activeTab() == XtremeTaskerOverlay.MainTab.RULES && (
                         a.rulesLayout().subTabRulesBounds.contains(p)
                         || a.rulesLayout().subTabDataSyncsBounds.contains(p)
                         || a.rulesLayout().githubReadmeLinkBounds.contains(p)
@@ -1031,7 +1027,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.rulesLayout().syncCaFoundReviewButtonBounds.contains(p)
                 ))
                 // CURRENT tab
-                || (a.activeTab() == OverlayInputAccess.MainTab.CURRENT && (
+                || (a.activeTab() == XtremeTaskerOverlay.MainTab.CURRENT && (
                         a.currentLayout().wikiButtonBounds.contains(p)
                         || (rollEnabled && a.currentLayout().rollButtonBounds.contains(p))
                         || (completeEnabled && a.currentLayout().completeButtonBounds.contains(p))
@@ -1040,7 +1036,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         || a.currentLayout().scrollbarRailBounds.contains(p)
                 ))
                 // TASKS tab
-                || (a.activeTab() == OverlayInputAccess.MainTab.TASKS && (
+                || (a.activeTab() == XtremeTaskerOverlay.MainTab.TASKS && (
                         // tier tabs
                         containsAny(a.tierTabBounds(), p)
                         || containsControl(cl.searchBox, p)

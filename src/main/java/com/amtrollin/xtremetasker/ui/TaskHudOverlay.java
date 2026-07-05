@@ -1,22 +1,18 @@
 package com.amtrollin.xtremetasker.ui;
 
 import com.amtrollin.xtremetasker.XtremeTaskerPlugin;
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.enums.*;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
 import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
 import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
-import net.runelite.client.game.SpriteManager;
-import net.runelite.client.ui.FontManager;
-import net.runelite.client.ui.overlay.Overlay;
-import net.runelite.client.ui.overlay.OverlayLayer;
-import net.runelite.client.ui.overlay.OverlayPosition;
-
-import javax.inject.Inject;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.EnumMap;
+import javax.inject.Inject;
+import net.runelite.client.game.SpriteManager;
+import net.runelite.client.ui.FontManager;
+import net.runelite.client.ui.overlay.*;
 
 public class TaskHudOverlay extends Overlay {
     private static final UiPalette P = UiPalette.DEFAULT;

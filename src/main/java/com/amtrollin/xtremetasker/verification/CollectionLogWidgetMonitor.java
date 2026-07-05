@@ -1,22 +1,11 @@
 package com.amtrollin.xtremetasker.verification;
+import java.util.*;
+import javax.inject.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.MenuAction;
-import net.runelite.api.ScriptID;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.events.ScriptPreFired;
-import net.runelite.api.gameval.VarbitID;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Set;
+import net.runelite.api.*;
+import net.runelite.api.events.*;
+import net.runelite.api.widgets.*;
+import net.runelite.client.eventbus.*;
 
 /**
  * Captures obtained collection log item IDs by listening to script 4100, which fires
@@ -46,6 +35,7 @@ public class CollectionLogWidgetMonitor
 
     private int tickClogScriptFired = -1;
     private boolean isAutoScanInProgress = false;
+    private int pendingAutoScanTick = -1;
     private int openSetupCacheBatches = 0;
     private int setupCacheBatchOpenedTick = -1;
     private int loggedItemDrawCount = 0;
@@ -69,6 +59,7 @@ public class CollectionLogWidgetMonitor
     {
         tickClogScriptFired = -1;
         isAutoScanInProgress = false;
+        pendingAutoScanTick = -1;
         openSetupCacheBatches = 0;
         setupCacheBatchOpenedTick = -1;
         loggedItemDrawCount = 0;
@@ -80,6 +71,15 @@ public class CollectionLogWidgetMonitor
     public void onGameTick(GameTick event)
     {
         int currentTick = client.getTickCount();
+        if (pendingAutoScanTick != -1 && currentTick >= pendingAutoScanTick)
+        {
+            pendingAutoScanTick = -1;
+            if (!isAutoScanInProgress)
+            {
+                runCollectionLogAutoScan();
+            }
+        }
+
         if (openSetupCacheBatches > 0 && setupCacheBatchOpenedTick + 2 < currentTick)
         {
             forceCloseSetupCacheBatches();
@@ -118,14 +118,13 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
-        // Don't scan when viewing another player's clog via POH adventure log.
-        if (client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 1)
-        {
-            log.debug("XtremeTasker CLOG sync debug: skipped auto scan because POH host book varbit is set");
-            return;
-        }
+        scheduleCollectionLogAutoScan();
+    }
 
-        runCollectionLogAutoScan();
+    private void scheduleCollectionLogAutoScan()
+    {
+        pendingAutoScanTick = Math.max(client.getTickCount() + 1, pendingAutoScanTick);
+        log.debug("XtremeTasker CLOG sync debug: scheduled full auto scan for tick {}", pendingAutoScanTick);
     }
 
     private void runCollectionLogAutoScan()
@@ -238,7 +237,6 @@ public class CollectionLogWidgetMonitor
         }
 
         int itemId = widget.getItemId();
-        int quantity = widget.getItemQuantity();
         if (itemId > 0)
         {
             count.itemWidgets++;

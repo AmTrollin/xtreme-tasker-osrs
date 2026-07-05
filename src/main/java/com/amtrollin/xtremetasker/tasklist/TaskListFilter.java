@@ -2,7 +2,6 @@ package com.amtrollin.xtremetasker.tasklist;
 
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
-
 import java.util.function.Predicate;
 
 public final class TaskListFilter

@@ -1,19 +1,15 @@
 package com.amtrollin.xtremetasker.ui;
 
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
-import net.runelite.api.Skill;
-
-import java.awt.Color;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import net.runelite.api.Skill;
 
 public final class PrerequisiteIconRenderer
 {

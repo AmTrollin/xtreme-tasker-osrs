@@ -1,13 +1,11 @@
 package com.amtrollin.xtremetasker.models;
 
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.enums.TaskTier;
+import com.amtrollin.xtremetasker.enums.*;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
-import lombok.Getter;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Objects;
+import lombok.Getter;
 
 @Getter
 public class XtremeTask {

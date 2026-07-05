@@ -1,33 +1,14 @@
 package com.amtrollin.xtremetasker.verification;
 
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
+import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import java.util.*;
+import java.util.function.*;
+import java.util.regex.*;
+import javax.inject.*;
 import lombok.NonNull;
-import net.runelite.api.Client;
-import net.runelite.api.InventoryID;
-import net.runelite.api.Item;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.ItemID;
-import net.runelite.api.Quest;
-import net.runelite.api.QuestState;
-import net.runelite.api.Skill;
-import net.runelite.api.VarPlayer;
-import net.runelite.api.Varbits;
+import net.runelite.api.*;
 import net.runelite.api.gameval.VarbitID;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.IntUnaryOperator;
-import java.util.function.ToIntFunction;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Singleton
 public class PrerequisiteTrackerService

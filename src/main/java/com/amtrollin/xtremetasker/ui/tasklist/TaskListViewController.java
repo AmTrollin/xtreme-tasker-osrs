@@ -2,7 +2,6 @@ package com.amtrollin.xtremetasker.ui.tasklist;
 
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
-
 import java.util.List;
 import java.util.function.Function;
 

@@ -1,19 +1,13 @@
 package com.amtrollin.xtremetasker.ui.tasks;
 
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
+import com.amtrollin.xtremetasker.ui.style.UiDraw;
 import com.amtrollin.xtremetasker.ui.tasks.models.TaskControlsLayout;
-import com.amtrollin.xtremetasker.ui.tasklist.TaskRowsRenderer;
-
-import javax.imageio.ImageIO;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
+import com.amtrollin.xtremetasker.ui.text.UiText;
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import net.runelite.client.ui.FontManager;
-
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 
@@ -28,7 +22,7 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
  */
 public class TaskControlsRenderer
 {
-    private static final BufferedImage QUESTION_ICON = loadQuestionIconSafe();
+    private static final BufferedImage QUESTION_ICON = UiDraw.loadImage("/icons/notifications/OSRS_question.png");
 
     private final int panelPadding;
     private final int rowHeight;
@@ -196,7 +190,7 @@ public class TaskControlsRenderer
             drawHelpIcon(g, fm, layout.filterNewTasksHelp);
             if (layout.filterNewTasksHelp.contains(mouseX, mouseY))
             {
-                drawTooltipBelowRightAligned(g, fm, "New tasks have been added since your last login", layout.filterNewTasksHelp, panelX + panelW + 5);
+                drawTooltipBelowRightAligned(g, fm, UiText.get("tasks.new_tasks_help"), layout.filterNewTasksHelp, panelX + panelW + 5);
             }
 
             cursorY += newRowH + fm.getHeight() + 8;
@@ -377,12 +371,7 @@ public class TaskControlsRenderer
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill, Color light, Color dark)
     {
-        TaskRowsRenderer.drawBevelBoxLogic(g, r, fill, dark, light);
-    }
-
-    private int centeredTextBaseline(Rectangle bounds, FontMetrics fm)
-    {
-        return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
+        UiDraw.drawBevelBox(g, r, fill, dark, light);
     }
 
     // Blink timing: 500ms on, 500ms off
@@ -590,18 +579,6 @@ public class TaskControlsRenderer
         int tx = bounds.x + (bounds.width - fm.stringWidth(mark)) / 2;
         int ty = centeredTextBaseline(bounds, fm);
         g.drawString(mark, tx, ty);
-    }
-
-    private static BufferedImage loadQuestionIconSafe()
-    {
-        try (InputStream in = TaskControlsRenderer.class.getResourceAsStream("/icons/notifications/OSRS_question.png"))
-        {
-            return in == null ? null : ImageIO.read(in);
-        }
-        catch (Exception ignored)
-        {
-            return null;
-        }
     }
 
     private static void clearBounds(Rectangle... bounds)

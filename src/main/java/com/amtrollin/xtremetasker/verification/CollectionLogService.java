@@ -1,27 +1,15 @@
 package com.amtrollin.xtremetasker.verification;
 
+import java.util.*;
+import java.util.regex.*;
+import javax.inject.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
+import net.runelite.api.*;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.Widget;
-import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
+import net.runelite.api.widgets.*;
+import net.runelite.client.eventbus.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.http.api.item.ItemPrice;
-
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Singleton
@@ -29,20 +17,14 @@ public class CollectionLogService
 {
     private static final String ANCIENT_PAGE_ITEM_NAME = "Ancient page";
     private static final String MEDALLION_FRAGMENT_ITEM_NAME = "Medallion fragment";
-    private static final int MEDALLION_OF_THE_DEEP_ITEM_ID = 32386;
 
-    // Matches "New item added to your collection log: Mark of grace x1."
-    // Also handles no-quantity variant: "New item added to your collection log: Mark of grace."
+    // Matches the local player unlock notification, e.g. "New collection log item: Mark of grace."
     private static final Pattern CLOG_NEW_ITEM_PATTERN = Pattern.compile(
-            "New item added to your collection log:\\s*(.+?)(?:\\s+x[\\d,]+)?\\s*\\.?\\s*$",
+            "^\\s*New collection log item:\\s*(.+?)\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
-    private static final Pattern CLOG_RECEIVED_ITEM_PATTERN = Pattern.compile(
-            "^You have received\\s+(?:[\\d,]+\\s*x\\s*)?(.+?)\\s*\\.?\\s*$",
-            Pattern.CASE_INSENSITIVE
-    );
-    private static final Pattern MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN = Pattern.compile(
-            "\\byou\\s+assemble\\s+the\\s+Medallion\\s+of\\s+the\\s+Deep\\b",
+    private static final Pattern CLOG_REGIONAL_BROADCAST_PATTERN = Pattern.compile(
+            "^\\s*\\[[^\\]]+\\]\\s+(.+?)\\s+received\\s+a\\s+new\\s+collection\\s+log\\s+item:\\s*(.+?)\\s*\\.?\\s*$",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -137,7 +119,9 @@ public class CollectionLogService
         // Capture newly obtained collection log items from the in-game notification.
         // This fires even when the Collection Log interface is closed.
         ChatMessageType type = event.getType();
-        if (type != ChatMessageType.GAMEMESSAGE && type != ChatMessageType.SPAM)
+        if (type != ChatMessageType.GAMEMESSAGE
+                && type != ChatMessageType.SPAM
+                && type != ChatMessageType.BROADCAST)
         {
             return;
         }
@@ -151,32 +135,55 @@ public class CollectionLogService
         // Strip any HTML colour tags RuneLite may inject.
         String clean = raw.replaceAll("<[^>]+>", "").trim();
 
-        if (MEDALLION_OF_THE_DEEP_ASSEMBLED_PATTERN.matcher(clean).find())
-        {
-            storeItem(MEDALLION_OF_THE_DEEP_ITEM_ID);
-            return;
-        }
-
         Matcher m = CLOG_NEW_ITEM_PATTERN.matcher(clean);
-        if (m.find())
+        if (type != ChatMessageType.BROADCAST && m.matches())
         {
             String itemName = m.group(1).trim();
             resolveAndStoreByName(itemName);
             return;
         }
 
-        Matcher receivedMatcher = CLOG_RECEIVED_ITEM_PATTERN.matcher(clean);
-        if (isCollectionLogOpen() && receivedMatcher.find())
+        Matcher regionalBroadcastMatcher = CLOG_REGIONAL_BROADCAST_PATTERN.matcher(clean);
+        if (type == ChatMessageType.BROADCAST
+                && regionalBroadcastMatcher.matches()
+                && isLocalPlayerName(regionalBroadcastMatcher.group(1)))
         {
-            String itemName = receivedMatcher.group(1).trim();
+            String itemName = regionalBroadcastMatcher.group(2).trim();
             resolveAndStoreByName(itemName);
         }
     }
 
-    private boolean isCollectionLogOpen()
+    private boolean isLocalPlayerName(String playerName)
     {
-        Widget collectionLog = client == null ? null : client.getWidget(ComponentID.COLLECTION_LOG_CONTAINER);
-        return collectionLog != null && !collectionLog.isHidden();
+        String localName;
+        try
+        {
+            localName = client == null || client.getLocalPlayer() == null
+                    ? null
+                    : client.getLocalPlayer().getName();
+        }
+        catch (RuntimeException e)
+        {
+            return false;
+        }
+
+        String normalizedLocal = normalizePlayerName(localName);
+        return !normalizedLocal.isEmpty() && normalizedLocal.equals(normalizePlayerName(playerName));
+    }
+
+    private static String normalizePlayerName(String value)
+    {
+        if (value == null)
+        {
+            return "";
+        }
+
+        return value
+                .replaceAll("<[^>]+>", "")
+                .replace('\u00A0', ' ')
+                .trim()
+                .replaceAll("\\s+", " ")
+                .toLowerCase(Locale.ROOT);
     }
 
     private void resolveAndStoreByName(String itemName)
@@ -276,10 +283,11 @@ public class CollectionLogService
     {
         if (itemId > 0)
         {
+            int canonicalItemId = canonicalCollectionLogItemId(itemId);
             if (markObtainedItem(itemId, null))
             {
                 log.debug("XtremeTasker CLOG sync debug: cached obtained itemId={} canonical={} obtainedCount={} seenCount={}",
-                        itemId, canonicalCollectionLogItemId(itemId), obtainedItems.size(), seenItems.size());
+                        itemId, canonicalItemId, obtainedItems.size(), seenItems.size());
                 notifyCacheChanged();
             }
         }

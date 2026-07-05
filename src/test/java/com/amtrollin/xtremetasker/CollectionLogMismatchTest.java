@@ -5,11 +5,14 @@ import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.persistence.PersistedState;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
+import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
 import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.amtrollin.xtremetasker.verification.CombatAchievementService;
+import com.amtrollin.xtremetasker.verification.PrerequisiteTrackerService;
 import com.google.gson.Gson;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -965,6 +968,51 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void currentCombatAchievementAlreadyCompleteAtRollUsesCompletedBeforeRolledTime() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(true));
+
+        XtremeTask task = combatAchievementTask(
+                "combat_achievement_easy_already_done_current_cbr_test",
+                "Already done CA",
+                12
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("Current CA should be markable complete when it was already complete in-game",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Already-complete CA should use CBR time sentinel",
+                Long.valueOf(-1L),
+                plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
+    public void currentAchievementDiaryAlreadyCompleteAtRollUsesCompletedBeforeRolledTime() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setPrerequisiteTrackerServiceForTesting(new StubPrerequisiteTrackerService(true));
+
+        XtremeTask task = diaryAchievementTask(
+                "achievement_diary_easy_complete-the-ardougne-easy-diary_current_cbr_test",
+                "Complete the Ardougne easy diary"
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("Current AD should be markable complete when it was already complete in-game",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Already-complete AD should use CBR time sentinel",
+                Long.valueOf(-1L),
+                plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
     public void currentDisplaySequenceTaskRequiresItsExactSequenceItem() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -993,6 +1041,49 @@ public class CollectionLogMismatchTest
 
         assertTrue("Exact sequence item should complete the current step",
                 plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
+    public void sequencePreviewNextItemUsesTaskCompletionNotCollectionLogState() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask first = countedCollectionLogTask(
+                "collection_log_easy_get-the-next-tier-of-metal-boots_001_next_preview_test",
+                "Get the next tier of metal boots",
+                1
+        );
+        XtremeTask second = countedCollectionLogTask(
+                "collection_log_easy_get-the-next-tier-of-metal-boots_002_next_preview_test",
+                "Get the next tier of metal boots",
+                2
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(first);
+        plugin.tasksForTesting().add(second);
+
+        collectionLogService.storeItem(4119);
+        collectionLogService.storeItem(4121);
+
+        XtremeTaskerOverlay overlay = new XtremeTaskerOverlay(null, plugin, null, null);
+        Method focusItem = XtremeTaskerOverlay.class.getDeclaredMethod(
+                "sequencePreviewFocusItemId",
+                XtremeTask.class,
+                int[].class);
+        focusItem.setAccessible(true);
+
+        assertEquals("Sequence preview should not skip an incomplete task just because its CLOG item is obtained",
+                Integer.valueOf(4119),
+                focusItem.invoke(overlay, second, new int[]{4119, 4121, 4123, 4125, 4127, 4129, 4131}));
+
+        plugin.manualCompletedTaskIdsForTesting().add(first.getId());
+
+        assertEquals("Sequence preview should advance only after the previous sequence task is marked complete",
+                Integer.valueOf(4121),
+                focusItem.invoke(overlay, second, new int[]{4119, 4121, 4123, 4125, 4127, 4129, 4131}));
     }
 
     @Test
@@ -1075,6 +1166,62 @@ public class CollectionLogMismatchTest
 
         assertTrue("Current task readiness getter should reconcile from obtained CLOG cache",
                 plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
+    public void currentCollectionLogTaskKeepsTimerAfterRequiredItemIsSeen() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-right-skull-half_001_timer_test",
+                "Get a Right skull half",
+                TaskTier.EASY,
+                new int[]{9007},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+        taskTimeTicksById(plugin).put(task.getId(), 12L);
+
+        collectionLogService.storeItem(9007);
+
+        assertTrue("Current task should become markable complete from CLOG cache",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertEquals("Timer should keep accumulated time until Mark complete is pressed",
+                Long.valueOf(12L),
+                plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
+    public void currentCollectionLogTaskIsNotAddedToCompletionReview() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        XtremeTask task = collectionLogTask(
+                "collection_log_easy_get-a-right-skull-half_001_current_review_test",
+                "Get a Right skull half",
+                TaskTier.EASY,
+                new int[]{9007},
+                1
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+
+        collectionLogService.storeItem(9007);
+
+        assertTrue("Current task should still be markable complete",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+        assertTrue("Current task should not appear in completion review",
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).isEmpty());
     }
 
     private static XtremeTask countedCollectionLogTask(String id, String name, int count)
@@ -1169,6 +1316,28 @@ public class CollectionLogMismatchTest
         );
     }
 
+    private static XtremeTask diaryAchievementTask(String id, String name)
+    {
+        TaskVerification verification = new Gson().fromJson(
+                "{\"method\":\"achievement-diary\",\"region\":\"ardougne\",\"difficulty\":\"easy\"}",
+                TaskVerification.class
+        );
+
+        return new XtremeTask(
+                id,
+                name,
+                TaskSource.DIARY_ACHIEVEMENT,
+                TaskTier.EASY,
+                null,
+                null,
+                null,
+                null,
+                null,
+                verification,
+                null
+        );
+    }
+
     private static XtremeTask combatAchievementTask(String id, String name, int taskId)
     {
         TaskVerification verification = new Gson().fromJson(
@@ -1205,6 +1374,14 @@ public class CollectionLogMismatchTest
         refresh.invoke(plugin);
     }
 
+    @SuppressWarnings("unchecked")
+    private static Map<String, Long> taskTimeTicksById(XtremeTaskerPlugin plugin) throws Exception
+    {
+        Field field = XtremeTaskerPlugin.class.getDeclaredField("taskTimeTicksById");
+        field.setAccessible(true);
+        return (Map<String, Long>) field.get(plugin);
+    }
+
     private static List<String> taskIds(List<XtremeTask> tasks)
     {
         return tasks.stream().map(XtremeTask::getId).collect(java.util.stream.Collectors.toList());
@@ -1223,6 +1400,22 @@ public class CollectionLogMismatchTest
         public boolean isTaskComplete(int sortId)
         {
             return complete;
+        }
+    }
+
+    private static final class StubPrerequisiteTrackerService extends PrerequisiteTrackerService
+    {
+        private final boolean diaryComplete;
+
+        private StubPrerequisiteTrackerService(boolean diaryComplete)
+        {
+            this.diaryComplete = diaryComplete;
+        }
+
+        @Override
+        public boolean isDiaryComplete(String region, String difficulty)
+        {
+            return diaryComplete;
         }
     }
 

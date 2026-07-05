@@ -1,7 +1,6 @@
 package com.amtrollin.xtremetasker.ui.anim;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public final class OverlayAnimations
 {

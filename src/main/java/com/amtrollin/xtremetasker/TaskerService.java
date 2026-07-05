@@ -1,12 +1,7 @@
 package com.amtrollin.xtremetasker;
 
-import com.amtrollin.xtremetasker.enums.TaskTier;
-import com.amtrollin.xtremetasker.enums.TaskSource;
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
-import com.amtrollin.xtremetasker.models.TaskGroupProgress;
-import com.amtrollin.xtremetasker.models.XtremeTask;
-
+import com.amtrollin.xtremetasker.enums.*;
+import com.amtrollin.xtremetasker.models.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 

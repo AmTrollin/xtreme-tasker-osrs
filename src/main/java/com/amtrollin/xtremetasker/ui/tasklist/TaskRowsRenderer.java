@@ -1,21 +1,16 @@
 package com.amtrollin.xtremetasker.ui.tasklist;
 
 import com.amtrollin.xtremetasker.enums.TaskTier;
-import com.amtrollin.xtremetasker.models.CompletionInfo;
-import com.amtrollin.xtremetasker.models.TaskGroupProgress;
-import com.amtrollin.xtremetasker.models.XtremeTask;
+import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
-import com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter;
-import com.amtrollin.xtremetasker.ui.text.TextUtils;
-import net.runelite.client.ui.FontManager;
-
+import com.amtrollin.xtremetasker.ui.style.UiDraw;
+import com.amtrollin.xtremetasker.ui.text.*;
 import java.awt.*;
-import java.time.Instant;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.function.Function;
-
+import net.runelite.client.ui.FontManager;
 import static com.amtrollin.xtremetasker.tasklist.TaskListPipeline.safe;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
@@ -355,9 +350,9 @@ public final class TaskRowsRenderer {
 
         // scrollbar if needed
         if (needsScrollbar) {
-            layout.scrollbarRailBounds.setBounds(scrollbarRailBounds(layout.viewportBounds));
-            layout.scrollbarThumbBounds.setBounds(scrollbarThumbBounds(tasks.size(), visibleRows, start, layout.viewportBounds));
-            drawScrollbar(g, tasks.size(), visibleRows, start, layout.viewportBounds);
+            UiDraw.drawScrollbar(g, UiDraw.scrollbarRailBounds(layout.viewportBounds, SCROLLBAR_WIDTH),
+                    tasks.size(), visibleRows, start, layout.scrollbarRailBounds, layout.scrollbarThumbBounds,
+                    edgeDark, edgeLight, uiGold);
         }
 
         return layout;
@@ -455,19 +450,6 @@ public final class TaskRowsRenderer {
         g.drawLine(x2, y2, x3, y3);
     }
 
-    public void drawScrollbar(Graphics2D g, int totalRows, int visibleRows, int offsetRows, Rectangle viewport) {
-        Rectangle rail = scrollbarRailBounds(viewport);
-
-        g.setColor(new Color(0, 0, 0, 60));
-        g.fillRect(rail.x, rail.y, rail.width, rail.height);
-
-        Rectangle thumb = scrollbarThumbBounds(totalRows, visibleRows, offsetRows, viewport);
-        drawBevelBox(g, thumb, new Color(78, 62, 38, 200));
-
-        g.setColor(withAlpha(uiGold, 140));
-        g.drawRect(thumb.x, thumb.y, thumb.width, thumb.height);
-    }
-
     private static int visibleColumnWidth(TaskListQuery query, int srcW, int tierW)
     {
         boolean showDate = query != null && query.showDateCompletedColumn;
@@ -544,33 +526,8 @@ public final class TaskRowsRenderer {
         return days + "d";
     }
 
-    public Rectangle scrollbarRailBounds(Rectangle viewport) {
-        return new Rectangle(
-                viewport.x + viewport.width - SCROLLBAR_WIDTH,
-                viewport.y,
-                SCROLLBAR_WIDTH,
-                viewport.height
-        );
-    }
-
-    public Rectangle scrollbarThumbBounds(int totalRows, int visibleRows, int offsetRows, Rectangle viewport) {
-        Rectangle rail = scrollbarRailBounds(viewport);
-        if (totalRows <= 0 || visibleRows <= 0 || rail.height <= 0) {
-            return new Rectangle(rail.x, rail.y, Math.max(0, rail.width - 1), 0);
-        }
-
-        float fracVisible = (float) visibleRows / (float) totalRows;
-        int thumbH = Math.min(rail.height, Math.max(12, Math.round(rail.height * fracVisible)));
-
-        int maxOffset = Math.max(1, totalRows - visibleRows);
-        float fracOffset = (float) clamp(offsetRows, maxOffset) / (float) maxOffset;
-
-        int thumbY = rail.y + (int) ((rail.height - thumbH) * fracOffset);
-        return new Rectangle(rail.x, thumbY, Math.max(0, rail.width - 1), Math.max(0, thumbH - 1));
-    }
-
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill) {
-        drawBevelBoxLogic(g, r, fill, edgeDark, edgeLight);
+        UiDraw.drawBevelBox(g, r, fill, edgeDark, edgeLight);
     }
 
     /**
@@ -599,22 +556,6 @@ public final class TaskRowsRenderer {
         g.drawString(text, x + (w - textW) / 2, yTop + ((h - fm.getHeight()) / 2) + fm.getAscent());
         g.setFont(savedFont);
         return w;
-    }
-
-    public static void drawBevelBoxLogic(Graphics2D g, Rectangle r, Color fill, Color edgeDark, Color edgeLight) {
-        g.setColor(fill);
-        g.fillRect(r.x, r.y, r.width, r.height);
-
-        g.setColor(edgeDark);
-        g.drawRect(r.x, r.y, r.width, r.height);
-
-        g.setColor(edgeLight);
-        g.drawLine(r.x + 1, r.y + 1, r.x + r.width - 2, r.y + 1);
-        g.drawLine(r.x + 1, r.y + 1, r.x + 1, r.y + r.height - 2);
-
-        g.setColor(edgeDark);
-        g.drawLine(r.x + 1, r.y + r.height - 2, r.x + r.width - 2, r.y + r.height - 2);
-        g.drawLine(r.x + r.width - 2, r.y + 1, r.x + r.width - 2, r.y + r.height - 2);
     }
 
     private static int clamp(int v, int max) {

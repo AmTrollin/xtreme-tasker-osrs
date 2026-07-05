@@ -2,14 +2,7 @@ package com.amtrollin.xtremetasker.tasklist;
 
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
-
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public final class TaskGroupUtils
 {
