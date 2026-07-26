@@ -31,7 +31,7 @@ public class PrerequisiteTrackerService
     private static final Pattern COINS_PATTERN = Pattern.compile("^([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*([kmb]?)\\s*(?:coins?|gp)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern POINTS_PATTERN = Pattern.compile("^([0-9][0-9,]*(?:\\.[0-9]+)?)([kmb]?)\\s+(.+?)\\s+points?$", Pattern.CASE_INSENSITIVE);
     private static final Pattern DIARY_PREREQ_PATTERN = Pattern.compile(
-        "^complete\\s+the\\s+(.+?)\\s+(easy|medium|hard|elite)\\s+diary$",
+        "^(?:complete\\s+the\\s+)?(.+?)\\s+(easy|medium|hard|elite)\\s+diary$",
         Pattern.CASE_INSENSITIVE
     );
     private static final Pattern COMBINED_LEVEL_PATTERN = Pattern.compile(

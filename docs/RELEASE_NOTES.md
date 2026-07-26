@@ -2,6 +2,19 @@ $$\Huge\color{#B8860B}\textsf{RELEASE NOTES}$$
 
 <br>
 
+## <span style="color:#DEB887">v2.2.0 — 07.26.2026</span>
+
+#### <span style="color:#DCDCDC">Task Updates</span>
+* $\color{#778899}\textsf{Added new Maggot King, Venator, Revenant, and Wilderness boss tasks}$
+* $\color{#778899}\textsf{Rebalanced Shades of Mort'ton and Moons of Peril tasks}$
+* $\color{#778899}\textsf{Added Wilderness Medium Diary prerequisites where required}$
+
+#### <span style="color:#DCDCDC">UI & Quality of Life</span>
+* $\color{#778899}\textsf{Updated the See New Tasks button with a teal border and repositioned its help text above the button}$
+* $\color{#778899}\textsf{Fixed Tasks tab controls extending beyond the panel when the See New Tasks button is visible}$
+
+<br>
+
 ## <span style="color:#DEB887">v2.1.1 — 07.03.2026</span>
 
 #### <span style="color:#C0C0C0">Reduce Codebase Size</span>

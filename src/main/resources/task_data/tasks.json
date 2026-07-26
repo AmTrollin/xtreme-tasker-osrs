@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "tasks": [
     {
       "id": "collection_log_easy_get-bolt-racks-from-barrows_001_0c221876a7",
@@ -12385,7 +12385,7 @@
       "name": "Get 1 unique from the Wildy bosses",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
       "verification": {
         "method": "collection-log",
@@ -12411,7 +12411,7 @@
       "name": "Get 1 unique from the Wildy bosses",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
       "verification": {
         "method": "collection-log",
@@ -12437,7 +12437,7 @@
       "name": "Get 1 unique from the Wildy bosses",
       "source": "COLLECTION_LOG",
       "tier": "HARD",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
       "verification": {
         "method": "collection-log",
@@ -18268,7 +18268,7 @@
       "id": "collection_log_hard_get-1-unique-from-moons-of-peril_001_210b6713c4",
       "name": "Get 1 unique from Moons of Peril",
       "source": "COLLECTION_LOG",
-      "tier": "HARD",
+      "tier": "MEDIUM",
       "prereqs": "Perilous Moons quest; 48 Slayer; 20 Hunter; 20 Fishing; 20 Runecrafting; 10 Construction",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Moons_of_Peril",
       "verification": {
@@ -18431,6 +18431,24 @@
         "count": 10
       },
       "displayItemId": 28997
+    },
+    {
+      "id": "collection_log_hard_get-a-venator-fang-and-tooth_001_bb67eecbf2",
+      "name": "Get a Venator fang and tooth",
+      "source": "COLLECTION_LOG",
+      "tier": "HARD",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Venator_fang",
+      "description": "Obtain both a Venator fang and a Venator tooth.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          33661,
+          33663
+        ],
+        "count": 2
+      },
+      "displayItemId": 33663
     },
     {
       "id": "collection_log_hard_obtain-sunfire-splinters_001_0b9d5c9047",
@@ -19150,7 +19168,7 @@
       "name": "Callisto Adept",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Callisto_Adept",
       "description": "Kill Callisto 10 times. Both Callisto and his singles-plus variant Artio kills count."
     },
@@ -19717,7 +19735,7 @@
       "name": "Venenatis Adept",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Venenatis_Adept",
       "description": "Kill Venenatis 10 times. Both Venenatis and her singles-plus variant Spindel kills count."
     },
@@ -19726,7 +19744,7 @@
       "name": "Vet'ion Adept",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Vet%27ion_Adept",
       "description": "Kill Vet'ion 10 times. Both Vet'ion and his singles-plus variant Calvar'ion kills count."
     },
@@ -21084,7 +21102,7 @@
       "name": "Get 1 unique from the Wildy bosses",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
       "verification": {
         "method": "collection-log",
@@ -21110,7 +21128,7 @@
       "name": "Get 1 unique from the Wildy bosses",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
       "verification": {
         "method": "collection-log",
@@ -21136,7 +21154,7 @@
       "name": "Get 1 unique from the Wildy bosses",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
       "verification": {
         "method": "collection-log",
@@ -21162,7 +21180,7 @@
       "name": "Get 1 unique from the Wildy bosses",
       "source": "COLLECTION_LOG",
       "tier": "ELITE",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
       "verification": {
         "method": "collection-log",
@@ -21180,6 +21198,110 @@
           27687
         ],
         "count": 7
+      },
+      "displayItemId": 27673
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-the-wildy-bosses_005_59d40d264a",
+      "name": "Get 1 unique from the Wildy bosses",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "Wilderness Medium Diary",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness#bosses",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          7158,
+          11920,
+          12601,
+          12603,
+          12605,
+          27667,
+          27670,
+          27673,
+          27681,
+          27684,
+          27687
+        ],
+        "count": 8
+      },
+      "displayItemId": 27673
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-the-wildy-bosses_006_a411f4f90b",
+      "name": "Get 1 unique from the Wildy bosses",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "Wilderness Medium Diary",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness#bosses",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          7158,
+          11920,
+          12601,
+          12603,
+          12605,
+          27667,
+          27670,
+          27673,
+          27681,
+          27684,
+          27687
+        ],
+        "count": 9
+      },
+      "displayItemId": 27673
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-the-wildy-bosses_007_8af6eacd62",
+      "name": "Get 1 unique from the Wildy bosses",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "Wilderness Medium Diary",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness#bosses",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          7158,
+          11920,
+          12601,
+          12603,
+          12605,
+          27667,
+          27670,
+          27673,
+          27681,
+          27684,
+          27687
+        ],
+        "count": 10
+      },
+      "displayItemId": 27673
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-the-wildy-bosses_008_4e3d179e81",
+      "name": "Get 1 unique from the Wildy bosses",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "Wilderness Medium Diary",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness#bosses",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          7158,
+          11920,
+          12601,
+          12603,
+          12605,
+          27667,
+          27670,
+          27673,
+          27681,
+          27684,
+          27687
+        ],
+        "count": 11
       },
       "displayItemId": 27673
     },
@@ -26849,7 +26971,7 @@
       "id": "collection_log_elite_get-1-unique-from-shades-of-mort-ton_001_1f8b2106b1",
       "name": "Get 1 unique from Shades of Mort'ton",
       "source": "COLLECTION_LOG",
-      "tier": "ELITE",
+      "tier": "HARD",
       "prereqs": "Shades of Morton quest; 20 Crafting; 15 Herblore; 5 Firemaking",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Shades_of_Mort%27ton_(minigame)",
       "verification": {
@@ -26878,7 +27000,7 @@
       "id": "collection_log_elite_get-1-unique-from-shades-of-mort-ton_002_618716c3d5",
       "name": "Get 1 unique from Shades of Mort'ton",
       "source": "COLLECTION_LOG",
-      "tier": "ELITE",
+      "tier": "HARD",
       "prereqs": "Shades of Morton quest; 20 Crafting; 15 Herblore; 5 Firemaking",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Shades_of_Mort%27ton_(minigame)",
       "verification": {
@@ -27241,6 +27363,84 @@
           22557
         ],
         "count": 4
+      },
+      "displayItemId": 22305
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-revenants_005_c9b3ee9e24",
+      "name": "Get 1 unique from Revenants",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "None",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          21804,
+          21807,
+          21810,
+          21813,
+          22299,
+          22302,
+          22305,
+          22542,
+          22547,
+          22552,
+          22557
+        ],
+        "count": 5
+      },
+      "displayItemId": 22305
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-revenants_006_e6533822b3",
+      "name": "Get 1 unique from Revenants",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "None",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          21804,
+          21807,
+          21810,
+          21813,
+          22299,
+          22302,
+          22305,
+          22542,
+          22547,
+          22552,
+          22557
+        ],
+        "count": 6
+      },
+      "displayItemId": 22305
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-revenants_007_1cb0ca8cce",
+      "name": "Get 1 unique from Revenants",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "None",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Revenants",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          21804,
+          21807,
+          21810,
+          21813,
+          22299,
+          22302,
+          22305,
+          22542,
+          22547,
+          22552,
+          22557
+        ],
+        "count": 7
       },
       "displayItemId": 22305
     },
@@ -27979,7 +28179,7 @@
       "id": "collection_log_elite_get-1-unique-from-moons-of-peril_001_0f341feb32",
       "name": "Get 1 unique from Moons of Peril",
       "source": "COLLECTION_LOG",
-      "tier": "ELITE",
+      "tier": "HARD",
       "prereqs": "Perilous Moons quest; 48 Slayer; 20 Hunter; 20 Fishing; 20 Runecrafting; 10 Construction",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Moons_of_Peril",
       "verification": {
@@ -28007,7 +28207,7 @@
       "id": "collection_log_elite_get-1-unique-from-moons-of-peril_002_cb141169b4",
       "name": "Get 1 unique from Moons of Peril",
       "source": "COLLECTION_LOG",
-      "tier": "ELITE",
+      "tier": "HARD",
       "prereqs": "Perilous Moons quest; 48 Slayer; 20 Hunter; 20 Fishing; 20 Runecrafting; 10 Construction",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Moons_of_Peril",
       "verification": {
@@ -28035,7 +28235,7 @@
       "id": "collection_log_elite_get-1-unique-from-moons-of-peril_003_fd7bfc258a",
       "name": "Get 1 unique from Moons of Peril",
       "source": "COLLECTION_LOG",
-      "tier": "ELITE",
+      "tier": "HARD",
       "prereqs": "Perilous Moons quest; 48 Slayer; 20 Hunter; 20 Fishing; 20 Runecrafting; 10 Construction",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Moons_of_Peril",
       "verification": {
@@ -28058,6 +28258,40 @@
         "count": 13
       },
       "displayItemId": 28997
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-the-maggot-king_001_ec7bda7dd8",
+      "name": "Get 1 unique from the Maggot King",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Maggot_King",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          33634,
+          33631
+        ],
+        "count": 1
+      },
+      "displayItemId": 33631
+    },
+    {
+      "id": "collection_log_elite_get-1-unique-from-the-maggot-king_002_ec60eba895",
+      "name": "Get 1 unique from the Maggot King",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Maggot_King",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          33634,
+          33631
+        ],
+        "count": 2
+      },
+      "displayItemId": 33631
     },
     {
       "id": "collection_log_elite_get-a-teleport-anchoring-scroll_001_73b7322963",
@@ -28818,7 +29052,7 @@
       "name": "Callisto Veteran",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Callisto_Veteran",
       "description": "Kill Callisto 20 times. Both Callisto and his singles-plus variant Artio kills count."
     },
@@ -29997,7 +30231,7 @@
       "name": "Venenatis Veteran",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Venenatis_Veteran",
       "description": "Kill Venenatis 20 times. Both Venenatis and her singles-plus variant Spindel kills count."
     },
@@ -30006,7 +30240,7 @@
       "name": "Vet'eran",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "ELITE",
-      "prereqs": "None",
+      "prereqs": "Wilderness Medium Diary",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Vet%27eran",
       "description": "Kill Vet'ion 20 times. Both Vet'ion and his singles-plus variant Calvar'ion kills count."
     },
@@ -34788,266 +35022,6 @@
         "count": 3
       },
       "displayItemId": 20663
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_001_fb9b585d48",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_002_424f53f7fa",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_003_5dc6b41f38",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_004_1dc61ee7fa",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_005_852bea39e4",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_006_f946294fb6",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_007_af69a6f0f0",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_008_55a8c90903",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_009_1e5f4ef2c5",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
-    },
-    {
-      "id": "collection_log_master_get-1-wildy-unique_010_646ed2dbe8",
-      "name": "Get 1 Wildy unique",
-      "source": "COLLECTION_LOG",
-      "tier": "MASTER",
-      "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Wilderness",
-      "verification": {
-        "method": "collection-log",
-        "itemIds": [
-          12605,
-          11920,
-          7158,
-          27670,
-          12601,
-          27684,
-          27687,
-          27673,
-          12603,
-          27667,
-          27681
-        ],
-        "count": 1
-      },
-      "displayItemId": 22547
     },
     {
       "id": "collection_log_master_get-1-slayer-log-slot_001_ca0e60807e",
@@ -39891,6 +39865,87 @@
       "prereqs": "The Ides of Milk quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Brutus_Speed-Trialist",
       "description": "Kill Brutus in under 2 seconds."
+    },
+    {
+      "id": "combat_achievement_hard_maggot-squasher_be62b796e7",
+      "name": "Maggot Squasher",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Maggot_Squasher",
+      "description": "Kill the Maggot King."
+    },
+    {
+      "id": "combat_achievement_elite_trying-to-fit-in_c18857422c",
+      "name": "Trying to fit in",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "ELITE",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Trying_to_fit_in",
+      "description": "Kill the Maggot King using only weapons that can be found in Vampyrium."
+    },
+    {
+      "id": "combat_achievement_elite_maggot-exterminator_25003674c4",
+      "name": "Maggot Exterminator",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "ELITE",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Maggot_Exterminator",
+      "description": "Kill the Maggot King 25 times."
+    },
+    {
+      "id": "combat_achievement_master_king-sized-clobbering_6dbbb0a297",
+      "name": "King-sized clobbering",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MASTER",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/King-sized_clobbering",
+      "description": "Kill the Maggot King without missing a single melee punish."
+    },
+    {
+      "id": "combat_achievement_master_cordoned-off_cdde8d89cc",
+      "name": "Cordoned Off",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MASTER",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Cordoned_Off",
+      "description": "Kill the Maggot King without moving beyond the back row of tiles."
+    },
+    {
+      "id": "combat_achievement_master_digging-in_c053aaf850",
+      "name": "Digging in",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MASTER",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Digging_in",
+      "description": "Kill the Maggot King without moving more than 40 tiles."
+    },
+    {
+      "id": "combat_achievement_master_maggot-king-speed-chaser_f056250239",
+      "name": "Maggot King Speed Chaser",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MASTER",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Maggot_King_Speed_Chaser",
+      "description": "Kill the Maggot King 5 times in 9 minutes."
+    },
+    {
+      "id": "combat_achievement_master_perfect-maggot-king_2d0e97a58f",
+      "name": "Perfect Maggot King",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MASTER",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Perfect_Maggot_King",
+      "description": "Kill the Maggot King without taking any avoidable damage or him ever being healed."
+    },
+    {
+      "id": "combat_achievement_master_camping-the-king_f6a02d540b",
+      "name": "Camping the King",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MASTER",
+      "prereqs": "The Blood Moon Rises quest; 74 Slayer; 74 Woodcutting; 72 Smithing; 72 Cooking; 70 Fletching; 66 Mining; 65 Hunter; 64 Crafting; 64 Herblore; 57 Magic",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Camping_the_King",
+      "description": "Kill the Maggot King 12 times without leaving the arena."
     },
     {
       "id": "combat_achievement_easy_shellbane-adept_52f9f85535",

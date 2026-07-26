@@ -45,6 +45,17 @@ public class PrerequisiteTrackerServiceTest
         assertTrue(statuses.get(0).isCompleted());
     }
 
+    @Test
+    public void shortDiaryPrerequisiteUsesVarbitAndDiaryIcon()
+    {
+        PrerequisiteTrackerService service = serviceWithVarbitValue(Varbits.DIARY_WILDERNESS_MEDIUM, 1);
+        List<PrerequisiteStatus> statuses = service.evaluate("Wilderness Medium Diary");
+
+        assertTrue(statuses.get(0).isCompleted());
+        assertTrue(statuses.get(0).getMarkerIcons().contains(
+                PrerequisiteStatus.MarkerIcon.ACHIEVEMENT_DIARY));
+    }
+
     private static PrerequisiteTrackerService serviceWithBrutFireValue(int brutFireValue)
     {
         return serviceWithVarbitValue(VarbitID.BRUT_FIRE, brutFireValue);
