@@ -23,6 +23,7 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.truncateToWidth;
 public class TaskControlsRenderer
 {
     private static final BufferedImage QUESTION_ICON = UiDraw.loadImage("/icons/notifications/OSRS_question.png");
+    private static final Color NEW_TASKS_BORDER = new Color(0x00, 0x80, 0x80);
 
     private final int panelPadding;
     private final int rowHeight;
@@ -174,7 +175,7 @@ public class TaskControlsRenderer
 
             boolean active = query.showNewTasksFilter;
             drawBevelBox(g, layout.filterNewTasks, active ? pillOnBg : pillOffBg, uiEdgeLight, uiEdgeDark);
-            g.setColor(uiGold);
+            g.setColor(NEW_TASKS_BORDER);
             g.drawRect(layout.filterNewTasks.x, layout.filterNewTasks.y, layout.filterNewTasks.width, layout.filterNewTasks.height);
 
             String btnLabel = active ? "Showing New Tasks" : "See New Tasks";
@@ -190,10 +191,12 @@ public class TaskControlsRenderer
             drawHelpIcon(g, fm, layout.filterNewTasksHelp);
             if (layout.filterNewTasksHelp.contains(mouseX, mouseY))
             {
-                drawTooltipBelowRightAligned(g, fm, UiText.get("tasks.new_tasks_help"), layout.filterNewTasksHelp, panelX + panelW + 5);
+                drawTooltipAboveRightAligned(g, fm, UiText.get("tasks.new_tasks_help"), layout.filterNewTasks, panelX + panelW + 5);
             }
 
-            cursorY += newRowH + fm.getHeight() + 8;
+            // Keep the controls below close to the optional row. Reserving another
+            // full font height here pushed the column-display controls off-panel.
+            cursorY += newRowH + 6;
         } else {
             layout.filterNewTasks.setBounds(0, 0, 0, 0);
             layout.filterNewTasksHelp.setBounds(0, 0, 0, 0);
@@ -499,7 +502,7 @@ public class TaskControlsRenderer
         g.drawString(meta, tx + mainW, ty);
     }
 
-    private void drawTooltipBelowRightAligned(Graphics2D g, FontMetrics fm, String text, Rectangle anchor, int textRightX)
+    private void drawTooltipAboveRightAligned(Graphics2D g, FontMetrics fm, String text, Rectangle anchor, int textRightX)
     {
         int padX = 8;
         int padY = 3;
@@ -508,8 +511,8 @@ public class TaskControlsRenderer
         int th = fm.getHeight();
         int w = tw + padX * 2;
         int h = th + padY * 2;
-        int x = textRightX - padX - tw;
-        int y = anchor.y + anchor.height + 4;
+        int x = textRightX - padX - tw - 10;
+        int y = anchor.y - h + 3;
 
         Rectangle r = new Rectangle(x, y, w, h);
 
