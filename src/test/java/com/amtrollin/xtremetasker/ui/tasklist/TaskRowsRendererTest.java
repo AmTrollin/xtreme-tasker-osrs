@@ -18,6 +18,14 @@ public class TaskRowsRendererTest
         assertEquals("3h 5m", formatDuration(185 * 60));
     }
 
+    @Test
+    public void timeSpentNeverConvertsHoursToDays() throws Exception
+    {
+        assertEquals("24h", formatDuration(24 * 60 * 60));
+        assertEquals("48h", formatDuration(48 * 60 * 60));
+        assertEquals("54h 23m", formatDuration((54 * 60 + 23) * 60));
+    }
+
     private static String formatDuration(long seconds) throws Exception
     {
         Method method = TaskRowsRenderer.class.getDeclaredMethod("formatDuration", long.class);

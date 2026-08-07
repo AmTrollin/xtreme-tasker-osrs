@@ -2604,10 +2604,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
         long hours = minutes / 60;
         long remMinutes = minutes % 60;
-        if (hours < 24) return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
-        long days = hours / 24;
-        long remHours = hours % 24;
-        return remHours > 0 ? days + "d " + remHours + "h" : days + "d";
+        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
     }
 
     private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
@@ -3451,10 +3448,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
         long hours = minutes / 60;
         long remMinutes = minutes % 60;
-        if (hours < 24) return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
-        long days = hours / 24;
-        long remHours = hours % 24;
-        return remHours > 0 ? days + "d " + remHours + "h" : days + "d";
+        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
     }
 
     /** Height in px available for the scrollable body on the Current tab. */

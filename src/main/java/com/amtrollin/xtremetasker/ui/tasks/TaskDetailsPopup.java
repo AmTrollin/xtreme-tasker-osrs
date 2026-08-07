@@ -1217,16 +1217,8 @@ public final class TaskDetailsPopup
         }
         long hours = minutes / 60;
         long remMinutes = minutes % 60;
-        if (hours < 24)
-        {
-            return remMinutes > 0
-                    ? hours + "h " + remMinutes + "m"
-                    : hours + "h";
-        }
-        long days = hours / 24;
-        long remHours = hours % 24;
-        return remHours > 0
-                ? days + "d " + remHours + "h"
-                : days + "d";
+        return remMinutes > 0
+                ? hours + "h " + remMinutes + "m"
+                : hours + "h";
     }
 }
