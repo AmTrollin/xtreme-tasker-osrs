@@ -4864,7 +4864,7 @@
       "name": "Get Ray barbs",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Pandemonium quest",
+      "prereqs": "None",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Ray_barbs",
       "verification": {
         "method": "collection-log",
@@ -18932,7 +18932,7 @@
       "id": "collection_log_hard_get-an-echo-pearl_001_b07a19e671",
       "name": "Get an Echo pearl",
       "source": "COLLECTION_LOG",
-      "tier": "HARD",
+      "tier": "MEDIUM",
       "prereqs": "Pandemonium quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Echo_pearl",
       "verification": {
