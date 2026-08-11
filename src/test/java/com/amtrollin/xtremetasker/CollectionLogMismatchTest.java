@@ -226,6 +226,28 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void diaryAchievementCompletionCandidateIsStoredForReview() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCollectionLogServiceForTesting(new CollectionLogService());
+        plugin.setPrerequisiteTrackerServiceForTesting(new StubPrerequisiteTrackerService(true));
+
+        XtremeTask task = diaryAchievementTask(
+                "achievement_diary_easy_complete-the-ardougne-easy-diary_sync_review_test",
+                "Complete the Ardougne easy diary"
+        );
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+
+        assertEquals("Completed AD should be included in the reported sync count",
+                1, invokeRefreshCollectionLogNonItemSyncState(plugin));
+        assertEquals("Completed AD should remain available to the completion review",
+                List.of(task.getId()),
+                taskIds(plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG)));
+    }
+
+    @Test
     public void collectionLogMismatchSyncEvidencePersistsAcrossSessions() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -1367,11 +1389,11 @@ public class CollectionLogMismatchTest
         refresh.invoke(plugin);
     }
 
-    private static void invokeRefreshCollectionLogNonItemSyncState(XtremeTaskerPlugin plugin) throws Exception
+    private static int invokeRefreshCollectionLogNonItemSyncState(XtremeTaskerPlugin plugin) throws Exception
     {
         Method refresh = XtremeTaskerPlugin.class.getDeclaredMethod("refreshCollectionLogNonItemSyncState");
         refresh.setAccessible(true);
-        refresh.invoke(plugin);
+        return (Integer) refresh.invoke(plugin);
     }
 
     @SuppressWarnings("unchecked")

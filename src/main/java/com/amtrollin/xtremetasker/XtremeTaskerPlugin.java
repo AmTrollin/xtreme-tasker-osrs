@@ -4093,7 +4093,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         TaskVerification verification = task == null ? null : task.getVerification();
         return task != null
-                && task.getSource() == TaskSource.COLLECTION_LOG
+                && isCollectionLogSyncSource(task.getSource())
                 && verification != null
                 && verification.getType() != TaskVerification.VerificationType.COLLECTION_LOG;
     }
