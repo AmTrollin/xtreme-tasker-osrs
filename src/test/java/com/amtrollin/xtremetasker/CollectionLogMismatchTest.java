@@ -1087,6 +1087,36 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void undoCompletionDoesNotRefreshHelpTabSyncState() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(true));
+
+        XtremeTask task = combatAchievementTask(
+                "combat_achievement_easy_undo_without_sync_test",
+                "Undo without sync",
+                12);
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.syncMismatchTaskIdsForTesting().add(task.getId());
+        plugin.setSyncMismatchTitleForTesting("Existing Help review");
+
+        Field undoableTaskId = XtremeTaskerPlugin.class.getDeclaredField("undoableCompletedTaskId");
+        undoableTaskId.setAccessible(true);
+        undoableTaskId.set(plugin, task.getId());
+
+        plugin.undoCurrentTaskCompletionAndPersist();
+
+        assertEquals("Undo must not rebuild or clear the Help-tab sync review",
+                List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
+        assertEquals("Existing Help review", plugin.syncMismatchTitleForTesting());
+        assertEquals(task.getId(), plugin.getCurrentTask().getId());
+        assertTrue("Undo should still refresh the restored task's local completion highlight",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
     public void currentAchievementDiaryAlreadyCompleteAtRollUsesCompletedBeforeRolledTime() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

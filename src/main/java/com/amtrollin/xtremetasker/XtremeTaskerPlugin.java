@@ -2782,7 +2782,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTask = decorateCurrentSequenceTask(task);
         currentTaskId = id;
         undoableCompletedTaskId = null;
-        refreshCurrentTaskCompletionCandidatesForCurrentSource();
+        refreshCurrentTaskCompletionCriteriaMet();
+        refreshCurrentTaskCompletedBeforeRolledState();
 
         rebuildTierCounts();
         markDirtyAndPersist();
