@@ -1056,6 +1056,37 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void rerolledCombatAchievementWithoutVerificationHighlightsWhenCompleteInGame() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(true));
+
+        XtremeTask task = new XtremeTask(
+                "combat_achievement_easy_the-walking-volcano_reroll_test",
+                "The Walking Volcano",
+                TaskSource.COMBAT_ACHIEVEMENT,
+                TaskTier.EASY);
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        Field caTaskIdsByNameField = XtremeTaskerPlugin.class.getDeclaredField("caTaskIdsByName");
+        caTaskIdsByNameField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Integer> caTaskIdsByName = (Map<String, Integer>) caTaskIdsByNameField.get(plugin);
+        caTaskIdsByName.put(task.getName(), 12);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.toggleTaskCompletedAndPersist(task);
+
+        assertTrue("Task should be incomplete after removing its saved completion",
+                !plugin.isTaskCompleted(task));
+
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("A rerolled CA should highlight from in-game completion even without a verification block",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
     public void currentAchievementDiaryAlreadyCompleteAtRollUsesCompletedBeforeRolledTime() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

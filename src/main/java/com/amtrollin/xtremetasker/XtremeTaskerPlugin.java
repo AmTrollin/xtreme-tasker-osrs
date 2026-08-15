@@ -1984,18 +1984,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return false;
         }
 
-        TaskVerification verification = task.getVerification();
-        if (verification == null)
-        {
-            return false;
-        }
-
         if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT)
         {
             Integer taskId = resolveCombatAchievementTaskId(task);
             return taskId != null
                     && combatAchievementService != null
                     && combatAchievementService.isTaskComplete(taskId);
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null)
+        {
+            return false;
         }
 
         if (verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY)
