@@ -6,9 +6,6 @@ import java.util.*;
 
 public final class TaskGroupUtils
 {
-    private static final int ANCIENT_PAGE_FIRST_ITEM_ID = 11341;
-    private static final int ANCIENT_PAGE_LAST_ITEM_ID = 11366;
-
     private TaskGroupUtils()
     {
     }
@@ -99,26 +96,8 @@ public final class TaskGroupUtils
         }
 
         return "counted-cl|source=" + Objects.toString(task.getSource(), "")
-                + (isAncientPageRequirement(sortedItemIds) ? "" : "|tier=" + Objects.toString(task.getTier(), ""))
+                + "|tier=" + Objects.toString(task.getTier(), "")
                 + "|items=" + items;
-    }
-
-    private static boolean isAncientPageRequirement(int[] itemIds)
-    {
-        int expectedCount = ANCIENT_PAGE_LAST_ITEM_ID - ANCIENT_PAGE_FIRST_ITEM_ID + 1;
-        if (itemIds == null || itemIds.length != expectedCount)
-        {
-            return false;
-        }
-
-        for (int i = 0; i < itemIds.length; i++)
-        {
-            if (itemIds[i] != ANCIENT_PAGE_FIRST_ITEM_ID + i)
-            {
-                return false;
-            }
-        }
-        return true;
     }
 
     private static String normalize(String value)
