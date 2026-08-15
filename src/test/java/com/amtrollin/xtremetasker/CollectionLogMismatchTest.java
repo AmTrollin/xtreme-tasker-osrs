@@ -923,6 +923,49 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void fourthAncientPageTaskRequiresEightTotalPages() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        int[] ancientPageItemIds = java.util.stream.IntStream.rangeClosed(11341, 11366).toArray();
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        for (int i = 1; i <= 4; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-2-unique-ancient-pages_00" + i + "_test",
+                    "Get 2 unique Ancient pages",
+                    TaskTier.EASY,
+                    ancientPageItemIds,
+                    2
+            ));
+        }
+
+        plugin.manualCompletedTaskIdsForTesting().add(tasks.get(0).getId());
+        plugin.manualCompletedTaskIdsForTesting().add(tasks.get(1).getId());
+        plugin.manualCompletedTaskIdsForTesting().add(tasks.get(2).getId());
+        for (int itemId = 11341; itemId <= 11346; itemId++)
+        {
+            collectionLogService.storeItem(itemId);
+        }
+
+        plugin.setCurrentTaskForTesting(tasks.get(3));
+
+        assertTrue("Six previously obtained pages must not complete the fourth 8-page threshold",
+                !plugin.isCurrentTaskCompletionCriteriaMet());
+
+        collectionLogService.storeItem(11347);
+        assertTrue("Seven total pages must still be short of the fourth threshold",
+                !plugin.isCurrentTaskCompletionCriteriaMet());
+
+        collectionLogService.storeItem(11348);
+        assertTrue("Eight total pages should complete the fourth threshold",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
     public void currentCollectionLogCompletionDoesNotRequirePrerequisites() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
