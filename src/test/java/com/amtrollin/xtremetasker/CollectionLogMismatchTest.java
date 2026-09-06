@@ -923,6 +923,49 @@ public class CollectionLogMismatchTest
     }
 
     @Test
+    public void fourthAncientPageTaskRequiresEightTotalPages() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLogService = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLogService);
+
+        int[] ancientPageItemIds = java.util.stream.IntStream.rangeClosed(11341, 11366).toArray();
+        List<XtremeTask> tasks = plugin.tasksForTesting();
+        tasks.clear();
+        for (int i = 1; i <= 4; i++)
+        {
+            tasks.add(collectionLogTask(
+                    "collection_log_easy_get-2-unique-ancient-pages_00" + i + "_test",
+                    "Get 2 unique Ancient pages",
+                    TaskTier.EASY,
+                    ancientPageItemIds,
+                    2
+            ));
+        }
+
+        plugin.manualCompletedTaskIdsForTesting().add(tasks.get(0).getId());
+        plugin.manualCompletedTaskIdsForTesting().add(tasks.get(1).getId());
+        plugin.manualCompletedTaskIdsForTesting().add(tasks.get(2).getId());
+        for (int itemId = 11341; itemId <= 11346; itemId++)
+        {
+            collectionLogService.storeItem(itemId);
+        }
+
+        plugin.setCurrentTaskForTesting(tasks.get(3));
+
+        assertTrue("Six previously obtained pages must not complete the fourth 8-page threshold",
+                !plugin.isCurrentTaskCompletionCriteriaMet());
+
+        collectionLogService.storeItem(11347);
+        assertTrue("Seven total pages must still be short of the fourth threshold",
+                !plugin.isCurrentTaskCompletionCriteriaMet());
+
+        collectionLogService.storeItem(11348);
+        assertTrue("Eight total pages should complete the fourth threshold",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
     public void currentCollectionLogCompletionDoesNotRequirePrerequisites() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
@@ -1010,6 +1053,67 @@ public class CollectionLogMismatchTest
         assertEquals("Already-complete CA should use CBR time sentinel",
                 Long.valueOf(-1L),
                 plugin.getTaskTimeTicks(task));
+    }
+
+    @Test
+    public void rerolledCombatAchievementWithoutVerificationHighlightsWhenCompleteInGame() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(true));
+
+        XtremeTask task = new XtremeTask(
+                "combat_achievement_easy_the-walking-volcano_reroll_test",
+                "The Walking Volcano",
+                TaskSource.COMBAT_ACHIEVEMENT,
+                TaskTier.EASY);
+
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        Field caTaskIdsByNameField = XtremeTaskerPlugin.class.getDeclaredField("caTaskIdsByName");
+        caTaskIdsByNameField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Integer> caTaskIdsByName = (Map<String, Integer>) caTaskIdsByNameField.get(plugin);
+        caTaskIdsByName.put(task.getName(), 12);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.toggleTaskCompletedAndPersist(task);
+
+        assertTrue("Task should be incomplete after removing its saved completion",
+                !plugin.isTaskCompleted(task));
+
+        plugin.setCurrentTaskForTesting(task);
+
+        assertTrue("A rerolled CA should highlight from in-game completion even without a verification block",
+                plugin.isCurrentTaskCompletionCriteriaMet());
+    }
+
+    @Test
+    public void undoCompletionDoesNotRefreshHelpTabSyncState() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(true));
+
+        XtremeTask task = combatAchievementTask(
+                "combat_achievement_easy_undo_without_sync_test",
+                "Undo without sync",
+                12);
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().add(task);
+        plugin.manualCompletedTaskIdsForTesting().add(task.getId());
+        plugin.syncMismatchTaskIdsForTesting().add(task.getId());
+        plugin.setSyncMismatchTitleForTesting("Existing Help review");
+
+        Field undoableTaskId = XtremeTaskerPlugin.class.getDeclaredField("undoableCompletedTaskId");
+        undoableTaskId.setAccessible(true);
+        undoableTaskId.set(plugin, task.getId());
+
+        plugin.undoCurrentTaskCompletionAndPersist();
+
+        assertEquals("Undo must not rebuild or clear the Help-tab sync review",
+                List.of(task.getId()), plugin.syncMismatchTaskIdsForTesting());
+        assertEquals("Existing Help review", plugin.syncMismatchTitleForTesting());
+        assertEquals(task.getId(), plugin.getCurrentTask().getId());
+        assertTrue("Undo should still refresh the restored task's local completion highlight",
+                plugin.isCurrentTaskCompletionCriteriaMet());
     }
 
     @Test

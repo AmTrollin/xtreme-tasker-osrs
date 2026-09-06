@@ -1558,7 +1558,7 @@ public class XtremeTaskerOverlay extends Overlay {
         List<Integer> inferred = new ArrayList<>(sequence.size());
         for (int i = 0; i < sequence.size(); i++)
         {
-            inferred.add(base + i);
+            inferred.add(base * (i + 1));
         }
         return inferred;
     }

@@ -1984,18 +1984,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return false;
         }
 
-        TaskVerification verification = task.getVerification();
-        if (verification == null)
-        {
-            return false;
-        }
-
         if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT)
         {
             Integer taskId = resolveCombatAchievementTaskId(task);
             return taskId != null
                     && combatAchievementService != null
                     && combatAchievementService.isTaskComplete(taskId);
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (verification == null)
+        {
+            return false;
         }
 
         if (verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY)
@@ -2021,7 +2021,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         ItemRequirement requirement = currentCollectionLogRequirement(task);
         return requirement != null
-                && countObtainedCollectionLogItems(requirement.itemIds) >= requirement.requiredCount;
+                && countObtainedCollectionLogItems(requirement.itemIds)
+                >= currentCollectionLogCompletionThreshold(task, requirement);
     }
 
     private boolean isCurrentCollectionLogTaskCompleteAtRollBaseline(XtremeTask task)
@@ -2034,7 +2035,35 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         String signature = collectionLogRequirementSignature(requirement.itemIds);
         Integer baselineCount = getCurrentTaskCollectionLogBaselineCount(signature);
-        return baselineCount != null && baselineCount >= requirement.requiredCount;
+        return baselineCount != null
+                && baselineCount >= currentCollectionLogCompletionThreshold(task, requirement);
+    }
+
+    private int currentCollectionLogCompletionThreshold(XtremeTask task, ItemRequirement requirement)
+    {
+        if (task == null || requirement == null)
+        {
+            return Integer.MAX_VALUE;
+        }
+
+        TaskVerification verification = task.getVerification();
+        if (!isCountedCollectionLogSync(verification) || isDisplaySequenceTask(task.getName()))
+        {
+            return requirement.requiredCount;
+        }
+
+        List<XtremeTask> group = countedCollectionLogGroupFor(task, verification);
+        List<Integer> thresholds = countedGroupThresholds(group);
+        for (int i = 0; i < group.size(); i++)
+        {
+            XtremeTask groupedTask = group.get(i);
+            if (groupedTask != null && Objects.equals(task.getId(), groupedTask.getId()))
+            {
+                return Math.max(requirement.requiredCount, thresholdAt(thresholds, i));
+            }
+        }
+
+        return requirement.requiredCount;
     }
 
     private ItemRequirement currentCollectionLogRequirement(XtremeTask task)
@@ -2753,7 +2782,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTask = decorateCurrentSequenceTask(task);
         currentTaskId = id;
         undoableCompletedTaskId = null;
-        refreshCurrentTaskCompletionCandidatesForCurrentSource();
+        refreshCurrentTaskCompletionCriteriaMet();
+        refreshCurrentTaskCompletedBeforeRolledState();
 
         rebuildTierCounts();
         markDirtyAndPersist();
@@ -3693,7 +3723,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         List<Integer> inferred = new ArrayList<>(group.size());
         for (int i = 0; i < group.size(); i++)
         {
-            inferred.add(base + i);
+            inferred.add(base * (i + 1));
         }
         return inferred;
     }

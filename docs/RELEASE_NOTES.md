@@ -2,6 +2,39 @@ $$\Huge\color{#B8860B}\textsf{RELEASE NOTES}$$
 
 <br>
 
+
+## <span style="color:#DEB887">v2.2.2 — 09.06.2026</span>
+
+#### <span style="color:#DCDCDC">Bug Fixes</span>
+* $\color{#778899}\textsf{Condensed task rows now keep repeated tasks separated by tier}$
+* $\color{#778899}\textsf{Fixed Mark complete highlighting for repeated Collection Log tasks and rerolled completed Combat Achievements}$
+* $\color{#778899}\textsf{Fixed Castle Wars halo sync incorrectly suggesting the Elite task after obtaining one halo}$
+* $\color{#778899}\textsf{Undoing a task completion no longer refreshes or changes Help tab sync results}$
+
+#### <span style="color:#DCDCDC">Task Updates</span>
+* $\color{#778899}\textsf{Added 9 Mad Angel Combat Achievements across Medium, Hard, and Elite tiers}$
+* $\color{#778899}\textsf{Added new Collection Log tasks for Mad Angel, Jeweller's chisel, elemental gems, boss jars, Slepey tablet, and Zalcano}$
+* $\color{#778899}\textsf{Expanded the Turoth and Infernal Mage unique sequences with newly released drops}$
+* $\color{#778899}\textsf{Added the latest boss pets to all repeated boss pet tasks}$
+* $\color{#778899}\textsf{Moved Fish sack from Elite to Hard and Narwhal horn from Hard to Medium}$
+* $\color{#778899}\textsf{Updated Mad Angel prerequisites and Collection Log task tips}$
+
+
+<br>
+
+## <span style="color:#DEB887">v2.2.1 — 08.07.2026</span>
+
+#### <span style="color:#DCDCDC">Bug Fixes</span>
+* $\color{#778899}\textsf{Fixed Achievement Diary sync results not appearing in completion review}$
+* $\color{#778899}\textsf{Fixed Collection Log tracking undercounting clue reward entries}$
+* $\color{#778899}\textsf{Task times over 24 hours now remain displayed in hours across task rows and descriptions}$
+
+#### <span style="color:#DCDCDC">Task Updates</span>
+* $\color{#778899}\textsf{Moved Get an Echo pearl from Hard to Medium}$
+* $\color{#778899}\textsf{Removed the Pandemonium quest prerequisite from Get Ray barbs}$
+
+<br>
+
 ## <span style="color:#DEB887">v2.2.0 — 07.26.2026</span>
 
 #### <span style="color:#DCDCDC">Task Updates</span>
