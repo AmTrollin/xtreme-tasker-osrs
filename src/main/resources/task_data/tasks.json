@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "tasks": [
     {
       "id": "collection_log_easy_get-bolt-racks-from-barrows_001_0c221876a7",
@@ -2970,7 +2970,8 @@
         "method": "collection-log",
         "itemIds": [
           4113,
-          11902
+          11902,
+          34401
         ],
         "count": 1
       },
@@ -2987,9 +2988,29 @@
         "method": "collection-log",
         "itemIds": [
           4113,
-          11902
+          11902,
+          34401
         ],
         "count": 2
+      },
+      "displayItemId": 11902
+    },
+    {
+      "id": "collection_log_easy_get-1-unique-from-turoths_003_ae9a1eb489",
+      "name": "Get 1 unique from Turoths",
+      "source": "COLLECTION_LOG",
+      "tier": "EASY",
+      "prereqs": "55 Slayer",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Turoth",
+      "tip": "Requires special weaponry to kill: a leaf-bladed spear, broad arrows or the slayer dart spell.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          4113,
+          11902,
+          34401
+        ],
+        "count": 3
       },
       "displayItemId": 11902
     },
@@ -3164,11 +3185,13 @@
       "tier": "EASY",
       "prereqs": "45 Slayer",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Infernal_Mage",
+      "tip": "One of the mages can be safespotted using long range with your bow. The Lava battlestaff does not count as it is not in the Collection Log.",
       "verification": {
         "method": "collection-log",
         "itemIds": [
           4099,
-          4107
+          4107,
+          34422
         ],
         "count": 1
       },
@@ -3181,13 +3204,34 @@
       "tier": "EASY",
       "prereqs": "45 Slayer",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Infernal_Mage",
+      "tip": "One of the mages can be safespotted using long range with your bow. The Lava battlestaff does not count as it is not in the Collection Log.",
       "verification": {
         "method": "collection-log",
         "itemIds": [
           4099,
-          4107
+          4107,
+          34422
         ],
         "count": 2
+      },
+      "displayItemId": 4099
+    },
+    {
+      "id": "collection_log_easy_get-1-unique-from-infernal-mages_003_b0466d3fbe",
+      "name": "Get 1 unique from Infernal Mages",
+      "source": "COLLECTION_LOG",
+      "tier": "EASY",
+      "prereqs": "45 Slayer",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Infernal_Mage",
+      "tip": "One of the mages can be safespotted using long range with your bow. The Lava battlestaff does not count as it is not in the Collection Log.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          4099,
+          4107,
+          34422
+        ],
+        "count": 3
       },
       "displayItemId": 4099
     },
@@ -12610,7 +12654,9 @@
           30888,
           31130,
           31285,
-          33124
+          33124,
+          34042,
+          33642
         ],
         "count": 2
       },
@@ -18948,9 +18994,10 @@
       "id": "collection_log_hard_get-a-narwhal-horn_001_6012d12aea",
       "name": "Get a Narwhal Horn",
       "source": "COLLECTION_LOG",
-      "tier": "HARD",
+      "tier": "MEDIUM",
       "prereqs": "Pandemonium quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Narwhal_horn",
+      "tip": "A guaranteed Narwhal bounty task can be received from Rellekka.",
       "verification": {
         "method": "collection-log",
         "itemIds": [
@@ -20946,7 +20993,9 @@
           30888,
           31130,
           31285,
-          33124
+          33124,
+          34042,
+          33642
         ],
         "count": 3
       },
@@ -21010,7 +21059,9 @@
           30888,
           31130,
           31285,
-          33124
+          33124,
+          34042,
+          33642
         ],
         "count": 4
       },
@@ -21074,7 +21125,9 @@
           30888,
           31130,
           31285,
-          33124
+          33124,
+          34042,
+          33642
         ],
         "count": 5
       },
@@ -26794,7 +26847,7 @@
       "id": "collection_log_elite_get-the-fish-sack_001_1810c8b2bd",
       "name": "Get the Fish sack",
       "source": "COLLECTION_LOG",
-      "tier": "ELITE",
+      "tier": "HARD",
       "prereqs": "43 Fishing; 35 Hunter",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Fish_sack",
       "verification": {
@@ -35329,6 +35382,23 @@
       "displayItemId": 13201
     },
     {
+      "id": "collection_log_elite_get-1-zalcano-unique_0e9d60442a",
+      "name": "Get 1 Zalcano unique",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "Song of the Elves quest; 70 Agility; 70 Construction; 70 Farming; 70 Herblore; 70 Hunter; 70 Mining; 70 Smithing; 70 Woodcutting",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Zalcano",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          23953,
+          23908
+        ],
+        "count": 1
+      },
+      "displayItemId": 23908
+    },
+    {
       "id": "collection_log_master_1-zalcano-unique_001_76b5ad490f",
       "name": "1 Zalcano Unique",
       "source": "COLLECTION_LOG",
@@ -35341,7 +35411,7 @@
           23953,
           23908
         ],
-        "count": 1
+        "count": 2
       },
       "displayItemId": 23908
     },
@@ -39725,6 +39795,57 @@
       }
     },
     {
+      "id": "collection_log_easy_get-an-earth-emerald_b2f20e2b52",
+      "name": "Get an Earth emerald",
+      "source": "COLLECTION_LOG",
+      "tier": "EASY",
+      "prereqs": "Death to the Dorgeshuun; 39 Slayer",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Earth_emerald",
+      "tip": "Obtained as a drop from Molanisks. Remember your light source and your slayer bell.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          34416
+        ],
+        "count": 1
+      },
+      "displayItemId": 34416
+    },
+    {
+      "id": "collection_log_easy_get-a-water-sapphire_e518372dca",
+      "name": "Get a Water sapphire",
+      "source": "COLLECTION_LOG",
+      "tier": "EASY",
+      "prereqs": "Start Royal Trouble quest; 40 Slayer",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Water_sapphire",
+      "tip": "Obtained as a drop from Sea snake hatchlings. Bring an antipoison!",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          34410
+        ],
+        "count": 1
+      },
+      "displayItemId": 34410
+    },
+    {
+      "id": "collection_log_easy_get-an-air-diamond_c9d244b217",
+      "name": "Get an Air diamond",
+      "source": "COLLECTION_LOG",
+      "tier": "EASY",
+      "prereqs": "37 Slayer",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Air_diamond",
+      "tip": "Obtained as a drop from Killerwatts. You may safespot them by repeatedly entering and exiting the portal to reset aggro.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          34404
+        ],
+        "count": 1
+      },
+      "displayItemId": 34404
+    },
+    {
       "id": "combat_achievement_easy_brutus-novice_a0a8569030",
       "name": "Brutus Novice",
       "source": "COMBAT_ACHIEVEMENT",
@@ -39732,6 +39853,37 @@
       "prereqs": "The Ides of Milk quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Brutus_Novice",
       "description": "Kill Brutus."
+    },
+    {
+      "id": "collection_log_elite_get-a-new-boss-jar_e6fe8ca2ca",
+      "name": "Get a new boss jar",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "None",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Boss_lair_display#List_of_displays",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          23064,
+          13245,
+          12885,
+          22106,
+          12936,
+          23525,
+          21745,
+          19701,
+          24495,
+          12007,
+          13277,
+          25521,
+          25524,
+          29786,
+          32921,
+          34030
+        ],
+        "count": 1
+      },
+      "displayItemId": 29786
     },
     {
       "id": "collection_log_medium_get-a-facility-bottle_d541f9cf11",
@@ -39748,6 +39900,76 @@
         ],
         "count": 1
       }
+    },
+    {
+      "id": "collection_log_elite_get-the-slepey-tablet_150623d7d4",
+      "name": "Get the Slepey tablet",
+      "source": "COLLECTION_LOG",
+      "tier": "ELITE",
+      "prereqs": "None",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Phosani%27s_Nightmare",
+      "tip": "The tablet is guaranteed to drop on the 25th kill, and is only dropped by Phosani's Nightmare.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          25837
+        ],
+        "count": 1
+      },
+      "displayItemId": 25837
+    },
+    {
+      "id": "collection_log_medium_get-the-jewellers-chisel_93d790c2ca",
+      "name": "Get the Jeweller's chisel",
+      "source": "COLLECTION_LOG",
+      "tier": "MEDIUM",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Jeweller's_chisel",
+      "tip": "Obtained from Sunstone Golem Crafting. The fastest way to obtain furs is catching spotted kebbits, but you may also hunt Wyrmscraig goats. A fur pouch is very helpful!",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          34024
+        ],
+        "count": 1
+      },
+      "displayItemId": 34024
+    },
+    {
+      "id": "collection_log_medium_get-a-mad-angel-unique_001_d23634bca7",
+      "name": "Get a Mad Angel unique",
+      "source": "COLLECTION_LOG",
+      "tier": "MEDIUM",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel#Post-quest",
+      "tip": "Obtained from the Mad Angel on Wyrmscraig. Necklaces of Passage offer a great teleport back to the boss, if you prefer shorter trips to conserve supplies.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          34033,
+          34027
+        ],
+        "count": 1
+      },
+      "displayItemId": 34027
+    },
+    {
+      "id": "collection_log_medium_get-a-mad-angel-unique_002_c2741830f7",
+      "name": "Get a Mad Angel unique",
+      "source": "COLLECTION_LOG",
+      "tier": "MEDIUM",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel#Post-quest",
+      "tip": "Obtained from the Mad Angel on Wyrmscraig. Necklaces of Passage offer a great teleport back to the boss, if you prefer shorter trips to conserve supplies.",
+      "verification": {
+        "method": "collection-log",
+        "itemIds": [
+          34033,
+          34027
+        ],
+        "count": 2
+      },
+      "displayItemId": 34027
     },
     {
       "id": "collection_log_medium_get-an-immaculate-mole-skin_8d150cec61",
@@ -39825,7 +40047,9 @@
           30888,
           31130,
           31285,
-          33124
+          33124,
+          34042,
+          33642
         ],
         "count": 4
       }
@@ -40037,6 +40261,90 @@
         "method": "COMBAT_ACHIEVEMENT",
         "taskId": 631
       }
+    },
+    {
+      "id": "combat_achievement_medium_mad-angel-adept_fb5f927b41",
+      "name": "Mad Angel Adept",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel 25 times."
+    },
+    {
+      "id": "combat_achievement_medium_juggling-act_7f9a61a3f7",
+      "name": "Juggling Act",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel after attacking her between each bounce of the blast attack during her enrage phase."
+    },
+    {
+      "id": "combat_achievement_medium_smite-fight_a0e201ccf7",
+      "name": "Smite Fight",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel after getting 3 consecutive enhanced attacks by successfully praying against the smite attacks during her enrage phase.",
+      "tip": "This achievement requires attacking between her smite triple attacks. Easiest with a 3-tick weapon, like the goblin paint cannon."
+    },
+    {
+      "id": "combat_achievement_medium_dancing-queen_8e9cbda083",
+      "name": "Dancing Queen",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "MEDIUM",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel after getting 6 consecutive enhanced attacks by dodging the sweep attack successfully during her enrage phase."
+    },
+    {
+      "id": "combat_achievement_hard_perfect-mad-angel_7b211497e7",
+      "name": "Perfect Mad Angel",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel without taking any avoidable damage."
+    },
+    {
+      "id": "combat_achievement_hard_mad-angel-speed-runner_a84b60a78a",
+      "name": "Mad Angel Speed-Runner",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel 5 times within 10 minutes of entering her arena."
+    },
+    {
+      "id": "combat_achievement_hard_mad-angel-veteran_b871998f87",
+      "name": "Mad Angel Veteran",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "HARD",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel 50 times."
+    },
+    {
+      "id": "combat_achievement_elite_this-is-madness_c99dba77f1",
+      "name": "This Is Madness",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "ELITE",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel 15 times without leaving her arena.",
+      "tip": "Successfully performing the Mad Angel's mechanics for nearly all kills will be required for most players, to minimise damage taken. It is recommended to bring Saradomin brews to maximise available healing, and 8-12 super restores."
+    },
+    {
+      "id": "combat_achievement_elite_the-pen-is-mightier_9c501696b3",
+      "name": "The Pen Is Mightier",
+      "source": "COMBAT_ACHIEVEMENT",
+      "tier": "ELITE",
+      "prereqs": "Pandemonium quest; 62 Sailing; 60 Crafting; 47 Runecraft; 53 Mining",
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Mad_Angel/Strategies",
+      "description": "Kill the Mad Angel without equipping any weapon.",
+      "tip": "Thralls, off-hand equipment, and recoil effects are allowed to be used within the fight, and are recommended."
     }
   ]
 }
