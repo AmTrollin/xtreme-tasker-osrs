@@ -4593,7 +4593,7 @@
       "name": "Get a Gold satchel",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Tower of Life quest; 10 Construction",
+      "prereqs": "Tower of Life quest; 10 Construction; Freeing Skrach Uglogwee Recipe for Disaster subquest; Big Chompy Bird Hunting quest; 41 Cooking; 20 Firemaking; 5 Fletching; 30 Ranged",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Gold_satchel",
       "verification": {
         "method": "collection-log",
