@@ -17,6 +17,67 @@ import static org.junit.Assert.assertTrue;
 public class PrerequisiteTrackerServiceTest
 {
     @Test
+    public void combatPrerequisitesUsePlayerLevelAtAndAboveThreshold() throws Exception
+    {
+        int[] combatLevel = {69};
+        net.runelite.api.Player player = (net.runelite.api.Player) Proxy.newProxyInstance(
+                net.runelite.api.Player.class.getClassLoader(), new Class<?>[] {net.runelite.api.Player.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getCombatLevel")) return combatLevel[0];
+                    throw new AssertionError(method.getName());
+                });
+        Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(), new Class<?>[] {Client.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getLocalPlayer")) return player;
+                    throw new AssertionError(method.getName());
+                });
+        PrerequisiteTrackerService service = new PrerequisiteTrackerService();
+        Field field = PrerequisiteTrackerService.class.getDeclaredField("client");
+        field.setAccessible(true);
+        field.set(service, client);
+        for (int required : new int[] {40, 70, 75, 100})
+        {
+            for (int actual : new int[] {required - 1, required, required + 1})
+            {
+                combatLevel[0] = actual;
+                for (String suffix : new String[] {" Combat", " Combat level"})
+                {
+                    PrerequisiteStatus status = service.evaluate(required + suffix).get(0);
+                    org.junit.Assert.assertEquals("Combat " + actual + " against " + required + suffix,
+                            actual >= required, status.isCompleted());
+                    assertTrue(status.getMarkerIcons().contains(PrerequisiteStatus.MarkerIcon.COMBAT));
+                }
+            }
+        }
+        field.set(service, null);
+        assertFalse("Missing player data must not complete a requirement",
+                service.evaluate("70 Combat").get(0).isCompleted());
+    }
+
+    @Test
+    public void numericNonSkillRequirementsReachTheirDedicatedChecks() throws Exception
+    {
+        Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(), new Class<?>[] {Client.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getVarpValue")) return 50;
+                    if (method.getName().equals("getTotalLevel")) return 1000;
+                    if (method.getName().equals("getRealSkillLevel")) return 60;
+                    throw new AssertionError(method.getName());
+                });
+        PrerequisiteTrackerService service = new PrerequisiteTrackerService();
+        Field field = PrerequisiteTrackerService.class.getDeclaredField("client");
+        field.setAccessible(true);
+        field.set(service, client);
+        assertTrue(service.evaluate("50 Quest Points").get(0).isCompleted());
+        assertFalse(service.evaluate("51 Quest Points").get(0).isCompleted());
+        assertTrue(service.evaluate("1000 Total level").get(0).isCompleted());
+        assertFalse(service.evaluate("1001 Total level").get(0).isCompleted());
+        assertTrue(service.evaluate("60 Mining").get(0).isCompleted());
+        assertFalse(service.evaluate("61 Mining").get(0).isCompleted());
+        assertFalse(service.evaluate("70 Unknown Skill").get(0).isCompleted());
+    }
+
+    @Test
     public void diaryChangeMatchesItsVarbitOrContainingVarp() throws Exception
     {
         PrerequisiteTrackerService service = new PrerequisiteTrackerService();

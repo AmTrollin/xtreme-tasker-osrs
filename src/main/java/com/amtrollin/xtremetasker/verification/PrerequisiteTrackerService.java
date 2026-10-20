@@ -268,7 +268,11 @@ public class PrerequisiteTrackerService
         {
             int requiredLevel = Integer.parseInt(skillMatcher.group(1));
             Skill skill = findSkill(skillMatcher.group(2));
-            return skill != null && realSkillLevel(skill) >= requiredLevel;
+            if (skill != null)
+            {
+                return realSkillLevel(skill) >= requiredLevel;
+            }
+            // Numeric requirements such as Combat and Quest Points have their own checks below.
         }
 
         Matcher skillPlusMatcher = SKILL_PREREQ_PLUS_PATTERN.matcher(skillCandidate);
@@ -276,7 +280,11 @@ public class PrerequisiteTrackerService
         {
             int requiredLevel = Integer.parseInt(skillPlusMatcher.group(1));
             Skill skill = findSkill(skillPlusMatcher.group(2));
-            return skill != null && realSkillLevel(skill) >= requiredLevel;
+            if (skill != null)
+            {
+                return realSkillLevel(skill) >= requiredLevel;
+            }
+            // Numeric requirements such as Combat and Quest Points have their own checks below.
         }
 
         Matcher questPointsMatcher = QUEST_POINTS_PATTERN.matcher(normalized);
