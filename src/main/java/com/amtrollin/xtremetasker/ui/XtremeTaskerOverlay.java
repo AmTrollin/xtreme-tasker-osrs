@@ -22,7 +22,6 @@ import com.amtrollin.xtremetasker.ui.text.*;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import java.awt.*;
 import java.awt.Point;
-import java.awt.event.KeyEvent;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
@@ -1811,7 +1810,7 @@ public class XtremeTaskerOverlay extends Overlay {
         setPosition(OverlayPosition.DYNAMIC);
         setLayer(OverlayLayer.UNDER_WIDGETS);
 
-        this.keyListener = new OverlayKeyHandler(this);
+        this.keyListener = new SearchTextInputHandler(this);
 
         this.mouseAdapter = new OverlayMouseHandler(this, () -> {
             draggingPanel = false;
@@ -3554,126 +3553,6 @@ public class XtremeTaskerOverlay extends Overlay {
         if (name == null || name.trim().isEmpty()) name = "Rolling...";
 
         return TextUtils.truncateToWidth(name, fm, maxW); // "Rolling..." drawn by renderer
-    }
-
-
-    // --------- keyboard navigation ---------
-    public boolean handleTasksKey(KeyEvent e) {
-        int code = e.getKeyCode();
-
-        if (code == KeyEvent.VK_LEFT) {
-            shiftTier(-1);
-            return true;
-        }
-        if (code == KeyEvent.VK_RIGHT) {
-            shiftTier(1);
-            return true;
-        }
-
-        if (code == KeyEvent.VK_SPACE || code == KeyEvent.VK_ENTER) {
-            return openSelectedTaskDetailsFromKeyboard();
-        }
-
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE && taskDetailsPopup.isOpen()) {
-            closeTaskDetailsWithPendingIncompleteCheck();
-            return true;
-        }
-
-
-        List<XtremeTask> tasks = getSortedTasksForTier(activeTierTab);
-        if (tasks.isEmpty()) {
-            return false;
-        }
-
-        selectionModel.setActiveTier(activeTierTab);
-
-        if (code == KeyEvent.VK_UP) {
-            selectionModel.moveUp(tasks.size());
-            return true;
-        }
-        if (code == KeyEvent.VK_DOWN) {
-            selectionModel.moveDown(tasks.size());
-            return true;
-        }
-        if (code == KeyEvent.VK_PAGE_UP) {
-            selectionModel.pageUp(tasks.size(), 10);
-            return true;
-        }
-        if (code == KeyEvent.VK_PAGE_DOWN) {
-            selectionModel.pageDown(tasks.size(), 10);
-            return true;
-        }
-
-        return false;
-    }
-
-    private boolean openSelectedTaskDetailsFromKeyboard()
-    {
-        List<XtremeTask> tasks = getSortedTasksForTier(activeTierTab);
-        if (tasks.isEmpty()) {
-            return false;
-        }
-
-        selectionModel.setActiveTier(activeTierTab);
-        int idx = selectionModel.getSelectedIndex();
-        idx = Math.max(0, Math.min(idx, tasks.size() - 1));
-
-        XtremeTask task = tasks.get(idx);
-        if (task == null) {
-            return false;
-        }
-
-        selectedTaskDetailsIncompleteTaskIds.clear();
-        closeTaskDetailsIncompleteConfirm();
-        taskDetailsPopup.open(task);
-        return true;
-    }
-
-
-    public boolean handleCurrentKey(KeyEvent e) {
-        int code = e.getKeyCode();
-
-        XtremeTask current = plugin.getCurrentTask();
-        boolean currentCompleted = false;
-
-        boolean rollEnabled = (current == null) || currentCompleted;
-        boolean completeEnabled = (current != null) && !currentCompleted;
-
-        if (code == KeyEvent.VK_R && rollEnabled) {
-            requestRollTask();
-            return true;
-        }
-
-        if (code == KeyEvent.VK_C && completeEnabled) {
-            animations.startCompletionAnim(current.getId());
-            plugin.completeCurrentTaskAndPersist();
-            return true;
-        }
-
-        if (code == KeyEvent.VK_W && current != null) {
-            String url = current.getWikiUrl();
-            if (url != null && !url.trim().isEmpty()) {
-                LinkBrowser.browse(url);
-                return true;
-            }
-        }
-
-        if (e.getKeyCode() == KeyEvent.VK_ESCAPE && taskDetailsPopup.isOpen()) {
-            closeTaskDetailsWithPendingIncompleteCheck();
-            return true;
-        }
-
-
-        return false;
-    }
-
-    public void shiftTier(int delta) {
-        int idx = TIER_TABS.indexOf(activeTierTab);
-        if (idx < 0) idx = 0;
-
-        int next = Math.max(0, Math.min(TIER_TABS.size() - 1, idx + delta));
-        activeTierTab = TIER_TABS.get(next);
-        resetTaskListViewAfterQueryChange();
     }
 
 

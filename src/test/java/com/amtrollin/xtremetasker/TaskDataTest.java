@@ -6,6 +6,9 @@ import com.amtrollin.xtremetasker.models.CompletionInfo;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.tasklist.TaskListPipeline;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
+import com.amtrollin.xtremetasker.models.verification.TaskVerification;
+import com.amtrollin.xtremetasker.verification.CollectionLogService;
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -287,6 +290,47 @@ public class TaskDataTest
         }
 
         assertTrue("Task text release artifacts found: " + issues, issues.isEmpty());
+    }
+
+    @Test
+    public void sarachnisSyncRequiresThreeUniquesForHardTask()
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLog = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLog);
+        List<XtremeTask> sarachnis = new ArrayList<>();
+        for (JsonElement element : loadTaskPack().getAsJsonArray("tasks"))
+        {
+            JsonObject data = element.getAsJsonObject();
+            if (!"Get 1 unique from Sarachnis".equals(data.get("name").getAsString()))
+            {
+                continue;
+            }
+            sarachnis.add(new XtremeTask(data.get("id").getAsString(),
+                    data.get("name").getAsString(), TaskSource.COLLECTION_LOG,
+                    TaskTier.valueOf(data.get("tier").getAsString()),
+                    null, null, null, null, null,
+                    new Gson().fromJson(data.get("verification"), TaskVerification.class), null));
+        }
+        assertEquals(3, sarachnis.size());
+        plugin.tasksForTesting().clear();
+        plugin.tasksForTesting().addAll(sarachnis);
+        int[] itemIds = sarachnis.get(0).getVerification().getItemIds();
+        for (int obtained = 1; obtained <= 3; obtained++)
+        {
+            collectionLog.storeItem(itemIds[obtained - 1]);
+            List<XtremeTask> candidates = plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG);
+            assertEquals("Only eligible Sarachnis tasks should be suggested", obtained, candidates.size());
+            assertEquals("Hard requires all three uniques", obtained == 3,
+                    candidates.stream().anyMatch(task -> task.getTier() == TaskTier.HARD));
+            if (obtained == 1)
+            {
+                plugin.manualCompletedTaskIdsForTesting().add(sarachnis.get(0).getId());
+                assertTrue("One unique with the first Medium completed must leave no review candidates",
+                        plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).isEmpty());
+                plugin.manualCompletedTaskIdsForTesting().clear();
+            }
+        }
     }
 
     private static JsonObject loadTaskPack()

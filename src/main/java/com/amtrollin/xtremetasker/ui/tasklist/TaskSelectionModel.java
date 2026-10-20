@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.function.Function;
 import lombok.Getter;
 
-public final class TaskSelectionModel implements SelectionModel
+public final class TaskSelectionModel
 {
     private final EnumMap<TaskTier, Integer> selectedIndexByTier = new EnumMap<>(TaskTier.class);
 
@@ -22,14 +22,12 @@ public final class TaskSelectionModel implements SelectionModel
         }
     }
 
-    @Override
     public int getSelectedIndex()
     {
         Integer idx = selectedIndexByTier.get(activeTier);
         return idx == null ? 0 : idx;
     }
 
-    @Override
     public void setSelectedIndex(int idx)
     {
         selectedIndexByTier.put(activeTier, Math.max(0, idx));
@@ -109,46 +107,6 @@ public final class TaskSelectionModel implements SelectionModel
                 return;
             }
         }
-    }
-
-    public void moveUp(int count)
-    {
-        if (count <= 0)
-        {
-            setSelectedIndex(0);
-            return;
-        }
-        setSelectedIndex(clamp(getSelectedIndex() - 1, count - 1));
-    }
-
-    public void moveDown(int count)
-    {
-        if (count <= 0)
-        {
-            setSelectedIndex(0);
-            return;
-        }
-        setSelectedIndex(clamp(getSelectedIndex() + 1, count - 1));
-    }
-
-    public void pageUp(int count, int page)
-    {
-        if (count <= 0)
-        {
-            setSelectedIndex(0);
-            return;
-        }
-        setSelectedIndex(clamp(getSelectedIndex() - page, count - 1));
-    }
-
-    public void pageDown(int count, int page)
-    {
-        if (count <= 0)
-        {
-            setSelectedIndex(0);
-            return;
-        }
-        setSelectedIndex(clamp(getSelectedIndex() + page, count - 1));
     }
 
     private static int clamp(int v, int max)
