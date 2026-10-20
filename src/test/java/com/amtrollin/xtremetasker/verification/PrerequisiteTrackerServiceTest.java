@@ -17,6 +17,33 @@ import static org.junit.Assert.assertTrue;
 public class PrerequisiteTrackerServiceTest
 {
     @Test
+    public void diaryChangeMatchesItsVarbitOrContainingVarp() throws Exception
+    {
+        PrerequisiteTrackerService service = new PrerequisiteTrackerService();
+        Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(),
+                new Class<?>[] {Client.class}, (proxy, method, args) -> {
+                    if (method.getName().equals("getVarbit"))
+                    {
+                        org.junit.Assert.assertEquals(Varbits.DIARY_ARDOUGNE_EASY, args[0]);
+                        return Proxy.newProxyInstance(net.runelite.api.VarbitComposition.class.getClassLoader(),
+                                new Class<?>[] {net.runelite.api.VarbitComposition.class},
+                                (definition, definitionMethod, definitionArgs) -> {
+                                    if (definitionMethod.getName().equals("getIndex")) return 1234;
+                                    throw new AssertionError(definitionMethod.getName());
+                                });
+                    }
+                    throw new AssertionError(method.getName());
+                });
+        Field field = PrerequisiteTrackerService.class.getDeclaredField("client");
+        field.setAccessible(true);
+        field.set(service, client);
+        assertTrue(service.isDiaryCompletionVariable("ardougne", "easy", -1, Varbits.DIARY_ARDOUGNE_EASY));
+        assertTrue(service.isDiaryCompletionVariable("ardougne", "easy", 1234, -1));
+        assertFalse(service.isDiaryCompletionVariable("ardougne", "easy", 4321, -1));
+        assertFalse(service.isDiaryCompletionVariable("unknown", "easy", 1234, -1));
+    }
+
+    @Test
     public void recipeForDisasterSubquestsTrackTheirOwnCompletion() throws Exception
     {
         String[] prerequisites = {

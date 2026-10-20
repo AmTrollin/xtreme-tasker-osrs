@@ -116,6 +116,27 @@ public class PrerequisiteTrackerService
         return requiredValue == null ? value > 0 : value >= requiredValue;
     }
 
+    public boolean isDiaryCompletionVariable(String region, String difficulty, int varpId, int changedVarbitId)
+    {
+        if (region == null || difficulty == null)
+        {
+            return false;
+        }
+        String regionKey = toDiaryRegionKey(region);
+        Integer varbitId = varbitsByName.get("DIARY_" + regionKey + "_" + difficulty.toUpperCase(Locale.ROOT));
+        if (varbitId == null)
+        {
+            return false;
+        }
+        if (changedVarbitId == varbitId)
+        {
+            return true;
+        }
+        // Server updates usually identify the containing varp rather than the varbit.
+        VarbitComposition definition = client == null || varpId < 0 ? null : client.getVarbit(varbitId);
+        return definition != null && definition.getIndex() == varpId;
+    }
+
     private Integer diaryCompletionThreshold(String regionKey, String difficultyKey)
     {
         if (!"KARAMJA".equals(regionKey))

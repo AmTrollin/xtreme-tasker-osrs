@@ -23,6 +23,12 @@ public class CombatAchievementService
     @Inject
     private Client client;
 
+    public boolean isTaskCompletionVarp(int sortId, int varpId)
+    {
+        int index = sortId / TASKS_PER_VARPLAYER;
+        return sortId >= 0 && index < CA_TASK_VARPS.length && CA_TASK_VARPS[index] == varpId;
+    }
+
     public boolean isTaskComplete(int sortId)
     {
         int varPlayerIndex = sortId / TASKS_PER_VARPLAYER;
