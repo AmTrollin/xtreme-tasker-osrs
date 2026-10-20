@@ -11359,8 +11359,8 @@
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MEDIUM",
       "prereqs": "None",
-      "wikiUrl": "https://oldschool.runescape.wiki/w/Dragonfire",
-      "description": "Dragonfire is the fiery breath attack used by most dragons, hence the name. While it can deal considerable damage to unprepared players, the damage may be negated with certain shields, (super) antifire potions and Protect from Magic."
+      "wikiUrl": "https://oldschool.runescape.wiki/w/Antifire_Protection",
+      "description": "Kill the King Black Dragon with an antifire potion active and an anti-dragon shield equipped."
     },
     {
       "id": "combat_achievement_medium_claw-clipper_001_e242f799ae",
