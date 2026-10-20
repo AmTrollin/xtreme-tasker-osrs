@@ -335,6 +335,13 @@ public class PrerequisiteTrackerService
             return state == QuestState.IN_PROGRESS || state == QuestState.FINISHED;
         }
 
+        Matcher subquestMatcher = SUBQUEST_PREREQ_PATTERN.matcher(normalized);
+        if (subquestMatcher.matches())
+        {
+            Quest quest = findSubquest(subquestMatcher.group(1));
+            return client != null && quest != null && quest.getState(client) == QuestState.FINISHED;
+        }
+
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(normalized);
         if (questMatcher.matches())
         {
@@ -364,6 +371,25 @@ public class PrerequisiteTrackerService
     private Quest findQuest(String name)
     {
         return questsByName.get(normalize(name));
+    }
+
+    private Quest findSubquest(String name)
+    {
+        Quest direct = findQuest(name);
+        if (direct != null)
+        {
+            return direct;
+        }
+
+        // Task data also puts the RFD chapter before the parent quest name.
+        Matcher recipeForDisaster = Pattern.compile("^(.+?)\\s+Recipe for Disaster$", Pattern.CASE_INSENSITIVE)
+                .matcher(name);
+        if (recipeForDisaster.matches())
+        {
+            String chapter = recipeForDisaster.group(1).replaceFirst("(?i)^freeing\\s+", "");
+            return findQuest("Recipe for Disaster - " + chapter);
+        }
+        return null;
     }
 
     private Quest findQuestWithOptionalQuestSuffix(String name)
