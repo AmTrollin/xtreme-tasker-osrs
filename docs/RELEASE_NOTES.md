@@ -3,6 +3,30 @@ $$\Huge\color{#B8860B}\textsf{RELEASE NOTES}$$
 <br>
 
 
+## <span style="color:#DEB887">v2.3.0 — 10.25.2026</span>
+
+#### <span style="color:#DCDCDC">Bug Fixes</span>
+* $\color{#778899}\textsf{The Mark complete button now highlights when the current Combat Achievement or Achievement Diary is completed, without requiring another sync}$
+* $\color{#778899}\textsf{Collection Log unlocks are now detected from chat and popup notifications, including untradeable task items missing from the price index}$
+* $\color{#778899}\textsf{Fixed combat-level prerequisites remaining unchecked despite meeting the required level; Quest Points and Total level checks also now reach their correct completion checks}$
+* $\color{#778899}\textsf{Fixed Sarachnis Collection Log counts across Medium and Hard: tasks now require 1, 2, and 3 uniques, preventing the Hard task from being suggested after one unique}$
+
+#### <span style="color:#DCDCDC">Task Updates</span>
+* $\color{#778899}\textsf{Corrected the Antifire Protection task description and wiki link}$
+* $\color{#778899}\textsf{Updated all three Medium Amoxliatl tasks to require The Heart of Darkness, 55 Mining, 48 Thieving, 48 Slayer, 46 Agility, and 40 Prayer instead of the previous 43 Prayer}$
+* $\color{#778899}\textsf{Added subquest completion tracking and quest icons for subquest prerequisites}$
+* $\color{#778899}\textsf{Updated Gold satchel prerequisites to include the Freeing Skrach Uglogwee subquest and its associated quest and skill requirements}$
+* $\color{#778899}\textsf{Added a started Freeing Pirate Pete subquest prerequisite to Fresh crab claw and Fresh crab shell}$
+* $\color{#778899}\textsf{Updated Sulphur blades prerequisites to include starting Perilous Moons, 20 Hunter, 20 Fishing, 20 Runecrafting, and 10 Construction}$
+* $\color{#778899}\textsf{Started quest and subquest prerequisites are satisfied when in progress or finished; they approximate partial quest access for now}$
+
+#### <span style="color:#DCDCDC">UI & Maintenance</span>
+* $\color{#778899}\textsf{Removed keyboard shortcuts; search text entry and mouse controls remain available}$
+* $\color{#778899}\textsf{Reordered task prerequisites: skills first, completed quests next, started or partial quests after that, and other requirements last}$
+* $\color{#778899}\textsf{Updated the RuneLite dependency to the latest release to fix local startup with an outdated game client}$
+
+<br>
+
 ## <span style="color:#DEB887">v2.2.2 — 09.06.2026</span>
 
 #### <span style="color:#DCDCDC">Bug Fixes</span>
