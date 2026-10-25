@@ -429,6 +429,12 @@ public class PrerequisiteTrackerService
             return direct;
         }
 
+        Matcher subquestMatcher = SUBQUEST_PREREQ_PATTERN.matcher(name);
+        if (subquestMatcher.matches())
+        {
+            return findSubquest(subquestMatcher.group(1));
+        }
+
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(name);
         return questMatcher.matches() ? findQuest(questMatcher.group(1)) : null;
     }

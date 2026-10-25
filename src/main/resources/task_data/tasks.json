@@ -3550,7 +3550,7 @@
       "name": "Get a Fresh crab claw & Fresh crab shell",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "None",
+      "prereqs": "Start Freeing Pirate Pete Recipe for Disaster subquest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Fresh_crab_claw",
       "verification": {
         "method": "collection-log",
@@ -4389,7 +4389,7 @@
       "name": "Get the Sulphur blades",
       "source": "COLLECTION_LOG",
       "tier": "EASY",
-      "prereqs": "Children of the Sun quest; 48 Slayer",
+      "prereqs": "Start Perilous Moons quest; 48 Slayer; 20 Hunter; 20 Fishing; 20 Runecrafting; 10 Construction",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Sulphur_blades",
       "verification": {
         "method": "collection-log",

@@ -17,6 +17,29 @@ import static org.junit.Assert.assertTrue;
 public class PrerequisiteTrackerServiceTest
 {
     @Test
+    public void startedQuestAndSubquestPrerequisitesAcceptProgressOrCompletion() throws Exception
+    {
+        String[] prerequisites = {
+                "Start Freeing Pirate Pete Recipe for Disaster subquest",
+                "Start Perilous Moons quest"
+        };
+        Quest[] quests = {Quest.RECIPE_FOR_DISASTER__PIRATE_PETE, Quest.PERILOUS_MOONS};
+        for (int i = 0; i < prerequisites.length; i++)
+        {
+            for (int state : new int[] {1, 0, 2})
+            {
+                PrerequisiteTrackerService service = serviceWithQuestState(quests[i], state);
+                PrerequisiteStatus status = service.evaluate(prerequisites[i]).get(0);
+                org.junit.Assert.assertEquals(prerequisites[i] + " state " + state,
+                        state != 1, status.isCompleted());
+                assertTrue(status.getMarkerIcons().contains(PrerequisiteStatus.MarkerIcon.START_QUEST));
+                org.junit.Assert.assertEquals("Completion wording must still require finishing", state == 2,
+                        service.evaluate(prerequisites[i].substring("Start ".length())).get(0).isCompleted());
+            }
+        }
+    }
+
+    @Test
     public void combatPrerequisitesUsePlayerLevelAtAndAboveThreshold() throws Exception
     {
         int[] combatLevel = {69};
