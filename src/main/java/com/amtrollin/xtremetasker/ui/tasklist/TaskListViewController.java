@@ -39,11 +39,7 @@ public final class TaskListViewController
                         int rowBlock,
                         int totalRows)
     {
-        scroll.onWheel(preciseWheelRotation, viewportH, rowBlock, totalRows, selection);
+        scroll.onWheel(preciseWheelRotation, viewportH, rowBlock, totalRows);
     }
 
-    public void ensureSelectionVisible(int totalRows, int viewportH, int rowBlock)
-    {
-        scroll.ensureSelectionVisible(totalRows, viewportH, rowBlock, selection);
-    }
 }

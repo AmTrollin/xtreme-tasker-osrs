@@ -313,6 +313,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (collectionLogService != null)
         {
             collectionLogService.setCacheChangeListener(this::onCollectionLogCacheChanged);
+            collectionLogService.setTrackedItemIdsSupplier(() -> tasks.stream()
+                    .map(XtremeTask::getVerification)
+                    .filter(Objects::nonNull)
+                    .filter(v -> v.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
+                    .filter(v -> v.getItemIds() != null)
+                    .flatMapToInt(v -> Arrays.stream(v.getItemIds()))
+                    .filter(id -> id > 0).distinct().toArray());
         }
     }
 
@@ -3065,6 +3072,34 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return type == ChatMessageType.GAMEMESSAGE
                 || type == ChatMessageType.SPAM
                 || type == ChatMessageType.MESBOX;
+    }
+
+    @Subscribe
+    public void onVarbitChanged(VarbitChanged event)
+    {
+        XtremeTask task = getCurrentTask();
+        if (client.getGameState() != GameState.LOGGED_IN || task == null || isTaskCompleted(task))
+        {
+            return;
+        }
+        if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT && combatAchievementService != null)
+        {
+            Integer taskId = resolveCombatAchievementTaskId(task);
+            if (taskId != null && combatAchievementService.isTaskCompletionVarp(taskId, event.getVarpId()))
+            {
+                refreshCurrentTaskCompletionCriteriaMet();
+            }
+            return;
+        }
+        TaskVerification verification = task.getVerification();
+        if (verification != null
+                && verification.getType() == TaskVerification.VerificationType.ACHIEVEMENT_DIARY
+                && prerequisiteTrackerService != null
+                && prerequisiteTrackerService.isDiaryCompletionVariable(verification.getRegion(),
+                        verification.getDifficulty(), event.getVarpId(), event.getVarbitId()))
+        {
+            refreshCurrentTaskCompletionCriteriaMet();
+        }
     }
 
     @Subscribe

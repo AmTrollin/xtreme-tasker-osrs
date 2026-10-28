@@ -27,6 +27,99 @@ import static org.junit.Assert.assertTrue;
 public class CollectionLogMismatchTest
 {
     @Test
+    public void currentCaAndDiaryHighlightOnCompletionVariableChangeWithoutSync() throws Exception
+    {
+        for (boolean diary : new boolean[] {false, true})
+        {
+            XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+            plugin.setClientForTesting((net.runelite.api.Client) java.lang.reflect.Proxy.newProxyInstance(
+                    net.runelite.api.Client.class.getClassLoader(), new Class<?>[] {net.runelite.api.Client.class},
+                    (proxy, method, args) -> {
+                        if (method.getName().equals("getGameState")) return net.runelite.api.GameState.LOGGED_IN;
+                        if (method.getName().equals("getAccountHash")) return -1L;
+                        if (method.getName().equals("getLocalPlayer")) return null;
+                        throw new AssertionError("Unexpected client call: " + method.getName());
+                    }));
+            plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(false));
+            plugin.setPrerequisiteTrackerServiceForTesting(new StubPrerequisiteTrackerService(false));
+            XtremeTask task = diary ? diaryAchievementTask("live_diary", "Complete the Ardougne easy diary")
+                    : combatAchievementTask("live_ca", "Live CA", 12);
+            plugin.tasksForTesting().add(task);
+            plugin.setCurrentTaskForTesting(task);
+            assertTrue(!plugin.isCurrentTaskCompletionCriteriaMet());
+            net.runelite.api.events.VarbitChanged change = new net.runelite.api.events.VarbitChanged();
+            change.setVarpId(diary ? -1 : 3116);
+            change.setVarbitId(diary ? net.runelite.api.Varbits.DIARY_ARDOUGNE_EASY : -1);
+            plugin.onVarbitChanged(change);
+            assertTrue("An incomplete task must stay unhighlighted", !plugin.isCurrentTaskCompletionCriteriaMet());
+            plugin.setCombatAchievementServiceForTesting(new StubCombatAchievementService(true));
+            plugin.setPrerequisiteTrackerServiceForTesting(new StubPrerequisiteTrackerService(true));
+            net.runelite.api.events.VarbitChanged unrelated = new net.runelite.api.events.VarbitChanged();
+            unrelated.setVarpId(-1);
+            unrelated.setVarbitId(-1);
+            plugin.onVarbitChanged(unrelated);
+            assertTrue("Unrelated variables must not trigger a completion check", !plugin.isCurrentTaskCompletionCriteriaMet());
+            plugin.onVarbitChanged(change);
+            assertTrue("Live completion should highlight without sync", plugin.isCurrentTaskCompletionCriteriaMet());
+            assertTrue("Highlight must not mark the task complete", !plugin.isTaskCompleted(task));
+        }
+    }
+
+    @Test
+    public void collectionLogPopupHighlightsUntradeableTaskWithoutOpeningLog() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLog = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLog);
+        XtremeTask task = collectionLogTask("live_clog", "Get a Green satchel", TaskTier.EASY,
+                new int[] {10878}, 1);
+        plugin.tasksForTesting().add(task);
+        plugin.setCurrentTaskForTesting(task);
+        assertTrue(!plugin.isCurrentTaskCompletionCriteriaMet());
+        String[] notificationTitle = {"Combat task completed"};
+        net.runelite.api.Client client = (net.runelite.api.Client) java.lang.reflect.Proxy.newProxyInstance(
+                net.runelite.api.Client.class.getClassLoader(), new Class<?>[] {net.runelite.api.Client.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getVarcStrValue"))
+                    {
+                        return ((Integer) args[0]) == net.runelite.api.VarClientStr.NOTIFICATION_TOP_TEXT
+                                ? notificationTitle[0] : "New item: Green satchel";
+                    }
+                    if (method.getName().equals("getItemDefinition"))
+                    {
+                        return java.lang.reflect.Proxy.newProxyInstance(net.runelite.api.ItemComposition.class.getClassLoader(),
+                                new Class<?>[] {net.runelite.api.ItemComposition.class},
+                                (item, itemMethod, itemArgs) -> {
+                                    if (itemMethod.getName().equals("getName")) return "Green satchel";
+                                    throw new AssertionError(itemMethod.getName());
+                                });
+                    }
+                    throw new AssertionError(method.getName());
+                });
+        Field field = CollectionLogService.class.getDeclaredField("client");
+        field.setAccessible(true);
+        field.set(collectionLog, client);
+        collectionLog.onScriptPreFired(new net.runelite.api.events.ScriptPreFired(net.runelite.api.ScriptID.NOTIFICATION_START));
+        assertTrue("Unrelated popups must not unlock items", !plugin.isCurrentTaskCompletionCriteriaMet());
+        notificationTitle[0] = "<col=ffffff>Collection log</col>";
+        collectionLog.onScriptPreFired(new net.runelite.api.events.ScriptPreFired(net.runelite.api.ScriptID.NOTIFICATION_START));
+        collectionLog.onScriptPreFired(new net.runelite.api.events.ScriptPreFired(net.runelite.api.ScriptID.NOTIFICATION_DELAY));
+        assertTrue(plugin.isCurrentTaskCompletionCriteriaMet());
+        assertTrue(!plugin.isTaskCompleted(task));
+        // Receiving chat as well as the popup must not create a second unique.
+        net.runelite.api.events.ChatMessage chat = new net.runelite.api.events.ChatMessage();
+        chat.setType(net.runelite.api.ChatMessageType.GAMEMESSAGE);
+        chat.setMessage("New collection log item: Green satchel.");
+        collectionLog.onChatMessage(chat);
+        assertEquals(1, collectionLog.countObtained(new int[] {10878}));
+        CollectionLogService chatOnly = new CollectionLogService();
+        field.set(chatOnly, client);
+        plugin.setCollectionLogServiceForTesting(chatOnly);
+        chatOnly.onChatMessage(chat);
+        assertTrue("Chat alone must resolve an untradeable task item", chatOnly.isItemObtained(10878));
+    }
+
+    @Test
     public void collectionLogRequirementNotFoundBySyncIsMarkedAsMismatch() throws Exception
     {
         XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();

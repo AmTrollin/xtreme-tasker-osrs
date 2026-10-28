@@ -116,6 +116,27 @@ public class PrerequisiteTrackerService
         return requiredValue == null ? value > 0 : value >= requiredValue;
     }
 
+    public boolean isDiaryCompletionVariable(String region, String difficulty, int varpId, int changedVarbitId)
+    {
+        if (region == null || difficulty == null)
+        {
+            return false;
+        }
+        String regionKey = toDiaryRegionKey(region);
+        Integer varbitId = varbitsByName.get("DIARY_" + regionKey + "_" + difficulty.toUpperCase(Locale.ROOT));
+        if (varbitId == null)
+        {
+            return false;
+        }
+        if (changedVarbitId == varbitId)
+        {
+            return true;
+        }
+        // Server updates usually identify the containing varp rather than the varbit.
+        VarbitComposition definition = client == null || varpId < 0 ? null : client.getVarbit(varbitId);
+        return definition != null && definition.getIndex() == varpId;
+    }
+
     private Integer diaryCompletionThreshold(String regionKey, String difficultyKey)
     {
         if (!"KARAMJA".equals(regionKey))
@@ -247,7 +268,11 @@ public class PrerequisiteTrackerService
         {
             int requiredLevel = Integer.parseInt(skillMatcher.group(1));
             Skill skill = findSkill(skillMatcher.group(2));
-            return skill != null && realSkillLevel(skill) >= requiredLevel;
+            if (skill != null)
+            {
+                return realSkillLevel(skill) >= requiredLevel;
+            }
+            // Numeric requirements such as Combat and Quest Points have their own checks below.
         }
 
         Matcher skillPlusMatcher = SKILL_PREREQ_PLUS_PATTERN.matcher(skillCandidate);
@@ -255,7 +280,11 @@ public class PrerequisiteTrackerService
         {
             int requiredLevel = Integer.parseInt(skillPlusMatcher.group(1));
             Skill skill = findSkill(skillPlusMatcher.group(2));
-            return skill != null && realSkillLevel(skill) >= requiredLevel;
+            if (skill != null)
+            {
+                return realSkillLevel(skill) >= requiredLevel;
+            }
+            // Numeric requirements such as Combat and Quest Points have their own checks below.
         }
 
         Matcher questPointsMatcher = QUEST_POINTS_PATTERN.matcher(normalized);
@@ -335,6 +364,13 @@ public class PrerequisiteTrackerService
             return state == QuestState.IN_PROGRESS || state == QuestState.FINISHED;
         }
 
+        Matcher subquestMatcher = SUBQUEST_PREREQ_PATTERN.matcher(normalized);
+        if (subquestMatcher.matches())
+        {
+            Quest quest = findSubquest(subquestMatcher.group(1));
+            return client != null && quest != null && quest.getState(client) == QuestState.FINISHED;
+        }
+
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(normalized);
         if (questMatcher.matches())
         {
@@ -366,12 +402,37 @@ public class PrerequisiteTrackerService
         return questsByName.get(normalize(name));
     }
 
+    private Quest findSubquest(String name)
+    {
+        Quest direct = findQuest(name);
+        if (direct != null)
+        {
+            return direct;
+        }
+
+        // Task data also puts the RFD chapter before the parent quest name.
+        Matcher recipeForDisaster = Pattern.compile("^(.+?)\\s+Recipe for Disaster$", Pattern.CASE_INSENSITIVE)
+                .matcher(name);
+        if (recipeForDisaster.matches())
+        {
+            String chapter = recipeForDisaster.group(1).replaceFirst("(?i)^freeing\\s+", "");
+            return findQuest("Recipe for Disaster - " + chapter);
+        }
+        return null;
+    }
+
     private Quest findQuestWithOptionalQuestSuffix(String name)
     {
         Quest direct = findQuest(name);
         if (direct != null)
         {
             return direct;
+        }
+
+        Matcher subquestMatcher = SUBQUEST_PREREQ_PATTERN.matcher(name);
+        if (subquestMatcher.matches())
+        {
+            return findSubquest(subquestMatcher.group(1));
         }
 
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(name);

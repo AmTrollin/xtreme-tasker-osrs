@@ -6,6 +6,8 @@ import javax.inject.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ScriptPreFired;
+import java.util.function.Supplier;
 import net.runelite.api.widgets.*;
 import net.runelite.client.eventbus.*;
 import net.runelite.client.game.ItemManager;
@@ -88,6 +90,13 @@ public class CollectionLogService
     private long nextObtainedItemOrder = 1L;
     private int pendingAncientPageDropCountSinceLastSync = 0;
     private int pendingMedallionFragmentDropCountSinceLastSync = 0;
+    private Supplier<int[]> trackedItemIdsSupplier = () -> new int[0];
+
+    public void setTrackedItemIdsSupplier(Supplier<int[]> supplier)
+    {
+        trackedItemIdsSupplier = supplier;
+    }
+
     private Runnable cacheChangeListener;
     private int cacheChangeBatchDepth = 0;
     private boolean cacheChangePending = false;
@@ -153,6 +162,36 @@ public class CollectionLogService
         }
     }
 
+    @Subscribe
+    public void onScriptPreFired(ScriptPreFired event)
+    {
+        if (event.getScriptId() != ScriptID.NOTIFICATION_START
+                && event.getScriptId() != ScriptID.NOTIFICATION_DELAY)
+        {
+            return;
+        }
+        String title = client.getVarcStrValue(VarClientStr.NOTIFICATION_TOP_TEXT);
+        String body = client.getVarcStrValue(VarClientStr.NOTIFICATION_BOTTOM_TEXT);
+        if (title == null || body == null
+                || !"collection log".equalsIgnoreCase(title.replaceAll("<[^>]+>", "").trim()))
+        {
+            return;
+        }
+        String text = body.replaceAll("<[^>]+>", "").trim();
+        Matcher item = Pattern.compile("^New item:\\s*(.+)$", Pattern.CASE_INSENSITIVE).matcher(text);
+        if (item.matches())
+        {
+            String name = item.group(1).trim();
+            // These names identify several slots. Chat retains their pending-count
+            // handling; do not count the same unlock again through its popup.
+            if (!ANCIENT_PAGE_ITEM_NAME.equalsIgnoreCase(name)
+                    && !MEDALLION_FRAGMENT_ITEM_NAME.equalsIgnoreCase(name))
+            {
+                resolveAndStoreByName(name);
+            }
+        }
+    }
+
     private boolean isLocalPlayerName(String playerName)
     {
         String localName;
@@ -209,6 +248,33 @@ public class CollectionLogService
             pendingMedallionFragmentDropCountSinceLastSync++;
             notifyCacheChanged();
             log.debug("Collection log chat capture deferred ambiguous Medallion fragment drop until CLOG sync");
+            return;
+        }
+
+        // The price index does not cover every untradeable collection-log item.
+        // Match task item definitions first, requiring a single canonical slot.
+        Set<Integer> taskMatches = new HashSet<>();
+        if (client != null)
+        {
+            for (int id : trackedItemIdsSupplier.get())
+            {
+                ItemComposition definition = client.getItemDefinition(id);
+                if (definition != null && itemName.equalsIgnoreCase(definition.getName()))
+                {
+                    taskMatches.add(canonicalCollectionLogItemId(id));
+                }
+            }
+        }
+        if (taskMatches.size() == 1)
+        {
+            int id = taskMatches.iterator().next();
+            resolvedChatItemIdsByName.put(cacheKey, id);
+            storeItem(id);
+            return;
+        }
+        if (taskMatches.size() > 1)
+        {
+            log.debug("Collection log notification has ambiguous task item name '{}'", itemName);
             return;
         }
 

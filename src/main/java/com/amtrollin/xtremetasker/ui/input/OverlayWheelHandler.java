@@ -37,8 +37,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
                     precise,
                     a.syncMismatchViewportBounds().height,
                     a.syncMismatchRowBlock(),
-                    taskCount <= 0 ? 1 : taskCount,
-                    null
+                    taskCount <= 0 ? 1 : taskCount
             );
             a.client().getCanvas().repaint();
             return e;
@@ -59,8 +58,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
                     precise,
                     a.taskDetailsViewportBounds().height,
                     a.taskDetailsRowBlock(),
-                    total <= 0 ? 1 : total,
-                    null
+                    total <= 0 ? 1 : total
             );
             return e;
         }
@@ -95,7 +93,7 @@ public final class OverlayWheelHandler implements MouseWheelListener
             if (cvp.height <= 0) return e;
             int logicalRowBlock = com.amtrollin.xtremetasker.ui.style.UiConstants.ROW_HEIGHT;
             int totalRows = (a.currentLayout().totalContentPx + logicalRowBlock - 1) / logicalRowBlock;
-            a.currentScroll().onWheel(precise, cvp.height, a.currentRowBlock(), totalRows <= 0 ? 1 : totalRows, null);
+            a.currentScroll().onWheel(precise, cvp.height, a.currentRowBlock(), totalRows <= 0 ? 1 : totalRows);
             return e;
         }
 
