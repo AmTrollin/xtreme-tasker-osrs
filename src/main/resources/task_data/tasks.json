@@ -10474,7 +10474,7 @@
       "name": "Get 1 unique from Amoxliatl",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "55 Mining; 48 Thieving; 48 Slayer; 46 Agility; 40 Prayer; The Heart of Darkness quest",
+      "prereqs": "55 Mining; 48 Thieving; 48 Slayer; 46 Agility; The Heart of Darkness quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Amoxliatl",
       "verification": {
         "method": "collection-log",
@@ -10492,7 +10492,7 @@
       "name": "Get 1 unique from Amoxliatl",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "55 Mining; 48 Thieving; 48 Slayer; 46 Agility; 40 Prayer; The Heart of Darkness quest",
+      "prereqs": "55 Mining; 48 Thieving; 48 Slayer; 46 Agility; The Heart of Darkness quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Amoxliatl",
       "verification": {
         "method": "collection-log",
@@ -10510,7 +10510,7 @@
       "name": "Get 1 unique from Amoxliatl",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
-      "prereqs": "55 Mining; 48 Thieving; 48 Slayer; 46 Agility; 40 Prayer; The Heart of Darkness quest",
+      "prereqs": "55 Mining; 48 Thieving; 48 Slayer; 46 Agility; The Heart of Darkness quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Amoxliatl",
       "verification": {
         "method": "collection-log",
@@ -11133,7 +11133,7 @@
       "name": "Amoxliatl Champion",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MEDIUM",
-      "prereqs": "43 Prayer; Children of the Sun quest",
+      "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Amoxliatl_Champion",
       "description": "Kill Amoxliatl once."
     },
@@ -11142,7 +11142,7 @@
       "name": "Temotli Triumph",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "MEDIUM",
-      "prereqs": "43 Prayer; Children of the Sun quest",
+      "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Temotli_Triumph",
       "description": "Kill Amoxliatl using only glacial temotli as a weapon."
     },
@@ -19152,7 +19152,7 @@
       "name": "Amoxliatl Adept",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "43 Prayer; Children of the Sun quest",
+      "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Amoxliatl_Adept",
       "description": "Kill Amoxliatl 20 times."
     },
@@ -19161,7 +19161,7 @@
       "name": "Nagua Negation",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "43 Prayer; Children of the Sun quest",
+      "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Nagua_Negation",
       "description": "Kill Amoxliatl without taking any damage."
     },
@@ -19170,7 +19170,7 @@
       "name": "Kemo Makti",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "43 Prayer; Children of the Sun quest",
+      "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Kemo_Makti",
       "description": "Kill Amoxliatl 10 times without leaving her chamber."
     },
@@ -19179,7 +19179,7 @@
       "name": "Amoxliatl Speed-Trialist",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "43 Prayer; Children of the Sun quest",
+      "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Amoxliatl_Speed-Trialist",
       "description": "Kill Amoxliatl in under 1 minute."
     },
@@ -19188,7 +19188,7 @@
       "name": "Totally Shattered",
       "source": "COMBAT_ACHIEVEMENT",
       "tier": "HARD",
-      "prereqs": "43 Prayer; Children of the Sun quest",
+      "prereqs": "Children of the Sun quest",
       "wikiUrl": "https://oldschool.runescape.wiki/w/Totally_Shattered",
       "description": "Kill Amoxliatl without any of her unstable ice shattering."
     },
