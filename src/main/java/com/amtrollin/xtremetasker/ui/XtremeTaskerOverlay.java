@@ -877,6 +877,20 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private String collectionLogRequirementItemName(int itemId)
     {
+        // These separate collection-log slots share the in-game name "Decorative armour".
+        // Keep each required piece visible when the preview coalesces items by name.
+        switch (itemId)
+        {
+            case 4069:
+                return "Decorative armour (red platebody)";
+            case 4070:
+                return "Decorative armour (red platelegs)";
+            case 11893:
+                return "Decorative armour (red plateskirt)";
+            default:
+                break;
+        }
+
         int medallionFragmentNumber = medallionFragmentNumber(itemId);
         if (medallionFragmentNumber > 0)
         {
