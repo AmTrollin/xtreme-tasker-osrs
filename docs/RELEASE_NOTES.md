@@ -3,6 +3,18 @@ $$\Huge\color{#B8860B}\textsf{RELEASE NOTES}$$
 <br>
 
 
+## <span style="color:#DEB887">v2.4.0 — 11.15.2026</span>
+
+#### <span style="color:#DCDCDC">Bug Fixes</span>
+* $\color{#778899}\textsf{Moved Collection Log item lookups out of notification callbacks and spread them across game ticks to address screen freezes when receiving a new Collection Log item}$
+* $\color{#778899}\textsf{Corrected the Medium boss pet task to require one pet and fixed its current-task progress display}$
+* $\color{#778899}\textsf{Fixed item icon rendering for the Get the full red decorative armour set task}$
+
+#### <span style="color:#DCDCDC">UI & Maintenance</span>
+* $\color{#778899}\textsf{Standardized task titles to sentence case}$
+
+<br>
+
 ## <span style="color:#DEB887">v2.3.0 — 10.25.2026</span>
 
 #### <span style="color:#DCDCDC">Bug Fixes</span>
