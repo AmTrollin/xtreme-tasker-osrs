@@ -8,6 +8,7 @@ $$\Huge\color{#B8860B}\textsf{RELEASE NOTES}$$
 #### <span style="color:#DCDCDC">Bug Fixes</span>
 * $\color{#778899}\textsf{Moved Collection Log item lookups out of notification callbacks and spread them across game ticks to address screen freezes when receiving a new Collection Log item}$
 * $\color{#778899}\textsf{Corrected the Medium boss pet task to require one pet and fixed its current-task progress display}$
+* $\color{#778899}\textsf{Chompy hat tasks now require only their named hat rather than a total number of hats, retaining their existing Easy through Master tiers; corrected the dragon archer hat icon}$
 * $\color{#778899}\textsf{Fixed item icon rendering for the Get the full red decorative armour set task}$
 
 #### <span style="color:#DCDCDC">UI & Maintenance</span>
