@@ -159,6 +159,73 @@ public class PrerequisiteTrackerServiceTest
         assertFalse(service.evaluate("Unknown Recipe for Disaster subquest").get(0).isCompleted());
     }
 
+    @Test
+    public void milestoneDoesNotBecomeMetWhenTheQuestIsOnlyStarted() throws Exception
+    {
+        com.amtrollin.xtremetasker.models.QuestPrerequisite requirement = new com.amtrollin.xtremetasker.models.QuestPrerequisite(
+                "Perilous Moons", com.amtrollin.xtremetasker.models.QuestPrerequisite.Action.MILESTONE,
+                "Unlock Neypotzli.", null, "https://oldschool.runescape.wiki/w/Perilous_Moons");
+        PrerequisiteStatus started = serviceWithQuestState(Quest.PERILOUS_MOONS, 0).evaluate(null, List.of(requirement)).get(0);
+        assertFalse(started.isCompleted());
+        assertFalse(started.isStatusKnown());
+        PrerequisiteStatus finished = serviceWithQuestState(Quest.PERILOUS_MOONS, 2).evaluate(null, List.of(requirement)).get(0);
+        assertTrue(finished.isCompleted());
+        assertTrue(finished.isStatusKnown());
+    }
+
+    @Test
+    public void structuredStartsAndSubquestsCheckTheCorrectQuestState() throws Exception
+    {
+        com.amtrollin.xtremetasker.models.QuestPrerequisite start = new com.amtrollin.xtremetasker.models.QuestPrerequisite(
+                "The Giant Dwarf", com.amtrollin.xtremetasker.models.QuestPrerequisite.Action.START, "Enter Keldagrim.", null, null);
+        assertTrue(serviceWithQuestState(Quest.THE_GIANT_DWARF, 0).evaluate("", List.of(start)).get(0).isCompleted());
+        com.amtrollin.xtremetasker.models.QuestPrerequisite child = new com.amtrollin.xtremetasker.models.QuestPrerequisite(
+                "Recipe for Disaster", com.amtrollin.xtremetasker.models.QuestPrerequisite.Action.COMPLETE_SUBQUEST,
+                "Complete Freeing Pirate Pete.", "Recipe for Disaster - Pirate Pete", null);
+        assertFalse(serviceWithQuestState(Quest.RECIPE_FOR_DISASTER__PIRATE_PETE, 0).evaluate("", List.of(child)).get(0).isCompleted());
+        assertTrue(serviceWithQuestState(Quest.RECIPE_FOR_DISASTER__PIRATE_PETE, 2).evaluate("", List.of(child)).get(0).isCompleted());
+    }
+
+    @Test
+    public void exactCheckpointChecksRespectTheirBoundaryForVarbitsAndVarps() throws Exception
+    {
+        for (com.amtrollin.xtremetasker.models.QuestPrerequisite.VariableType type
+                : com.amtrollin.xtremetasker.models.QuestPrerequisite.VariableType.values())
+        {
+            int[] progress = {4};
+            int[] state = {0}; // Quest script: 0 = in progress, 1 = not started, 2 = finished.
+            Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(), new Class<?>[] {Client.class},
+                    (proxy, method, args) -> {
+                        if (method.getName().equals("runScript")) return null;
+                        if (method.getName().equals("getIntStack")) return new int[] {state[0]};
+                        if (method.getName().equals("getVarbitValue") || method.getName().equals("getVarpValue"))
+                        {
+                            org.junit.Assert.assertEquals(9819, args[0]);
+                            return progress[0];
+                        }
+                        throw new AssertionError(method.getName());
+                    });
+            PrerequisiteTrackerService service = new PrerequisiteTrackerService();
+            Field field = PrerequisiteTrackerService.class.getDeclaredField("client");
+            field.setAccessible(true);
+            field.set(service, client);
+            com.amtrollin.xtremetasker.models.QuestPrerequisite requirement = new com.amtrollin.xtremetasker.models.QuestPrerequisite(
+                    "Perilous Moons", com.amtrollin.xtremetasker.models.QuestPrerequisite.Action.MILESTONE,
+                    "Unlock access.", null, null,
+                    new com.amtrollin.xtremetasker.models.QuestPrerequisite.ProgressCheck(type, 9819, 5), null);
+            PrerequisiteStatus below = service.evaluate("", List.of(requirement)).get(0);
+            assertTrue(below.isStatusKnown());
+            assertFalse(below.isCompleted());
+            progress[0] = 5;
+            assertTrue(service.evaluate("", List.of(requirement)).get(0).isCompleted());
+            progress[0] = 6;
+            assertTrue(service.evaluate("", List.of(requirement)).get(0).isCompleted());
+            progress[0] = 0;
+            state[0] = 2;
+            assertTrue(service.evaluate("", List.of(requirement)).get(0).isCompleted());
+        }
+    }
+
     private static PrerequisiteTrackerService serviceWithQuestState(Quest expectedQuest, int state) throws Exception
     {
         Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(),

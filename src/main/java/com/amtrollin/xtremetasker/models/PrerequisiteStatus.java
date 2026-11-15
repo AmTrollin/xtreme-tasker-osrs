@@ -9,6 +9,8 @@ public class PrerequisiteStatus
 {
     private final String text;
     private final boolean completed;
+    private final String detail;
+    private final boolean statusKnown;
     private final List<CheckSpan> checkSpans;
     private final List<Skill> skillIcons;
     private final List<MarkerIcon> markerIcons;
@@ -35,6 +37,14 @@ public class PrerequisiteStatus
 
     public PrerequisiteStatus(String text, boolean completed, List<CheckSpan> checkSpans, List<Skill> skillIcons, List<MarkerIcon> markerIcons)
     {
+        this(text, completed, checkSpans, skillIcons, markerIcons, null, true);
+    }
+
+    public PrerequisiteStatus(String text, boolean completed, List<CheckSpan> checkSpans,
+                              List<Skill> skillIcons, List<MarkerIcon> markerIcons, String detail, boolean statusKnown)
+    {
+        this.detail = detail;
+        this.statusKnown = statusKnown;
         this.text = text;
         this.completed = completed;
         this.checkSpans = checkSpans == null ? List.of() : Collections.unmodifiableList(checkSpans);
@@ -51,6 +61,7 @@ public class PrerequisiteStatus
     {
         QUEST,
         START_QUEST,
+        MINIQUEST,
         ACHIEVEMENT_DIARY,
         COMBAT,
         TOTAL,

@@ -22,6 +22,10 @@ public class XtremeTask {
     private final String prereqs;
     private final String wikiUrl;
     private final String tip;
+    // Optional task-pack text, e.g. "80 Ranged; 70 Prayer; For the ranged approach".
+    // Display only: never used by prerequisite checks or task completion.
+    private final String suggestedStats;
+    private final java.util.List<QuestPrerequisite> questPrereqs;
     private final TaskVerification verification;
 
     // Backwards-compatible constructor
@@ -43,6 +47,21 @@ public class XtremeTask {
             TaskVerification verification,
             String tip
     ) {
+        this(id, name, source, tier, iconItemId, iconKey, description, prereqs, wikiUrl, verification, tip, null);
+    }
+
+    public XtremeTask(String id, String name, TaskSource source, TaskTier tier,
+                      Integer iconItemId, String iconKey, String description, String prereqs,
+                      String wikiUrl, TaskVerification verification, String tip, String suggestedStats) {
+        this(id, name, source, tier, iconItemId, iconKey, description, prereqs, wikiUrl, verification, tip, suggestedStats, null);
+    }
+
+    public XtremeTask(String id, String name, TaskSource source, TaskTier tier,
+                      Integer iconItemId, String iconKey, String description, String prereqs,
+                      String wikiUrl, TaskVerification verification, String tip, String suggestedStats,
+                      java.util.List<QuestPrerequisite> questPrereqs) {
+        this.questPrereqs = questPrereqs == null ? java.util.List.of() : java.util.List.copyOf(questPrereqs);
+        this.suggestedStats = safeTipTrimToNull(suggestedStats);
         this.name = safeTrimToNull(name);
         this.source = source;
         this.tier = tier;
@@ -60,6 +79,10 @@ public class XtremeTask {
             trimmedId = generateStableId(this.name, this.source, this.tier, this.wikiUrl, this.iconKey, this.iconItemId);
         }
         this.id = trimmedId;
+    }
+
+    public java.util.List<QuestPrerequisite> getQuestPrereqs() {
+        return questPrereqs == null ? java.util.List.of() : questPrereqs;
     }
 
     @Override

@@ -416,19 +416,17 @@ public final class TaskDetailsPopup
         List<PrerequisiteStatus> prerequisiteStatuses = (prerequisiteStatusProvider == null)
                 ? List.of()
                 : prerequisiteStatusProvider.apply(task);
+        if (prerequisiteStatuses == null) prerequisiteStatuses = List.of();
 
         // Count total content pixel height for scroll math
         boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
         boolean showAchievementDiaryNote = isAchievementDiaryTask(task);
-        boolean hideDescription = hasRequirementPreview || task.getSource() == TaskSource.COLLECTION_LOG;
-        boolean showDescriptionSection = !hideDescription || showAchievementDiaryNote;
         String desc = showAchievementDiaryNote
                 ? diaryTaskDescription(task)
-                : (hideDescription ? "" : safe(task.getDescription()).replace("\r", "").trim());
+                : safe(task.getDescription()).replace("\r", "").trim();
+        boolean showDescriptionSection = !desc.isEmpty();
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
         boolean hasTaskTip = !taskTip.isEmpty();
-        boolean tipInDescriptionSection = hasTaskTip && showDescriptionSection && !hasRequirementPreview;
-        boolean tipInRequirementSection = hasTaskTip && hasRequirementPreview;
         boolean showGroupedProgressSection = groupProgress != null && groupProgress.isGrouped();
         boolean showGroupedSyncMismatch = showGroupedProgressSection && syncMismatch;
         boolean showStandaloneSyncMismatch = syncMismatch && !showGroupedProgressSection;
@@ -456,11 +454,6 @@ public final class TaskDetailsPopup
             {
                 totalPx += ROW_HEIGHT * TextUtils.wrapText(desc, fm, contentW).size();
             }
-            if (tipInDescriptionSection)
-            {
-                totalPx += ROW_HEIGHT; // blank line before tip
-                totalPx += prerequisiteSectionRenderer.measureTip(taskTip, fm, contentW, Integer.MAX_VALUE);
-            }
         }
         if (showDescriptionSection)
         {
@@ -473,15 +466,9 @@ public final class TaskDetailsPopup
         }
         if (hasRequirementPreview)
         {
-            if (tipInRequirementSection)
-            {
-                totalPx += prerequisiteSectionRenderer.measureTip(taskTip, fm, contentW, Integer.MAX_VALUE);
-                totalPx += 6;
-            }
             totalPx += collectionLogRequirementRenderer.measure(requirementPreview, fm, contentW);
-            totalPx += 6 + 12; // divider gap before "Prereqs"
+            totalPx += 6 + 12; // divider gap before requirements
         }
-        totalPx += ROW_HEIGHT; // "Prereqs" header
         totalPx += prerequisiteSectionRenderer.measure(
                 prereqs,
                 prerequisiteStatuses,
@@ -489,6 +476,8 @@ public final class TaskDetailsPopup
                 contentW,
                 prerequisiteSkillImageProvider,
                 prerequisiteMarkerImageProvider);
+        totalPx += prerequisiteSectionRenderer.measureSuggestedStats(task.getSuggestedStats(), fm, contentW, prerequisiteSkillImageProvider);
+        if (hasTaskTip) totalPx += 8 + prerequisiteSectionRenderer.measureTip(taskTip, fm, contentW, Integer.MAX_VALUE);
         if (!instanceHistoryLines.isEmpty())
         {
             totalPx += 6 + 12; // divider gap before completed instance history
@@ -570,11 +559,6 @@ public final class TaskDetailsPopup
                 }
             }
 
-            if (tipInDescriptionSection)
-            {
-                y += ROW_HEIGHT;
-                y = prerequisiteSectionRenderer.drawTip(g, fm, taskTip, contentLeft, y, contentW, Integer.MAX_VALUE);
-            }
         }
 
         if (showDescriptionSection && !showStandaloneSyncMismatch)
@@ -601,11 +585,6 @@ public final class TaskDetailsPopup
 
         if (hasRequirementPreview)
         {
-            if (tipInRequirementSection)
-            {
-                y = prerequisiteSectionRenderer.drawTip(g, fm, taskTip, contentLeft, y, contentW, Integer.MAX_VALUE);
-                y += 6;
-            }
 
             y = collectionLogRequirementRenderer.render(
                     g,
@@ -621,10 +600,6 @@ public final class TaskDetailsPopup
             y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
         }
 
-        g.setColor(palette.UI_GOLD);
-        g.drawString("Prereqs", contentLeft, y);
-        y += ROW_HEIGHT;
-
         y = prerequisiteSectionRenderer.render(
                 g,
                 fm,
@@ -636,6 +611,13 @@ public final class TaskDetailsPopup
                 prerequisiteSkillImageProvider,
                 prerequisiteMarkerImageProvider,
                 palette.UI_TEXT);
+
+        y = prerequisiteSectionRenderer.renderSuggestedStats(g, fm, contentLeft, y, contentW, task.getSuggestedStats(), prerequisiteSkillImageProvider);
+        if (hasTaskTip)
+        {
+            y += 8;
+            y = prerequisiteSectionRenderer.drawTip(g, fm, taskTip, contentLeft, y, contentW, Integer.MAX_VALUE);
+        }
 
         if (!instanceHistoryLines.isEmpty())
         {
@@ -694,6 +676,8 @@ public final class TaskDetailsPopup
                 footerX + footerW,
                 footerY - 6
         );
+
+        prerequisiteSectionRenderer.renderHover(g, fm, mousePoint, viewportBounds, bounds);
 
         if (wikiMenuOpen)
         {

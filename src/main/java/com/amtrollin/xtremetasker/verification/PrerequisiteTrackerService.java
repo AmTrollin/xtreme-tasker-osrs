@@ -2,6 +2,7 @@ package com.amtrollin.xtremetasker.verification;
 
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
+import com.amtrollin.xtremetasker.models.QuestPrerequisite;
 import java.util.*;
 import java.util.function.*;
 import java.util.regex.*;
@@ -53,6 +54,12 @@ public class PrerequisiteTrackerService
     @Inject
     private Client client;
 
+    @Inject
+    private QuestUnlockTracker questUnlockTracker;
+
+    @Inject
+    private AdditionalPrerequisiteChecks additionalPrerequisiteChecks;
+
     public PrerequisiteTrackerService()
     {
         this(null, null);
@@ -83,9 +90,56 @@ public class PrerequisiteTrackerService
                 continue;
             }
 
-            out.add(new PrerequisiteStatus(text, isSatisfied(text), checkSpans(text), skillIcons(text), markerIcons(text)));
+            AdditionalPrerequisiteChecks.Result additional = additionalPrerequisiteChecks == null
+                    ? null : additionalPrerequisiteChecks.check(text);
+            Boolean met = additional == null ? isSatisfied(text) : additional.met;
+            out.add(new PrerequisiteStatus(text, Boolean.TRUE.equals(met), checkSpans(text), skillIcons(text),
+                    markerIcons(text), null, met != null));
         }
         return out;
+    }
+
+    public List<PrerequisiteStatus> evaluate(String prereqs, List<QuestPrerequisite> questPrereqs)
+    {
+        List<PrerequisiteStatus> statuses = new ArrayList<>(evaluate(prereqs == null ? "" : prereqs));
+        if (questPrereqs == null) return statuses;
+        for (QuestPrerequisite requirement : questPrereqs)
+        {
+            if (requirement == null || requirement.getQuest() == null || requirement.getAction() == null) continue;
+            String stateName = requirement.getStateQuest() == null ? requirement.getQuest() : requirement.getStateQuest();
+            Quest quest = findQuestWithOptionalQuestSuffix(stateName);
+            QuestState state = client == null || quest == null ? null : quest.getState(client);
+            boolean completed = state == QuestState.FINISHED
+                    || requirement.getAction() == QuestPrerequisite.Action.START && state == QuestState.IN_PROGRESS;
+            QuestPrerequisite.ProgressCheck check = requirement.getProgress();
+            boolean hasProgressCheck = client != null && check != null && check.isValid();
+            if (hasProgressCheck)
+            {
+                completed |= isProgressSatisfied(check);
+            }
+            boolean observedUnlock = requirement.getObservedUnlock() == QuestPrerequisite.ObservedUnlock.KARAMBWAN_FISHING;
+            if (observedUnlock && questUnlockTracker != null)
+                completed |= questUnlockTracker.isKarambwanFishingUnlocked();
+            // Without a verified checkpoint reader, a started quest alone proves no milestone.
+            boolean known = hasProgressCheck || state != null
+                    && (requirement.getAction() != QuestPrerequisite.Action.MILESTONE || state == QuestState.FINISHED);
+            // No observed training does not prove the player hasn't trained on another session/device.
+            if (observedUnlock) known = completed || state == QuestState.NOT_STARTED;
+            MarkerIcon marker = requirement.getAction() == QuestPrerequisite.Action.START ? MarkerIcon.START_QUEST : MarkerIcon.QUEST;
+            statuses.add(new PrerequisiteStatus(requirement.title(), completed, List.of(), List.of(),
+                    List.of(marker), requirement.getDetail(), known));
+        }
+        return statuses;
+    }
+
+    private boolean isProgressSatisfied(QuestPrerequisite.ProgressCheck check)
+    {
+        if (check.getAnyOf() != null)
+            return check.getAnyOf().stream().anyMatch(this::isProgressSatisfied);
+        int value = check.getType() == QuestPrerequisite.VariableType.VARBIT
+                ? getVarbitValue(check.getId()) : client.getVarpValue(check.getId());
+        if (check.getMask() != null) value &= check.getMask();
+        return value >= check.getMinimum();
     }
 
     /**
@@ -203,7 +257,7 @@ public class PrerequisiteTrackerService
         return out;
     }
 
-    private boolean isSatisfied(String prerequisite)
+    private Boolean isSatisfied(String prerequisite)
     {
         String normalizedPrereq = stripLeadingLabel(cleanupToken(prerequisite)).replaceFirst("(?i)^either\\s+", "");
 
@@ -212,9 +266,9 @@ public class PrerequisiteTrackerService
         {
             Skill firstSkill = findSkill(combinedMatcher.group(1));
             Skill secondSkill = findSkill(combinedMatcher.group(2));
-            if (firstSkill == null || secondSkill == null)
+            if (firstSkill == null || secondSkill == null || client == null && skillLevelReader == null)
             {
-                return false;
+                return null;
             }
 
             int requiredCombined = Integer.parseInt(combinedMatcher.group(3));
@@ -234,33 +288,40 @@ public class PrerequisiteTrackerService
         Matcher diaryMatcher = DIARY_PREREQ_PATTERN.matcher(normalizedPrereq);
         if (diaryMatcher.matches())
         {
+            if (!hasVarbitReader() || toDiaryRegionKey(diaryMatcher.group(1)) == null) return null;
             return isDiaryComplete(diaryMatcher.group(1), diaryMatcher.group(2));
         }
 
         String[] disjunctions = normalizedPrereq.split("(?i)\\s+or\\s+");
         if (disjunctions.length > 1)
         {
+            boolean unknown = false;
             for (String option : disjunctions)
             {
-                if (isSatisfiedAtomic(option))
+                Boolean met = isSatisfiedAtomic(option);
+                if (Boolean.TRUE.equals(met))
                 {
                     return true;
                 }
+                unknown |= met == null;
             }
-            return false;
+            return unknown ? null : Boolean.FALSE;
         }
 
         return isSatisfiedAtomic(normalizedPrereq);
     }
 
-    private boolean isSatisfiedAtomic(String prerequisite)
+    private Boolean isSatisfiedAtomic(String prerequisite)
     {
         String normalized = stripLeadingLabel(cleanupToken(prerequisite)).replaceFirst("(?i)^either\\s+", "");
 
         if (BARBARIAN_FIREMAKING_PART_1_PATTERN.matcher(normalized).matches())
         {
-            return isBarbarianFiremakingPart1Complete();
+            return hasVarbitReader() ? isBarbarianFiremakingPart1Complete() : null;
         }
+
+        if (normalize(normalized).equals("knightwavestraininggrounds"))
+            return hasVarbitReader() ? getVarbitValue(VarbitID.KR_KNIGHTWAVES_STATE) >= 8 : null;
 
         String skillCandidate = stripTrailingParenthetical(normalized);
         Matcher skillMatcher = SKILL_PREREQ_PATTERN.matcher(skillCandidate);
@@ -270,6 +331,7 @@ public class PrerequisiteTrackerService
             Skill skill = findSkill(skillMatcher.group(2));
             if (skill != null)
             {
+                if (client == null && skillLevelReader == null) return null;
                 return realSkillLevel(skill) >= requiredLevel;
             }
             // Numeric requirements such as Combat and Quest Points have their own checks below.
@@ -282,6 +344,7 @@ public class PrerequisiteTrackerService
             Skill skill = findSkill(skillPlusMatcher.group(2));
             if (skill != null)
             {
+                if (client == null && skillLevelReader == null) return null;
                 return realSkillLevel(skill) >= requiredLevel;
             }
             // Numeric requirements such as Combat and Quest Points have their own checks below.
@@ -291,20 +354,20 @@ public class PrerequisiteTrackerService
         if (questPointsMatcher.matches())
         {
             int requiredPoints = Integer.parseInt(questPointsMatcher.group(1));
-            return client != null && client.getVarpValue(VarPlayer.QUEST_POINTS) >= requiredPoints;
+            return client == null ? null : client.getVarpValue(VarPlayer.QUEST_POINTS) >= requiredPoints;
         }
 
         Matcher favorMatcher = FAVOR_PERCENT_PATTERN.matcher(normalized);
         if (favorMatcher.matches() && isTaiBwoFavorLabel(favorMatcher.group(2)))
         {
             int requiredFavor = Integer.parseInt(favorMatcher.group(1));
-            return getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP) >= requiredFavor;
+            return hasVarbitReader() ? getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP) >= requiredFavor : null;
         }
 
         Matcher bareFavorMatcher = FAVOR_PREREQ_PATTERN.matcher(normalized);
         if (bareFavorMatcher.matches() && isTaiBwoFavorLabel(bareFavorMatcher.group(1)))
         {
-            return getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP) >= 100;
+            return hasVarbitReader() ? getVarbitValue(VARBIT_TAI_BWO_WANNAI_CLEANUP) >= 100 : null;
         }
 
         Matcher coinsMatcher = COINS_PATTERN.matcher(normalized);
@@ -313,10 +376,11 @@ public class PrerequisiteTrackerService
             long requiredCoins = parseScaledNumber(coinsMatcher.group(1), coinsMatcher.group(2));
             if (requiredCoins <= 0)
             {
-                return false;
+                return null;
             }
-
-            return getKnownCoins() >= requiredCoins;
+            if (client == null) return null;
+            if (getKnownCoins() >= requiredCoins) return true;
+            return client.getItemContainer(InventoryID.BANK) == null ? null : Boolean.FALSE;
         }
 
         Matcher pointsMatcher = POINTS_PATTERN.matcher(normalized);
@@ -325,25 +389,25 @@ public class PrerequisiteTrackerService
             long requiredPoints = parseScaledNumber(pointsMatcher.group(1), pointsMatcher.group(2));
             if (requiredPoints <= 0)
             {
-                return false;
+                return null;
             }
-
+            if (!hasVarbitReader()) return null;
             Integer currentPoints = getPointsFor(pointsMatcher.group(3));
-            return currentPoints != null && currentPoints >= requiredPoints;
+            return currentPoints == null ? null : currentPoints >= requiredPoints;
         }
 
         Matcher combatMatcher = COMBAT_LEVEL_PATTERN.matcher(normalized);
         if (combatMatcher.matches())
         {
             int requiredCombat = Integer.parseInt(combatMatcher.group(1));
-            return client != null && client.getLocalPlayer() != null && client.getLocalPlayer().getCombatLevel() >= requiredCombat;
+            return client == null || client.getLocalPlayer() == null ? null : client.getLocalPlayer().getCombatLevel() >= requiredCombat;
         }
 
         Matcher totalLevelMatcher = TOTAL_LEVEL_PATTERN.matcher(normalized);
         if (totalLevelMatcher.matches())
         {
             int requiredTotal = Integer.parseInt(totalLevelMatcher.group(1));
-            return client != null && client.getTotalLevel() >= requiredTotal;
+            return client == null ? null : client.getTotalLevel() >= requiredTotal;
         }
 
         Matcher startQuestMatcher = START_QUEST_PREREQ_PATTERN.matcher(normalized);
@@ -351,13 +415,13 @@ public class PrerequisiteTrackerService
         {
             if (client == null)
             {
-                return false;
+                return null;
             }
 
             Quest quest = findQuestWithOptionalQuestSuffix(startQuestMatcher.group(1));
             if (quest == null)
             {
-                return false;
+                return null;
             }
 
             QuestState state = quest.getState(client);
@@ -368,7 +432,14 @@ public class PrerequisiteTrackerService
         if (subquestMatcher.matches())
         {
             Quest quest = findSubquest(subquestMatcher.group(1));
-            return client != null && quest != null && quest.getState(client) == QuestState.FINISHED;
+            return client == null || quest == null ? null : quest.getState(client) == QuestState.FINISHED;
+        }
+
+        Matcher miniquestMatcher = MINIQUEST_PREREQ_PATTERN.matcher(normalized);
+        if (miniquestMatcher.matches())
+        {
+            Quest quest = findQuest(miniquestMatcher.group(1));
+            return client == null || quest == null ? null : quest.getState(client) == QuestState.FINISHED;
         }
 
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(normalized);
@@ -376,15 +447,17 @@ public class PrerequisiteTrackerService
         {
             if (client == null)
             {
-                return false;
+                return null;
             }
 
             Quest quest = findQuestWithOptionalQuestSuffix(normalized);
-            return quest != null && quest.getState(client) == QuestState.FINISHED;
+            return quest == null ? null : quest.getState(client) == QuestState.FINISHED;
         }
-
-        return false;
+        Quest quest = findQuest(normalized);
+        return quest == null || client == null ? null : quest.getState(client) == QuestState.FINISHED;
     }
+
+    private boolean hasVarbitReader() { return client != null || varbitReader != null; }
 
     private boolean isBarbarianFiremakingPart1Complete()
     {
@@ -435,6 +508,9 @@ public class PrerequisiteTrackerService
             return findSubquest(subquestMatcher.group(1));
         }
 
+        Matcher miniquestMatcher = MINIQUEST_PREREQ_PATTERN.matcher(name);
+        if (miniquestMatcher.matches()) return findQuest(miniquestMatcher.group(1));
+
         Matcher questMatcher = QUEST_PREREQ_PATTERN.matcher(name);
         return questMatcher.matches() ? findQuest(questMatcher.group(1)) : null;
     }
@@ -459,6 +535,11 @@ public class PrerequisiteTrackerService
             questsByName.put(normalize(questName), quest);
             questsByName.put(normalize(toNumericQuestName(questName)), quest);
         }
+
+        questsByName.put(normalize("Desert Treasure 2"), Quest.DESERT_TREASURE_II__THE_FALLEN_EMPIRE);
+        questsByName.put(normalize("Desert Treasure II"), Quest.DESERT_TREASURE_II__THE_FALLEN_EMPIRE);
+        questsByName.put(normalize("Hand in the Sand"), Quest.THE_HAND_IN_THE_SAND);
+        questsByName.put(normalize("Shades of Morton"), Quest.SHADES_OF_MORTTON);
 
         Quest elementalWorkshopI = questsByName.get(normalize("Elemental Workshop I"));
         if (elementalWorkshopI != null)
@@ -760,6 +841,10 @@ public class PrerequisiteTrackerService
             {
                 icons.add(MarkerIcon.QUEST);
             }
+            else if (findQuest(normalized) != null)
+            {
+                icons.add(MarkerIcon.QUEST);
+            }
             else if (normalize(normalized).contains("wilderness"))
             {
                 icons.add(MarkerIcon.WILDERNESS);
@@ -774,6 +859,7 @@ public class PrerequisiteTrackerService
 
     private MarkerIcon miniquestMarkerIcon(String prerequisite)
     {
+        if (normalize(prerequisite).equals("knightwavestraininggrounds")) return MarkerIcon.MINIQUEST;
         Matcher matcher = MINIQUEST_PREREQ_PATTERN.matcher(prerequisite);
         if (!matcher.matches())
         {
@@ -794,7 +880,7 @@ public class PrerequisiteTrackerService
             case "alfredgrimhandsbarcrawl":
                 return MarkerIcon.ALFRED_GRIMHANDS_BARCRAWL;
             default:
-                return null;
+                return MarkerIcon.MINIQUEST;
         }
     }
 
@@ -806,7 +892,7 @@ public class PrerequisiteTrackerService
 
     private int realSkillLevel(Skill skill)
     {
-        return skillLevelReader == null ? client.getRealSkillLevel(skill) : skillLevelReader.applyAsInt(skill);
+        return skillLevelReader == null ? client == null ? 0 : client.getRealSkillLevel(skill) : skillLevelReader.applyAsInt(skill);
     }
 
     private static String stripLeadingLabel(String token)
@@ -864,7 +950,7 @@ public class PrerequisiteTrackerService
 
     private int getVarbitValue(int varbitId)
     {
-        return varbitReader == null ? client.getVarbitValue(varbitId) : varbitReader.applyAsInt(varbitId);
+        return varbitReader == null ? client == null ? 0 : client.getVarbitValue(varbitId) : varbitReader.applyAsInt(varbitId);
     }
 
     private long getKnownCoins()

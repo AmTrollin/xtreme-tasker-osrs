@@ -407,6 +407,7 @@ public final class CurrentTabRenderer
 
         g.setClip(oldClip);
         drawCurrentScrollbar(g, totalPx, vpH, clampedScroll, new Rectangle(rightX, contentTop, rightW, contentH), layout);
+        prerequisiteSectionRenderer.renderHover(g, fm, mousePoint, layout.viewportBounds, panelBounds);
 
         return layout;
     }
@@ -709,10 +710,9 @@ public final class CurrentTabRenderer
                 : collectionLogRequirementPreviewProvider.apply(current);
         boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
         boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
-        boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
         String desc = showAchievementDiaryNote
                 ? diaryTaskDescription(current)
-                : (hideDescription ? null : current.getDescription());
+                : current.getDescription();
         boolean hasDesc = desc != null && !desc.trim().isEmpty();
         String tip = showTips ? current.getTip() : null;
         boolean hasTip = tip != null && !tip.trim().isEmpty();
@@ -720,25 +720,15 @@ public final class CurrentTabRenderer
         {
             tip = tip.trim();
         }
-        boolean tipInDescriptionSection = hasTip && hasDesc && !hasRequirementPreview;
-        boolean tipInRequirementSection = hasTip && hasRequirementPreview;
 
         if (hasDesc)
         {
             totalPx += rowHeight;
-            totalPx += rowHeight * Math.min(wrapText(desc, fm, maxW).size(), 7);
-            if (tipInDescriptionSection)
-            {
-                totalPx += rowHeight;
-                totalPx += prerequisiteSectionRenderer.measureTip(tip, fm, maxW, 5);
-            }
+            totalPx += rowHeight * wrapText(desc, fm, maxW).size();
             totalPx += 8;
         }
 
-        totalPx += rowHeight;
         String prereqs = PrerequisiteSectionRenderer.normalizeText(current.getPrereqs());
-        boolean hasPrereqs = !prereqs.isEmpty();
-        if (hasPrereqs)
         {
             List<PrerequisiteStatus> statuses = prerequisiteStatusProvider == null
                     ? List.of()
@@ -751,23 +741,16 @@ public final class CurrentTabRenderer
                     prerequisiteSkillImageProvider,
                     prerequisiteMarkerImageProvider);
         }
-        else
-        {
-            totalPx += rowHeight;
-        }
+        totalPx += prerequisiteSectionRenderer.measureSuggestedStats(current.getSuggestedStats(), fm, maxW, prerequisiteSkillImageProvider);
         totalPx += 8;
 
         if (hasRequirementPreview)
         {
-            if (tipInRequirementSection)
-            {
-                totalPx += prerequisiteSectionRenderer.measureTip(tip, fm, maxW, 5);
-                totalPx += 6;
-            }
             totalPx += collectionLogRequirementRenderer.measure(requirementPreview, fm, maxW);
             totalPx += rowHeight;
         }
 
+        if (hasTip) totalPx += 8 + prerequisiteSectionRenderer.measureTip(tip, fm, maxW, Integer.MAX_VALUE);
         return totalPx + fm.getAscent() + 8;
     }
 
@@ -792,21 +775,17 @@ public final class CurrentTabRenderer
                 : collectionLogRequirementPreviewProvider.apply(current);
         boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
         boolean showAchievementDiaryNote = isAchievementDiaryTask(current);
-        boolean hideDescription = hasRequirementPreview || current.getSource() == TaskSource.COLLECTION_LOG;
         String desc = showAchievementDiaryNote
                 ? diaryTaskDescription(current)
-                : (hideDescription ? null : current.getDescription());
+                : current.getDescription();
         boolean hasDesc = desc != null && !desc.trim().isEmpty();
         String prereqs = PrerequisiteSectionRenderer.normalizeText(current.getPrereqs());
-        boolean hasPrereqs = !prereqs.isEmpty();
         String tip = showTips ? current.getTip() : null;
         boolean hasTip = tip != null && !tip.trim().isEmpty();
         if (hasTip)
         {
             tip = tip.trim();
         }
-        boolean tipInDescriptionSection = hasTip && hasDesc && !hasRequirementPreview;
-        boolean tipInRequirementSection = hasTip && hasRequirementPreview;
 
         if (hasDesc)
         {
@@ -815,22 +794,12 @@ public final class CurrentTabRenderer
             y += rowHeight;
 
             g.setColor(uiText);
-            y = drawWrapped(g, fm, desc, x, y, maxW, 7);
-            if (tipInDescriptionSection)
-            {
-                y += rowHeight;
-                y = prerequisiteSectionRenderer.drawTip(g, fm, tip, x, y, maxW, 5);
-            }
+            y = drawWrapped(g, fm, desc, x, y, maxW, Integer.MAX_VALUE);
             y += 8;
         }
 
         if (hasRequirementPreview)
         {
-            if (tipInRequirementSection)
-            {
-                y = prerequisiteSectionRenderer.drawTip(g, fm, tip, x, y, maxW, 5);
-                y += 6;
-            }
             y = collectionLogRequirementRenderer.render(
                     g,
                     fm,
@@ -844,11 +813,7 @@ public final class CurrentTabRenderer
             y += rowHeight;
         }
 
-        g.setColor(uiGold);
-        g.drawString("Prereqs", x, y);
-        y += rowHeight;
-
-        List<PrerequisiteStatus> statuses = hasPrereqs && prerequisiteStatusProvider != null
+        List<PrerequisiteStatus> statuses = prerequisiteStatusProvider != null
                 ? prerequisiteStatusProvider.apply(current)
                 : List.of();
         y = prerequisiteSectionRenderer.render(
@@ -862,6 +827,12 @@ public final class CurrentTabRenderer
                 prerequisiteSkillImageProvider,
                 prerequisiteMarkerImageProvider,
                 uiTextDim);
+        y = prerequisiteSectionRenderer.renderSuggestedStats(g, fm, x, y, maxW, current.getSuggestedStats(), prerequisiteSkillImageProvider);
+        if (hasTip)
+        {
+            y += 8;
+            y = prerequisiteSectionRenderer.drawTip(g, fm, tip, x, y, maxW, Integer.MAX_VALUE);
+        }
         y += 8;
 
         return y;

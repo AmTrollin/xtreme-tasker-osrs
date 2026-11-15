@@ -76,6 +76,40 @@ public class TaskDataTest
     }
 
     @Test
+    public void questAccessRequirementsHaveExplicitActionsDetailsAndSources()
+    {
+        int structured = 0;
+        for (JsonElement element : loadTaskPack().getAsJsonArray("tasks"))
+        {
+            JsonObject task = element.getAsJsonObject();
+            String prereqs = task.has("prereqs") ? task.get("prereqs").getAsString() : "";
+            assertTrue("Ambiguous Start text must be migrated: " + task.get("id"),
+                    !java.util.regex.Pattern.compile("(?:^|;)\\s*Start ", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(prereqs).find());
+            if (!task.has("questPrereqs")) continue;
+            for (JsonElement entry : task.getAsJsonArray("questPrereqs"))
+            {
+                com.amtrollin.xtremetasker.models.QuestPrerequisite quest = new Gson().fromJson(entry,
+                        com.amtrollin.xtremetasker.models.QuestPrerequisite.class);
+                assertNotNull(quest.getAction());
+                assertTrue(!quest.getQuest().trim().isEmpty());
+                assertTrue(!quest.getDetail().trim().isEmpty());
+                assertTrue(quest.getSourceUrl().startsWith("https://oldschool.runescape.wiki/w/"));
+                if (quest.getAction() == com.amtrollin.xtremetasker.models.QuestPrerequisite.Action.COMPLETE_SUBQUEST)
+                    assertTrue(!quest.getStateQuest().isEmpty());
+                if (quest.getAction() == com.amtrollin.xtremetasker.models.QuestPrerequisite.Action.MILESTONE)
+                    assertNotNull("Every bundled milestone needs a checkpoint: " + quest.getQuest(), quest.getProgress());
+                if (quest.getProgress() != null)
+                {
+                    assertTrue(quest.getProgress().isValid());
+                    assertTrue(quest.getProgressSourceUrl().startsWith("https://github.com/Zoinkwiz/quest-helper/"));
+                }
+                structured++;
+            }
+        }
+        assertTrue("Quest access requirements must remain present in the bundled pack", structured >= 58);
+    }
+
+    @Test
     public void taskSearchMatchesTwoCharacterTermsInAnyOrder()
     {
         List<XtremeTask> tasks = Arrays.asList(

@@ -1,0 +1,458 @@
+{
+  "scope": "All 24 distinct Start prerequisites in the bundled pack. Later diary tiers retain inherited requirements.",
+  "verification": "All 20 distinct milestones now have sourced progress checks. Nineteen use direct quest/unlock flags. Tai Bwo Wannai Trio additionally observes explicit Lubufu training dialogue and remembers positive evidence per account; before any evidence is available, intermediate progress stays unknown.",
+  "entries": [
+    {
+      "originalPrerequisite": "Start Between a Rock quest",
+      "quest": "Between a Rock...",
+      "action": "MILESTONE",
+      "detail": "Unlock gold-helmet smithing by giving Dondakan the golden cannonball and finishing the following conversation.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Between_a_Rock.../Quick_guide",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-wilderness-medium-diary_001_6b959c66bf",
+        "collection_log_hard_complete-the-wilderness-hard-diary_001_1c7addfc2b",
+        "collection_log_elite_complete-the-wilderness-elite-diary_001_eb67ed2db9"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 299,
+        "minimum": 80
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/betweenarock/BetweenARock.java",
+      "progressNotes": "Stage 70 still asks the player to speak to Dondakan after the shot; stage 80 permits helmet smithing."
+    },
+    {
+      "originalPrerequisite": "Start Desert Treasure 1 quest",
+      "quest": "Desert Treasure I",
+      "action": "MILESTONE",
+      "detail": "Unlock Shadow Dungeon access by obtaining the ring of visibility from Rasolo.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Ring_of_visibility",
+      "affectedTaskIds": [
+        "collection_log_hard_complete-the-kandarin-hard-diary_001_2b065858b6",
+        "collection_log_elite_complete-the-kandarin-elite-diary_001_c7f5e6a6bd"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 383,
+        "minimum": 3
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/deserttreasure/DesertTreasure.java",
+      "progressNotes": "FD_SHADOWWARRIOR_QUEST >= 3 is the ring-of-visibility unlock."
+    },
+    {
+      "originalPrerequisite": "Start Dragon Slayer 1 quest",
+      "quest": "Dragon Slayer I",
+      "action": "MILESTONE",
+      "detail": "Unlock the Crandor return passage by sailing to Crandor and opening the hidden wall to Karamja.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Dragon_Slayer_I/Quick_guide",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-karamja-medium-diary_001_794f9669b0"
+      ],
+      "progress": {
+        "type": "VARP",
+        "id": 177,
+        "minimum": 64,
+        "mask": 64
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/dragonslayer/DragonSlayer.java",
+      "progressNotes": "Only bit 6 of DRAGONQUESTVAR proves that the return shortcut is open; higher unrelated bits must not satisfy it."
+    },
+    {
+      "originalPrerequisite": "Start Eagles' Peak quest",
+      "quest": "Eagles' Peak",
+      "action": "MILESTONE",
+      "detail": "Unlock box trapping by learning from Nickolaus near the end of the quest.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Eagles%27_Peak",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-kourend-kebos-medium-diary_001_2588b0af9b",
+        "collection_log_hard_complete-the-kourend-kebos-hard-diary_001_d45608255d",
+        "collection_log_elite_complete-the-kourend-kebos-elite-diary_001_a38a3ed29c"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 2780,
+        "minimum": 35
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/eaglespeak/EaglesPeak.java"
+    },
+    {
+      "originalPrerequisite": "Start Elemental Workshop 1 quest",
+      "quest": "Elemental Workshop I",
+      "action": "MILESTONE",
+      "detail": "Unlock the workshop entrance with the battered key.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Elemental_Workshop_I",
+      "affectedTaskIds": [
+        "collection_log_easy_complete-the-kandarin-easy-diary_001_c172555793"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 2057,
+        "minimum": 1
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/elementalworkshopi/ElementalWorkshopI.java",
+      "progressNotes": "ELEMENTAL_WORKSHOP_KEY records obtaining the battered key; merely reading the book is insufficient."
+    },
+    {
+      "originalPrerequisite": "Start Elemental Workshop 2 quest",
+      "quest": "Elemental Workshop II",
+      "action": "COMPLETE",
+      "detail": "Create the mind helmet; this also completes the quest.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Elemental_Workshop_II",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-kandarin-medium-diary_001_8ac83cfb50",
+        "collection_log_hard_complete-the-kandarin-hard-diary_001_2b065858b6",
+        "collection_log_elite_complete-the-kandarin-elite-diary_001_c7f5e6a6bd"
+      ]
+    },
+    {
+      "originalPrerequisite": "Start Fairytale 2 - Cure a Queen quest",
+      "quest": "Fairytale II - Cure a Queen",
+      "action": "MILESTONE",
+      "detail": "Unlock fairy ring travel by obtaining permission from the Fairy Godfather and following the fairy-ring introduction.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Fairytale_II_-_Cure_a_Queen",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-ardougne-medium-diary_001_9512a43fae",
+        "collection_log_medium_complete-the-fremennik-medium-diary_001_b538411174",
+        "collection_log_medium_complete-the-kandarin-medium-diary_001_8ac83cfb50",
+        "collection_log_medium_complete-the-kourend-kebos-medium-diary_001_2588b0af9b",
+        "collection_log_medium_complete-the-lumbridge-draynor-medium-di_001_e7dc988d18",
+        "collection_log_hard_complete-the-ardougne-hard-diary_001_89fcc0a0d1",
+        "collection_log_hard_complete-the-fremennik-hard-diary_001_58dd76b2e4",
+        "collection_log_hard_complete-the-kandarin-hard-diary_001_2b065858b6",
+        "collection_log_hard_complete-the-kourend-kebos-hard-diary_001_d45608255d",
+        "collection_log_hard_complete-the-lumbridge-draynor-hard-diar_001_07324272e4",
+        "collection_log_elite_complete-the-ardougne-elite-diary_001_50c6d70148",
+        "collection_log_elite_complete-the-fremennik-elite-diary_001_b319f729bb",
+        "collection_log_elite_complete-the-kandarin-elite-diary_001_c7f5e6a6bd",
+        "collection_log_elite_complete-the-kourend-kebos-elite-diary_001_a38a3ed29c"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 2326,
+        "minimum": 40
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/fairytaleii/FairytaleII.java"
+    },
+    {
+      "originalPrerequisite": "Start Freeing Pirate Pete Recipe for Disaster subquest",
+      "quest": "Recipe for Disaster",
+      "action": "MILESTONE",
+      "detail": "Start Freeing Pirate Pete, unlock diving with Murphy, and gain access to the crab pen from Nung.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Recipe_for_Disaster/Freeing_Pirate_Pete",
+      "affectedTaskIds": [
+        "collection_log_easy_get-a-fresh-crab-claw-fresh-crab-shell_001_0b0bfc6713"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 1895,
+        "minimum": 80
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/recipefordisaster/RFDPiratePete.java",
+      "progressNotes": "Stages 40-70 allow diving but still require Nung's supplies; stage 80 opens the crab pen."
+    },
+    {
+      "originalPrerequisite": "Start Icthlarin's Little Helper quest",
+      "quest": "Icthlarin's Little Helper",
+      "action": "MILESTONE",
+      "detail": "Unlock the passage into Sophanem by giving the Wanderer the requested supplies.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Icthlarin%27s_Little_Helper",
+      "affectedTaskIds": [
+        "collection_log_easy_complete-the-desert-easy-diary_001_4dda64c56a",
+        "collection_log_medium_complete-the-desert-medium-diary_001_6d9cdd2db4"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 418,
+        "minimum": 2
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/icthlarinslittlehelper/IcthlarinsLittleHelper.java"
+    },
+    {
+      "originalPrerequisite": "Start In Aid of the Myreque quest",
+      "quest": "In Aid of the Myreque",
+      "action": "MILESTONE",
+      "detail": "Unlock Guthix balance potion making by defeating Gadderanks and learning the recipe.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Guthix_balance",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-morytania-medium-diary_001_42292455d4"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 1990,
+        "minimum": 280
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/inaidofthemyreque/InAidOfTheMyreque.java",
+      "progressNotes": "Stage 260 is the defeated-but-not-yet-spoken-to Gadderanks; stage 280 follows learning the recipe."
+    },
+    {
+      "originalPrerequisite": "Start Legends' Quest",
+      "quest": "Legends' Quest",
+      "action": "MILESTONE",
+      "detail": "Unlock access to the caves beneath the Kharazi Jungle containing death wings.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Legends%27_Quest",
+      "affectedTaskIds": [
+        "collection_log_hard_complete-the-karamja-hard-diary_001_65a5e433fd",
+        "collection_log_elite_complete-the-karamja-elite-diary_001_7b0e1adf02"
+      ],
+      "progress": {
+        "type": "VARP",
+        "id": 139,
+        "minimum": 1
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/achievementdiaries/karamja/KaramjaHard.java",
+      "progressNotes": "The diary helper explicitly accepts Legends' Quest progress >= 1 for deathwing access; do not require later quest steps."
+    },
+    {
+      "originalPrerequisite": "Start Monkey Madness 1 quest",
+      "quest": "Monkey Madness I",
+      "action": "MILESTONE",
+      "detail": "Unlock travel to Ape Atoll through Daero, Waydar, and Lumdo.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Monkey_Madness_I",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-western-provinces-medium-di_001_a0132304de"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 125,
+        "minimum": 3
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/monkeymadnessi/MonkeyMadnessI.java",
+      "progressNotes": "MM_LUMDO >= 3 records Waydar authorising Lumdo to take the player to Ape Atoll."
+    },
+    {
+      "originalPrerequisite": "Start Mourning's End Part 1 quest",
+      "quest": "Mourning's End Part I",
+      "action": "START",
+      "detail": "Start with Eluned and travel to Lletya.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Mourning%27s_End_Part_I",
+      "affectedTaskIds": [
+        "collection_log_hard_complete-the-western-provinces-hard-diar_001_2cb810be73",
+        "collection_log_elite_complete-the-western-provinces-elite-dia_001_c7575b977c"
+      ]
+    },
+    {
+      "originalPrerequisite": "Start Olaf's Quest",
+      "quest": "Olaf's Quest",
+      "action": "MILESTONE",
+      "detail": "Unlock the Brine Rat Cavern by obtaining Sven's map.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Olaf%27s_Quest",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-fremennik-medium-diary_001_b538411174",
+        "collection_log_hard_complete-the-fremennik-hard-diary_001_58dd76b2e4",
+        "collection_log_elite_complete-the-fremennik-elite-diary_001_b319f729bb"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 3534,
+        "minimum": 60
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/olafsquest/OlafsQuest.java"
+    },
+    {
+      "originalPrerequisite": "Start One Small Favour quest",
+      "quest": "One Small Favour",
+      "action": "MILESTONE",
+      "detail": "Unlock the Feldip Hills gnome glider route during the return journey.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/One_Small_Favour",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-western-provinces-medium-di_001_a0132304de"
+      ],
+      "progress": {
+        "type": "VARP",
+        "id": 416,
+        "minimum": 200
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/onesmallfavour/OneSmallFavour.java"
+    },
+    {
+      "originalPrerequisite": "Start Perilous Moons quest",
+      "quest": "Perilous Moons",
+      "action": "MILESTONE",
+      "detail": "Unlock the Ancient Prison in Neypotzli by speaking to Attala, Zuma, and Jessamine in the antechamber.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Perilous_Moons",
+      "affectedTaskIds": [
+        "collection_log_easy_get-the-sulphur-blades_001_c3c911e969"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 9819,
+        "minimum": 10
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/perilousmoon/PerilousMoon.java",
+      "progressNotes": "Stage 10 follows the antechamber conversations and directs the player into the Ancient Prison to build its camp."
+    },
+    {
+      "originalPrerequisite": "Start Ratcatchers quest",
+      "quest": "Ratcatchers",
+      "action": "MILESTONE",
+      "detail": "Unlock Port Sarim Rat Pits access by reaching The Face and Felkrash stage.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Ratcatchers",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-falador-medium-diary_001_a7f955a283",
+        "collection_log_hard_complete-the-falador-hard-diary_001_9d1acf6c8e",
+        "collection_log_elite_complete-the-falador-elite-diary_001_d26cc11977"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 1404,
+        "minimum": 105
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/ratcatchers/RatCatchers.java"
+    },
+    {
+      "originalPrerequisite": "Start Royal Trouble quest",
+      "quest": "Royal Trouble",
+      "action": "MILESTONE",
+      "detail": "Unlock the sea-snake tunnels by collecting and reading the burnt diary, then entering the crevice leading to the children.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Royal_Trouble",
+      "affectedTaskIds": [
+        "collection_log_easy_get-a-water-sapphire_e518372dca"
+      ],
+      "progress": {
+        "anyOf": [
+          {
+            "type": "VARBIT",
+            "id": 2157,
+            "minimum": 1
+          },
+          {
+            "type": "VARBIT",
+            "id": 2141,
+            "minimum": 110
+          }
+        ]
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/royaltrouble/RoyalTrouble.java",
+      "progressNotes": "ROYAL_MEDDLINGKIDS_CUTSCENE marks entry through the crevice into the snake section; ROYAL_MISC >= 110 also proves reaching it. Settlement access alone is insufficient."
+    },
+    {
+      "originalPrerequisite": "Start Sea Slug quest",
+      "quest": "Sea Slug",
+      "action": "MILESTONE",
+      "detail": "Unlock Fishing Platform travel by repairing Holgart's boat with swamp paste.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Sea_Slug",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-ardougne-medium-diary_001_9512a43fae",
+        "collection_log_hard_complete-the-ardougne-hard-diary_001_89fcc0a0d1",
+        "collection_log_elite_complete-the-ardougne-elite-diary_001_50c6d70148"
+      ],
+      "progress": {
+        "type": "VARP",
+        "id": 159,
+        "minimum": 3
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/seaslug/SeaSlug.java"
+    },
+    {
+      "originalPrerequisite": "Start Tai Bwo Wannai Trio quest",
+      "quest": "Tai Bwo Wannai Trio",
+      "action": "MILESTONE",
+      "detail": "Unlock karambwan fishing by learning from Lubufu and obtaining a karambwan vessel.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Tai_Bwo_Wannai_Trio",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-karamja-medium-diary_001_794f9669b0"
+      ],
+      "progress": {
+        "type": "VARBIT",
+        "id": 3588,
+        "minimum": 1
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/achievementdiaries/karamja/KaramjaMedium.java",
+      "progressNotes": "ATJUN_MED_KARAMBWAN proves the player has already caught a karambwan for the diary. Before that, observe Lubufu's explicit training/replacement-vessel dialogue and save positive evidence per account. Handing over bait, owning a tradeable vessel, or Tiadeche catching a fish does not prove the player trained.",
+      "observedUnlock": "KARAMBWAN_FISHING",
+      "evidenceSourceUrls": [
+        "https://oldschool.runescape.wiki/w/Transcript:Tai_Bwo_Wannai_Trio",
+        "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/taibwowannaitrio/TaiBwoWannaiTrio.java",
+        "https://oldschool.runescape.wiki/w/Karambwan_vessel"
+      ]
+    },
+    {
+      "originalPrerequisite": "Start The Giant Dwarf quest",
+      "quest": "The Giant Dwarf",
+      "action": "START",
+      "detail": "Finish the opening boat trip and dialogue to access Keldagrim.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/The_Giant_Dwarf",
+      "affectedTaskIds": [
+        "collection_log_easy_complete-the-fremennik-easy-diary_001_3d56d8facb",
+        "collection_log_medium_complete-the-fremennik-medium-diary_001_b538411174",
+        "collection_log_hard_complete-the-fremennik-hard-diary_001_58dd76b2e4",
+        "collection_log_elite_complete-the-fremennik-elite-diary_001_b319f729bb"
+      ]
+    },
+    {
+      "originalPrerequisite": "Start The Great Brain Robbery quest",
+      "quest": "The Great Brain Robbery",
+      "action": "START",
+      "detail": "Accept Brother Tranquility's opening offer to travel to Harmony Island.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/The_Great_Brain_Robbery",
+      "affectedTaskIds": [
+        "collection_log_hard_complete-the-morytania-hard-diary_001_91442fe24e",
+        "collection_log_elite_complete-the-morytania-elite-diary_001_e44398af82"
+      ]
+    },
+    {
+      "originalPrerequisite": "Start Troll Stronghold quest",
+      "quest": "Troll Stronghold",
+      "action": "MILESTONE",
+      "detail": "Unlock Troll Stronghold access by defeating Dad. Alternatively, use Ghommal's hilt 1 after completing the Easy Combat Achievements.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Troll_Stronghold",
+      "affectedTaskIds": [
+        "collection_log_easy_complete-the-fremennik-easy-diary_001_3d56d8facb",
+        "collection_log_medium_complete-the-fremennik-medium-diary_001_b538411174"
+      ],
+      "progress": {
+        "anyOf": [
+          {
+            "type": "VARP",
+            "id": 317,
+            "minimum": 20
+          },
+          {
+            "type": "VARBIT",
+            "id": 12863,
+            "minimum": 2
+          }
+        ]
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/trollstronghold/TrollStronghold.java",
+      "progressNotes": "TROLL_QUEST >= 20 follows defeating Dad. CA_TIER_STATUS_EASY = 2 confirms the alternative Easy Combat Achievement rewards route.",
+      "evidenceSourceUrls": [
+        "https://github.com/runelite/runelite/blob/master/runelite-api/src/main/java/net/runelite/api/gameval/VarbitID.java",
+        "https://github.com/RuneStar/cs2-scripts/blob/master/scripts/%5Bproc%2Cca_tier_completion_status%5D.cs2",
+        "https://github.com/RuneStar/cs2-scripts/blob/master/scripts/%5Bproc%2Cscript4815%5D.cs2"
+      ]
+    },
+    {
+      "originalPrerequisite": "Start Watchtower quest",
+      "quest": "Watchtower",
+      "action": "MILESTONE",
+      "detail": "Unlock the Skavid caves by obtaining the skavid map; bring a light source to collect cave nightshade.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Watchtower",
+      "affectedTaskIds": [
+        "collection_log_medium_complete-the-ardougne-medium-diary_001_9512a43fae"
+      ],
+      "progress": {
+        "type": "VARP",
+        "id": 212,
+        "minimum": 6
+      },
+      "progressSourceUrl": "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/helpers/quests/watchtower/Watchtower.java",
+      "progressNotes": "Stage 6 follows the city guard's riddle/death rune exchange for the skavid map."
+    }
+  ],
+  "reviewedDate": "2026-10-29",
+  "additionalCorrections": [
+    {
+      "task": "Unlock 2 monkey backpack transformations",
+      "correction": "Replaced Monkey Madness I partial completion with Monkey Madness II completion; backpack lap tracking is a post-quest unlock.",
+      "sourceUrl": "https://oldschool.runescape.wiki/w/Monkey_%28Monkey_Madness_II%29"
+    }
+  ],
+  "miniquestVerification": {
+    "method": "RuneLite Quest.getState for all five named miniquests; KR_KNIGHTWAVES_STATE >= 8 for Knight Waves Training Grounds. Unknown miniquest names remain unknown.",
+    "sources": [
+      "https://github.com/runelite/runelite/blob/master/runelite-api/src/main/java/net/runelite/api/Quest.java",
+      "https://github.com/Zoinkwiz/quest-helper/blob/master/src/main/java/com/questhelper/questinfo/QuestHelperQuest.java"
+    ]
+  }
+}

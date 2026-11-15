@@ -126,6 +126,10 @@ public final class TaskListPipeline {
         hay.addAll(keywordTokens(safe(t.getName())));
         hay.addAll(keywordTokens(safe(t.getDescription())));
         hay.addAll(keywordTokens(safe(t.getPrereqs())));
+        for (com.amtrollin.xtremetasker.models.QuestPrerequisite quest : t.getQuestPrereqs()) {
+            hay.addAll(keywordTokens(safe(quest.getQuest())));
+            hay.addAll(keywordTokens(safe(quest.getDetail())));
+        }
 
         for (String term : queryTerms) {
             boolean matched = false;

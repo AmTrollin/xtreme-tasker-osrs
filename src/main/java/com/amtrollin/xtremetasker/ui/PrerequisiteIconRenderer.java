@@ -15,7 +15,7 @@ public final class PrerequisiteIconRenderer
 {
     private static final int ICON_SIZE = 17;
     private static final int ICON_GAP = 2;
-    private static final int TEXT_GAP = 5;
+    private static final int TEXT_GAP = 2;
     private static final Map<BufferedImage, BufferedImage> SIZED_ICON_CACHE =
             Collections.synchronizedMap(new IdentityHashMap<>());
     private static final BufferedImage BULLET_ICON = createBulletIconImage();
@@ -203,7 +203,7 @@ public final class PrerequisiteIconRenderer
         {
             return null;
         }
-        if (image.getWidth() == ICON_SIZE && image.getHeight() == ICON_SIZE)
+        if (image == BULLET_ICON)
         {
             return image;
         }
@@ -214,13 +214,42 @@ public final class PrerequisiteIconRenderer
             return cached;
         }
 
+        // Sprite canvases contain different amounts of transparent padding. Normalize the
+        // visible artwork, then right-align it in the shared slot so every text gap matches.
+        int minX = image.getWidth();
+        int minY = image.getHeight();
+        int maxX = -1;
+        int maxY = -1;
+        for (int y = 0; y < image.getHeight(); y++)
+        {
+            for (int x = 0; x < image.getWidth(); x++)
+            {
+                if ((image.getRGB(x, y) >>> 24) == 0) continue;
+                minX = Math.min(minX, x);
+                minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x);
+                maxY = Math.max(maxY, y);
+            }
+        }
         BufferedImage sized = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = sized.createGraphics();
-        Object oldInterpolation = g.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g.drawImage(image, 0, 0, ICON_SIZE, ICON_SIZE, null);
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, oldInterpolation != null ? oldInterpolation : RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-        g.dispose();
+        if (maxX >= minX && maxY >= minY)
+        {
+            int visibleWidth = maxX - minX + 1;
+            int visibleHeight = maxY - minY + 1;
+            double scale = Math.min((double) ICON_SIZE / visibleWidth, (double) ICON_SIZE / visibleHeight);
+            int width = Math.max(1, (int) Math.round(visibleWidth * scale));
+            int height = Math.max(1, (int) Math.round(visibleHeight * scale));
+            int left = ICON_SIZE - width;
+            int top = (ICON_SIZE - height) / 2;
+            Graphics2D g = sized.createGraphics();
+            try
+            {
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g.drawImage(image, left, top, left + width, top + height,
+                        minX, minY, maxX + 1, maxY + 1, null);
+            }
+            finally { g.dispose(); }
+        }
 
         SIZED_ICON_CACHE.put(image, sized);
         return sized;

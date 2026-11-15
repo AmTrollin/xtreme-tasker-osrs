@@ -458,6 +458,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 return getCachedSprite(SpriteID.SKILL_TOTAL);
             case BULLET:
                 return null;
+            case MINIQUEST:
             case BARBARIAN_MINIQUEST:
             case LAIR_OF_TARN_RAZORLOR:
             case MAGE_ARENA_1:
@@ -476,7 +477,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private List<PrerequisiteStatus> getCachedPrerequisiteStatuses(XtremeTask task)
     {
-        if (task == null || task.getPrereqs() == null)
+        if (task == null)
         {
             return List.of();
         }
@@ -485,7 +486,7 @@ public class XtremeTaskerOverlay extends Overlay {
                 + "|tick=" + client.getTickCount()
                 + "|taskState=" + plugin.getTaskListRenderStateHash()
                 + "|clState=" + plugin.getCollectionLogStateVersion()
-                + "|prereqs=" + task.getPrereqs();
+                + "|prereqs=" + task.getPrereqs() + "|quests=" + task.getQuestPrereqs().hashCode();
         List<PrerequisiteStatus> cached = prerequisiteStatusCache.get(cacheKey);
         if (cached != null)
         {

@@ -85,6 +85,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Inject
     private PrerequisiteTrackerService prerequisiteTrackerService;
     @Inject
+    private QuestUnlockTracker questUnlockTracker;
+    @Inject
+    private AdditionalPrerequisiteChecks additionalPrerequisiteChecks;
+    @Inject
     private ChatMessageManager chatMessageManager;
     @Inject
     private ItemManager itemManager;
@@ -261,6 +265,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     protected void shutDown() {
         log.info("Xtreme Tasker stopped");
+        if (questUnlockTracker != null) questUnlockTracker.update(null);
+        if (additionalPrerequisiteChecks != null) additionalPrerequisiteChecks.update(null);
 
         if (collectionLogService != null)
         {
@@ -675,6 +681,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         if (gs == GameState.LOGIN_SCREEN) {
+            if (questUnlockTracker != null) questUnlockTracker.update(null);
+            if (additionalPrerequisiteChecks != null) additionalPrerequisiteChecks.update(null);
             if (activeAccountKey != null) {
                 saveStateForAccount(activeAccountKey);
                 log.debug("Saved XtremeTasker state at login screen");
@@ -2377,7 +2385,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 step.prereqs == null || step.prereqs.isEmpty() ? task.getPrereqs() : step.prereqs,
                 wikiUrl,
                 task.getVerification(),
-                task.getTip()
+                task.getTip(),
+                task.getSuggestedStats(),
+                task.getQuestPrereqs()
         );
     }
 
@@ -3057,6 +3067,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Subscribe(priority = 1000.0f)
     public void onChatMessage(ChatMessage event)
     {
+        if (additionalPrerequisiteChecks != null && client != null && client.getGameState() == GameState.LOGGED_IN)
+            additionalPrerequisiteChecks.onChatMessage(activeAccountKey, event.getType(), event.getMessage());
         // RuneLite's Loot Tracker dereferences localPlayer for these chat types.
         // During login/hop transitions the chat event can arrive first, so defang it.
         if (isLootTrackerWatchedChatType(event.getType())
@@ -3108,6 +3120,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (client.getGameState() == GameState.LOGGED_IN)
         {
             loadPendingAccountIfStable();
+            if (questUnlockTracker != null) questUnlockTracker.update(activeAccountKey);
+            if (additionalPrerequisiteChecks != null) additionalPrerequisiteChecks.update(activeAccountKey);
         }
 
         if (activeAccountKey == null)
@@ -4900,12 +4914,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public List<PrerequisiteStatus> getPrerequisiteStatuses(XtremeTask task)
     {
-        if (task == null || task.getPrereqs() == null)
-        {
-            return List.of();
-        }
-
-        return prerequisiteTrackerService.evaluate(task.getPrereqs());
+        if (task == null || prerequisiteTrackerService == null) return List.of();
+        return prerequisiteTrackerService.evaluate(task.getPrereqs(), task.getQuestPrereqs());
     }
 
     /**
@@ -4970,7 +4980,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                         safeTrim(d.prereqs),
                         safeTrim(d.wikiUrl),
                         d.verification,
-                        safeTrim(d.tip)
+                        safeTrim(d.tip),
+                        safeTrim(d.suggestedStats),
+                        d.questPrereqs
                 );
 
                 if (!seenIds.add(task.getId())) {
@@ -5059,6 +5071,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         String prereqs;
         String wikiUrl;
         String tip;
+        String suggestedStats;
+        List<com.amtrollin.xtremetasker.models.QuestPrerequisite> questPrereqs;
         TaskVerification verification;
     }
 
