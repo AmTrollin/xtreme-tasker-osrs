@@ -6,6 +6,7 @@ import javax.inject.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptPreFired;
 import java.util.function.Supplier;
 import net.runelite.api.widgets.*;
@@ -17,6 +18,11 @@ import net.runelite.http.api.item.ItemPrice;
 @Singleton
 public class CollectionLogService
 {
+    private static final int ITEM_DEFINITIONS_PER_TICK = 32;
+    private static final long ITEM_RESOLUTION_BUDGET_NANOS = 2_000_000L;
+    private java.util.function.LongSupplier nanoTime = System::nanoTime;
+    private static final Pattern POPUP_NEW_ITEM_PATTERN = Pattern.compile("^New item:\\s*(.+)$", Pattern.CASE_INSENSITIVE);
+
     private static final String ANCIENT_PAGE_ITEM_NAME = "Ancient page";
     private static final String MEDALLION_FRAGMENT_ITEM_NAME = "Medallion fragment";
 
@@ -103,6 +109,20 @@ public class CollectionLogService
     private boolean fullSyncSeen = false;
     private long lastSyncSeenAtMillis = 0L;
     private final Map<String, Integer> resolvedChatItemIdsByName = new HashMap<>();
+    private final Map<String, PendingItemResolution> pendingItemResolutions = new LinkedHashMap<>();
+
+    private static final class PendingItemResolution
+    {
+        private final String name;
+        private int[] trackedIds;
+        private int nextIndex;
+        private final Set<Integer> matches = new HashSet<>();
+
+        private PendingItemResolution(String name)
+        {
+            this.name = name;
+        }
+    }
 
     public void setCacheChangeListener(Runnable cacheChangeListener)
     {
@@ -178,7 +198,7 @@ public class CollectionLogService
             return;
         }
         String text = body.replaceAll("<[^>]+>", "").trim();
-        Matcher item = Pattern.compile("^New item:\\s*(.+)$", Pattern.CASE_INSENSITIVE).matcher(text);
+        Matcher item = POPUP_NEW_ITEM_PATTERN.matcher(text);
         if (item.matches())
         {
             String name = item.group(1).trim();
@@ -251,33 +271,67 @@ public class CollectionLogService
             return;
         }
 
-        // The price index does not cover every untradeable collection-log item.
-        // Match task item definitions first, requiring a single canonical slot.
-        Set<Integer> taskMatches = new HashSet<>();
-        if (client != null)
+        // Script callbacks must only capture text: loading item definitions here can
+        // stall rendering. Chat and popup events share one pending resolution.
+        pendingItemResolutions.putIfAbsent(cacheKey, new PendingItemResolution(itemName));
+    }
+
+    @Subscribe
+    public void onGameTick(GameTick event)
+    {
+        if (pendingItemResolutions.isEmpty())
         {
-            for (int id : trackedItemIdsSupplier.get())
-            {
-                ItemComposition definition = client.getItemDefinition(id);
-                if (definition != null && itemName.equalsIgnoreCase(definition.getName()))
-                {
-                    taskMatches.add(canonicalCollectionLogItemId(id));
-                }
-            }
-        }
-        if (taskMatches.size() == 1)
-        {
-            int id = taskMatches.iterator().next();
-            resolvedChatItemIdsByName.put(cacheKey, id);
-            storeItem(id);
-            return;
-        }
-        if (taskMatches.size() > 1)
-        {
-            log.debug("Collection log notification has ambiguous task item name '{}'", itemName);
             return;
         }
 
+        String key = pendingItemResolutions.keySet().iterator().next();
+        PendingItemResolution pending = pendingItemResolutions.get(key);
+        if (pending.trackedIds == null)
+        {
+            pending.trackedIds = trackedItemIdsSupplier.get();
+        }
+
+        long sliceStarted = nanoTime.getAsLong();
+        int budget = ITEM_DEFINITIONS_PER_TICK;
+        while (client != null && pending.nextIndex < pending.trackedIds.length && budget-- > 0)
+        {
+            int id = pending.trackedIds[pending.nextIndex++];
+            ItemComposition definition = client.getItemDefinition(id);
+            if (definition != null && pending.name.equalsIgnoreCase(definition.getName()))
+            {
+                pending.matches.add(canonicalCollectionLogItemId(id));
+            }
+            // A cold definition can be expensive. Yield after it rather than
+            // loading the remaining batch in the same tick; always make progress.
+            if (nanoTime.getAsLong() - sliceStarted >= ITEM_RESOLUTION_BUDGET_NANOS)
+            {
+                break;
+            }
+        }
+        if (client != null && pending.nextIndex < pending.trackedIds.length)
+        {
+            return;
+        }
+
+        pendingItemResolutions.remove(key);
+        if (pending.matches.size() == 1)
+        {
+            int id = pending.matches.iterator().next();
+            resolvedChatItemIdsByName.put(key, id);
+            storeItem(id);
+        }
+        else if (pending.matches.isEmpty())
+        {
+            resolvePriceIndexItem(pending.name, key);
+        }
+        else
+        {
+            log.debug("Collection log notification has ambiguous task item name '{}'", pending.name);
+        }
+    }
+
+    private void resolvePriceIndexItem(String itemName, String cacheKey)
+    {
         List<ItemPrice> results = itemManager.search(itemName);
         if (results == null || results.isEmpty())
         {
@@ -574,6 +628,7 @@ public class CollectionLogService
         cacheChangeBatchDepth = 0;
         cacheChangePending = false;
         resolvedChatItemIdsByName.clear();
+        pendingItemResolutions.clear();
         fullSyncSeen = false;
         lastSyncSeenAtMillis = 0L;
     }

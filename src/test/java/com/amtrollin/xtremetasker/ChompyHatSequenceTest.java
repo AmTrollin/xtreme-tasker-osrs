@@ -4,9 +4,6 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
-import com.amtrollin.xtremetasker.tasklist.CollectionLogSequence;
-import com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay;
-import com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementPreview;
 import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.google.gson.*;
 import java.io.InputStreamReader;
@@ -32,7 +29,6 @@ public class ChompyHatSequenceTest
                 if (verification == null || verification.getItemIds() == null) continue;
                 boolean containsHat = java.util.Arrays.stream(verification.getItemIds()).anyMatch(id -> id >= 2978 && id <= 2995);
                 if (!containsHat) continue;
-                assertEquals("Get the next 2 tiers of Chompy bird hat", data.get("name").getAsString());
                 tasks.add(new XtremeTask(data.get("id").getAsString(), data.get("name").getAsString(),
                         TaskSource.COLLECTION_LOG, TaskTier.valueOf(data.get("tier").getAsString()),
                         data.get("displayItemId").getAsInt(), null, null, data.get("prereqs").getAsString(),
@@ -50,78 +46,86 @@ public class ChompyHatSequenceTest
         return plugin;
     }
 
+    // The two-hat redesign is deferred. Keep coverage on the shipped milestones.
     @Test
-    public void taskPackReplacesOldHatsWithNineOrderedPairs() throws Exception
+    public void taskPackRetainsFiveNamedHatMilestones() throws Exception
     {
         List<XtremeTask> tasks = hats();
-        assertEquals(9, tasks.size());
-        TaskTier[] tiers = {TaskTier.EASY, TaskTier.EASY, TaskTier.EASY,
-                TaskTier.MEDIUM, TaskTier.MEDIUM, TaskTier.HARD, TaskTier.HARD, TaskTier.ELITE, TaskTier.ELITE};
+        assertEquals(5, tasks.size());
+        String[] names = {"Get the marksman hat", "Get the ogre forester hat", "Get the ogre expert hat",
+                "Upgrade to the dragon archer hat", "Upgrade to the expert dragon archer hat"};
+        TaskTier[] tiers = {TaskTier.EASY, TaskTier.MEDIUM, TaskTier.HARD, TaskTier.ELITE, TaskTier.MASTER};
+        int[] targetHats = {2983, 2986, 2990, 2993, 2995};
         for (int i = 0; i < tasks.size(); i++)
         {
             XtremeTask task = tasks.get(i);
+            assertEquals(names[i], task.getName());
             assertEquals(tiers[i], task.getTier());
-            assertEquals(Integer.valueOf((i + 1) * 2), task.getVerification().getCount());
-            assertArrayEquals(new int[] {2978 + i * 2, 2979 + i * 2}, CollectionLogSequence.stepItemIds(task));
-            assertEquals(Integer.valueOf(2979 + i * 2), task.getIconItemId());
-            assertEquals("Big Chompy Bird Hunting quest; 5 Fletching; 30 Cooking; 30 Ranged", task.getPrereqs());
-            assertEquals("https://oldschool.runescape.wiki/w/Chompy_bird_hunting", task.getWikiUrl());
+            assertEquals(Integer.valueOf(1), task.getVerification().getCount());
+            assertArrayEquals(new int[]{targetHats[i]}, task.getVerification().getItemIds());
+            assertEquals(Integer.valueOf(targetHats[i]), task.getIconItemId());
+            assertEquals("5 Fletching; 30 Cooking; 30 Ranged; Big Chompy Bird Hunting quest", task.getPrereqs());
         }
     }
 
     @Test
-    public void syncRequiresEveryPairInOrderAcrossTiers() throws Exception
+    public void syncOnlySuggestsTheSpecificHatObtained() throws Exception
     {
         List<XtremeTask> tasks = hats();
-        CollectionLogService log = new CollectionLogService();
-        XtremeTaskerPlugin plugin = plugin(tasks, log);
-        log.storeItem(2994);
-        log.storeItem(2995);
-        assertTrue("The final pair cannot bypass missing earlier steps",
-                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).isEmpty());
-
-        log = new CollectionLogService();
-        plugin = plugin(tasks, log);
-        for (int id = 2978; id <= 2995; id++)
+        for (XtremeTask task : tasks)
         {
-            log.storeItem(id);
+            CollectionLogService log = new CollectionLogService();
+            XtremeTaskerPlugin plugin = plugin(tasks, log);
+            log.storeItem(task.getVerification().getItemIds()[0]);
             List<XtremeTask> candidates = plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG);
-            int pairs = (id - 2978 + 1) / 2;
-            assertEquals("Each task needs both hats, including across tiers", pairs, candidates.size());
-            for (int i = 0; i < pairs; i++) assertEquals(tasks.get(i).getId(), candidates.get(i).getId());
+            assertEquals("A single named hat must qualify without earlier hats", 1, candidates.size());
+            assertEquals(task.getId(), candidates.get(0).getId());
         }
     }
 
     @Test
-    public void currentTaskRequiresItsOwnTwoHatsAndUsesTheirLabelAndIcon() throws Exception
+    public void currentTaskRequiresOnlyItsNamedHat() throws Exception
     {
         List<XtremeTask> tasks = hats();
-        Method decorate = XtremeTaskerPlugin.class.getDeclaredMethod("decorateCurrentSequenceTask", XtremeTask.class);
-        decorate.setAccessible(true);
         for (XtremeTask task : tasks)
         {
             CollectionLogService log = new CollectionLogService();
             XtremeTaskerPlugin plugin = plugin(tasks, log);
             plugin.setCurrentTaskForTesting(task);
-            int[] pair = CollectionLogSequence.stepItemIds(task);
-            log.storeItem(pair[1]);
-            assertFalse("The endpoint alone is insufficient", plugin.isCurrentTaskCompletionCriteriaMet());
-            log.storeItem(pair[0]);
-            assertTrue(plugin.isCurrentTaskCompletionCriteriaMet());
-            assertFalse(plugin.isTaskCompleted(task));
-            XtremeTask decorated = (XtremeTask) decorate.invoke(plugin, task);
-            assertEquals(Integer.valueOf(pair[1]), decorated.getIconItemId());
-            assertTrue(decorated.getName().contains(CollectionLogSequence.chompyHatName(pair[0]) + " & "
-                    + CollectionLogSequence.chompyHatName(pair[1])));
-            assertEquals(task.getWikiUrl(), decorated.getWikiUrl());
+            assertFalse(plugin.isCurrentTaskCompletionCriteriaMet());
+            log.storeItem(task.getVerification().getItemIds()[0]);
+            assertTrue("The named hat alone must satisfy the task", plugin.isCurrentTaskCompletionCriteriaMet());
+            assertFalse("Detection must not mark the task complete", plugin.isTaskCompleted(task));
             plugin.setCurrentTaskForTesting(task);
-            assertEquals("Already obtained pairs should retain completed-before-rolled timing",
+            assertEquals("An already obtained hat retains completed-before-rolled timing",
                     Long.valueOf(-1L), plugin.getTaskTimeTicks(task));
         }
     }
 
     @Test
-    public void rollingAnyLaterHatStepSelectsFirstUnfinishedPair() throws Exception
+    public void everyOtherHatCannotSubstituteForTheNamedHat() throws Exception
+    {
+        List<XtremeTask> tasks = hats();
+        for (XtremeTask task : tasks)
+        {
+            CollectionLogService log = new CollectionLogService();
+            XtremeTaskerPlugin plugin = plugin(tasks, log);
+            plugin.setCurrentTaskForTesting(task);
+            int target = task.getVerification().getItemIds()[0];
+            for (int id = 2978; id <= 2995; id++)
+            {
+                if (id != target) log.storeItem(id);
+            }
+            assertFalse("Seventeen other hats must not satisfy the named hat", plugin.isCurrentTaskCompletionCriteriaMet());
+            assertFalse(plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).stream()
+                    .anyMatch(candidate -> candidate.getId().equals(task.getId())));
+            log.storeItem(target);
+            assertTrue(plugin.isCurrentTaskCompletionCriteriaMet());
+        }
+    }
+
+    @Test
+    public void rollingNamedMilestoneKeepsSelectedTask() throws Exception
     {
         List<XtremeTask> tasks = hats();
         XtremeTaskerPlugin plugin = plugin(tasks, new CollectionLogService());
@@ -129,36 +133,24 @@ public class ChompyHatSequenceTest
         normalize.setAccessible(true);
         for (XtremeTask expected : tasks)
         {
-            assertEquals(expected.getId(), ((XtremeTask) normalize.invoke(plugin, tasks.get(8))).getId());
+            assertEquals(expected.getId(), ((XtremeTask) normalize.invoke(plugin, expected)).getId());
             plugin.manualCompletedTaskIdsForTesting().add(expected.getId());
         }
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    public void tierPreviewShowsAllEighteenHatImages() throws Exception
+    public void currentMilestoneRetainsItsNamedTaskInsteadOfPairDecoration() throws Exception
     {
         List<XtremeTask> tasks = hats();
         XtremeTaskerPlugin plugin = plugin(tasks, new CollectionLogService());
-        XtremeTaskerOverlay overlay = new XtremeTaskerOverlay(null, plugin, null, null);
-        Method sections = XtremeTaskerOverlay.class.getDeclaredMethod("sequenceTierSections", XtremeTask.class);
-        sections.setAccessible(true);
-        List<CollectionLogRequirementPreview.TierSection> preview =
-                (List<CollectionLogRequirementPreview.TierSection>) sections.invoke(overlay, tasks.get(0));
-        assertEquals(4, preview.size());
-        int[] sizes = {6, 4, 4, 4};
-        int expectedId = 2978;
-        for (int i = 0; i < sizes.length; i++)
+        Method decorate = XtremeTaskerPlugin.class.getDeclaredMethod("decorateCurrentSequenceTask", XtremeTask.class);
+        decorate.setAccessible(true);
+        for (XtremeTask task : tasks)
         {
-            assertEquals(sizes[i], preview.get(i).items().size());
-            for (com.amtrollin.xtremetasker.ui.tasks.models.CollectionLogRequirementItem item : preview.get(i).items())
-            {
-                assertEquals(expectedId++, item.getItemId());
-                assertTrue(item.getName().contains(CollectionLogSequence.chompyHatName(item.getItemId())));
-            }
+            XtremeTask decorated = (XtremeTask) decorate.invoke(plugin, task);
+            assertEquals(task.getName(), decorated.getName());
+            assertEquals(task.getIconItemId(), decorated.getIconItemId());
+            assertEquals(task.getWikiUrl(), decorated.getWikiUrl());
         }
-        Method summary = XtremeTaskerOverlay.class.getDeclaredMethod("fullSequencePreviewSummaryText", XtremeTask.class);
-        summary.setAccessible(true);
-        assertEquals("Next: Ogre bowman & Bowman", summary.invoke(overlay, tasks.get(0)));
     }
 }

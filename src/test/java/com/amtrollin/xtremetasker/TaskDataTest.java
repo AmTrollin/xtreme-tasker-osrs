@@ -333,6 +333,58 @@ public class TaskDataTest
         }
     }
 
+    @Test
+    public void mediumBossPetRequiresOnePetAndDisplaysOneForCurrentTask() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        CollectionLogService collectionLog = new CollectionLogService();
+        plugin.setCollectionLogServiceForTesting(collectionLog);
+        List<XtremeTask> pets = new ArrayList<>();
+        for (JsonElement element : loadTaskPack().getAsJsonArray("tasks"))
+        {
+            JsonObject data = element.getAsJsonObject();
+            if (!"Get a new boss pet".equalsIgnoreCase(data.get("name").getAsString())) continue;
+            pets.add(new XtremeTask(data.get("id").getAsString(), data.get("name").getAsString(),
+                    TaskSource.COLLECTION_LOG, TaskTier.valueOf(data.get("tier").getAsString()),
+                    null, null, null, null, null,
+                    new Gson().fromJson(data.get("verification"), TaskVerification.class), null));
+        }
+        pets.sort(java.util.Comparator.comparingInt(t -> t.getVerification().getCount()));
+        assertEquals(Arrays.asList(1, 2, 3, 4, 5), pets.stream()
+                .map(t -> t.getVerification().getCount()).collect(Collectors.toList()));
+        XtremeTask medium = pets.get(0);
+        assertEquals(TaskTier.MEDIUM, medium.getTier());
+        plugin.tasksForTesting().addAll(pets);
+        plugin.setCurrentTaskForTesting(medium);
+        assertTrue(!plugin.isCurrentTaskCompletionCriteriaMet());
+        collectionLog.storeItem(medium.getVerification().getItemIds()[0]);
+        assertTrue("One pet must satisfy the Medium task", plugin.isCurrentTaskCompletionCriteriaMet());
+        assertTrue("One pet must not qualify the Hard or Elite tasks",
+                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).stream()
+                        .noneMatch(t -> t.getTier() != TaskTier.MEDIUM));
+
+        com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay overlay =
+                new com.amtrollin.xtremetasker.ui.XtremeTaskerOverlay(null, plugin, null, null);
+        java.lang.reflect.Method sequenceMethod = overlay.getClass().getDeclaredMethod(
+                "collectionLogRequirementSequence", XtremeTask.class, int[].class);
+        sequenceMethod.setAccessible(true);
+        List<?> sequence = (List<?>) sequenceMethod.invoke(overlay, medium, medium.getVerification().getItemIds());
+        java.lang.reflect.Method thresholdsMethod = overlay.getClass().getDeclaredMethod(
+                "countedRequirementThresholds", List.class);
+        thresholdsMethod.setAccessible(true);
+        List<?> thresholds = (List<?>) thresholdsMethod.invoke(overlay, sequence);
+        assertEquals(Arrays.asList(1, 2, 3, 4, 5), thresholds);
+        java.lang.reflect.Method stateMethod = overlay.getClass().getDeclaredMethod(
+                "repeatedCollectionLogRequirementState", XtremeTask.class, List.class, List.class,
+                int[].class, int.class, boolean.class);
+        stateMethod.setAccessible(true);
+        Object state = stateMethod.invoke(overlay, medium, sequence, thresholds,
+                medium.getVerification().getItemIds(), 1, false);
+        java.lang.reflect.Field summary = state.getClass().getDeclaredField("summaryText");
+        summary.setAccessible(true);
+        assertEquals("total obtained: 1 | current task: 1/1", summary.get(state));
+    }
+
     private static JsonObject loadTaskPack()
     {
         InputStream in = TaskDataTest.class.getClassLoader().getResourceAsStream("task_data/tasks.json");

@@ -76,6 +76,13 @@ public class CollectionLogMismatchTest
         plugin.tasksForTesting().add(task);
         plugin.setCurrentTaskForTesting(task);
         assertTrue(!plugin.isCurrentTaskCompletionCriteriaMet());
+        Field clock = CollectionLogService.class.getDeclaredField("nanoTime");
+        clock.setAccessible(true);
+        clock.set(collectionLog, (java.util.function.LongSupplier) () -> 0L);
+        java.util.concurrent.atomic.AtomicInteger definitionReads = new java.util.concurrent.atomic.AtomicInteger();
+        int[] trackedIds = java.util.stream.IntStream.rangeClosed(1, 65).toArray();
+        trackedIds[64] = 10878;
+        collectionLog.setTrackedItemIdsSupplier(() -> trackedIds);
         String[] notificationTitle = {"Combat task completed"};
         net.runelite.api.Client client = (net.runelite.api.Client) java.lang.reflect.Proxy.newProxyInstance(
                 net.runelite.api.Client.class.getClassLoader(), new Class<?>[] {net.runelite.api.Client.class},
@@ -87,10 +94,12 @@ public class CollectionLogMismatchTest
                     }
                     if (method.getName().equals("getItemDefinition"))
                     {
+                        definitionReads.incrementAndGet();
+                        String name = ((Integer) args[0]) == 10878 ? "Green satchel" : "Other item";
                         return java.lang.reflect.Proxy.newProxyInstance(net.runelite.api.ItemComposition.class.getClassLoader(),
                                 new Class<?>[] {net.runelite.api.ItemComposition.class},
                                 (item, itemMethod, itemArgs) -> {
-                                    if (itemMethod.getName().equals("getName")) return "Green satchel";
+                                    if (itemMethod.getName().equals("getName")) return name;
                                     throw new AssertionError(itemMethod.getName());
                                 });
                     }
@@ -104,6 +113,21 @@ public class CollectionLogMismatchTest
         notificationTitle[0] = "<col=ffffff>Collection log</col>";
         collectionLog.onScriptPreFired(new net.runelite.api.events.ScriptPreFired(net.runelite.api.ScriptID.NOTIFICATION_START));
         collectionLog.onScriptPreFired(new net.runelite.api.events.ScriptPreFired(net.runelite.api.ScriptID.NOTIFICATION_DELAY));
+        assertEquals("Popup callbacks must not load item definitions", 0, definitionReads.get());
+        net.runelite.api.events.ChatMessage duplicate = new net.runelite.api.events.ChatMessage();
+        duplicate.setType(net.runelite.api.ChatMessageType.GAMEMESSAGE);
+        duplicate.setMessage("New collection log item: Green satchel.");
+        collectionLog.onChatMessage(duplicate);
+        assertEquals("Chat callbacks must not load item definitions", 0, definitionReads.get());
+        collectionLog.onGameTick(new net.runelite.api.events.GameTick());
+        assertEquals(32, definitionReads.get());
+        collectionLog.onGameTick(new net.runelite.api.events.GameTick());
+        assertEquals(64, definitionReads.get());
+        assertTrue(!plugin.isCurrentTaskCompletionCriteriaMet());
+        collectionLog.onGameTick(new net.runelite.api.events.GameTick());
+        assertEquals(65, definitionReads.get());
+        collectionLog.onGameTick(new net.runelite.api.events.GameTick());
+        assertEquals("Duplicate popup/chat events must share one scan", 65, definitionReads.get());
         assertTrue(plugin.isCurrentTaskCompletionCriteriaMet());
         assertTrue(!plugin.isTaskCompleted(task));
         // Receiving chat as well as the popup must not create a second unique.
@@ -116,7 +140,16 @@ public class CollectionLogMismatchTest
         field.set(chatOnly, client);
         plugin.setCollectionLogServiceForTesting(chatOnly);
         chatOnly.onChatMessage(chat);
+        chatOnly.onGameTick(new net.runelite.api.events.GameTick());
         assertTrue("Chat alone must resolve an untradeable task item", chatOnly.isItemObtained(10878));
+
+        chatOnly.resetCachedItemIds();
+        chatOnly.onChatMessage(chat);
+        chatOnly.resetCachedItemIds();
+        int readsBeforeResetTick = definitionReads.get();
+        chatOnly.onGameTick(new net.runelite.api.events.GameTick());
+        assertEquals("Reset must discard pending resolutions", readsBeforeResetTick, definitionReads.get());
+        assertTrue(!chatOnly.isItemObtained(10878));
     }
 
     @Test
