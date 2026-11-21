@@ -8,7 +8,9 @@ import com.amtrollin.xtremetasker.tasklist.CollectionLogSequence;
 import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import com.google.gson.*;
 import java.io.InputStreamReader;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
@@ -46,55 +48,47 @@ public class ChompyHatSequenceTest
         return plugin;
     }
 
+    // The two-hat redesign is deferred. Keep coverage on the shipped milestones.
     @Test
-    public void taskPackRetainsFiveNamedMilestonesWhilePairChangesAreDeferred() throws Exception
+    public void taskPackRetainsFiveNamedHatMilestones() throws Exception
     {
         List<XtremeTask> tasks = hats();
         assertEquals(5, tasks.size());
         String[] names = {"Get the marksman hat", "Get the ogre forester hat", "Get the ogre expert hat",
                 "Upgrade to the dragon archer hat", "Upgrade to the expert dragon archer hat"};
         TaskTier[] tiers = {TaskTier.EASY, TaskTier.MEDIUM, TaskTier.HARD, TaskTier.ELITE, TaskTier.MASTER};
-        int[] counts = {6, 9, 13, 16, 18};
+        int[] targetHats = {2983, 2986, 2990, 2993, 2995};
         for (int i = 0; i < tasks.size(); i++)
         {
             XtremeTask task = tasks.get(i);
             assertEquals(names[i], task.getName());
             assertEquals(tiers[i], task.getTier());
-            assertEquals(Integer.valueOf(counts[i]), task.getVerification().getCount());
-            assertEquals(18, task.getVerification().getItemIds().length);
             assertFalse(CollectionLogSequence.isChompyHatPair(task));
-            assertArrayEquals(new int[] {2978 + counts[i] - 1}, CollectionLogSequence.stepItemIds(task));
+            assertArrayEquals(new int[]{targetHats[i]}, CollectionLogSequence.stepItemIds(task));
+            assertEquals(Integer.valueOf(1), task.getVerification().getCount());
+            assertArrayEquals(new int[]{targetHats[i]}, task.getVerification().getItemIds());
+            assertEquals(Integer.valueOf(targetHats[i]), task.getIconItemId());
+            assertEquals("5 Fletching; 30 Cooking; 30 Ranged; Big Chompy Bird Hunting quest", task.getPrereqs());
         }
     }
 
     @Test
-    public void syncUsesExistingCollectionLogCountThresholds() throws Exception
+    public void syncOnlySuggestsTheSpecificHatObtained() throws Exception
     {
         List<XtremeTask> tasks = hats();
-        CollectionLogService log = new CollectionLogService();
-        XtremeTaskerPlugin plugin = plugin(tasks, log);
-        log.storeItem(2995);
-        assertTrue("A late hat alone must not satisfy a counted milestone",
-                plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).isEmpty());
-
-        log = new CollectionLogService();
-        plugin = plugin(tasks, log);
-        for (int id = 2978; id <= 2995; id++)
+        for (XtremeTask task : tasks)
         {
-            log.storeItem(id);
-            int obtained = id - 2978 + 1;
-            List<XtremeTask> expected = new ArrayList<>();
-            for (XtremeTask task : tasks)
-                if (task.getVerification().getCount() <= obtained) expected.add(task);
+            CollectionLogService log = new CollectionLogService();
+            XtremeTaskerPlugin plugin = plugin(tasks, log);
+            log.storeItem(task.getVerification().getItemIds()[0]);
             List<XtremeTask> candidates = plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG);
-            assertEquals("Sync must preserve existing milestone thresholds", expected.size(), candidates.size());
-            for (int i = 0; i < expected.size(); i++)
-                assertEquals(expected.get(i).getId(), candidates.get(i).getId());
+            assertEquals("A single named hat must qualify without earlier hats", 1, candidates.size());
+            assertEquals(task.getId(), candidates.get(0).getId());
         }
     }
 
     @Test
-    public void currentMilestoneRequiresItsConfiguredCountWithoutAutoCompleting() throws Exception
+    public void currentTaskRequiresOnlyItsNamedHat() throws Exception
     {
         List<XtremeTask> tasks = hats();
         for (XtremeTask task : tasks)
@@ -102,13 +96,65 @@ public class ChompyHatSequenceTest
             CollectionLogService log = new CollectionLogService();
             XtremeTaskerPlugin plugin = plugin(tasks, log);
             plugin.setCurrentTaskForTesting(task);
-            int count = task.getVerification().getCount();
-            int[] itemIds = task.getVerification().getItemIds();
-            for (int i = 0; i < count - 1; i++) log.storeItem(itemIds[i]);
             assertFalse(plugin.isCurrentTaskCompletionCriteriaMet());
-            log.storeItem(itemIds[count - 1]);
+            log.storeItem(task.getVerification().getItemIds()[0]);
+            assertTrue("The named hat alone must satisfy the task", plugin.isCurrentTaskCompletionCriteriaMet());
+            assertFalse("Detection must not mark the task complete", plugin.isTaskCompleted(task));
+            plugin.setCurrentTaskForTesting(task);
+            assertEquals("An already obtained hat retains completed-before-rolled timing",
+                    Long.valueOf(-1L), plugin.getTaskTimeTicks(task));
+        }
+    }
+
+    @Test
+    public void everyOtherHatCannotSubstituteForTheNamedHat() throws Exception
+    {
+        List<XtremeTask> tasks = hats();
+        for (XtremeTask task : tasks)
+        {
+            CollectionLogService log = new CollectionLogService();
+            XtremeTaskerPlugin plugin = plugin(tasks, log);
+            plugin.setCurrentTaskForTesting(task);
+            int target = task.getVerification().getItemIds()[0];
+            for (int id = 2978; id <= 2995; id++)
+            {
+                if (id != target) log.storeItem(id);
+            }
+            assertFalse("Seventeen other hats must not satisfy the named hat", plugin.isCurrentTaskCompletionCriteriaMet());
+            assertFalse(plugin.getSyncCompletionCandidateTasks(TaskSource.COLLECTION_LOG).stream()
+                    .anyMatch(candidate -> candidate.getId().equals(task.getId())));
+            log.storeItem(target);
             assertTrue(plugin.isCurrentTaskCompletionCriteriaMet());
-            assertFalse("Meeting the requirement must not mark the task complete", plugin.isTaskCompleted(task));
+        }
+    }
+
+    @Test
+    public void rollingNamedMilestoneKeepsSelectedTask() throws Exception
+    {
+        List<XtremeTask> tasks = hats();
+        XtremeTaskerPlugin plugin = plugin(tasks, new CollectionLogService());
+        Method normalize = XtremeTaskerPlugin.class.getDeclaredMethod("normalizeRolledTask", XtremeTask.class);
+        normalize.setAccessible(true);
+        for (XtremeTask expected : tasks)
+        {
+            assertEquals(expected.getId(), ((XtremeTask) normalize.invoke(plugin, expected)).getId());
+            plugin.manualCompletedTaskIdsForTesting().add(expected.getId());
+        }
+    }
+
+    @Test
+    public void currentMilestoneRetainsItsNamedTaskInsteadOfPairDecoration() throws Exception
+    {
+        List<XtremeTask> tasks = hats();
+        XtremeTaskerPlugin plugin = plugin(tasks, new CollectionLogService());
+        Method decorate = XtremeTaskerPlugin.class.getDeclaredMethod("decorateCurrentSequenceTask", XtremeTask.class);
+        decorate.setAccessible(true);
+        for (XtremeTask task : tasks)
+        {
+            XtremeTask decorated = (XtremeTask) decorate.invoke(plugin, task);
+            assertEquals(task.getName(), decorated.getName());
+            assertEquals(task.getIconItemId(), decorated.getIconItemId());
+            assertEquals(task.getWikiUrl(), decorated.getWikiUrl());
         }
     }
 }
