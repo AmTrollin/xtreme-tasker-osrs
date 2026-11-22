@@ -1,5 +1,7 @@
 package com.amtrollin.xtremetasker.ui.style;
 
+import com.amtrollin.xtremetasker.enums.TaskTier;
+
 import java.awt.Color;
 
 /**
@@ -53,6 +55,21 @@ public final class UiPalette
     public static Color withAlpha(Color color, int alpha)
     {
         return new Color(color.getRed(), color.getGreen(), color.getBlue(), Math.max(0, Math.min(255, alpha)));
+    }
+
+    public static Color tierColor(TaskTier tier)
+    {
+        if (tier == null) return new Color(180, 180, 180, 210);
+        switch (tier)
+        {
+            case EASY: return new Color(100, 220, 80, 230);
+            case MEDIUM: return new Color(230, 150, 40, 230);
+            case HARD: return new Color(220, 70, 60, 230);
+            case ELITE: return new Color(160, 35, 35, 230);
+            case MASTER:
+            case GRANDMASTER: return new Color(170, 80, 210, 230);
+            default: return new Color(180, 180, 180, 210);
+        }
     }
 
     private UiPalette() {}

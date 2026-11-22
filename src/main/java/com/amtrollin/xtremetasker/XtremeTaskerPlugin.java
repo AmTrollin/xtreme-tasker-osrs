@@ -96,6 +96,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private Gson gson;
     private final Random random = new Random();
 
+    private final Set<String> ignoredMismatchTaskIds = new HashSet<>();
     private final Set<String> manualCompletedTaskIds = new HashSet<>();
     private final Set<String> syncedCompletedTaskIds = new HashSet<>();
     private final Set<String> retiredTaskIds = new HashSet<>();
@@ -290,6 +291,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         currentTaskCollectionLogBaselineCount = null;
         currentTaskCompletionCriteriaMet = false;
 
+        ignoredMismatchTaskIds.clear();
         manualCompletedTaskIds.clear();
         syncedCompletedTaskIds.clear();
         retiredTaskIds.clear();
@@ -1201,6 +1203,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setSavedAtLocalTime(formatSaveTime(savedAt));
         state.setPluginVersion(getPluginVersionSafe());
         state.setAccountDisplayName(getAccountDisplayNameSafe());
+        state.setIgnoredMismatchTaskIds(new HashSet<>(ignoredMismatchTaskIds));
         state.setManualCompletedTaskIds(new HashSet<>(manualCompletedTaskIds));
         state.setSyncedCompletedTaskIds(new HashSet<>(syncedCompletedTaskIds));
         state.setRetiredTaskIds(new HashSet<>(retiredTaskIds));
@@ -1362,6 +1365,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 || !Objects.equals(safeTrim(previous.getAccountDisplayName()), safeTrim(next.getAccountDisplayName()))
                 || previous.getLastSeenPackVersion() != next.getLastSeenPackVersion()
                 || previous.getLastKnownTaskCount() != next.getLastKnownTaskCount()
+                || !normalizedSet(previous.getIgnoredMismatchTaskIds()).equals(normalizedSet(next.getIgnoredMismatchTaskIds()))
                 || !normalizedSet(previous.getManualCompletedTaskIds()).equals(normalizedSet(next.getManualCompletedTaskIds()))
                 || !normalizedSet(previous.getSyncedCompletedTaskIds()).equals(normalizedSet(next.getSyncedCompletedTaskIds()))
                 || !normalizedSet(previous.getRetiredTaskIds()).equals(normalizedSet(next.getRetiredTaskIds()))
@@ -1525,6 +1529,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void applyPersistedState(PersistedState state) {
         clearLoadedState();
+        if (state.getIgnoredMismatchTaskIds() != null) ignoredMismatchTaskIds.addAll(state.getIgnoredMismatchTaskIds());
 
         if (state.getManualCompletedTaskIds() != null) {
             manualCompletedTaskIds.addAll(state.getManualCompletedTaskIds());
@@ -1614,6 +1619,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private void clearLoadedState() {
+        ignoredMismatchTaskIds.clear();
         manualCompletedTaskIds.clear();
         syncedCompletedTaskIds.clear();
         retiredTaskIds.clear();
@@ -4580,6 +4586,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public boolean isTaskSyncMismatch(XtremeTask task)
     {
+        if (isTaskMismatchIgnored(task)) return false;
         TaskSource source = syncMismatchSourceForTask(task);
         if (task == null || task.getId() == null || source == null)
         {
@@ -4603,6 +4610,21 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return task != null
                 && isCollectionLogSyncSource(task.getSource())
                 && isTaskSyncMismatch(task);
+    }
+
+    @Override
+    public boolean isTaskMismatchIgnored(XtremeTask task)
+    {
+        return task != null && task.getId() != null && ignoredMismatchTaskIds.contains(task.getId());
+    }
+
+    @Override
+    public void ignoreTaskMismatchAndPersist(XtremeTask task)
+    {
+        if (task == null || task.getId() == null) return;
+        ignoredMismatchTaskIds.addAll(taskAndGroupIds(task));
+        ignoredMismatchTaskIds.add(task.getId());
+        markDirtyAndPersist();
     }
 
     @Override

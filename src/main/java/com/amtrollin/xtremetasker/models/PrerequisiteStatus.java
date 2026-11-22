@@ -10,6 +10,7 @@ public class PrerequisiteStatus
     private final String text;
     private final boolean completed;
     private final String detail;
+    private final String skillLevelHint;
     private final boolean statusKnown;
     private final List<CheckSpan> checkSpans;
     private final List<Skill> skillIcons;
@@ -43,6 +44,14 @@ public class PrerequisiteStatus
     public PrerequisiteStatus(String text, boolean completed, List<CheckSpan> checkSpans,
                               List<Skill> skillIcons, List<MarkerIcon> markerIcons, String detail, boolean statusKnown)
     {
+        this(text, completed, checkSpans, skillIcons, markerIcons, detail, statusKnown, "");
+    }
+
+    public PrerequisiteStatus(String text, boolean completed, List<CheckSpan> checkSpans,
+                              List<Skill> skillIcons, List<MarkerIcon> markerIcons, String detail,
+                              boolean statusKnown, String skillLevelHint)
+    {
+        this.skillLevelHint = skillLevelHint == null ? "" : skillLevelHint;
         this.detail = detail;
         this.statusKnown = statusKnown;
         this.text = text;

@@ -119,6 +119,10 @@ public interface TaskerService
 
     boolean isCollectionLogTaskSyncMismatch(XtremeTask task);
 
+    default boolean isTaskMismatchIgnored(XtremeTask task) { return false; }
+
+    default void ignoreTaskMismatchAndPersist(XtremeTask task) { dismissTaskSyncMismatchAndPersist(task); }
+
     void dismissTaskSyncMismatchAndPersist(XtremeTask task);
 
     void dismissCollectionLogTaskSyncMismatchAndPersist(XtremeTask task);

@@ -12,6 +12,7 @@ public class PersistedState {
     private String pluginVersion;
     private String accountKey;
     private String accountDisplayName;
+    private Set<String> ignoredMismatchTaskIds = new HashSet<>();
     private Set<String> manualCompletedTaskIds = new HashSet<>();
     private Set<String> syncedCompletedTaskIds = new HashSet<>();
     /** Completed task ids no longer present in the bundled task pack. Preserved for history/recovery. */

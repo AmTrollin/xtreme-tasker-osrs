@@ -34,7 +34,7 @@ public class PrerequisiteIconRendererTest
                         if ((canvas.getRGB(x, y) >>> 24) != 0) lastVisiblePixel = Math.max(lastVisiblePixel, x);
                 assertTrue(lastVisiblePixel >= 5);
                 int textStart = PrerequisiteIconRenderer.textX(g.getFontMetrics(), 5, sprite);
-                assertEquals("Both sprites must leave a two-pixel visible gap", 2, textStart - lastVisiblePixel - 1);
+                assertEquals("Both sprites must leave a six-pixel visible gap", 6, textStart - lastVisiblePixel - 1);
             }
             finally { g.dispose(); }
         }

@@ -1,5 +1,7 @@
 package com.amtrollin.xtremetasker.ui.style;
 
+import com.amtrollin.xtremetasker.enums.TaskTier;
+
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
@@ -8,6 +10,33 @@ import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 
 public final class UiDraw
 {
+    private static final java.util.Map<BufferedImage, java.util.Map<TaskTier, BufferedImage>>
+            TIER_ICON_CACHE = new java.util.WeakHashMap<>();
+
+    public static synchronized BufferedImage tierIcon(BufferedImage source, TaskTier tier)
+    {
+        if (source == null || tier == null) return source;
+        java.util.Map<TaskTier, BufferedImage> variants =
+                TIER_ICON_CACHE.computeIfAbsent(source, key -> new java.util.EnumMap<>(TaskTier.class));
+        return variants.computeIfAbsent(tier, key -> {
+            Color color = UiPalette.tierColor(key);
+            BufferedImage result = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < source.getHeight(); y++)
+            {
+                for (int x = 0; x < source.getWidth(); x++)
+                {
+                    int pixel = source.getRGB(x, y);
+                    int brightness = Math.max((pixel >> 16) & 255, Math.max((pixel >> 8) & 255, pixel & 255));
+                    int red = color.getRed() * brightness / 255;
+                    int green = color.getGreen() * brightness / 255;
+                    int blue = color.getBlue() * brightness / 255;
+                    result.setRGB(x, y, (pixel & 0xff000000) | (red << 16) | (green << 8) | blue);
+                }
+            }
+            return result;
+        });
+    }
+
     private UiDraw()
     {
     }

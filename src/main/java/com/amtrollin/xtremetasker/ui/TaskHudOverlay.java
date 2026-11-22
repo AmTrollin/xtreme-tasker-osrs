@@ -1,5 +1,7 @@
 package com.amtrollin.xtremetasker.ui;
 
+import com.amtrollin.xtremetasker.ui.style.UiDraw;
+
 import com.amtrollin.xtremetasker.XtremeTaskerPlugin;
 import com.amtrollin.xtremetasker.enums.*;
 import com.amtrollin.xtremetasker.models.XtremeTask;
@@ -162,7 +164,7 @@ public class TaskHudOverlay extends Overlay {
         if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT && task.getTier() != null) {
             Integer spriteId = CA_TIER_SPRITE_IDS.get(task.getTier());
             if (spriteId != null) {
-                return spriteManager.getSprite(spriteId, 0);
+                return UiDraw.tierIcon(spriteManager.getSprite(spriteId, 0), task.getTier());
             }
         }
         return null;

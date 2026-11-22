@@ -126,6 +126,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
         // DETAILS POPUP click handling (highest priority)
         // ------------------------------------------------------------
         if (a.isTaskDetailsOpen() && button == MouseEvent.BUTTON1) {
+            if (a.taskDetailsMismatchDialogContains(p)) {
+                if (a.taskDetailsMismatchIgnoreContains(p)) a.ignoreTaskDetailsMismatch();
+                e.consume();
+                return e;
+            }
             boolean popupHasSize = a.taskDetailsBounds().width > 0 && a.taskDetailsBounds().height > 0;
             boolean insidePopup = popupHasSize && a.taskDetailsBounds().contains(p);
 
@@ -147,6 +152,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
                         e.consume();
                         return e;
                     }
+                }
+
+                if (!a.isTaskDetailsWikiMenuOpen() && a.toggleTaskDetailsSection(p)) {
+                    e.consume();
+                    return e;
                 }
 
                 if (a.taskDetailsScrollbarRailBounds().width > 0) {
@@ -1001,6 +1011,18 @@ public final class OverlayMouseHandler extends MouseAdapter {
 
         TaskControlsLayout cl = a.controlsLayout();
 
+        boolean detailsHovering = (a.isTaskDetailsOpen() && (
+                        a.taskDetailsMismatchIgnoreContains(p)
+                        || a.taskDetailsCloseBounds().contains(p)
+                        || a.taskDetailsWikiBounds().contains(p)
+                        || (a.isTaskDetailsWikiMenuOpen() && a.taskDetailsWikiMenuBounds().contains(p))
+                        || a.taskDetailsMarkIncompleteBounds().contains(p)
+                        || a.taskDetailsSectionContains(p)
+                        || taskDetailsInstanceRemoveContains(p)
+                        || a.taskDetailsScrollbarThumbBounds().contains(p)
+                        || a.taskDetailsScrollbarRailBounds().contains(p)
+                ));
+
         boolean hovering =
                 // UI chrome
                 a.panelCloseBounds().contains(p)
@@ -1009,15 +1031,7 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 || a.rulesTabBounds().contains(p)
                 || a.iconBounds().contains(p)
                 // task details popup
-                || (a.isTaskDetailsOpen() && (
-                        a.taskDetailsCloseBounds().contains(p)
-                        || a.taskDetailsWikiBounds().contains(p)
-                        || (a.isTaskDetailsWikiMenuOpen() && a.taskDetailsWikiMenuBounds().contains(p))
-                        || a.taskDetailsMarkIncompleteBounds().contains(p)
-                        || taskDetailsInstanceRemoveContains(p)
-                        || a.taskDetailsScrollbarThumbBounds().contains(p)
-                        || a.taskDetailsScrollbarRailBounds().contains(p)
-                ))
+                || detailsHovering
                 // RULES tab
                 || (a.activeTab() == XtremeTaskerOverlay.MainTab.RULES && (
                         a.rulesLayout().subTabRulesBounds.contains(p)
@@ -1070,6 +1084,11 @@ public final class OverlayMouseHandler extends MouseAdapter {
                 ));
 
 
+        if (a.isTaskDetailsOpen() && (a.taskDetailsBounds().contains(p)
+                || a.taskDetailsMismatchDialogContains(p)))
+        {
+            hovering = detailsHovering;
+        }
         updateHandCursor(hovering);
 
         return e;

@@ -428,9 +428,12 @@ public final class CurrentTabRenderer
             return;
         }
 
-        String wikiLabel = "Wiki";
-        int wikiW = Math.max(44, fm.stringWidth(wikiLabel) + 18);
-        int wikiH = rowHeight + 6;
+        Font originalFont = g.getFont();
+        g.setFont(FontManager.getRunescapeSmallFont());
+        fm = g.getFontMetrics();
+        String wikiLabel = "Open wiki";
+        int wikiW = Math.max(fm.stringWidth(wikiLabel), fm.stringWidth("Close")) + 20;
+        int wikiH = rowHeight + 4;
         int wikiX = rightX + DETAILS_INSET_X;
         layout.wikiButtonBounds.setBounds(wikiX, yTop, wikiW, wikiH);
         drawBevelBox(g, layout.wikiButtonBounds, new Color(30, 25, 18, 220));
@@ -440,6 +443,7 @@ public final class CurrentTabRenderer
         g.drawString(wikiLabel,
                 layout.wikiButtonBounds.x + (layout.wikiButtonBounds.width - textW) / 2,
                 centeredTextBaseline(layout.wikiButtonBounds, fm));
+        g.setFont(originalFont);
     }
 
     private void drawEmptyCurrentIdentityColumn(
@@ -637,8 +641,20 @@ public final class CurrentTabRenderer
         int iconSize = 58;
         if (taskIcon != null)
         {
-            int iconX = x + Math.max(0, (innerW - iconSize) / 2);
-            g.drawImage(taskIcon, iconX, y, iconSize, iconSize, null);
+            int drawSize = Math.min(innerW, 80);
+            int iconX = x + Math.max(0, (innerW - drawSize) / 2);
+            int iconY = y - (drawSize - iconSize) / 2;
+            Graphics2D iconGraphics = (Graphics2D) g.create();
+            try
+            {
+                iconGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                iconGraphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                iconGraphics.drawImage(taskIcon, iconX, iconY, drawSize, drawSize, null);
+            }
+            finally
+            {
+                iconGraphics.dispose();
+            }
             y += iconSize + Math.max(10, card.height / 30);
         }
 
@@ -750,7 +766,7 @@ public final class CurrentTabRenderer
             totalPx += rowHeight;
         }
 
-        if (hasTip) totalPx += 8 + prerequisiteSectionRenderer.measureTip(tip, fm, maxW, Integer.MAX_VALUE);
+        if (hasTip) totalPx += 14 + prerequisiteSectionRenderer.measureTip(tip, fm, maxW, Integer.MAX_VALUE);
         return totalPx + fm.getAscent() + 8;
     }
 
@@ -830,7 +846,7 @@ public final class CurrentTabRenderer
         y = prerequisiteSectionRenderer.renderSuggestedStats(g, fm, x, y, maxW, current.getSuggestedStats(), prerequisiteSkillImageProvider);
         if (hasTip)
         {
-            y += 8;
+            y += 14;
             y = prerequisiteSectionRenderer.drawTip(g, fm, tip, x, y, maxW, Integer.MAX_VALUE);
         }
         y += 8;
@@ -1055,7 +1071,7 @@ public final class CurrentTabRenderer
         }
         if (tierText != null)
         {
-            TaskRowsRenderer.drawSourceBadge(g, x, yTop, tierText, edgeDark, edgeLight, uiGold, uiText);
+            TaskRowsRenderer.drawSourceBadge(g, x, yTop, tierText, edgeDark, edgeLight, uiGold, UiPalette.tierColor(tier));
         }
     }
 

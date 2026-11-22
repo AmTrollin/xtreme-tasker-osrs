@@ -15,7 +15,7 @@ public final class PrerequisiteIconRenderer
 {
     private static final int ICON_SIZE = 17;
     private static final int ICON_GAP = 2;
-    private static final int TEXT_GAP = 2;
+    private static final int TEXT_GAP = 6;
     private static final Map<BufferedImage, BufferedImage> SIZED_ICON_CACHE =
             Collections.synchronizedMap(new IdentityHashMap<>());
     private static final BufferedImage BULLET_ICON = createBulletIconImage();

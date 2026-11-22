@@ -10,6 +10,7 @@ import com.amtrollin.xtremetasker.ui.tasklist.*;
 import com.amtrollin.xtremetasker.ui.tasks.models.*;
 import com.amtrollin.xtremetasker.ui.text.*;
 import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
+import com.amtrollin.xtremetasker.ui.widgets.DisclosureHeader;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.time.*;
@@ -58,6 +59,58 @@ public final class TaskDetailsPopup
 
     private int totalContentRows = 0;
     private boolean wikiMenuOpen = false;
+    private boolean requirementsExpanded;
+    private boolean historyExpanded;
+    private final Rectangle requirementsToggleBounds = new Rectangle();
+    private final Rectangle historyToggleBounds = new Rectangle();
+
+    private final Rectangle mismatchDialogBounds = new Rectangle();
+    private final Rectangle mismatchIgnoreBounds = new Rectangle();
+    private boolean mismatchDialogOpen;
+    private java.util.function.Predicate<XtremeTask> mismatchIgnored = t -> false;
+    private java.util.function.Consumer<XtremeTask> ignoreMismatch = t -> {};
+
+    public void configureMismatchActions(java.util.function.Predicate<XtremeTask> ignored,
+            java.util.function.Consumer<XtremeTask> ignore)
+    {
+        mismatchIgnored = ignored;
+        ignoreMismatch = ignore;
+    }
+
+    public boolean mismatchDialogContains(Point point) { return mismatchDialogBounds.contains(point); }
+    public boolean mismatchIgnoreContains(Point point) { return mismatchIgnoreBounds.contains(point); }
+    public void ignoreMismatch()
+    {
+        if (task != null) ignoreMismatch.accept(task);
+        mismatchDialogOpen = false;
+        mismatchDialogBounds.setBounds(0, 0, 0, 0);
+        mismatchIgnoreBounds.setBounds(0, 0, 0, 0);
+    }
+
+    public boolean toggleSectionAt(java.awt.Point point)
+    {
+        if (!viewportBounds.contains(point) || wikiMenuOpen) return false;
+        if (requirementsToggleBounds.contains(point))
+        {
+            requirementsExpanded = !requirementsExpanded;
+            requirementsToggleBounds.setBounds(0, 0, 0, 0);
+            return true;
+        }
+        if (historyToggleBounds.contains(point))
+        {
+            historyExpanded = !historyExpanded;
+            historyToggleBounds.setBounds(0, 0, 0, 0);
+            instanceRemoveBounds.clear();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean sectionToggleContains(java.awt.Point point)
+    {
+        return viewportBounds.contains(point)
+                && (requirementsToggleBounds.contains(point) || historyToggleBounds.contains(point));
+    }
 
     public TaskDetailsPopup(UiPalette palette, TaskListScrollController scroll)
     {
@@ -92,6 +145,13 @@ public final class TaskDetailsPopup
         }
 
         this.task = task;
+        mismatchDialogOpen = false;
+        mismatchDialogBounds.setBounds(0, 0, 0, 0);
+        mismatchIgnoreBounds.setBounds(0, 0, 0, 0);
+        requirementsExpanded = false;
+        historyExpanded = false;
+        requirementsToggleBounds.setBounds(0, 0, 0, 0);
+        historyToggleBounds.setBounds(0, 0, 0, 0);
         scroll.reset();
         closeWikiMenu();
     }
@@ -99,6 +159,9 @@ public final class TaskDetailsPopup
     public void close()
     {
         task = null;
+        mismatchDialogOpen = false;
+        mismatchDialogBounds.setBounds(0, 0, 0, 0);
+        mismatchIgnoreBounds.setBounds(0, 0, 0, 0);
         scroll.reset();
         bounds.setBounds(0, 0, 0, 0);
         viewportBounds.setBounds(0, 0, 0, 0);
@@ -112,6 +175,8 @@ public final class TaskDetailsPopup
         instanceRemoveBounds.clear();
         wikiLinks.clear();
         wikiLinkBounds.clear();
+        requirementsToggleBounds.setBounds(0, 0, 0, 0);
+        historyToggleBounds.setBounds(0, 0, 0, 0);
         totalContentRows = 0;
         wikiMenuOpen = false;
     }
@@ -237,11 +302,16 @@ public final class TaskDetailsPopup
         g.setColor(new Color(0, 0, 0, 120));
         g.fillRect(panelBounds.x, panelBounds.y, panelBounds.width, panelBounds.height);
 
+        boolean compactDetails = task.getSource() == TaskSource.COLLECTION_LOG;
+        requirementsToggleBounds.setBounds(0, 0, 0, 0);
+        historyToggleBounds.setBounds(0, 0, 0, 0);
         String title = safe(task.getName());
         boolean done = isCompleted.apply(task);
         TaskGroupProgress groupProgress = groupProgressProvider == null ? null : groupProgressProvider.apply(task);
         boolean grouped = groupProgress != null && groupProgress.isGrouped();
-        boolean headerComplete = grouped ? groupProgress.isComplete() : done;
+        boolean syncMismatch = !mismatchIgnored.test(task) && syncMismatchProvider != null
+                && Boolean.TRUE.equals(syncMismatchProvider.apply(task));
+        boolean headerComplete = mismatchIgnored.test(task) || (grouped ? groupProgress.isComplete() : done);
         refreshWikiLinks(task, wikiLinksProvider);
         final int pad = 12;
         final int closeW = 28;
@@ -249,21 +319,17 @@ public final class TaskDetailsPopup
         final String wikiCloseText = "Close";
         final String wikiText = wikiMenuOpen ? wikiCloseText : wikiOpenText;
         final int gap = 8;
-        final int iconSize = 24;
-        final int iconGap = 4;
-        final int checkSize = 12;
-        final int checkGap = 6;
-        boolean hasIcon = taskIcon != null;
-        int iconReserve = hasIcon ? iconSize + iconGap : 0;
-        int completeReserve = headerComplete ? checkSize + checkGap : 0;
         final int rightReserve = closeW + gap;
-        FontMetrics titleFm = g.getFontMetrics(FontManager.getRunescapeFont());
-        int titleDesiredW = titleFm.stringWidth(title) + (pad * 2) + rightReserve + iconReserve + completeReserve + 8;
+        Font titleFont = FontManager.getRunescapeBoldFont();
+        FontMetrics titleFm = g.getFontMetrics(titleFont);
+        int completionReserve = headerComplete || syncMismatch ? 16 : 0;
+        int titleDesiredW = titleFm.stringWidth(title) + (pad * 2) + rightReserve + completionReserve + 8;
 
         // Recompute logical bounds every frame. The overlay may scale input bounds
         // after rendering, so carrying them back into layout would compound scale.
         int maxPopupW = Math.max(280, panelBounds.width - pad * 4);
         int w = Math.min(maxPopupW, Math.max(Math.max(300, (int) (panelBounds.width * 0.50)), titleDesiredW));
+        if (compactDetails) w = Math.min(maxPopupW, Math.max(300, (int) (panelBounds.width * 0.50)));
         int h = (int) (panelBounds.height * 0.70);
         int popupX = panelBounds.x + (panelBounds.width - w) / 2;
         int popupY = panelBounds.y + (panelBounds.height - h) / 2;
@@ -281,35 +347,30 @@ public final class TaskDetailsPopup
         g.setColor(palette.UI_GOLD);
 
         final int wikiW = Math.max(headerFm.stringWidth(wikiOpenText), headerFm.stringWidth(wikiCloseText)) + 20;
-        boolean syncMismatch = syncMismatchProvider != null
-                && Boolean.TRUE.equals(syncMismatchProvider.apply(task));
 
-        // Icon in header
-        int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - iconReserve - completeReserve);
+
+        // Title reserves space for the close action.
+        int titleMaxW = Math.max(0, bounds.width - (pad * 2) - rightReserve - completionReserve);
 
         int btnH = ROW_HEIGHT + 8;
         int btnY = yTop - 2;
         // Vertically center title within the button row height using the larger title font
         int titleBaseline = btnY + ((btnH - titleFm.getHeight()) / 2) + titleFm.getAscent();
 
-        // Draw icon
-        int titleX = x;
-        if (hasIcon) {
-            int iconY = btnY + (btnH - iconSize) / 2;
-            g.drawImage(taskIcon, x, iconY, iconSize, iconSize, null);
-            titleX = x + iconSize + iconGap;
-        }
-
-        g.setColor(headerComplete ? UiPalette.TIER_COMPLETE_GLOW : palette.UI_GOLD);
-        g.setFont(FontManager.getRunescapeFont());
+        g.setColor(syncMismatch ? new Color(245, 92, 82, 245)
+                : headerComplete ? UiPalette.TIER_COMPLETE_GLOW : new Color(225, 198, 120));
+        g.setFont(titleFont);
         String drawTitle = TextUtils.truncateToWidth(title, titleFm, titleMaxW);
-        g.drawString(drawTitle, titleX, titleBaseline);
-        if (headerComplete)
+        int titleRight = bounds.x + bounds.width - pad - rightReserve;
+        int titleX = x + completionReserve;
+        Rectangle mismatchIconBounds = new Rectangle(x, titleBaseline - titleFm.getAscent(), 12, titleFm.getHeight());
+        if (syncMismatch)
         {
-            int checkX = titleX + titleFm.stringWidth(drawTitle) + checkGap;
-            int checkY = titleBaseline - titleFm.getAscent() + (titleFm.getHeight() - checkSize) / 2;
-            drawHeaderCheckMark(g, checkX, checkY, checkSize);
+            g.fillRect(x + 4, titleBaseline - 11, 3, 7);
+            g.fillRect(x + 4, titleBaseline - 2, 3, 2);
         }
+        else if (headerComplete) DisclosureHeader.check(g, x, titleBaseline);
+        g.drawString(drawTitle, titleX, titleBaseline);
         g.setFont(FontManager.getRunescapeSmallFont());
 
         int closeX = bounds.x + bounds.width - pad - closeW;
@@ -330,8 +391,6 @@ public final class TaskDetailsPopup
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
 
         int headerBottomY = bounds.y + pad + btnH + 6;
-        g.setColor(withAlpha(palette.UI_GOLD, 55));
-        g.drawLine(bounds.x + pad, headerBottomY, bounds.x + bounds.width - pad, headerBottomY);
 
         g.setFont(FontManager.getRunescapeSmallFont());
         fm = g.getFontMetrics();
@@ -339,53 +398,36 @@ public final class TaskDetailsPopup
         final int badgeH = ROW_HEIGHT + 4;
         final int metaYTop = headerBottomY + 8;
 
-        int metaX = bounds.x + pad;
+        String tierLabel = task.getTier() == null ? "?" : TaskLabelFormatter.tierLabel(task.getTier());
+        Font metadataFont = g.getFont();
+        g.setFont(metadataFont.deriveFont(Math.max(1f, metadataFont.getSize2D() - 1f)));
+        FontMetrics metadataFm = g.getFontMetrics();
+        g.setColor(palette.UI_TEXT_DIM);
+        String metadata = TextUtils.truncateToWidth(
+                (TaskLabelFormatter.sourceLabel(task.getSource()) + " · " + tierLabel).toUpperCase(java.util.Locale.ROOT),
+                metadataFm, Math.max(1, titleRight - x));
+        g.drawString(metadata, x, titleBaseline + ROW_HEIGHT + 2);
+        g.setFont(metadataFont);
 
-        String srcBadge = TaskLabelFormatter.shortSource(task.getSource());
-        int srcBadgeW = TaskRowsRenderer.drawSourceBadge(g, metaX, metaYTop, srcBadge, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT, palette.UI_GOLD, palette.UI_TEXT);
-        Rectangle srcBadgeBounds = new Rectangle(metaX, metaYTop, srcBadgeW, badgeH);
-        metaX += srcBadgeW + 4;
-
-        String tierBadge = (task.getTier() == null) ? "?" : TaskLabelFormatter.tierLabel(task.getTier());
-        int tierBadgeW = TaskRowsRenderer.drawSourceBadge(g, metaX, metaYTop, tierBadge, palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT, palette.UI_GOLD, palette.UI_TEXT);
-        metaX += tierBadgeW + 4;
-
-        // Wiki button — right-aligned on badge row
-        int wikiX = bounds.x + bounds.width - pad - wikiW;
-        wikiBounds.setBounds(wikiX, metaYTop, wikiW, badgeH);
+        // Wiki button shares the left edge with the title and metadata.
+        int wikiX = x;
+        int wikiY = metaYTop + 10;
+        wikiBounds.setBounds(wikiX, wikiY, wikiW, badgeH);
         drawBevelBox(g, wikiBounds, palette.BTN_DISABLED_BG);
         g.setColor(palette.UI_TEXT);
         int wikiTextW = fm.stringWidth(wikiText);
         g.drawString(wikiText, wikiBounds.x + (wikiBounds.width - wikiTextW) / 2, centeredTextBaseline(wikiBounds, fm));
 
         markIncompleteBounds.setBounds(0, 0, 0, 0);
-        if (headerComplete && !grouped)
-        {
-            int actionSize = Math.min(badgeH, 18);
-            int actionX = metaX;
-            int actionY = metaYTop + (badgeH - actionSize) / 2;
-            if (actionX + actionSize <= wikiX - 4)
-            {
-                markIncompleteBounds.setBounds(actionX, actionY, actionSize, actionSize);
-                drawMarkIncompleteAction(g, markIncompleteBounds,
-                        mouse != null && markIncompleteBounds.contains(mouse.getX(), mouse.getY()));
-            }
-        }
-
-        if (mouse != null && srcBadgeBounds.contains(mouse.getX(), mouse.getY()))
-        {
-            UiDraw.drawHoverText(g, fm, TaskLabelFormatter.sourceLabel(task.getSource()), srcBadgeBounds, palette.UI_TEXT_DIM);
-        }
-        if (mouse != null && markIncompleteBounds.contains(mouse.getX(), mouse.getY()))
-        {
-            UiDraw.drawHoverText(g, fm, "Mark incomplete", markIncompleteBounds, palette.UI_TEXT_DIM);
-        }
-
         // Content area
         fm = g.getFontMetrics();
         int contentLeft = bounds.x + pad;
-        int contentTop = metaYTop + badgeH + 12;
-        int contentW = bounds.width - (pad * 2);
+        int wikiDividerY = wikiY + badgeH + 8;
+        g.setColor(withAlpha(palette.UI_GOLD, 90));
+        g.fillRect(contentLeft, wikiDividerY, bounds.width - pad * 2, 2);
+        int contentTop = wikiDividerY + 18;
+        final int scrollbarContentGap = 8;
+        int contentW = bounds.width - (pad * 2) - scrollbarContentGap;
         groupProgressHelpBounds.setBounds(0, 0, 0, 0);
         instanceRemoveBounds.clear();
         java.awt.Point mousePoint = mouse == null ? null : new java.awt.Point(mouse.getX(), mouse.getY());
@@ -419,7 +461,11 @@ public final class TaskDetailsPopup
         if (prerequisiteStatuses == null) prerequisiteStatuses = List.of();
 
         // Count total content pixel height for scroll math
+        boolean groupedCollectionLog = compactDetails && grouped;
+        if (compactDetails && requirementPreview != null) requirementPreview = detailPreview(task, requirementPreview, groupedCollectionLog);
         boolean hasRequirementPreview = requirementPreview != null && requirementPreview.hasItems();
+        List<PrerequisiteStatus> detailEntries = PrerequisiteSectionRenderer.detailEntries(prereqs, prerequisiteStatuses);
+        boolean showHistory = !grouped || !compactDetails || historyExpanded;
         boolean showAchievementDiaryNote = isAchievementDiaryTask(task);
         String desc = showAchievementDiaryNote
                 ? diaryTaskDescription(task)
@@ -427,20 +473,13 @@ public final class TaskDetailsPopup
         boolean showDescriptionSection = !desc.isEmpty();
         String taskTip = showTips ? safe(task.getTip()).replace("\r", "").trim() : "";
         boolean hasTaskTip = !taskTip.isEmpty();
-        boolean showGroupedProgressSection = groupProgress != null && groupProgress.isGrouped();
-        boolean showGroupedSyncMismatch = showGroupedProgressSection && syncMismatch;
-        boolean showStandaloneSyncMismatch = syncMismatch && !showGroupedProgressSection;
-        int totalPx = 0;
+        boolean showGroupedProgressSection = grouped && !groupedCollectionLog;
+        int contentLeading = Math.max(4, g.getFontMetrics(FontManager.getRunescapeFont()).getAscent() - fm.getAscent());
+        int totalPx = contentLeading;
         if (showGroupedProgressSection)
         {
             totalPx += ROW_HEIGHT; // "Progress" header
             totalPx += ROW_HEIGHT + 8; // progress editor
-            if (showGroupedSyncMismatch)
-            {
-                totalPx += ROW_HEIGHT; // blank line before warning
-                totalPx += ROW_HEIGHT; // warning text
-                totalPx += 6; // button bottom gap
-            }
             totalPx += 6 + 12; // divider gap before next section
         }
         if (showDescriptionSection)
@@ -459,43 +498,36 @@ public final class TaskDetailsPopup
         {
             totalPx += 6 + 12; // divider gap before next section
         }
-        if (showStandaloneSyncMismatch)
-        {
-            totalPx += ROW_HEIGHT;
-            totalPx += 6 + 12;
-        }
         if (hasRequirementPreview)
         {
-            totalPx += collectionLogRequirementRenderer.measure(requirementPreview, fm, contentW);
+            totalPx += collectionLogRequirementRenderer.measure(requirementPreview, fm, contentW, !compactDetails);
             totalPx += 6 + 12; // divider gap before requirements
         }
-        totalPx += prerequisiteSectionRenderer.measure(
-                prereqs,
-                prerequisiteStatuses,
-                fm,
-                contentW,
-                prerequisiteSkillImageProvider,
-                prerequisiteMarkerImageProvider);
+        totalPx += prerequisiteSectionRenderer.measureDetails(detailEntries, requirementsExpanded, fm, contentW,
+                prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
         totalPx += prerequisiteSectionRenderer.measureSuggestedStats(task.getSuggestedStats(), fm, contentW, prerequisiteSkillImageProvider);
-        if (hasTaskTip) totalPx += 8 + prerequisiteSectionRenderer.measureTip(taskTip, fm, contentW, Integer.MAX_VALUE);
-        if (!instanceHistoryLines.isEmpty())
+        if (hasTaskTip) totalPx += 20 + prerequisiteSectionRenderer.measureTip(taskTip, fm, contentW, Integer.MAX_VALUE);
+        if (groupedCollectionLog)
+        {
+            totalPx += ROW_HEIGHT;
+            if (!instanceHistoryLines.isEmpty())
+            {
+                totalPx += DisclosureHeader.HEIGHT;
+                if (showHistory) totalPx += 8 + instanceHistoryLines.size() * (ROW_HEIGHT + INSTANCE_BLOCK_PAD_BOTTOM);
+            }
+            totalPx += 18;
+        }
+        if (!groupedCollectionLog && !instanceHistoryLines.isEmpty())
         {
             totalPx += 6 + 12; // divider gap before completed instance history
-            totalPx += ROW_HEIGHT; // "Completed instances" header
-            totalPx += (ROW_HEIGHT + INSTANCE_BLOCK_PAD_BOTTOM) * instanceHistoryLines.size();
+            totalPx += compactDetails ? DisclosureHeader.HEIGHT : ROW_HEIGHT; // history header
+            if (showHistory) totalPx += 8 + (ROW_HEIGHT + INSTANCE_BLOCK_PAD_BOTTOM) * instanceHistoryLines.size();
         }
-        else if (completionLine != null || timeTakenLine != null)
+        else if (!groupedCollectionLog && (completionLine != null || timeTakenLine != null))
         {
             totalPx += 6 + 12; // divider gap before completion
-            totalPx += ROW_HEIGHT; // "Completion" header
-            if (completionLine != null)
-            {
-                totalPx += ROW_HEIGHT;
-            }
-            if (timeTakenLine != null)
-            {
-                totalPx += ROW_HEIGHT;
-            }
+            totalPx += ROW_HEIGHT; // standalone completion header
+            if (showHistory) totalPx += ROW_HEIGHT + INSTANCE_BLOCK_PAD_BOTTOM;
         }
         totalContentRows = (totalPx + ROW_HEIGHT - 1) / ROW_HEIGHT;
 
@@ -512,35 +544,23 @@ public final class TaskDetailsPopup
         Shape oldClip = g.getClip();
         g.setClip(contentLeft, viewportTop, contentW, viewportH);
 
-        int y = contentTop + fm.getAscent() - scrollPx;
+        int y = contentTop + fm.getAscent() + contentLeading - scrollPx;
 
         if (showGroupedProgressSection)
         {
             g.setColor(palette.UI_GOLD);
-            g.drawString("Progress", contentLeft, y);
+            drawSectionHeading(g, "Progress", contentLeft, y);
             y += ROW_HEIGHT;
             drawGroupProgressEditor(g, fm, contentLeft, y - fm.getAscent() + 1, contentW, groupProgress, mouse);
             y += ROW_HEIGHT + 8;
 
-            if (showGroupedSyncMismatch)
-            {
-                y += ROW_HEIGHT;
-                y = drawSyncMismatchText(
-                        g,
-                        fm,
-                        task,
-                        contentLeft,
-                        y,
-                        contentW);
-            }
-
-            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
+            y += 18; // spacing between sections
         }
 
         if (showDescriptionSection)
         {
             g.setColor(palette.UI_GOLD);
-            g.drawString("Description", contentLeft, y);
+            drawSectionHeading(g, "Description", contentLeft, y);
             y += ROW_HEIGHT;
 
             if (desc.isEmpty())
@@ -561,26 +581,9 @@ public final class TaskDetailsPopup
 
         }
 
-        if (showDescriptionSection && !showStandaloneSyncMismatch)
+        if (showDescriptionSection)
         {
-            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
-        }
-        else if (showDescriptionSection)
-        {
-            y += 6 + 12;
-        }
-
-        if (showStandaloneSyncMismatch)
-        {
-            y = drawSyncMismatchText(
-                    g,
-                    fm,
-                    task,
-                    contentLeft,
-                    y,
-                    contentW);
-
-            y = drawSectionDivider(g, fm, contentLeft, y, contentW);
+            y += 18; // spacing between sections
         }
 
         if (hasRequirementPreview)
@@ -595,63 +598,84 @@ public final class TaskDetailsPopup
                     requirementPreview,
                     collectionLogItemImageProvider,
                     mousePoint,
-                    viewportBounds);
+                    viewportBounds,
+                    !compactDetails);
 
-            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
+            y += 18; // spacing between sections
         }
 
-        y = prerequisiteSectionRenderer.render(
-                g,
-                fm,
-                contentLeft,
-                y,
-                contentW,
-                prereqs,
-                prerequisiteStatuses,
-                prerequisiteSkillImageProvider,
-                prerequisiteMarkerImageProvider,
-                palette.UI_TEXT);
+        y = prerequisiteSectionRenderer.renderDetails(g, fm, contentLeft, y, contentW,
+                detailEntries, requirementsExpanded, requirementsToggleBounds, mousePoint, viewportBounds,
+                prerequisiteSkillImageProvider, prerequisiteMarkerImageProvider);
 
         y = prerequisiteSectionRenderer.renderSuggestedStats(g, fm, contentLeft, y, contentW, task.getSuggestedStats(), prerequisiteSkillImageProvider);
         if (hasTaskTip)
         {
-            y += 8;
+            y += 20;
             y = prerequisiteSectionRenderer.drawTip(g, fm, taskTip, contentLeft, y, contentW, Integer.MAX_VALUE);
         }
 
-        if (!instanceHistoryLines.isEmpty())
+        if (groupedCollectionLog)
         {
-            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
+            y += 18; // spacing between sections
+            y = drawInstanceProgress(g, fm, contentLeft, y, contentW, groupProgress, syncMismatch, mouse);
+            if (!instanceHistoryLines.isEmpty())
+            {
+                DisclosureHeader.draw(g, "Completion history (" + instanceHistoryLines.size() + ")",
+                        contentLeft, y, contentW, historyExpanded, historyToggleBounds, mousePoint, viewportBounds);
+                y += DisclosureHeader.HEIGHT;
+                if (showHistory)
+                {
+                    y += 8;
+                    for (InstanceHistoryLine line : instanceHistoryLines)
+                    {
+                        drawInstanceHistoryLine(g, fm, contentLeft + 12, y, contentW - 12, line, mousePoint);
+                        y += ROW_HEIGHT + INSTANCE_BLOCK_PAD_BOTTOM;
+                    }
+                }
+            }
+        }
+
+        if (!groupedCollectionLog && !instanceHistoryLines.isEmpty())
+        {
+            y += 18; // spacing between sections
 
             g.setColor(palette.UI_GOLD);
-            g.drawString("Completed instances", contentLeft, y);
-            y += ROW_HEIGHT;
+            if (compactDetails)
+            {
+                DisclosureHeader.draw(g, "Completion history (" + instanceHistoryLines.size() + ")",
+                        contentLeft, y, contentW, historyExpanded, historyToggleBounds, mousePoint, viewportBounds);
+                y += DisclosureHeader.HEIGHT;
+            }
+            else
+            {
+                drawSectionHeading(g, "Completed instances", contentLeft, y);
+                y += ROW_HEIGHT;
+            }
 
             g.setColor(palette.UI_TEXT_DIM);
-            for (InstanceHistoryLine line : instanceHistoryLines)
+            if (showHistory) y += 8;
+            for (InstanceHistoryLine line : showHistory ? instanceHistoryLines : List.<InstanceHistoryLine>of())
             {
-                drawInstanceHistoryLine(g, fm, contentLeft, y, contentW, line, mousePoint);
+                drawInstanceHistoryLine(g, fm, contentLeft + 12, y, contentW - 12, line, mousePoint);
                 y += ROW_HEIGHT + INSTANCE_BLOCK_PAD_BOTTOM;
             }
         }
-        else if (completionLine != null || timeTakenLine != null)
+        else if (!groupedCollectionLog && (completionLine != null || timeTakenLine != null))
         {
-            y = drawSectionDivider(g, fm, contentLeft, y + 6, contentW);
+            y += 18; // spacing between sections
 
             g.setColor(palette.UI_GOLD);
-            g.drawString("Completion", contentLeft, y);
+            drawSectionHeading(g, "Completed", contentLeft, y);
             y += ROW_HEIGHT;
-            if (completionLine != null)
+            if (showHistory)
             {
-                g.setColor(palette.UI_TEXT_DIM);
-                g.drawString(TextUtils.truncateToWidth(completionLine, fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
-            }
-            if (timeTakenLine != null)
-            {
-                g.setColor(palette.UI_TEXT_DIM);
-                g.drawString(TextUtils.truncateToWidth(timeTakenLine, fm, contentW), contentLeft, y);
-                y += ROW_HEIGHT;
+                InstanceHistoryLine line = new InstanceHistoryLine(task,
+                        instanceCompletionDateText(completionInfo) + " | " + instanceTimeSpentText(completionInfo, ticks));
+                drawInstanceHistoryLine(g, fm, contentLeft, y, contentW, line, mousePoint);
+                Rectangle action = instanceRemoveBounds.remove(task);
+                if (action != null) markIncompleteBounds.setBounds(action.intersection(viewportBounds));
+                y += ROW_HEIGHT + INSTANCE_BLOCK_PAD_BOTTOM;
             }
         }
 
@@ -661,29 +685,100 @@ public final class TaskDetailsPopup
         UiDraw.drawScrollbar(g, new Rectangle(bounds.x + bounds.width - pad / 2 - scrollBarW, viewportTop, scrollBarW, viewportH),
                 totalContentRows, visibleRows, scroll.offsetRows, scrollbarRailBounds, scrollbarThumbBounds,
                 palette.UI_EDGE_DARK, palette.UI_EDGE_LIGHT, palette.UI_GOLD);
-        int footerX = bounds.x + footerPad;
-        int footerW = bounds.width - (footerPad * 2);
 
-        g.setColor(new Color(
-                palette.UI_GOLD.getRed(),
-                palette.UI_GOLD.getGreen(),
-                palette.UI_GOLD.getBlue(),
-                45
-        ));
-        g.drawLine(
-                footerX,
-                footerY - 6,
-                footerX + footerW,
-                footerY - 6
-        );
+        if (!wikiMenuOpen && mouse != null && viewportBounds.contains(mouse.getX(), mouse.getY())
+                && groupProgressHelpBounds.contains(mouse.getX(), mouse.getY()) && grouped)
+        {
+            drawTooltip(g, fm, UiText.format("task_details.group_progress_help", groupProgress.getTotal()),
+                    groupProgressHelpBounds.x, groupProgressHelpBounds.y + groupProgressHelpBounds.height + 6, true);
+        }
 
         prerequisiteSectionRenderer.renderHover(g, fm, mousePoint, viewportBounds, bounds);
+
+        Rectangle warningHoverArea = new Rectangle(mismatchDialogBounds);
+        // Bridge the small gap between the icon and dialog so Ignore remains reachable.
+        if (!warningHoverArea.isEmpty()) warningHoverArea.add(mismatchIconBounds);
+        boolean overIcon = mouse != null && mismatchIconBounds.contains(mouse.getX(), mouse.getY());
+        boolean overDialog = mismatchDialogOpen && mouse != null
+                && warningHoverArea.contains(mouse.getX(), mouse.getY());
+        mismatchDialogOpen = syncMismatch && !wikiMenuOpen && (overIcon || overDialog);
+        mismatchDialogBounds.setBounds(0, 0, 0, 0);
+        mismatchIgnoreBounds.setBounds(0, 0, 0, 0);
+        if (syncMismatch && !wikiMenuOpen && mismatchDialogOpen)
+        {
+            String warning = groupedCollectionLog
+                    ? "Task completions differ from items seen in-game. Open your Collection Log to refresh, or mark instance(s) incomplete."
+                    : syncMismatchTitle(task) + " " + syncMismatchAction(task);
+            List<String> lines = TextUtils.wrapText(warning, fm, bounds.width - 24);
+            int dialogHeight = lines.size() * ROW_HEIGHT + 42;
+            mismatchDialogBounds.setBounds(bounds.x, Math.max(0, bounds.y - dialogHeight - 6), bounds.width, dialogHeight);
+            drawBevelBox(g, mismatchDialogBounds, new Color(35, 28, 19, 255));
+            g.setColor(new Color(245, 92, 82));
+            int lineY = mismatchDialogBounds.y + 12 + fm.getAscent();
+            for (String line : lines)
+            {
+                g.drawString(line, bounds.x + 12, lineY);
+                lineY += ROW_HEIGHT;
+            }
+            int ignoreWidth = fm.stringWidth("Ignore") + 16;
+            mismatchIgnoreBounds.setBounds(bounds.x + (bounds.width - ignoreWidth) / 2,
+                    mismatchDialogBounds.y + dialogHeight - 24, ignoreWidth, 18);
+            drawBevelBox(g, mismatchIgnoreBounds, palette.BTN_ENABLED_BG);
+            g.setColor(new Color(190, 190, 190));
+            g.drawString("Ignore", mismatchIgnoreBounds.x + (mismatchIgnoreBounds.width - fm.stringWidth("Ignore")) / 2,
+                    centeredTextBaseline(mismatchIgnoreBounds, fm));
+        }
 
         if (wikiMenuOpen)
         {
             drawWikiMenu(g, fm, mouse);
         }
 
+    }
+
+    static CollectionLogRequirementPreview detailPreview(XtremeTask task, CollectionLogRequirementPreview preview, boolean grouped)
+    {
+        String summary = preview.summaryText();
+        // Instance progress is shown below; the item summary only reports obtained items.
+        if (summary.startsWith("total obtained:")) summary = summary.split("\\|", 2)[0].trim();
+        int iconColumns = !grouped && preview.getItems().size() == 1
+                ? Math.min(6, preview.iconColumns()) : preview.iconColumns();
+        return new CollectionLogRequirementPreview(
+                summary, "Collection Log items",
+                !summary.isEmpty(), preview.showItemList(), preview.getItems(), iconColumns,
+                preview.secondaryTitleText(), preview.secondaryItems(), preview.secondaryIconColumns(), preview.tierSections());
+    }
+
+    private static void drawSectionHeading(Graphics2D g, String text, int x, int y)
+    {
+        Font original = g.getFont();
+        g.setFont(FontManager.getRunescapeFont());
+        g.drawString(text, x, y);
+        g.setFont(original);
+    }
+
+    private int drawInstanceProgress(Graphics2D g, FontMetrics fm, int x, int y, int width,
+            TaskGroupProgress progress, boolean syncMismatch, net.runelite.api.Point mouse)
+    {
+        Font original = g.getFont();
+        g.setFont(FontManager.getRunescapeFont());
+        FontMetrics headingFm = g.getFontMetrics();
+        String label = "Task completions: ";
+        String count = progress.getCompleted() + "/" + progress.getTotal();
+        g.setColor(palette.UI_GOLD);
+        g.drawString(label, x, y);
+        int countX = x + headingFm.stringWidth(label);
+        g.setFont(original);
+        g.setColor(palette.UI_TEXT_DIM);
+        String numerator = String.valueOf(progress.getCompleted());
+        g.setColor(syncMismatch ? new Color(245, 92, 82, 245) : palette.UI_TEXT_DIM);
+        g.drawString(numerator, countX, y);
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString("/" + progress.getTotal(), countX + fm.stringWidth(numerator), y);
+        drawGroupProgressHelpIcon(g, fm, countX + fm.stringWidth(count) + 6,
+                y - headingFm.getAscent(), ROW_HEIGHT, x + width, mouse);
+        g.setFont(original);
+        return y + ROW_HEIGHT;
     }
 
     private void refreshWikiLinks(XtremeTask task, Function<XtremeTask, List<WikiLink>> wikiLinksProvider)
@@ -771,26 +866,6 @@ public final class TaskDetailsPopup
                 oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
     }
 
-    private int drawSyncMismatchText(
-            Graphics2D g,
-            FontMetrics fm,
-            XtremeTask task,
-            int contentLeft,
-            int y,
-            int contentW
-    )
-    {
-        String title = syncMismatchTitle(task);
-        String action = syncMismatchAction(task);
-
-        g.setColor(new Color(245, 92, 82, 245));
-        g.drawString(TextUtils.truncateToWidth(title, fm, contentW), contentLeft, y);
-        y += ROW_HEIGHT;
-        g.setColor(palette.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(action, fm, contentW), contentLeft, y);
-        return y + ROW_HEIGHT + 6;
-    }
-
     static String syncMismatchTitle(XtremeTask task)
     {
         return task != null && task.getSource() == TaskSource.COLLECTION_LOG
@@ -831,35 +906,6 @@ public final class TaskDetailsPopup
         drawGroupProgressHelpIcon(g, fm, helpX, rowTop, rowH, x + contentW, mouse);
     }
 
-    private int drawSectionDivider(Graphics2D g, FontMetrics fm, int x, int y, int width)
-    {
-        g.setColor(withAlpha(palette.UI_GOLD, 35));
-        g.drawLine(x, y - (fm.getAscent() / 2), x + width, y - (fm.getAscent() / 2));
-        return y + 12;
-    }
-
-    private void drawHeaderCheckMark(Graphics2D g, int x, int y, int size)
-    {
-        Object oldAA = g.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-        Stroke oldStroke = g.getStroke();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.setColor(UiPalette.TIER_COMPLETE_GLOW);
-
-        int x1 = x + Math.max(1, size / 8);
-        int y1 = y + (size / 2) + Math.max(1, size / 8);
-        int x2 = x + (size / 2) - 1;
-        int y2 = y + size - Math.max(2, size / 4);
-        int x3 = x + size - Math.max(1, size / 8);
-        int y3 = y + Math.max(1, size / 5);
-
-        g.drawLine(x1, y1, x2, y2);
-        g.drawLine(x2, y2, x3, y3);
-
-        g.setStroke(oldStroke);
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA != null ? oldAA : RenderingHints.VALUE_ANTIALIAS_DEFAULT);
-    }
-
     private void drawInstanceHistoryLine(
             Graphics2D g,
             FontMetrics fm,
@@ -878,15 +924,19 @@ public final class TaskDetailsPopup
         Rectangle actionBounds = new Rectangle(actionX, actionY, actionSize, actionSize);
         instanceRemoveBounds.put(line.task, actionBounds);
 
-        g.setColor(palette.UI_TEXT_DIM);
-        g.drawString(TextUtils.truncateToWidth(line.text, fm, Math.max(0, contentW - actionSize - actionGap - actionInset)),
-                x, baselineY + 2);
-
         boolean hover = mouse != null && actionBounds.contains(mouse);
+        String hoverText = "Mark incomplete";
+        int hoverX = actionX - actionGap - fm.stringWidth(hoverText);
+        int textRight = hover ? hoverX - actionGap : actionX - actionGap;
+        String text = TextUtils.truncateToWidth(line.text, fm, Math.max(0, textRight - x));
+        g.setColor(palette.UI_TEXT_DIM);
+        g.drawString(text, x, baselineY + 2);
+
         drawMarkIncompleteAction(g, actionBounds, hover);
         if (hover)
         {
-            UiDraw.drawRightAlignedHoverText(g, fm, "Mark incomplete", x, x + contentW, actionBounds, palette.UI_TEXT_DIM);
+            g.setColor(palette.UI_TEXT_DIM);
+            g.drawString(hoverText, hoverX, baselineY + 2);
         }
     }
 
@@ -912,18 +962,8 @@ public final class TaskDetailsPopup
 
         drawQuestionIcon(g, iconX, iconY, iconSize);
 
-        if (mouse != null && groupProgressHelpBounds.contains(mouse.getX(), mouse.getY()))
-        {
-            drawTooltip(
-                    g,
-                    fm,
-                    UiText.get("task_details.group_progress_help"),
-                    iconX + iconSize,
-                    iconY,
-                    true
-            );
-        }
     }
+
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill)
     {
@@ -955,7 +995,7 @@ public final class TaskDetailsPopup
         int h = (fm.getHeight() * lines.size()) + padY * 2;
 
         int x = alignLeft ? anchorX - padX : anchorX - w / 2;
-        int y = anchorY - h + 2;
+        int y = anchorY;
 
         x = Math.max(bounds.x + 6,
                 Math.min(x, bounds.x + bounds.width - w - 6));
@@ -964,9 +1004,10 @@ public final class TaskDetailsPopup
         Rectangle r = new Rectangle(x, y, w, h);
 
         Shape oldClip = g.getClip();
-        g.setClip(bounds);
+        g.setClip(null);
 
-        g.setColor(palette.UI_TEXT_DIM);
+        drawBevelBox(g, r, new Color(35, 28, 19, 255));
+        g.setColor(palette.UI_TEXT);
         int lineY = r.y + padY + fm.getAscent();
         for (String line : lines)
         {

@@ -339,7 +339,7 @@ public class XtremeTaskerOverlay extends Overlay {
 
     private java.awt.image.BufferedImage resolveTaskIcon(XtremeTask task) {
         if (task == null) return null;
-        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return getCachedSprite(SpriteID.QUESTS_PAGE_ICON_GREEN_ACHIEVEMENT_DIARIES);
+        if (task.getSource() == TaskSource.DIARY_ACHIEVEMENT) return UiDraw.tierIcon(getCachedSprite(SpriteID.QUESTS_PAGE_ICON_GREEN_ACHIEVEMENT_DIARIES), task.getTier());
         Integer exactSequenceItemId = task.getIconItemId();
         if (exactSequenceItemId != null && exactSequenceItemId > 0 && isDecoratedSequenceTaskName(task.getName())) {
             return getCachedItemImage(exactSequenceItemId);
@@ -352,7 +352,7 @@ public class XtremeTaskerOverlay extends Overlay {
         if (singleCollectionLogItemId != null && singleCollectionLogItemId > 0) return getCachedItemImage(singleCollectionLogItemId);
         if (task.getSource() == TaskSource.COMBAT_ACHIEVEMENT && task.getTier() != null) {
             Integer spriteId = CA_TIER_SPRITE_IDS.get(task.getTier());
-            if (spriteId != null) return getCachedSprite(spriteId);
+            if (spriteId != null) return UiDraw.tierIcon(getCachedSprite(spriteId), task.getTier());
         }
         return null;
     }
@@ -2294,6 +2294,7 @@ public class XtremeTaskerOverlay extends Overlay {
             return;
         }
 
+        taskDetailsPopup.configureMismatchActions(plugin::isTaskMismatchIgnored, plugin::ignoreTaskMismatchAndPersist);
         taskDetailsPopup.render(
                 g,
                 fm,
@@ -3997,6 +3998,18 @@ public class XtremeTaskerOverlay extends Overlay {
 
     public TaskListScrollController taskDetailsScroll() {
         return taskDetailsPopup.scroll();
+    }
+
+    public boolean taskDetailsMismatchDialogContains(java.awt.Point point) { return taskDetailsPopup.mismatchDialogContains(point); }
+    public boolean taskDetailsMismatchIgnoreContains(java.awt.Point point) { return taskDetailsPopup.mismatchIgnoreContains(point); }
+    public void ignoreTaskDetailsMismatch() { taskDetailsPopup.ignoreMismatch(); }
+
+    public boolean toggleTaskDetailsSection(java.awt.Point point) {
+        return taskDetailsPopup.toggleSectionAt(point);
+    }
+
+    public boolean taskDetailsSectionContains(java.awt.Point point) {
+        return taskDetailsPopup.sectionToggleContains(point);
     }
 
     public Rectangle taskDetailsCloseBounds() {

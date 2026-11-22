@@ -17,6 +17,26 @@ import static org.junit.Assert.assertNull;
 public class PersistenceRegressionTest
 {
     @Test
+    public void ignoredMismatchChoicesSurviveReloadAndDoNotLeakBetweenAccounts() throws Exception
+    {
+        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
+        plugin.setCollectionLogServiceForTesting(new CollectionLogService());
+        XtremeTask task = new XtremeTask("ignored", "Get 1 unique", TaskSource.COLLECTION_LOG, TaskTier.EASY);
+        PersistedState state = new PersistedState();
+        state.setIgnoredMismatchTaskIds(new java.util.HashSet<>(java.util.List.of(task.getId())));
+        Method apply = XtremeTaskerPlugin.class.getDeclaredMethod("applyPersistedState", PersistedState.class);
+        apply.setAccessible(true);
+        apply.invoke(plugin, state);
+        assertEquals(true, plugin.isTaskMismatchIgnored(task));
+        Method build = XtremeTaskerPlugin.class.getDeclaredMethod("buildPersistedState");
+        build.setAccessible(true);
+        PersistedState saved = (PersistedState) build.invoke(plugin);
+        assertEquals(state.getIgnoredMismatchTaskIds(), saved.getIgnoredMismatchTaskIds());
+        apply.invoke(plugin, new PersistedState());
+        assertFalse(plugin.isTaskMismatchIgnored(task));
+    }
+
+    @Test
     public void accountNameKeySeparatesCharactersSharingLegacyHash()
     {
         String xtremeTaskrKey = accountNameKey("XtremeTaskr");

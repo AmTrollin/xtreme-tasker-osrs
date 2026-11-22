@@ -17,6 +17,16 @@ import static org.junit.Assert.assertTrue;
 public class PrerequisiteTrackerServiceTest
 {
     @Test
+    public void unmetSkillsShowCurrentLevelButMetSkillsDoNot()
+    {
+        int[] level = {15};
+        PrerequisiteTrackerService service = new PrerequisiteTrackerService(id -> 0, skill -> level[0]);
+        org.junit.Assert.assertEquals(" · (15)", service.evaluate("58 Slayer").get(0).getSkillLevelHint());
+        level[0] = 58;
+        org.junit.Assert.assertEquals("", service.evaluate("58 Slayer").get(0).getSkillLevelHint());
+    }
+
+    @Test
     public void startedQuestAndSubquestPrerequisitesAcceptProgressOrCompletion() throws Exception
     {
         String[] prerequisites = {

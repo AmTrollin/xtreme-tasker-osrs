@@ -13,6 +13,35 @@ import static org.junit.Assert.*;
 public class PrerequisiteSectionRendererTest
 {
     @Test
+    public void detailLayoutKeepsUnknownRequirementsVisibleAndMatchesScrollHeight()
+    {
+        PrerequisiteStatus known = new PrerequisiteStatus("Cabin Fever quest", true);
+        PrerequisiteStatus unknown = new PrerequisiteStatus("Reach milestone in Watchtower", true,
+                List.of(), List.of(), List.of(MarkerIcon.QUEST), "Unlock the caves", false);
+        PrerequisiteStatus missing = new PrerequisiteStatus("58 Slayer", false);
+        assertFalse(PrerequisiteSectionRenderer.isConfirmedMet(unknown));
+        List<PrerequisiteStatus> entries = List.of(known, unknown, missing,
+                new PrerequisiteStatus("40 Fishing", true), new PrerequisiteStatus("Access to the guild", true));
+        Graphics2D g = new BufferedImage(400, 900, BufferedImage.TYPE_INT_ARGB).createGraphics();
+        try
+        {
+            PrerequisiteSectionRenderer renderer = new PrerequisiteSectionRenderer(16, Color.WHITE, Color.GRAY);
+            for (int width : new int[] {110, 340})
+            {
+                for (boolean expanded : new boolean[] {false, true})
+                {
+                    Rectangle toggle = new Rectangle();
+                    int height = renderer.measureDetails(entries, expanded, g.getFontMetrics(), width, null, null);
+                    assertEquals(20 + height, renderer.renderDetails(g, g.getFontMetrics(), 0, 20, width,
+                            entries, expanded, toggle, null, null));
+                    assertTrue(toggle.width > 0);
+                }
+            }
+        }
+        finally { g.dispose(); }
+    }
+
+    @Test
     public void groupsDiaryRequirementsWithoutTurningQuestPointsIntoAQuest()
     {
         PrerequisiteStatus skill = new PrerequisiteStatus("95 Slayer", false, List.of(), List.of(Skill.SLAYER));

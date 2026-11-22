@@ -83,7 +83,7 @@ public final class TasksTabRenderer {
             int pctVal = plugin.getTierPercent(t);
             String pct = pctVal + "%";
 
-            drawTierTabWithPercent(g, r, TaskLabelFormatter.tierLabel(t), pct, pctVal, t == activeTier);
+            drawTierTabWithPercent(g, r, TaskLabelFormatter.tierLabel(t), pct, pctVal, t == activeTier, t);
 
             x += tierTabW + 4;
         }
@@ -276,7 +276,7 @@ public final class TasksTabRenderer {
 
     }
 
-    private void drawTierTabWithPercent(Graphics2D g, Rectangle bounds, String leftText, String rightText, int pctValue, boolean active) {
+    private void drawTierTabWithPercent(Graphics2D g, Rectangle bounds, String leftText, String rightText, int pctValue, boolean active, TaskTier taskTier) {
         Color bg = active ? new Color(78, 62, 38, 240) : new Color(32, 26, 17, 235);
         drawBevelBox(g, bounds, bg);
 
@@ -297,7 +297,7 @@ public final class TasksTabRenderer {
 
         int ty = centeredTextBaseline(bounds, fm);
 
-        g.setColor(active ? palette.UI_TEXT : palette.UI_TEXT_DIM);
+        g.setColor(active ? Color.WHITE : UiPalette.tierColor(taskTier));
         g.drawString(tier, bounds.x + 4, ty);
 
         boolean complete = pctValue >= 100;
@@ -387,17 +387,17 @@ public final class TasksTabRenderer {
         layout.sortDateCompleted.setBounds(0, 0, 0, 0);
         layout.sortTimeSpent.setBounds(0, 0, 0, 0);
 
+        int tierW = Math.max(sfm.stringWidth("Master") + pillPadX * 2, sfm.stringWidth("Tier") + 4);
+        int tierX = nextRight - tierW;
+        drawSmallHeaderLabel(g, sfm, new Rectangle(tierX, top, tierW, h), "Tier");
+        nextRight = tierX - HEADER_COL_GAP;
+
         int srcW = Math.max(
                 Math.max(sfm.stringWidth("CA"), Math.max(sfm.stringWidth("CL"), sfm.stringWidth("AD"))) + pillPadX * 2,
                 sfm.stringWidth("Src") + 4);
         int srcX = nextRight - srcW;
         drawSmallHeaderLabel(g, sfm, new Rectangle(srcX, top, srcW, h), "Src");
         nextRight = srcX - HEADER_COL_GAP;
-
-        int tierW = Math.max(sfm.stringWidth("Master") + pillPadX * 2, sfm.stringWidth("Tier") + 4);
-        int tierX = nextRight - tierW;
-        drawSmallHeaderLabel(g, sfm, new Rectangle(tierX, top, tierW, h), "Tier");
-        nextRight = tierX - HEADER_COL_GAP;
 
         if (query != null && query.showTimeSpentColumn)
         {

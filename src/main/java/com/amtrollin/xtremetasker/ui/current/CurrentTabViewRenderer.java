@@ -127,7 +127,13 @@ public final class CurrentTabViewRenderer
                 && state.layout().undoButtonBounds.width > 0
                 && state.layout().undoButtonBounds.height > 0)
         {
-            buttonRenderer.drawPlainButton(g, state.layout().undoButtonBounds, "Undo");
+            Rectangle undo = state.layout().undoButtonBounds;
+            g.setColor(UiPalette.DEFAULT.BTN_ENABLED_BG);
+            g.fillRect(undo.x, undo.y, undo.width, undo.height);
+            g.setColor(new Color(190, 190, 190));
+            FontMetrics undoFm = g.getFontMetrics();
+            g.drawString("Undo", undo.x + (undo.width - undoFm.stringWidth("Undo")) / 2,
+                    com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline(undo, undoFm));
         }
     }
 }

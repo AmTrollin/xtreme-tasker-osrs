@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="XT Isolated Application" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.amtrollin.xtremetasker.XtremeTaskerPluginTest" />
+    <module name="xtreme-tasker.test" />
+    <option name="VM_PARAMETERS" value="-ea -Duser.home=&quot;$PROJECT_DIR$/.dev-user-home&quot;" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2"><option name="Make" enabled="true" /></method>
+  </configuration>
+</component>

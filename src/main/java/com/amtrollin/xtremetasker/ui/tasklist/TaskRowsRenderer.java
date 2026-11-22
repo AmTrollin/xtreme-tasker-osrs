@@ -1,5 +1,7 @@
 package com.amtrollin.xtremetasker.ui.tasklist;
 
+import com.amtrollin.xtremetasker.ui.style.UiPalette;
+
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.tasklist.models.TaskListQuery;
@@ -230,7 +232,7 @@ public final class TaskRowsRenderer {
 
             assert task != null;
 
-            // --- Right-side columns: source badge then tier badge, right-aligned ---
+            // --- Right-side columns: source then tier, with tier at the right edge ---
             String srcText = task.getSource() != null
                     ? TaskLabelFormatter.shortSource(task.getSource()) : "?";
             String tierText = task.getTier() != null
@@ -278,13 +280,13 @@ public final class TaskRowsRenderer {
             g.setFont(smallFont);
             int nextBadgeRight = pillRightEdge;
 
-            int srcX = nextBadgeRight - srcW;
-            drawRowPill(g, sfm, srcText, srcX, pillTop, srcW, pillH, pillArc, withAlpha(uiTextDim, 210));
-            nextBadgeRight = srcX - COL_GAP;
-
             int tierX = nextBadgeRight - tierW;
             drawRowPill(g, sfm, tierText, tierX, pillTop, tierW, pillH, pillArc, tierTextColor(task.getTier()));
             nextBadgeRight = tierX - COL_GAP;
+
+            int srcX = nextBadgeRight - srcW;
+            drawRowPill(g, sfm, srcText, srcX, pillTop, srcW, pillH, pillArc, withAlpha(uiTextDim, 210));
+            nextBadgeRight = srcX - COL_GAP;
 
             if (query != null && query.showTimeSpentColumn)
             {
@@ -359,16 +361,7 @@ public final class TaskRowsRenderer {
     }
 
     private static Color tierTextColor(TaskTier tier) {
-        if (tier == null) return new Color(180, 180, 180, 210);
-        switch (tier) {
-            case EASY:        return new Color(100, 220,  80, 230); // green
-            case MEDIUM:      return new Color(230, 150,  40, 230); // orange
-            case HARD:        return new Color(220,  70,  60, 230); // red
-            case ELITE:       return new Color(160,  35,  35, 230); // dark red
-            case MASTER:
-            case GRANDMASTER: return new Color(170,  80, 210, 230); // purple
-            default:          return new Color(180, 180, 180, 210);
-        }
+        return UiPalette.tierColor(tier);
     }
 
     private void drawRowPill(Graphics2D g, FontMetrics fm, String text, int x, int y, int w, int h, int arc, Color textColor)

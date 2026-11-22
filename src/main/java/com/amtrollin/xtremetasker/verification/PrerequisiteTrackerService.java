@@ -94,7 +94,7 @@ public class PrerequisiteTrackerService
                     ? null : additionalPrerequisiteChecks.check(text);
             Boolean met = additional == null ? isSatisfied(text) : additional.met;
             out.add(new PrerequisiteStatus(text, Boolean.TRUE.equals(met), checkSpans(text), skillIcons(text),
-                    markerIcons(text), null, met != null));
+                    markerIcons(text), null, met != null, met == null ? "" : skillLevelHint(text)));
         }
         return out;
     }
@@ -684,6 +684,20 @@ public class PrerequisiteTrackerService
                 .replaceAll("^[\\s,:]+", "")
                 .replaceAll("[\\s,:]+$", "")
                 .trim();
+    }
+
+    private String skillLevelHint(String text)
+    {
+        List<String> levels = new ArrayList<>();
+        Matcher matcher = TRACKABLE_SKILL_SPAN_PATTERN.matcher(text);
+        while (matcher.find())
+        {
+            Skill skill = findSkill(matcher.group(2));
+            if (skill == null) continue;
+            int level = realSkillLevel(skill);
+            if (level < Integer.parseInt(matcher.group(1))) levels.add(String.valueOf(level));
+        }
+        return levels.isEmpty() ? "" : " · (" + String.join(", ", levels) + ")";
     }
 
     private List<PrerequisiteStatus.CheckSpan> checkSpans(String prerequisite)

@@ -48,12 +48,17 @@ public final class CollectionLogRequirementRenderer
 
     public int measure(CollectionLogRequirementPreview preview, FontMetrics fm, int maxWidth)
     {
+        return measure(preview, fm, maxWidth, true);
+    }
+
+    public int measure(CollectionLogRequirementPreview preview, FontMetrics fm, int maxWidth, boolean showHeading)
+    {
         if (preview == null || !preview.hasItems())
         {
             return 0;
         }
 
-        int total = rowHeight;
+        int total = showHeading && !isNeededItemsHeading(preview) ? rowHeight : 0;
         if (preview.showSummaryText())
         {
             total += rowHeight * summaryTextLineCount(preview.summaryText());
@@ -85,9 +90,19 @@ public final class CollectionLogRequirementRenderer
             Point mousePoint,
             Rectangle tooltipBounds)
     {
-        g.setColor(uiGold);
-        g.drawString(title(preview), x, y);
-        y += rowHeight;
+        return render(g, fm, x, y, maxWidth, preview, imageProvider, mousePoint, tooltipBounds, true);
+    }
+
+    public int render(Graphics2D g, FontMetrics fm, int x, int y, int maxWidth,
+            CollectionLogRequirementPreview preview, Function<Integer, BufferedImage> imageProvider,
+            Point mousePoint, Rectangle tooltipBounds, boolean showHeading)
+    {
+        if (showHeading && !isNeededItemsHeading(preview))
+        {
+            g.setColor(uiGold);
+            drawSectionHeading(g, title(preview), x, y, maxWidth);
+            y += rowHeight;
+        }
 
         if (preview.showSummaryText())
         {
@@ -112,13 +127,21 @@ public final class CollectionLogRequirementRenderer
         {
             y += secondarySectionGap(preview);
             g.setColor(uiGold);
-            g.drawString(truncateToWidth(preview.secondaryTitleText(), fm, maxWidth), x, y);
+            drawSectionHeading(g, preview.secondaryTitleText(), x, y, maxWidth);
             y += rowHeight;
             y = CollectionLogIconGridRenderer.render(g, fm, x, y, maxWidth, preview.secondaryItems(),
                     imageProvider, mousePoint, tooltipBounds, uiText, uiTextDim, edgeLight, edgeDark, preview.secondaryIconColumns());
         }
 
         return y;
+    }
+
+    private static void drawSectionHeading(Graphics2D g, String text, int x, int y, int width)
+    {
+        java.awt.Font original = g.getFont();
+        g.setFont(net.runelite.client.ui.FontManager.getRunescapeFont());
+        g.drawString(truncateToWidth(text, g.getFontMetrics(), width), x, y);
+        g.setFont(original);
     }
 
     private int measureTierSections(CollectionLogRequirementPreview preview, FontMetrics fm, int maxWidth)
@@ -324,6 +347,11 @@ public final class CollectionLogRequirementRenderer
         {
             return false;
         }
+    }
+
+    private static boolean isNeededItemsHeading(CollectionLogRequirementPreview preview)
+    {
+        return title(preview).toLowerCase(java.util.Locale.ROOT).startsWith("needed collection log item");
     }
 
     private static String title(CollectionLogRequirementPreview preview)

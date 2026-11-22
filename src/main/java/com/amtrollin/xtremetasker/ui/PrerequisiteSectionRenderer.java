@@ -3,6 +3,7 @@ package com.amtrollin.xtremetasker.ui;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus;
 import com.amtrollin.xtremetasker.models.PrerequisiteStatus.MarkerIcon;
 import com.amtrollin.xtremetasker.ui.style.UiPalette;
+import com.amtrollin.xtremetasker.ui.widgets.DisclosureHeader;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.*;
@@ -14,6 +15,7 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.*;
 
 public final class PrerequisiteSectionRenderer
 {
+    private static final int DETAILS_HEADING_GAP = 3;
     private static final int COLUMN_GAP = 20;
     private static final int SECTION_GAP = 3;
     private static final int HEADING_BOTTOM_GAP = 3;
@@ -84,7 +86,10 @@ public final class PrerequisiteSectionRenderer
     {
         milestoneHelp.clear();
         g.setColor(UiPalette.DEFAULT.UI_GOLD);
+        Font headingFont = g.getFont();
+        g.setFont(net.runelite.client.ui.FontManager.getRunescapeFont());
         g.drawString("Prereqs", x, y);
+        g.setFont(headingFont);
         y += rowHeight;
         List<Map.Entry<String, List<PrerequisiteStatus>>> groups = new ArrayList<>(sections(prereqs, statuses).entrySet());
         if (groups.isEmpty())
@@ -114,6 +119,190 @@ public final class PrerequisiteSectionRenderer
         return bottom;
     }
 
+    /** Grouped requirements for task details; unknown checks always stay visible. */
+    public static List<PrerequisiteStatus> detailEntries(String prereqs, List<PrerequisiteStatus> statuses)
+    {
+        List<PrerequisiteStatus> result = new ArrayList<>();
+        sections(prereqs, statuses).values().forEach(result::addAll);
+        return result;
+    }
+
+    public static boolean isConfirmedMet(PrerequisiteStatus status)
+    {
+        return status.isStatusKnown() && status.isCompleted();
+    }
+
+    public int measureDetails(List<PrerequisiteStatus> entries, boolean expanded, FontMetrics fm, int width,
+            Function<Skill, BufferedImage> skills, Function<MarkerIcon, BufferedImage> markers)
+    {
+        int height = rowHeight + (entries.isEmpty() ? 0 : DETAILS_HEADING_GAP);
+        List<PrerequisiteStatus> pending = new ArrayList<>();
+        List<PrerequisiteStatus> satisfied = new ArrayList<>();
+        for (PrerequisiteStatus status : entries)
+            (isConfirmedMet(status) ? satisfied : pending).add(status);
+        height += measureDetailGroups(pending, fm, width, skills, markers, false);
+        if (!satisfied.isEmpty())
+        {
+            height += DisclosureHeader.HEIGHT + (pending.isEmpty() ? 0 : 6);
+            if (expanded) height += measureDetailGroups(satisfied, fm, Math.max(1, width - 12), skills, markers, true);
+        }
+        if (entries.isEmpty()) height += rowHeight - 4;
+        return height;
+    }
+
+    public int renderDetails(Graphics2D g, FontMetrics fm, int x, int y, int width,
+            List<PrerequisiteStatus> entries, boolean expanded, Rectangle toggle,
+            Function<Skill, BufferedImage> skills, Function<MarkerIcon, BufferedImage> markers)
+    {
+        return renderDetails(g, fm, x, y, width, entries, expanded, toggle, null, null, skills, markers);
+    }
+
+    public int renderDetails(Graphics2D g, FontMetrics fm, int x, int y, int width,
+            List<PrerequisiteStatus> entries, boolean expanded, Rectangle toggle, Point mouse, Rectangle viewport,
+            Function<Skill, BufferedImage> skills, Function<MarkerIcon, BufferedImage> markers)
+    {
+        milestoneHelp.clear();
+        toggle.setBounds(0, 0, 0, 0);
+        long met = entries.stream().filter(PrerequisiteSectionRenderer::isConfirmedMet).count();
+        String heading = "Requirements:";
+        g.setColor(UiPalette.DEFAULT.UI_GOLD);
+        Font bodyFont = g.getFont();
+        g.setFont(net.runelite.client.ui.FontManager.getRunescapeFont());
+        int headingWidth = g.getFontMetrics().stringWidth(heading);
+        g.drawString(heading, x, y);
+        g.setFont(bodyFont);
+        String count = met + " of " + entries.size() + " met";
+        if (!entries.isEmpty() && headingWidth + fm.stringWidth(count) + 16 <= width)
+        {
+            g.setColor(uiTextDim);
+            g.drawString(count, x + headingWidth + fm.stringWidth(" "), y);
+        }
+        y += rowHeight + (entries.isEmpty() ? 0 : DETAILS_HEADING_GAP);
+        List<PrerequisiteStatus> pending = new ArrayList<>();
+        List<PrerequisiteStatus> satisfied = new ArrayList<>();
+        for (PrerequisiteStatus status : entries)
+            (isConfirmedMet(status) ? satisfied : pending).add(status);
+        y = drawDetailGroups(g, fm, x, y, width, pending, skills, markers, false);
+        if (met > 0)
+        {
+            if (!pending.isEmpty()) y += 6;
+            String label = met == entries.size() ? "All requirements met" : met + (met == 1 ? " requirement met" : " requirements met");
+            DisclosureHeader.draw(g, label, x, y, width, expanded, toggle, mouse, viewport,
+                    UiPalette.TIER_COMPLETE_GLOW, UiPalette.TIER_COMPLETE_GLOW.brighter());
+            y += DisclosureHeader.HEIGHT;
+            if (expanded)
+            {
+                y = drawDetailGroups(g, fm, x + 12, y, Math.max(1, width - 12), satisfied, skills, markers, true);
+            }
+        }
+        if (entries.isEmpty())
+        {
+            g.setColor(uiTextDim);
+            g.drawString("None", x, y);
+            y += rowHeight - 4;
+        }
+        return y;
+    }
+
+    private int measureDetailGroups(List<PrerequisiteStatus> entries, FontMetrics fm, int maxWidth,
+            Function<Skill, BufferedImage> skills, Function<MarkerIcon, BufferedImage> markers, boolean completed)
+    {
+        if (completed)
+        {
+            int height = 0;
+            for (List<PrerequisiteStatus> group : sections("", entries).values())
+            {
+                height += (height == 0 ? 2 : 6) + rowHeight;
+                for (int i = 0; i < group.size(); i++)
+                {
+                    if (i > 0) height += 4;
+                    PrerequisiteStatus status = group.get(i);
+                    height += entryHeight(status, fm, Math.max(1, maxWidth - 14),
+                            PrerequisiteIconRenderer.resolveMarkerImage(status, skills, markers));
+                }
+            }
+            return height;
+        }
+        List<List<PrerequisiteStatus>> groups = new ArrayList<>(sections("", entries).values());
+        int width = columnWidth(maxWidth, groups.size());
+        int[] heights = new int[2];
+        for (int i = 0; i < groups.size(); i++)
+        {
+            int column = i % 2;
+            heights[column] += (i < 2 ? 2 : 6) + rowHeight;
+            List<PrerequisiteStatus> group = groups.get(i);
+            for (int j = 0; j < group.size(); j++)
+            {
+                if (completed && j > 0) heights[column] += 4;
+                PrerequisiteStatus status = group.get(j);
+                heights[column] += entryHeight(status, fm, Math.max(1, width - (completed ? 14 : 0)),
+                        PrerequisiteIconRenderer.resolveMarkerImage(status, skills, markers));
+            }
+        }
+        return Math.max(heights[0], heights[1]);
+    }
+
+    private int drawDetailGroups(Graphics2D g, FontMetrics fm, int x, int y, int maxWidth,
+            List<PrerequisiteStatus> entries, Function<Skill, BufferedImage> skills,
+            Function<MarkerIcon, BufferedImage> markers, boolean completed)
+    {
+        if (completed)
+        {
+            boolean firstGroup = true;
+            for (Map.Entry<String, List<PrerequisiteStatus>> group : sections("", entries).entrySet())
+            {
+                y += firstGroup ? 2 : 6;
+                firstGroup = false;
+                String label = group.getKey().equals("Other requirements") ? "Other"
+                        : group.getKey().equals("Required activities") ? "Activities" : group.getKey();
+                g.setColor(SUBSECTION_TITLE);
+                g.drawString(label, x, y);
+                y += rowHeight;
+                for (int i = 0; i < group.getValue().size(); i++)
+                {
+                    if (i > 0) y += 4;
+                    DisclosureHeader.check(g, x, y);
+                    y = drawStatuses(g, fm, x + 14, y, Math.max(1, maxWidth - 14),
+                            List.of(group.getValue().get(i)), skills, markers);
+                }
+            }
+            return y;
+        }
+        List<Map.Entry<String, List<PrerequisiteStatus>>> groups = new ArrayList<>(sections("", entries).entrySet());
+        int width = columnWidth(maxWidth, groups.size());
+        int[] bottoms = {y, y};
+        for (int i = 0; i < groups.size(); i++)
+        {
+            int column = i % 2;
+            int left = x + column * (width + COLUMN_GAP);
+            int baseline = bottoms[column] + (i < 2 ? 2 : 6);
+            String group = groups.get(i).getKey();
+            String label = group.equals("Other requirements") ? "Other"
+                    : group.equals("Required activities") ? "Activities" : group;
+            g.setColor(SUBSECTION_TITLE);
+            g.drawString(label, left, baseline);
+            baseline += rowHeight;
+            List<PrerequisiteStatus> statuses = groups.get(i).getValue();
+            for (int j = 0; j < statuses.size(); j++)
+            {
+                if (completed && j > 0) baseline += 4;
+                if (completed) DisclosureHeader.check(g, left, baseline);
+                int inset = completed ? 14 : 0;
+                baseline = drawStatuses(g, fm, left + inset, baseline, Math.max(1, width - inset),
+                        List.of(statuses.get(j)), skills, markers);
+            }
+            bottoms[column] = baseline;
+        }
+        int bottom = Math.max(bottoms[0], bottoms[1]);
+        if (groups.size() > 1)
+        {
+            int dividerX = x + width + COLUMN_GAP / 2;
+            g.setColor(COLUMN_DIVIDER);
+            g.drawLine(dividerX, y + 2 - fm.getAscent(), dividerX, bottom - rowHeight + fm.getDescent());
+        }
+        return bottom;
+    }
+
     private static int columnWidth(int maxWidth, int sectionCount)
     {
         int available = Math.max(1, maxWidth - SECTION_INSET);
@@ -124,8 +313,11 @@ public final class PrerequisiteSectionRenderer
             Function<Skill, BufferedImage> skillImageProvider, Function<MarkerIcon, BufferedImage> markerImageProvider)
     {
         int height = rowHeight * wrapRequirementText(section.getKey(), fm, width).size() + HEADING_BOTTOM_GAP;
+        String previousCategory = null;
         for (PrerequisiteStatus status : section.getValue())
         {
+            if (previousCategory != null && !previousCategory.equals(category(status))) height += rowHeight;
+            previousCategory = category(status);
             BufferedImage marker = PrerequisiteIconRenderer.resolveMarkerImage(status, skillImageProvider, markerImageProvider);
             height += entryHeight(status, fm, width, marker);
         }
@@ -187,7 +379,7 @@ public final class PrerequisiteSectionRenderer
     static Map<String, List<PrerequisiteStatus>> sections(String prereqs, List<PrerequisiteStatus> statuses)
     {
         Map<String, List<PrerequisiteStatus>> sections = new LinkedHashMap<>();
-        for (String heading : List.of("Skills", "Quests", "Required activities", "Other requirements"))
+        for (String heading : List.of("Skills", "Quests", "Access", "Required activities", "Other requirements"))
             sections.put(heading, new ArrayList<>());
         List<PrerequisiteStatus> entries = statuses;
         if (entries == null || entries.isEmpty())
@@ -210,6 +402,7 @@ public final class PrerequisiteSectionRenderer
     private static String category(PrerequisiteStatus status)
     {
         String text = status.getText().trim().toLowerCase(Locale.ROOT);
+        if (text.matches("^(access|unlock|enter|ability to|permission to)\\b.*")) return "Access";
         if (status.getMarkerIcons().contains(MarkerIcon.START_QUEST)
                 || text.matches("^(start|partially complete|progress)\\b.*"))
             return "Quests";
@@ -242,11 +435,14 @@ public final class PrerequisiteSectionRenderer
         if (items.isEmpty()) return y;
         y += 8;
         g.setColor(UiPalette.DEFAULT.UI_GOLD);
+        Font headingFont = g.getFont();
+        g.setFont(net.runelite.client.ui.FontManager.getRunescapeFont());
         for (String line : wrapRequirementText("Suggested stats", fm, width))
         {
             g.drawString(line, x, y);
             y += rowHeight;
         }
+        g.setFont(headingFont);
         return drawStatuses(g, fm, x, y + HEADING_BOTTOM_GAP, width, items, skillImageProvider, null);
     }
 
@@ -296,11 +492,14 @@ public final class PrerequisiteSectionRenderer
             Function<Skill, BufferedImage> skillImageProvider,
             Function<MarkerIcon, BufferedImage> markerImageProvider)
     {
+        String previousCategory = null;
         for (PrerequisiteStatus status : statuses)
         {
+            if (previousCategory != null && !previousCategory.equals(category(status))) y += rowHeight;
+            previousCategory = category(status);
             BufferedImage markerImage = PrerequisiteIconRenderer.resolveMarkerImage(status, skillImageProvider, markerImageProvider);
             int markerX = x;
-            int markerWidth = PrerequisiteIconRenderer.markerWidth(fm, markerImage);
+            int markerWidth = detailMarkerWidth(status, fm, markerImage);
             int textX = markerX + markerWidth;
             int lineHeight = PrerequisiteIconRenderer.lineHeight(rowHeight, status);
             boolean firstLine = true;
@@ -337,11 +536,17 @@ public final class PrerequisiteSectionRenderer
         return PrerequisiteIconRenderer.lineHeight(rowHeight, status) * titleLines(status, fm, width, marker).size();
     }
 
+    private static int detailMarkerWidth(PrerequisiteStatus status, FontMetrics fm, BufferedImage marker)
+    {
+        int width = PrerequisiteIconRenderer.markerWidth(fm, marker);
+        return marker != null && status.hasQuestIcon() ? width - 4 : width;
+    }
+
     private static List<String> titleLines(PrerequisiteStatus status, FontMetrics fm, int width, BufferedImage marker)
     {
         int helpWidth = milestoneDetail(status).isEmpty() ? 0 : HELP_GAP + HELP_SIZE;
         return wrapRequirementText(displayText(status), fm,
-                Math.max(1, width - PrerequisiteIconRenderer.markerWidth(fm, marker) - helpWidth));
+                Math.max(1, width - detailMarkerWidth(status, fm, marker) - helpWidth));
     }
 
     private static void drawInfoIcon(Graphics2D g, Rectangle bounds)
@@ -361,6 +566,7 @@ public final class PrerequisiteSectionRenderer
     static String displayText(PrerequisiteStatus status)
     {
         String text = status.getText();
+        if (!status.getSkillLevelHint().isEmpty()) return text + status.getSkillLevelHint();
         if (text.equalsIgnoreCase("Part 1 of Barbarian Firemaking")) return "Reach milestone in Barbarian Training";
         if (!"Quests".equals(category(status)) || text.startsWith("Reach milestone")
                 || text.startsWith("Start ")) return text;
@@ -382,7 +588,7 @@ public final class PrerequisiteSectionRenderer
         for (Map.Entry<Rectangle, String> help : milestoneHelp.entrySet())
         {
             if (!help.getKey().contains(mouse)) continue;
-            // Match the wrapped, soft-gray hover text used by the other help icons.
+            // Match the dark brown background used by the other help tooltips.
             int padX = 8;
             int padY = 6;
             List<String> lines = wrapRequirementText(help.getValue(), fm, Math.max(1, bounds.width - 24 - padX * 2));
@@ -393,6 +599,9 @@ public final class PrerequisiteSectionRenderer
             int y = Math.max(bounds.y + 6, help.getKey().y - height + 2);
             Shape oldClip = g.getClip();
             g.clip(bounds);
+            com.amtrollin.xtremetasker.ui.style.UiDraw.drawBevelBox(g,
+                    new Rectangle(x, y, textWidth + padX * 2, height), new Color(35, 28, 19),
+                    UiPalette.DEFAULT.UI_EDGE_DARK, UiPalette.DEFAULT.UI_EDGE_LIGHT);
             g.setColor(uiTextDim);
             int baseline = y + padY + fm.getAscent();
             for (String line : lines)
@@ -419,6 +628,17 @@ public final class PrerequisiteSectionRenderer
         {
             g.setColor(UiPalette.TIER_COMPLETE_GLOW);
             g.drawString(line.substring(0, coloredChars), x, y);
+        }
+
+        if (!status.getSkillLevelHint().isEmpty() && titleOffset >= 0)
+        {
+            int hintStart = status.getText().length();
+            int start = Math.max(0, hintStart - titleOffset);
+            if (start < line.length())
+            {
+                g.setColor(new Color(185, 185, 185));
+                g.drawString(line.substring(start), x + fm.stringWidth(line.substring(0, start)), y);
+            }
         }
 
         if (!hasCheckSpans)

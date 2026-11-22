@@ -95,3 +95,21 @@
 <span style="color:#778899">Xtreme Tasker builds on the official Tasker game mode and was inspired by Tedious' Collection Log Master.</span>
 
 <span style="color:#778899">HUGE thanks to everyone who has tested the plugin, reported bugs, and shared feedback!</span>
+
+
+## Development launches
+
+Run `./gradlew run`, or reload the Gradle project in IntelliJ and select **XT Isolated**.
+These launches set Java's `user.home` to this checkout's `.dev-user-home`.
+RuneLite configuration, sideloaded plugins, and XT saves stay in `.dev-user-home/.runelite`,
+separate from your normal RuneLite data. This directory is ignored by Git and survives `gradlew clean`.
+The first isolated launch starts with fresh settings and progress; existing saves are not imported.
+
+A shared **XT Isolated Application** configuration also provides the same JVM setting for direct
+IntelliJ launches using the `xtreme-tasker.test` module after Gradle import. Older auto-generated
+Application configurations must be given `-Duser.home="$PROJECT_DIR$/.dev-user-home"` explicitly,
+or replaced with **XT Isolated**.
+
+Use `./gradlew run --args=--verify-runtime` to check the data paths and UI resource classpath
+without starting the game or writing progress. Isolation does not validate save compatibility
+between XT versions. Do not point development clients at normal gameplay saves.

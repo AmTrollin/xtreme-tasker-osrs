@@ -10741,7 +10741,7 @@
     },
     {
       "id": "collection_log_medium_get-1-alchemist-outift-piece_001_bc5cc02b9e",
-      "name": "Get 1 alchemist outift piece",
+      "name": "Get 1 alchemist outfit piece",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "60 Herblore; Children of the Sun quest",
@@ -10759,7 +10759,7 @@
     },
     {
       "id": "collection_log_medium_get-1-alchemist-outift-piece_002_e490162866",
-      "name": "Get 1 alchemist outift piece",
+      "name": "Get 1 alchemist outfit piece",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "60 Herblore; Children of the Sun quest",
@@ -10777,7 +10777,7 @@
     },
     {
       "id": "collection_log_medium_get-1-alchemist-outift-piece_003_3eb256277d",
-      "name": "Get 1 alchemist outift piece",
+      "name": "Get 1 alchemist outfit piece",
       "source": "COLLECTION_LOG",
       "tier": "MEDIUM",
       "prereqs": "60 Herblore; Children of the Sun quest",

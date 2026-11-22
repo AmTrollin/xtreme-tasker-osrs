@@ -64,3 +64,17 @@ tasks.register('shadowJar', Jar) {
     archiveClassifier.set('shadow')
     archiveFileName.set("${rootProject.name}-${project.version}-all.jar")
 }
+
+// Each checkout keeps development plugins and progress separate from normal RuneLite.
+tasks.register('run', JavaExec) {
+    dependsOn testClasses
+    group = 'application'
+    description = 'Run XT with isolated development settings and saves.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass.set('com.amtrollin.xtremetasker.XtremeTaskerPluginTest')
+    systemProperty 'user.home', layout.projectDirectory.dir('.dev-user-home').asFile.absolutePath
+    enableAssertions = true
+    doFirst {
+        layout.projectDirectory.dir('.dev-user-home').asFile.mkdirs()
+    }
+}
