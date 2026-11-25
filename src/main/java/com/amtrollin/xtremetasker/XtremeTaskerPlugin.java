@@ -138,6 +138,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private int loadedPackVersion = 0;
     private int collectionLogStateVersion = 0;
 
+    private StateSaveQueue stateSaveQueue;
     private boolean dirty = false;
     private int flushTickCounter = 0;
     private static final int FLUSH_EVERY_TICKS = 10; // ~6s (game tick ~0.6s)
@@ -145,7 +146,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Map<String, Integer> caTaskIdsByName = new HashMap<>();
     private final Map<String, Integer> caTaskIdsByNormalizedName = new HashMap<>();
     private final Map<String, List<XtremeTask>> taskGroupInstancesCache = new HashMap<>();
-    private int taskGroupInstancesCachePackVersion = -1;
+    private boolean taskIndexesReady;
+    private final Map<Integer, Set<String>> collectionLogTasksByItem = new HashMap<>();
+    private List<Object> lastItemSyncContext;
+    private Set<Integer> lastSyncedObtainedItems = Collections.emptySet();
+    private Set<Integer> lastSyncedSeenItems = Collections.emptySet();
+    private int[] trackedCollectionLogItemIds = new int[0];
+    private final Map<XtremeTask, String> taskGroupKeys = new IdentityHashMap<>();
+    private final Map<XtremeTask, String> countedGroupKeys = new IdentityHashMap<>();
+    private final Map<String, List<XtremeTask>> countedGroups = new HashMap<>();
+    private final Map<List<XtremeTask>, List<Integer>> groupThresholds = new IdentityHashMap<>();
     private int taskListRenderStateVersion = 0;
     private int taskListTimerStateVersion = 0;
 
@@ -164,6 +174,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private String lastCollectionLogSyncResultAtLocalTime = null;
     List<XtremeTask> tasksForTesting()
     {
+        invalidateTaskIndexes();
         return tasks;
     }
 
@@ -231,6 +242,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     protected void startUp() {
         log.info("Xtreme Tasker started");
+        stateSaveQueue = new StateSaveQueue();
 
         attachCollectionLogCacheListener();
         collectionLogService.startUp();
@@ -269,6 +281,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         collectionLogService.shutDown();
 
         saveActiveState("plugin shutdown");
+        if (stateSaveQueue != null)
+        {
+            stateSaveQueue.close();
+            stateSaveQueue = null;
+        }
 
         overlayManager.remove(overlay);
         overlayManager.remove(panelOverlay);
@@ -302,6 +319,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         knownTaskIds.clear();
         loadedPackVersion = 0;
 
+        invalidateTaskIndexes();
         tasks.clear();
         taskPackLoaded = false;
 
@@ -313,19 +331,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (collectionLogService != null)
         {
             collectionLogService.setCacheChangeListener(this::onCollectionLogCacheChanged);
-            collectionLogService.setTrackedItemIdsSupplier(() -> tasks.stream()
-                    .map(XtremeTask::getVerification)
-                    .filter(Objects::nonNull)
-                    .filter(v -> v.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
-                    .filter(v -> v.getItemIds() != null)
-                    .flatMapToInt(v -> Arrays.stream(v.getItemIds()))
-                    .filter(id -> id > 0).distinct().toArray());
+            collectionLogService.setTrackedItemIdsSupplier(() ->
+            {
+                ensureTaskIndexes();
+                return trackedCollectionLogItemIds;
+            });
         }
     }
 
     private void onCollectionLogCacheChanged()
     {
         collectionLogStateVersion++;
+        refreshCurrentTaskCompletionCriteriaMet();
         syncMismatchTasksCacheValid = false;
         dirty = true;
         log.debug("XtremeTasker CLOG sync debug: plugin cache changed stateVersion={} obtainedCount={} seenCount={} fullSync={} tasksLoaded={} queued={}",
@@ -342,7 +359,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         if (clientThread == null)
         {
-            refreshCollectionLogCompletionCandidatesFromCache();
+            refreshCollectionLogCompletionCandidatesFromCache(true);
             return;
         }
 
@@ -355,11 +372,16 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         clientThread.invokeLater(() ->
         {
             collectionLogCompletionCandidateRefreshQueued = false;
-            refreshCollectionLogCompletionCandidatesFromCache();
+            refreshCollectionLogCompletionCandidatesFromCache(true);
         });
     }
 
     private void refreshCollectionLogCompletionCandidatesFromCache()
+    {
+        refreshCollectionLogCompletionCandidatesFromCache(false);
+    }
+
+    private void refreshCollectionLogCompletionCandidatesFromCache(boolean incremental)
     {
         if (tasks.isEmpty() || collectionLogService == null)
         {
@@ -367,20 +389,66 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        refreshCollectionLogItemSyncStateFromCache();
+        refreshCollectionLogItemSyncStateFromCache(incremental);
         refreshCurrentTaskCompletionCriteriaMet();
     }
 
-    private void refreshCollectionLogItemSyncStateFromCache()
+    private void refreshCollectionLogItemSyncStateFromCache(boolean incremental)
     {
+        ensureTaskIndexes();
+        // A changed completion, roll, account, pack or sync-evidence timestamp
+        // requires a full refresh. Plain item changes only affect indexed tasks.
+        List<Object> context = itemSyncContext();
+        Set<Integer> obtained = new HashSet<>(collectionLogService.getCachedItemIds());
+        Set<Integer> seenItems = new HashSet<>(collectionLogService.getCachedSeenItemIds());
+        Set<String> affected = null;
+        if (incremental && context.equals(lastItemSyncContext))
+        {
+            Set<Integer> changed = new HashSet<>();
+            addChangedItems(changed, obtained, lastSyncedObtainedItems);
+            addChangedItems(changed, seenItems, lastSyncedSeenItems);
+            affected = new HashSet<>();
+            for (int itemId : changed)
+            {
+                affected.addAll(collectionLogTasksByItem.getOrDefault(canonicalCollectionLogItemId(itemId), Collections.emptySet()));
+            }
+        }
         List<String> completionCandidateTaskIds = new ArrayList<>();
-        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds, true);
+        int completionCandidates = findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds,
+                CollectionLogCompletionCandidateScope.COLLECTION_LOG_ITEMS_ONLY, affected);
+        if (affected != null)
+        {
+            for (String id : syncCompletionCandidateTaskIds)
+            {
+                if (!affected.contains(id)) completionCandidateTaskIds.add(id);
+            }
+        }
+        if (affected != null)
+        {
+            completionCandidateTaskIds = orderCollectionLogSyncResults(new HashSet<>(completionCandidateTaskIds), false)
+                    .stream().map(XtremeTask::getId).collect(Collectors.toList());
+        }
         setCollectionLogItemSyncCompletionCandidates(completionCandidateTaskIds);
 
         List<XtremeTask> syncMismatchTasks = findCollectionLogSyncMismatches(
-                hasCollectionLogSyncCacheEvidence(),
-                true);
+                hasCollectionLogSyncCacheEvidence(), true, affected);
+        if (affected != null)
+        {
+            Map<String, XtremeTask> byId = tasksById();
+            for (String id : syncMismatchTaskIds)
+            {
+                if (!affected.contains(id) && isCollectionLogItemTask(byId.get(id))) syncMismatchTasks.add(byId.get(id));
+            }
+        }
+        if (affected != null)
+        {
+            syncMismatchTasks = orderCollectionLogSyncResults(syncMismatchTasks.stream()
+                    .map(XtremeTask::getId).collect(Collectors.toSet()), true);
+        }
         setCollectionLogItemSyncMismatchTasks(syncMismatchTasks);
+        lastItemSyncContext = itemSyncContext();
+        lastSyncedObtainedItems = obtained;
+        lastSyncedSeenItems = seenItems;
         log.debug("XtremeTasker CLOG sync debug: quiet cache refresh obtainedCount={} seenCount={} fullSync={} lastSyncSeenAt={} completionCandidates={} candidateIds={} mismatchCount={} mismatchIds={}",
                 collectionLogService.getCapturedItemCount(),
                 collectionLogService.getSeenItemCount(),
@@ -390,6 +458,57 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 completionCandidateTaskIds,
                 syncMismatchTasks.size(),
                 syncMismatchTasks.stream().map(XtremeTask::getId).collect(Collectors.toList()));
+    }
+
+    // Retain the full refresh's group order when merging incremental results.
+    private List<XtremeTask> orderCollectionLogSyncResults(Set<String> ids, boolean mismatches)
+    {
+        Set<String> resultGroups = new HashSet<>();
+        for (XtremeTask task : tasks)
+        {
+            if (ids.contains(task.getId()) && isCountedCollectionLogSync(task.getVerification()))
+            {
+                resultGroups.add(countedCollectionLogGroupKey(task, task.getVerification()));
+            }
+        }
+        List<XtremeTask> ordered = new ArrayList<>();
+        Set<String> processedGroups = new HashSet<>();
+        for (XtremeTask task : tasks)
+        {
+            if (!isCollectionLogItemTask(task) || isTaskCompleted(task) != mismatches
+                    || (!mismatches && isCurrentTaskId(task.getId()))) continue;
+            TaskVerification verification = task.getVerification();
+            if (isCountedCollectionLogSync(verification))
+            {
+                String key = countedCollectionLogGroupKey(task, verification);
+                if (!resultGroups.contains(key) || processedGroups.contains(key)) continue;
+                if (mismatches && (!hasCollectionLogSyncCacheEvidence() || !hasCollectionLogSyncEvidence(task, verification))) continue;
+                processedGroups.add(key);
+                for (XtremeTask member : countedCollectionLogGroupFor(task, verification))
+                {
+                    if (ids.contains(member.getId())) ordered.add(member);
+                }
+            }
+            else if (ids.contains(task.getId())) ordered.add(task);
+        }
+        return ordered;
+    }
+
+    private List<Object> itemSyncContext()
+    {
+        return Arrays.asList(activeAccountKey, currentTaskId, taskListRenderStateVersion,
+                collectionLogService.getLastSyncSeenAtMillis(), collectionLogService.hasFullSyncSeen(),
+                collectionLogService.getPendingAncientPageDropCountSinceLastSync(),
+                collectionLogService.getPendingMedallionFragmentDropCountSinceLastSync(),
+                new HashSet<>(manualCompletedTaskIds), new HashSet<>(syncedCompletedTaskIds),
+                new HashMap<>(manualCompletionTimestamps), new HashMap<>(syncedCompletionTimestamps),
+                new ArrayList<>(syncCompletionCandidateTaskIds), new ArrayList<>(syncMismatchTaskIds));
+    }
+
+    private static void addChangedItems(Set<Integer> changed, Set<Integer> current, Set<Integer> previous)
+    {
+        for (int item : current) if (!previous.contains(item)) changed.add(item);
+        for (int item : previous) if (!current.contains(item)) changed.add(item);
     }
 
     private synchronized void saveActiveState(String reason) {
@@ -432,7 +551,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
-        if (!CONFIG_GROUP.equals(event.getGroup())) {
+        // State and backup writes do not change overlay settings. In particular,
+        // they must not rebuild overlays from the background state writer.
+        if (!CONFIG_GROUP.equals(event.getGroup())
+                || (event.getKey() != null && event.getKey().startsWith(STATE_KEY_PREFIX))) {
             return;
         }
 
@@ -554,15 +676,69 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return List.of();
         }
 
-        if (taskGroupInstancesCachePackVersion != loadedPackVersion)
-        {
-            taskGroupInstancesCache.clear();
-            taskGroupInstancesCachePackVersion = loadedPackVersion;
-        }
+        ensureTaskIndexes();
+        String key = taskGroupKeys.get(task);
+        return taskGroupInstancesCache.getOrDefault(key == null ? TaskGroupUtils.key(task) : key, Collections.emptyList());
+    }
 
-        String key = TaskGroupUtils.key(task);
-        return taskGroupInstancesCache.computeIfAbsent(key, ignored ->
-                Collections.unmodifiableList(TaskGroupUtils.groupFor(tasks, task)));
+    private void invalidateTaskIndexes()
+    {
+        taskIndexesReady = false;
+        lastItemSyncContext = null;
+        collectionLogTasksByItem.clear();
+        trackedCollectionLogItemIds = new int[0];
+        taskGroupKeys.clear();
+        countedGroupKeys.clear();
+        countedGroups.clear();
+        groupThresholds.clear();
+        taskGroupInstancesCache.clear();
+    }
+
+    private void ensureTaskIndexes()
+    {
+        if (taskIndexesReady)
+        {
+            return;
+        }
+        for (XtremeTask task : tasks)
+        {
+            if (task == null) continue;
+            if (isCollectionLogItemTask(task))
+            {
+                TaskVerification verification = task.getVerification();
+                if (verification.getItemIds() != null)
+                {
+                    for (int itemId : verification.getItemIds()) indexCollectionLogItem(itemId, task.getId());
+                }
+                if (hasCollectionLogCompletionItem(verification)) indexCollectionLogItem(verification.getCompletionItemId(), task.getId());
+            }
+            String taskKey = TaskGroupUtils.key(task);
+            taskGroupKeys.put(task, taskKey);
+            taskGroupInstancesCache.computeIfAbsent(taskKey, key -> new ArrayList<>()).add(task);
+            String key = computeCountedCollectionLogGroupKey(task, task.getVerification());
+            countedGroupKeys.put(task, key);
+            if (key != null && isCollectionLogSyncSource(task.getSource()))
+            {
+                countedGroups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(task);
+            }
+        }
+        taskGroupInstancesCache.replaceAll((key, group) -> Collections.unmodifiableList(group));
+        countedGroups.replaceAll((key, group) -> Collections.unmodifiableList(group));
+        for (List<XtremeTask> group : countedGroups.values())
+        {
+            groupThresholds.put(group, Collections.unmodifiableList(computeCountedGroupThresholds(group)));
+        }
+        trackedCollectionLogItemIds = tasks.stream().map(XtremeTask::getVerification)
+                .filter(Objects::nonNull)
+                .filter(v -> v.getType() == TaskVerification.VerificationType.COLLECTION_LOG)
+                .filter(v -> v.getItemIds() != null)
+                .flatMapToInt(v -> Arrays.stream(v.getItemIds())).filter(id -> id > 0).distinct().toArray();
+        taskIndexesReady = true;
+    }
+
+    private void indexCollectionLogItem(int itemId, String taskId)
+    {
+        if (itemId > 0) collectionLogTasksByItem.computeIfAbsent(canonicalCollectionLogItemId(itemId), ignored -> new HashSet<>()).add(taskId);
     }
 
     /** Returns completion metadata for a task, or null if not completed. */
@@ -1039,18 +1215,45 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        log.trace("Saved state snapshot: currentTaskId={}, manualDone={}, syncedDone={}",
-                currentTaskId, manualCompletedTaskIds.size(), syncedCompletedTaskIds.size());
+        // Capture every mutable collection and all Client-derived values here.
+        // Only this detached snapshot is read by the background writer.
+        PersistedState state = buildPersistedState();
+        state.setAccountKey(accountKey);
+        net.runelite.client.config.ConfigProfile profile = configManager.getProfile();
+        Runnable save = () -> writeStateSnapshot(accountKey, state, profile);
+        if (stateSaveQueue == null)
+        {
+            save.run();
+        }
+        else
+        {
+            stateSaveQueue.submit(() ->
+            {
+                try
+                {
+                    save.run();
+                }
+                catch (Exception e)
+                {
+                    log.error("Failed to persist XtremeTasker state for {}", accountKey, e);
+                    throw e;
+                }
+            });
+        }
+    }
 
+    private void writeStateSnapshot(String accountKey, PersistedState state,
+            net.runelite.client.config.ConfigProfile profile)
+    {
         String key = stateConfigKeyForAccount(accountKey);
         String previousJson = readStateFileForAccount(accountKey);
         if (previousJson == null || previousJson.trim().isEmpty()) {
-            previousJson = configManager.getConfiguration(CONFIG_GROUP, key);
+            synchronized (configManager)
+            {
+                if (isSameConfigProfile(profile)) previousJson = configManager.getConfiguration(CONFIG_GROUP, key);
+            }
         }
         PersistedState previousState = parseAndValidateState(previousJson, "previous save");
-
-        PersistedState state = buildPersistedState();
-        state.setAccountKey(accountKey);
 
         String json = gson.toJson(state);
         PersistedState parsed = parseAndValidateState(json, "new save");
@@ -1060,13 +1263,22 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
         boolean shouldFlushToDisk = previousState == null || isRecoveryRelevantStateChange(previousState, parsed);
         if (shouldFlushToDisk) {
-            rotateStateBackups(accountKey, previousJson);
+            rotateStateBackups(accountKey, previousJson, profile);
         }
-        configManager.setConfiguration(CONFIG_GROUP, key, json);
+        synchronized (configManager)
+        {
+            if (isSameConfigProfile(profile)) configManager.setConfiguration(CONFIG_GROUP, key, json);
+        }
         writeStateFileForAccount(accountKey, json);
         if (shouldFlushToDisk) {
             flushConfigToDisk("state save");
         }
+    }
+
+    private boolean isSameConfigProfile(net.runelite.client.config.ConfigProfile expected)
+    {
+        net.runelite.client.config.ConfigProfile actual = configManager.getProfile();
+        return actual == null ? expected == null : expected != null && actual.getId() == expected.getId();
     }
 
     private void flushConfigToDisk(String reason) {
@@ -1101,6 +1313,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void loadStateForAccount(String accountKey)
     {
+        if (stateSaveQueue != null) stateSaveQueue.flush();
         if (accountKey == null)
         {
             clearLoadedState();
@@ -1395,27 +1608,32 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .collect(Collectors.toList());
     }
 
-    private void rotateStateBackups(String accountKey, String currentJson) {
+    private void rotateStateBackups(String accountKey, String currentJson, net.runelite.client.config.ConfigProfile profile) {
         if (currentJson == null || currentJson.trim().isEmpty()) {
             return;
         }
 
         if (parseAndValidateState(currentJson, "backup candidate") == null) {
-            preserveCorruptState(accountKey, currentJson);
+            preserveCorruptState(accountKey, currentJson, profile);
             return;
         }
 
-        for (int i = STATE_BACKUP_COUNT; i >= 2; i--) {
-            String previousBackup = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i - 1));
-            String backupKey = stateBackupConfigKeyForAccount(accountKey, i);
-            if (previousBackup == null || previousBackup.trim().isEmpty()) {
-                configManager.unsetConfiguration(CONFIG_GROUP, backupKey);
-            } else {
-                configManager.setConfiguration(CONFIG_GROUP, backupKey, previousBackup);
+        synchronized (configManager)
+        {
+            if (isSameConfigProfile(profile))
+            {
+                for (int i = STATE_BACKUP_COUNT; i >= 2; i--) {
+                    String previousBackup = configManager.getConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, i - 1));
+                    String backupKey = stateBackupConfigKeyForAccount(accountKey, i);
+                    if (previousBackup == null || previousBackup.trim().isEmpty()) {
+                        configManager.unsetConfiguration(CONFIG_GROUP, backupKey);
+                    } else {
+                        configManager.setConfiguration(CONFIG_GROUP, backupKey, previousBackup);
+                    }
+                }
+                configManager.setConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, 1), currentJson);
             }
         }
-
-        configManager.setConfiguration(CONFIG_GROUP, stateBackupConfigKeyForAccount(accountKey, 1), currentJson);
 
         for (int i = STATE_BACKUP_COUNT; i >= 2; i--) {
             String previousBackup = readStateBackupFileForAccount(accountKey, i - 1);
@@ -1502,10 +1720,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private void preserveCorruptState(String accountKey, String json) {
+        preserveCorruptState(accountKey, json, configManager.getProfile());
+    }
+
+    private void preserveCorruptState(String accountKey, String json, net.runelite.client.config.ConfigProfile profile) {
         if (json == null || json.trim().isEmpty()) {
             return;
         }
-        configManager.setConfiguration(CONFIG_GROUP, stateCorruptConfigKeyForAccount(accountKey), json);
+        synchronized (configManager)
+        {
+            if (isSameConfigProfile(profile)) configManager.setConfiguration(CONFIG_GROUP, stateCorruptConfigKeyForAccount(accountKey), json);
+        }
         Path path = stateCorruptFileForAccount(accountKey);
         try {
             Files.createDirectories(path.getParent());
@@ -1893,24 +2118,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     public int countObtainedCollectionLogItems(int[] itemIds) {
-        if (itemIds == null || itemIds.length == 0)
-        {
-            return 0;
-        }
-
-        Set<Integer> countedCanonicalItemIds = new HashSet<>();
-        int count = 0;
-        for (int itemId : itemIds)
-        {
-            int canonicalItemId = canonicalCollectionLogItemId(itemId);
-            if (canonicalItemId > 0
-                    && countedCanonicalItemIds.add(canonicalItemId)
-                    && isCollectionLogItemObtained(canonicalItemId))
-            {
-                count++;
-            }
-        }
-        return count;
+        return collectionLogService == null ? 0 : Math.toIntExact(collectionLogService.countObtained(itemIds));
     }
 
     public Integer getCurrentTaskCollectionLogBaselineCount(String requirementSignature)
@@ -1928,30 +2136,22 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public boolean isCurrentTaskCompletionCriteriaMet()
     {
         XtremeTask task = getCurrentTask();
-        if (task == null || isTaskCompleted(task))
-        {
-            return false;
-        }
-
-        String id = task.getId();
-        if (id == null || id.trim().isEmpty())
-        {
-            return false;
-        }
-
-        if (isCurrentCollectionLogTaskCompleteFromCache(task))
-        {
-            currentTaskCompletionCriteriaMet = true;
-            if (isCurrentCollectionLogTaskCompleteAtRollBaseline(task))
-            {
-                markCurrentTaskCompletedBeforeRolledIfReady();
-            }
-        }
-
-        return currentTaskCompletionCriteriaMet;
+        return task != null && !isTaskCompleted(task) && currentTaskCompletionCriteriaMet;
     }
 
     private void refreshCurrentTaskCompletionCriteriaMet()
+    {
+        updateCurrentTaskCompletionCriteriaMet();
+        XtremeTask task = getCurrentTask();
+        if (currentTaskCompletionCriteriaMet && task != null
+                && task.getSource() == TaskSource.COLLECTION_LOG
+                && isCurrentCollectionLogTaskCompleteAtRollBaseline(task))
+        {
+            markCurrentTaskCompletedBeforeRolledIfReady();
+        }
+    }
+
+    private void updateCurrentTaskCompletionCriteriaMet()
     {
         XtremeTask task = getCurrentTask();
         if (task == null || isTaskCompleted(task))
@@ -2702,6 +2902,15 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         return nextTier == null ? null : buildSourceFilteredRollNotice(sourceFilter, currentTier, nextTier);
     }
 
+    public void queueRollRandomTaskAndPersist()
+    {
+        StateSaveQueue generation = stateSaveQueue;
+        clientThread.invokeLater(() ->
+        {
+            if (generation != null && generation == stateSaveQueue) rollRandomTaskAndPersist();
+        });
+    }
+
     public void rollRandomTaskAndPersist()
     {
         if (!hasTaskPackLoaded())
@@ -2992,10 +3201,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        completedBeforeRolledTaskIds.add(id);
-        taskTimeTicksById.remove(id);
-        completedTaskTimeTicksById.remove(id);
-        bumpTaskListTimerStateVersion();
+        boolean changed = completedBeforeRolledTaskIds.add(id);
+        changed |= taskTimeTicksById.remove(id) != null;
+        changed |= completedTaskTimeTicksById.remove(id) != null;
+        if (changed) bumpTaskListTimerStateVersion();
     }
 
     private void freezeCompletedTaskTime(String id)
@@ -3167,7 +3376,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        // Run the write on the client thread and block until it executes.
+        // Capture the snapshot on the client thread; persistence runs on the ordered writer.
         clientThread.invoke(() ->
         {
             saveStateForAccount(activeAccountKey);
@@ -3326,6 +3535,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             List<String> completionCandidateTaskIds,
             CollectionLogCompletionCandidateScope scope)
     {
+        return findCollectionLogCompletionCandidatesFromCache(completionCandidateTaskIds, scope, null);
+    }
+
+    private int findCollectionLogCompletionCandidatesFromCache(List<String> completionCandidateTaskIds,
+            CollectionLogCompletionCandidateScope scope, Set<String> affected)
+    {
         int completionCandidates = 0;
         Set<String> processedCountedGroups = new HashSet<>();
         CollectionLogCompletionCandidateScope effectiveScope = scope == null
@@ -3334,6 +3549,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         for (XtremeTask task : tasks)
         {
+            if (affected != null && !affected.contains(task.getId())) continue;
             if (!isCollectionLogSyncSource(task.getSource()))
             {
                 continue;
@@ -3476,6 +3692,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private String countedCollectionLogGroupKey(XtremeTask task, TaskVerification verification)
     {
+        ensureTaskIndexes();
+        return countedGroupKeys.containsKey(task) ? countedGroupKeys.get(task)
+                : computeCountedCollectionLogGroupKey(task, verification);
+    }
+
+    private String computeCountedCollectionLogGroupKey(XtremeTask task, TaskVerification verification)
+    {
         if (task == null || verification == null || !isCountedCollectionLogSync(verification))
         {
             return null;
@@ -3578,26 +3801,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return Collections.emptyList();
         }
 
-        List<XtremeTask> group = new ArrayList<>();
-        for (XtremeTask candidate : tasks)
-        {
-            if (candidate == null || !isCollectionLogSyncSource(candidate.getSource()))
-            {
-                continue;
-            }
-
-            TaskVerification candidateVerification = candidate.getVerification();
-            if (!isCountedCollectionLogSync(candidateVerification))
-            {
-                continue;
-            }
-
-            if (key.equals(countedCollectionLogGroupKey(candidate, candidateVerification)))
-            {
-                group.add(candidate);
-            }
-        }
-        return group;
+        return countedGroups.getOrDefault(key, Collections.emptyList());
     }
 
     private int addCountedCollectionLogGroupCompletionCandidates(
@@ -3729,6 +3933,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private List<Integer> countedGroupThresholds(List<XtremeTask> group)
     {
+        List<Integer> cached = groupThresholds.get(group);
+        return cached == null ? computeCountedGroupThresholds(group) : cached;
+    }
+
+    private List<Integer> computeCountedGroupThresholds(List<XtremeTask> group)
+    {
         List<Integer> explicit = new ArrayList<>();
         boolean strictlyIncreasing = true;
         int previous = 0;
@@ -3793,11 +4003,18 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private List<XtremeTask> findCollectionLogSyncMismatches(boolean collectionLogCacheAvailable, boolean collectionLogItemsOnly)
     {
+        return findCollectionLogSyncMismatches(collectionLogCacheAvailable, collectionLogItemsOnly, null);
+    }
+
+    private List<XtremeTask> findCollectionLogSyncMismatches(boolean collectionLogCacheAvailable,
+            boolean collectionLogItemsOnly, Set<String> affected)
+    {
         List<XtremeTask> mismatches = new ArrayList<>();
         Set<String> processedCountedGroups = new HashSet<>();
 
         for (XtremeTask task : tasks)
         {
+            if (affected != null && !affected.contains(task.getId())) continue;
             if (!isCollectionLogSyncSource(task.getSource()) || !isTaskCompleted(task))
             {
                 continue;
@@ -4982,9 +5199,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 loaded.add(task);
             }
 
+            invalidateTaskIndexes();
             tasks.clear();
             tasks.addAll(loaded);
             taskPackLoaded = !tasks.isEmpty();
+            ensureTaskIndexes();
 
             Set<String> validIds = tasks.stream()
                     .map(XtremeTask::getId)
@@ -5033,6 +5252,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         } catch (Exception e) {
             log.error("Failed to load embedded tasks.json", e);
+            invalidateTaskIndexes();
             tasks.clear();
             taskPackLoaded = false;
             rebuildTierCounts();

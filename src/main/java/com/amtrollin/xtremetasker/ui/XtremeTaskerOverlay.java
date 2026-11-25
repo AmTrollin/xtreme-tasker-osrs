@@ -1875,7 +1875,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         rollExecutionPending = false;
-        plugin.rollRandomTaskAndPersist();
+        plugin.queueRollRandomTaskAndPersist();
     }
 
     private void cancelPendingRollExecution()

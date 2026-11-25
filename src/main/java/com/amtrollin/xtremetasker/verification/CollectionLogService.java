@@ -103,6 +103,24 @@ public class CollectionLogService
         trackedItemIdsSupplier = supplier;
     }
 
+    // Item arrays belong to the immutable task pack. Only groups containing a
+    // changed canonical item need their observed count recomputed.
+    private final Map<int[], CountedItems> countedItems = new LinkedHashMap<>();
+    private final Map<Integer, Set<CountedItems>> countedItemsById = new HashMap<>();
+
+    private static final class CountedItems
+    {
+        private final int[] sourceIds;
+        private final int[] ids;
+        private long count = -1;
+
+        private CountedItems(int[] sourceIds, int[] ids)
+        {
+            this.sourceIds = sourceIds.clone();
+            this.ids = ids;
+        }
+    }
+
     private Runnable cacheChangeListener;
     private int cacheChangeBatchDepth = 0;
     private boolean cacheChangePending = false;
@@ -489,19 +507,47 @@ public class CollectionLogService
             return 0;
         }
 
-        Set<Integer> countedCanonicalItemIds = new HashSet<>();
-        long count = 0;
-        for (int itemId : itemIds)
+        CountedItems cached = countedItems.get(itemIds);
+        if (cached != null && !Arrays.equals(cached.sourceIds, itemIds))
         {
-            int canonicalItemId = canonicalCollectionLogItemId(itemId);
-            if (canonicalItemId > 0
-                    && countedCanonicalItemIds.add(canonicalItemId)
-                    && isItemObtained(canonicalItemId))
+            removeCountedItems(itemIds);
+            cached = null;
+        }
+        if (cached == null)
+        {
+            if (countedItems.size() >= 2048)
             {
-                count++;
+                int[] oldest = countedItems.keySet().iterator().next();
+                removeCountedItems(oldest);
+            }
+            cached = new CountedItems(itemIds, Arrays.stream(itemIds).map(this::canonicalCollectionLogItemId)
+                    .filter(id -> id > 0).distinct().toArray());
+            countedItems.put(itemIds, cached);
+            for (int id : cached.ids)
+            {
+                countedItemsById.computeIfAbsent(id, ignored -> new HashSet<>()).add(cached);
             }
         }
-        return count;
+        if (cached.count < 0)
+        {
+            cached.count = 0;
+            for (int id : cached.ids)
+            {
+                if (isItemObtained(id)) cached.count++;
+            }
+        }
+        return cached.count;
+    }
+
+    private void removeCountedItems(int[] itemIds)
+    {
+        CountedItems removed = countedItems.remove(itemIds);
+        for (int id : removed.ids)
+        {
+            Set<CountedItems> groups = countedItemsById.get(id);
+            groups.remove(removed);
+            if (groups.isEmpty()) countedItemsById.remove(id);
+        }
     }
 
     public int getCapturedItemCount()
@@ -569,6 +615,11 @@ public class CollectionLogService
         return java.util.Collections.unmodifiableSet(obtainedItems);
     }
 
+    public Set<Integer> getCachedSeenItemIds()
+    {
+        return Collections.unmodifiableSet(seenItems);
+    }
+
     public Map<Integer, Long> getCachedItemOrder()
     {
         return java.util.Collections.unmodifiableMap(obtainedItemOrder);
@@ -619,6 +670,8 @@ public class CollectionLogService
 
     private void reset()
     {
+        countedItems.clear();
+        countedItemsById.clear();
         obtainedItems.clear();
         seenItems.clear();
         obtainedItemOrder.clear();
@@ -662,6 +715,11 @@ public class CollectionLogService
         changed |= obtainedItemOrder.putIfAbsent(itemId, order) == null;
         changed |= obtainedItemOrder.putIfAbsent(canonicalItemId, order) == null;
         nextObtainedItemOrder = Math.max(nextObtainedItemOrder, order + 1);
+        if (changed)
+        {
+            Set<CountedItems> affected = countedItemsById.get(canonicalItemId);
+            if (affected != null) affected.forEach(group -> group.count = -1);
+        }
         return changed;
     }
 
