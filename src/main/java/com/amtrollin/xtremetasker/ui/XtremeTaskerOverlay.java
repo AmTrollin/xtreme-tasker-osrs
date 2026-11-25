@@ -2647,18 +2647,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
     public void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
     {
-        if (task == null || !isTaskCompletedForIncompleteAction(task))
-        {
-            return;
-        }
-
-        selectedTaskDetailsIncompleteTaskIds.clear();
-        if (task.getId() != null)
-        {
-            selectedTaskDetailsIncompleteTaskIds.add(task.getId());
-        }
-        taskDetailsIncompleteConfirmCloseAfter = false;
-        taskDetailsIncompleteConfirmOpen = true;
+        // The expanded popup represents one instance, even for repeated tasks.
+        handleTaskDetailsInstanceMarkIncompleteButton(task);
     }
 
     public void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task)
@@ -2672,14 +2662,6 @@ public class XtremeTaskerOverlay extends Overlay {
         selectedTaskDetailsIncompleteTaskIds.add(task.getId());
         taskDetailsIncompleteConfirmCloseAfter = false;
         taskDetailsIncompleteConfirmOpen = true;
-    }
-
-    private boolean isTaskCompletedForIncompleteAction(XtremeTask task)
-    {
-        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
-        return progress != null && progress.isGrouped()
-                ? progress.isComplete()
-                : plugin.isTaskCompleted(task);
     }
 
     private void closeTaskDetailsWithPendingIncompleteCheck()
