@@ -1,11 +1,11 @@
 package com.amtrollin.xtremetasker;
 
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
-/** Serializes detached state snapshots without blocking rendering on disk I/O. */
+/** Runs detached save snapshots in order; barriers report the latest save's result. */
 final class StateSaveQueue implements AutoCloseable
 {
     private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable ->
@@ -14,56 +14,99 @@ final class StateSaveQueue implements AutoCloseable
         thread.setDaemon(true);
         return thread;
     });
-    private Future<?> lastSave;
+    private long submitted;
+    private long failedSequence;
+    private Throwable failure;
+    private Runnable failedSave;
+    private CompletableFuture<Void> finishing;
 
-    synchronized void submit(Runnable save)
+    synchronized CompletableFuture<Void> submit(Runnable save)
     {
-        lastSave = executor.submit(save);
+        if (finishing != null) throw new IllegalStateException("State writer is closing");
+        long sequence = ++submitted;
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        executor.execute(() ->
+        {
+            try
+            {
+                save.run();
+                synchronized (this)
+                {
+                    failure = null;
+                    failedSave = null;
+                }
+                result.complete(null);
+            }
+            catch (Throwable error)
+            {
+                synchronized (this)
+                {
+                    failure = error;
+                    failedSequence = sequence;
+                    failedSave = save;
+                }
+                result.completeExceptionally(error);
+            }
+        });
+        return result;
+    }
+
+    synchronized boolean hasFailure()
+    {
+        return failure != null;
+    }
+
+    synchronized void retryFailed()
+    {
+        // Never replay an older snapshot after a newer one was submitted.
+        if (finishing == null && failedSave != null && failedSequence == submitted) submit(failedSave);
+    }
+
+    synchronized CompletableFuture<Void> barrier()
+    {
+        if (finishing != null) return finishing;
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        executor.execute(() -> completeWithSaveResult(result));
+        return result;
+    }
+
+    synchronized CompletableFuture<Void> finish()
+    {
+        if (finishing == null)
+        {
+            finishing = new CompletableFuture<>();
+            executor.execute(() -> completeWithSaveResult(finishing));
+            executor.shutdown();
+        }
+        return finishing;
+    }
+
+    private synchronized void completeWithSaveResult(CompletableFuture<Void> result)
+    {
+        if (failure == null) result.complete(null);
+        else result.completeExceptionally(failure);
     }
 
     void flush()
     {
-        Future<?> pending;
-        synchronized (this)
-        {
-            pending = lastSave;
-        }
-        if (pending == null) return;
-        // Finish outstanding writes before loading an account or clearing state.
-        // The writer never calls into or waits for the client thread.
-        boolean interrupted = false;
+        await(barrier());
+    }
+
+    private static void await(CompletableFuture<Void> result)
+    {
         try
         {
-            while (true)
-            {
-                try
-                {
-                    pending.get();
-                    return;
-                }
-                catch (InterruptedException e)
-                {
-                    interrupted = true;
-                }
-                catch (ExecutionException e)
-                {
-                    throw new IllegalStateException("Failed to save XtremeTasker state", e.getCause());
-                }
-            }
+            result.join();
         }
-        finally
+        catch (CompletionException e)
         {
-            if (interrupted) Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to save XtremeTasker state", e.getCause());
         }
     }
 
     @Override
     public void close()
     {
-        synchronized (this)
-        {
-            executor.shutdown();
-        }
-        flush();
+        await(finish());
     }
 }

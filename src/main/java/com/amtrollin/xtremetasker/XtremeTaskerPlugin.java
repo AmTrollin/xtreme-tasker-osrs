@@ -5,6 +5,7 @@ import com.amtrollin.xtremetasker.models.*;
 import com.amtrollin.xtremetasker.models.persistence.PersistedState;
 import com.amtrollin.xtremetasker.models.verification.TaskVerification;
 import com.amtrollin.xtremetasker.tasklist.TaskGroupUtils;
+import com.amtrollin.xtremetasker.persistence.AtomicStateFiles;
 import com.amtrollin.xtremetasker.ui.*;
 import com.amtrollin.xtremetasker.ui.text.UiText;
 import com.amtrollin.xtremetasker.verification.*;
@@ -26,6 +27,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.*;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.events.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.input.*;
@@ -77,6 +79,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Inject
     private ClientThread clientThread;
     @Inject
+    private EventBus eventBus;
+    @Inject
     private KeyManager keyManager;
     @Inject
     private CollectionLogService collectionLogService;
@@ -102,7 +106,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Set<String> completedBeforeRolledTaskIds = new HashSet<>();
     private final List<String> syncCompletionCandidateTaskIds = new ArrayList<>();
     private final List<String> syncMismatchTaskIds = new ArrayList<>();
-    private List<XtremeTask> syncMismatchTasksCache = Collections.emptyList();
+    private volatile List<XtremeTask> syncMismatchTasksCache = Collections.emptyList();
+    private volatile List<XtremeTask> syncCompletionCandidateTasksCache = Collections.emptyList();
     private boolean syncMismatchTasksCacheValid = false;
     private int syncMismatchTasksCacheIdsHash = 0;
     private int syncMismatchTasksCacheManualHash = 0;
@@ -116,7 +121,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final EnumMap<TaskTier, Integer> doneByTier = new EnumMap<>(TaskTier.class);
 
     @Setter
-    private XtremeTask currentTask;
+    private volatile XtremeTask currentTask;
 
     private String activeAccountKey = null;
     private String pendingAccountKey = null;
@@ -138,7 +143,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private int loadedPackVersion = 0;
     private int collectionLogStateVersion = 0;
 
-    private StateSaveQueue stateSaveQueue;
+    private volatile StateSaveQueue stateSaveQueue;
+    private volatile StateSaveLifecycle saveLifecycle;
+    private volatile StateSaveLifecycle initializedLifecycle;
+    private Thread acceptedMutationThread;
+    private StateSaveQueue acceptedMutationWriter;
     private boolean dirty = false;
     private int flushTickCounter = 0;
     private static final int FLUSH_EVERY_TICKS = 10; // ~6s (game tick ~0.6s)
@@ -146,7 +155,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private final Map<String, Integer> caTaskIdsByName = new HashMap<>();
     private final Map<String, Integer> caTaskIdsByNormalizedName = new HashMap<>();
     private final Map<String, List<XtremeTask>> taskGroupInstancesCache = new HashMap<>();
-    private boolean taskIndexesReady;
+    private volatile boolean taskIndexesReady;
     private final Map<Integer, Set<String>> collectionLogTasksByItem = new HashMap<>();
     private List<Object> lastItemSyncContext;
     private Set<Integer> lastSyncedObtainedItems = Collections.emptySet();
@@ -240,66 +249,90 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
 
     @Override
-    protected void startUp() {
+    protected void startUp()
+    {
         log.info("Xtreme Tasker started");
-        stateSaveQueue = new StateSaveQueue();
+        StateSaveLifecycle previous = saveLifecycle;
+        StateSaveQueue writer = new StateSaveQueue();
+        stateSaveQueue = writer;
+        StateSaveLifecycle lifecycle = new StateSaveLifecycle(eventBus, clientThread::invokeLater, writer,
+                () -> captureFinalState(writer), this::clearStoppedState,
+                error -> log.error("Failed to finish XtremeTasker state saves", error));
+        saveLifecycle = lifecycle;
+        java.util.concurrent.CompletableFuture<Void> previousWrites = previous == null
+                ? java.util.concurrent.CompletableFuture.completedFuture(null) : previous.finish();
+        previousWrites.whenComplete((ignored, error) -> clientThread.invokeLater(() ->
+        {
+            if (saveLifecycle != lifecycle || lifecycle.isFinishing()) return;
+            initializedLifecycle = lifecycle;
+            attachCollectionLogCacheListener();
+            collectionLogService.startUp();
+            updateOverlayState();
+            updateTaskHudState();
+            rebuildTierCounts();
+            keyManager.registerKeyListener(overlay.getKeyListener());
+            mouseManager.registerMouseListener(overlay.getMouseAdapter());
+            mouseManager.registerMouseWheelListener(overlay.getMouseWheelListener());
 
-        attachCollectionLogCacheListener();
-        collectionLogService.startUp();
-
-        updateOverlayState();
-        updateTaskHudState();
-        rebuildTierCounts();
-
-        keyManager.registerKeyListener(overlay.getKeyListener());
-        mouseManager.registerMouseListener(overlay.getMouseAdapter());
-        mouseManager.registerMouseWheelListener(overlay.getMouseWheelListener());
-
-        clientThread.invokeLater(() -> {
-            // If the plugin is (re)started while already logged in (e.g. RuneLite auto-updates
-            // the plugin mid-session), onGameStateChanged(LOGGED_IN) will not fire again.
-            // The account hash can be stale briefly while logging in, so account state is loaded
-            // after the same hash has been observed on consecutive game ticks.
+            // Login events need not fire when enabling the plugin mid-session.
             String key = getAccountKey();
-            if (key != null) {
+            if (key != null)
+            {
                 inWorld = true;
                 pendingAccountKey = key;
                 pendingAccountKeyTicks = 1;
             }
             reloadTaskPackInternal();
-        });
+        }));
     }
 
     @Override
-    protected void shutDown() {
+    protected void shutDown()
+    {
         log.info("Xtreme Tasker stopped");
-
-        if (collectionLogService != null)
+        try
         {
-            collectionLogService.setCacheChangeListener(null);
+            StateSaveLifecycle lifecycle = saveLifecycle;
+            StateSaveQueue writer = stateSaveQueue;
+            if (lifecycle != null)
+            {
+                lifecycle.finish().whenComplete((ignored, error) ->
+                {
+                    if (stateSaveQueue == writer) stateSaveQueue = null;
+                });
+            }
         }
+        finally
+        {
+            // A storage failure must never leave the disabled plugin's UI active.
+            overlayManager.remove(overlay);
+            overlayManager.remove(panelOverlay);
+            overlayManager.remove(taskHudOverlay);
+            keyManager.unregisterKeyListener(overlay.getKeyListener());
+            mouseManager.unregisterMouseListener(overlay.getMouseAdapter());
+            mouseManager.unregisterMouseWheelListener(overlay.getMouseWheelListener());
+        }
+    }
+
+    private void captureFinalState(StateSaveQueue writer)
+    {
+        collectionLogService.setCacheChangeListener(null);
         collectionLogService.shutDown();
+        if (activeAccountKey != null) saveStateForAccount(activeAccountKey, writer);
+        else writer.retryFailed();
+    }
 
-        saveActiveState("plugin shutdown");
-        if (stateSaveQueue != null)
-        {
-            stateSaveQueue.close();
-            stateSaveQueue = null;
-        }
-
-        overlayManager.remove(overlay);
-        overlayManager.remove(panelOverlay);
-        overlayManager.remove(taskHudOverlay);
-        keyManager.unregisterKeyListener(overlay.getKeyListener());
-        mouseManager.unregisterMouseListener(overlay.getMouseAdapter());
-        mouseManager.unregisterMouseWheelListener(overlay.getMouseWheelListener());
-
+    private void clearStoppedState()
+    {
         currentTask = null;
         currentTaskId = null;
         undoableCompletedTaskId = null;
         currentTaskCollectionLogBaselineSignature = null;
         currentTaskCollectionLogBaselineCount = null;
         currentTaskCompletionCriteriaMet = false;
+        syncCompletionCandidateTasksCache = Collections.emptyList();
+        syncMismatchTasksCache = Collections.emptyList();
+        syncMismatchTasksCacheValid = false;
 
         manualCompletedTaskIds.clear();
         syncedCompletedTaskIds.clear();
@@ -324,6 +357,45 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         taskPackLoaded = false;
 
         rebuildTierCounts();
+    }
+
+    private boolean isStopping()
+    {
+        StateSaveLifecycle lifecycle = saveLifecycle;
+        return lifecycle != null && (lifecycle.isFinishing() || initializedLifecycle != lifecycle);
+    }
+
+    private boolean deferStateMutation(Runnable action)
+    {
+        if (isStopping() && acceptedMutationThread != Thread.currentThread()) return true;
+        if (clientThread == null || client == null || client.isClientThread()) return false;
+        enqueueStateMutation(action);
+        return true;
+    }
+
+    private void enqueueStateMutation(Runnable action)
+    {
+        StateSaveLifecycle generation = saveLifecycle;
+        StateSaveQueue writer = stateSaveQueue;
+        clientThread.invokeLater(() ->
+        {
+            // Actions accepted before disable must precede the final snapshot.
+            // A delayed action must never modify a subsequently initialized session.
+            if (generation == null ? saveLifecycle != null : generation.hasCapturedFinalState()) return;
+            Thread previous = acceptedMutationThread;
+            StateSaveQueue previousWriter = acceptedMutationWriter;
+            acceptedMutationThread = Thread.currentThread();
+            acceptedMutationWriter = writer;
+            try
+            {
+                action.run();
+            }
+            finally
+            {
+                acceptedMutationThread = previous;
+                acceptedMutationWriter = previousWriter;
+            }
+        });
     }
 
     private void attachCollectionLogCacheListener()
@@ -383,6 +455,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void refreshCollectionLogCompletionCandidatesFromCache(boolean incremental)
     {
+        if (isStopping()) return;
         if (tasks.isEmpty() || collectionLogService == null)
         {
             refreshCurrentTaskCompletionCriteriaMet();
@@ -511,28 +584,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         for (int item : previous) if (!current.contains(item)) changed.add(item);
     }
 
-    private synchronized void saveActiveState(String reason) {
-        try {
-            if (client.getGameState() != GameState.LOGGED_IN) {
-                log.debug("Skipped XtremeTasker state save during {} because the client is not logged in.", reason);
-                return;
-            }
-
-            String key = activeAccountKey;
-            if (key == null) {
-                key = getAccountKey();
-            }
-
-            if (key != null) {
-                saveStateForAccount(key);
-                dirty = false;
-                log.debug("Saved XtremeTasker state during {}", reason);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to save XtremeTasker state during {}", reason, e);
-        }
-    }
-
     private void updateOverlayState() {
         if (panelOverlay == null) {
             panelOverlay = new XtremeTaskerPanelOverlay(overlay);
@@ -578,7 +629,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void reloadActiveCharacterStateAfterProfileChange(String reason) {
         clientThread.invokeLater(() -> {
-            if (client.getGameState() != GameState.LOGGED_IN) {
+            if (isStopping() || client.getGameState() != GameState.LOGGED_IN) {
                 return;
             }
 
@@ -592,6 +643,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 return;
             }
 
+            if (stateSaveQueue != null)
+            {
+                stateSaveQueue.retryFailed();
+                stateSaveQueue.flush();
+            }
             activeAccountKey = key;
             loadStateForAccount(activeAccountKey);
             dirty = false;
@@ -617,6 +673,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     {
         if (currentTask == null && currentTaskId != null && !tasks.isEmpty())
         {
+            if (deferStateMutation(this::getCurrentTask)) return currentTask;
             resolveCurrentTaskIfPossible();
         }
         return currentTask;
@@ -677,6 +734,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
 
         ensureTaskIndexes();
+        if (!taskIndexesReady) return Collections.emptyList();
         String key = taskGroupKeys.get(task);
         return taskGroupInstancesCache.getOrDefault(key == null ? TaskGroupUtils.key(task) : key, Collections.emptyList());
     }
@@ -700,6 +758,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         {
             return;
         }
+        if (deferStateMutation(this::ensureTaskIndexes)) return;
         for (XtremeTask task : tasks)
         {
             if (task == null) continue;
@@ -838,6 +897,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged event) {
+        if (isStopping()) return;
         GameState gs = event.getGameState();
 
         if (gs == GameState.LOGGED_IN)
@@ -930,6 +990,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             saveStateForAccount(activeAccountKey);
         }
 
+        if (stateSaveQueue != null)
+        {
+            stateSaveQueue.retryFailed();
+            stateSaveQueue.flush();
+        }
         activeAccountKey = accountKey;
         loadStateForAccount(activeAccountKey);
         dirty = false;
@@ -1085,10 +1150,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
         Path path = stateFileForAccount(accountKey);
         try {
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, json, StandardCharsets.UTF_8);
+            AtomicStateFiles.write(path, json);
         } catch (IOException e) {
             log.warn("Failed to write XtremeTasker state file {}", path, e);
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -1109,14 +1174,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     private void writeStateBackupFileForAccount(String accountKey, int index, String json) {
         Path path = stateBackupFileForAccount(accountKey, index);
         try {
-            Files.createDirectories(path.getParent());
             if (json == null || json.trim().isEmpty()) {
                 Files.deleteIfExists(path);
             } else {
-                Files.writeString(path, json, StandardCharsets.UTF_8);
+                AtomicStateFiles.write(path, json);
             }
         } catch (IOException e) {
             log.warn("Failed to write XtremeTasker state backup file {}", path, e);
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -1207,6 +1272,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private void saveStateForAccount(String accountKey) {
+        StateSaveQueue writer = acceptedMutationThread == Thread.currentThread() && acceptedMutationWriter != null
+                ? acceptedMutationWriter : stateSaveQueue;
+        saveStateForAccount(accountKey, writer);
+    }
+
+    private void saveStateForAccount(String accountKey, StateSaveQueue writer) {
         if (accountKey == null) {
             return;
         }
@@ -1221,13 +1292,13 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         state.setAccountKey(accountKey);
         net.runelite.client.config.ConfigProfile profile = configManager.getProfile();
         Runnable save = () -> writeStateSnapshot(accountKey, state, profile);
-        if (stateSaveQueue == null)
+        if (writer == null)
         {
             save.run();
         }
         else
         {
-            stateSaveQueue.submit(() ->
+            writer.submit(() ->
             {
                 try
                 {
@@ -1259,17 +1330,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         PersistedState parsed = parseAndValidateState(json, "new save");
         if (parsed == null) {
             log.warn(UiText.get("log.save.invalid"));
-            return;
+            throw new IllegalStateException("Invalid XtremeTasker state snapshot");
         }
         boolean shouldFlushToDisk = previousState == null || isRecoveryRelevantStateChange(previousState, parsed);
         if (shouldFlushToDisk) {
             rotateStateBackups(accountKey, previousJson, profile);
         }
+        writeStateFileForAccount(accountKey, json);
         synchronized (configManager)
         {
             if (isSameConfigProfile(profile)) configManager.setConfiguration(CONFIG_GROUP, key, json);
         }
-        writeStateFileForAccount(accountKey, json);
         if (shouldFlushToDisk) {
             flushConfigToDisk("state save");
         }
@@ -1313,7 +1384,11 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     private void loadStateForAccount(String accountKey)
     {
-        if (stateSaveQueue != null) stateSaveQueue.flush();
+        if (stateSaveQueue != null)
+        {
+            stateSaveQueue.retryFailed();
+            stateSaveQueue.flush();
+        }
         if (accountKey == null)
         {
             clearLoadedState();
@@ -1733,10 +1808,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         }
         Path path = stateCorruptFileForAccount(accountKey);
         try {
-            Files.createDirectories(path.getParent());
-            Files.writeString(path, json, StandardCharsets.UTF_8);
+            AtomicStateFiles.write(path, json);
         } catch (IOException e) {
             log.warn("Failed to preserve corrupt XtremeTasker state file {}", path, e);
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -1831,6 +1906,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private void clearLoadedState() {
+        syncCompletionCandidateTasksCache = Collections.emptyList();
+        syncMismatchTasksCache = Collections.emptyList();
+        syncMismatchTasksCacheValid = false;
         manualCompletedTaskIds.clear();
         syncedCompletedTaskIds.clear();
         retiredTaskIds.clear();
@@ -2904,15 +2982,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     public void queueRollRandomTaskAndPersist()
     {
-        StateSaveQueue generation = stateSaveQueue;
-        clientThread.invokeLater(() ->
-        {
-            if (generation != null && generation == stateSaveQueue) rollRandomTaskAndPersist();
-        });
+        if (!isStopping()) enqueueStateMutation(this::rollRandomTaskAndPersist);
     }
 
     public void rollRandomTaskAndPersist()
     {
+        if (deferStateMutation(() -> rollRandomTaskAndPersist())) return;
         if (!hasTaskPackLoaded())
         {
             chat("No tasks loaded. Load tasks in Rules tab");
@@ -2939,11 +3014,12 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         captureCurrentTaskCollectionLogBaseline();
         refreshCurrentTaskCompletionCandidatesForCurrentSource();
         refreshCurrentTaskCompletedBeforeRolledState();
-        markDirtyAndPersist(); // writes immediately if activeAccountKey != null
+        markDirtyAndPersist(); // captures immediately; disk writes run on the ordered writer
     }
 
     public void completeCurrentTaskAndPersist()
     {
+        if (deferStateMutation(() -> completeCurrentTaskAndPersist())) return;
         XtremeTask cur = getCurrentTask();
         if (cur == null) return;
 
@@ -2977,6 +3053,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     public void undoCurrentTaskCompletionAndPersist()
     {
+        if (deferStateMutation(() -> undoCurrentTaskCompletionAndPersist())) return;
         if (!canUndoRecentTaskCompletion())
         {
             return;
@@ -3007,6 +3084,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     public void toggleTaskCompletedAndPersist(XtremeTask task)
     {
+        if (deferStateMutation(() -> toggleTaskCompletedAndPersist(task))) return;
         String id = task.getId();
         if (id == null || id.trim().isEmpty())
         {
@@ -3036,6 +3114,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void toggleTaskGroupProgressAndPersist(XtremeTask task)
     {
+        if (deferStateMutation(() -> toggleTaskGroupProgressAndPersist(task))) return;
         TaskGroupProgress progress = getTaskGroupProgress(task);
         if (progress.getTotal() <= 1)
         {
@@ -3050,6 +3129,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void setTaskGroupCompletedCountAndPersist(XtremeTask task, int completedCount)
     {
+        if (deferStateMutation(() -> setTaskGroupCompletedCountAndPersist(task, completedCount))) return;
         List<XtremeTask> group = getCachedTaskGroupInstances(task);
         if (group.isEmpty())
         {
@@ -3286,6 +3366,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Subscribe
     public void onVarbitChanged(VarbitChanged event)
     {
+        if (isStopping()) return;
         XtremeTask task = getCurrentTask();
         if (client.getGameState() != GameState.LOGGED_IN || task == null || isTaskCompleted(task))
         {
@@ -3314,6 +3395,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Subscribe
     public void onGameTick(net.runelite.api.events.GameTick tick)
     {
+        if (isStopping()) return;
         if (client.getGameState() == GameState.LOGGED_IN)
         {
             loadPendingAccountIfStable();
@@ -3334,6 +3416,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             dirty = true;
         }
 
+        if (stateSaveQueue != null && stateSaveQueue.hasFailure()) dirty = true;
         if (!dirty)
         {
             flushTickCounter = 0;
@@ -3346,7 +3429,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             flushTickCounter = 0;
             saveStateForAccount(activeAccountKey);
             dirty = false;
-            log.debug("Flushed XtremeTasker state");
+            log.debug("Queued XtremeTasker state save");
         }
     }
 
@@ -3376,12 +3459,9 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             return;
         }
 
-        // Capture the snapshot on the client thread; persistence runs on the ordered writer.
-        clientThread.invoke(() ->
-        {
-            saveStateForAccount(activeAccountKey);
-            dirty = false;
-        });
+        if (deferStateMutation(this::persistIfPossible)) return;
+        saveStateForAccount(activeAccountKey);
+        dirty = false;
     }
 
     private void markDirtyAndPersist()
@@ -3403,25 +3483,24 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     // ---------- JSON task pack loading ----------
 
     public void reloadTaskPack() {
-        clientThread.invokeLater(this::reloadTaskPackInternal);
+        if (deferStateMutation(this::reloadTaskPack)) return;
+        reloadTaskPackInternal();
     }
 
     @Override
     public void syncAccountProgressAndPersist()
     {
+        if (deferStateMutation(this::syncAccountProgressAndPersist)) return;
         if (!hasTaskPackLoaded())
         {
             setCombinedSyncResultAndChat("No tasks loaded. Load tasks first.");
             return;
         }
-
-        clientThread.invokeLater(() -> {
-            int combatAchievementCandidates = refreshCombatAchievementSyncState();
-            int collectionLogNonItemCandidates = refreshCollectionLogNonItemSyncState();
-            setCombinedSyncResultAndChat(accountProgressSyncMessage(
-                    combatAchievementCandidates + collectionLogNonItemCandidates));
-            finishSyncStateUpdate();
-        });
+        int combatAchievementCandidates = refreshCombatAchievementSyncState();
+        int collectionLogNonItemCandidates = refreshCollectionLogNonItemSyncState();
+        setCombinedSyncResultAndChat(accountProgressSyncMessage(
+                combatAchievementCandidates + collectionLogNonItemCandidates));
+        finishSyncStateUpdate();
     }
 
     private String accountProgressSyncMessage(int completionCandidates)
@@ -4396,6 +4475,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public List<XtremeTask> getSyncMismatchTasks()
     {
+        if (deferStateMutation(this::getSyncMismatchTasks)) return syncMismatchTasksCache;
         int capturedItemCount = collectionLogService == null ? -1 : collectionLogService.getCapturedItemCount();
         int idsHash = syncMismatchTaskIds.hashCode();
         int manualHash = manualCompletedTaskIds.hashCode();
@@ -4643,18 +4723,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void refreshTaskSyncMismatchForTask(XtremeTask task)
     {
-        if (task == null)
-        {
-            return;
-        }
-
-        Runnable refresh = () -> refreshTaskSyncMismatchForTaskOnClientThread(task);
-        if (clientThread == null)
-        {
-            refresh.run();
-            return;
-        }
-        clientThread.invokeLater(refresh);
+        if (deferStateMutation(() -> refreshTaskSyncMismatchForTask(task))) return;
+        refreshTaskSyncMismatchForTaskOnClientThread(task);
     }
 
     private void refreshTaskSyncMismatchForTaskOnClientThread(XtremeTask task)
@@ -4811,6 +4881,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void dismissTaskSyncMismatchAndPersist(XtremeTask task)
     {
+        if (deferStateMutation(() -> dismissTaskSyncMismatchAndPersist(task))) return;
         if (task == null)
         {
             return;
@@ -4902,9 +4973,14 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public List<XtremeTask> getSyncCompletionCandidateTasks(TaskSource source)
     {
+        if (deferStateMutation(() -> getSyncCompletionCandidateTasks(source)))
+        {
+            return filterSyncCandidates(syncCompletionCandidateTasksCache, source);
+        }
         if (syncCompletionCandidateTaskIds.isEmpty())
         {
-            return Collections.emptyList();
+            syncCompletionCandidateTasksCache = Collections.emptyList();
+            return syncCompletionCandidateTasksCache;
         }
 
         Map<String, XtremeTask> byId = tasksById();
@@ -4920,10 +4996,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 continue;
             }
 
-            if (source == null || matchesSyncMismatchSource(task, source))
-            {
-                out.add(decorateCurrentSequenceTask(task));
-            }
+            out.add(decorateCurrentSequenceTask(task));
         }
 
         if (changed)
@@ -4935,12 +5008,20 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             markDirtyAndPersist();
         }
 
-        return out;
+        syncCompletionCandidateTasksCache = Collections.unmodifiableList(out);
+        return filterSyncCandidates(syncCompletionCandidateTasksCache, source);
+    }
+
+    private static List<XtremeTask> filterSyncCandidates(List<XtremeTask> candidates, TaskSource source)
+    {
+        return source == null ? candidates : candidates.stream()
+                .filter(task -> matchesSyncMismatchSource(task, source)).collect(Collectors.toList());
     }
 
     @Override
     public void dismissSyncCompletionCandidateReview(TaskSource source)
     {
+        if (deferStateMutation(() -> dismissSyncCompletionCandidateReview(source))) return;
         if (source == null)
         {
             syncCompletionCandidateTaskIds.clear();
@@ -4957,6 +5038,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void markSyncCompletionCandidateTasksCompleteAndPersist(List<XtremeTask> tasksToMark)
     {
+        List<XtremeTask> requested = tasksToMark == null ? Collections.emptyList() : new ArrayList<>(tasksToMark);
+        if (deferStateMutation(() -> markSyncCompletionCandidateTasksCompleteAndPersist(requested))) return;
         if (tasksToMark == null || tasksToMark.isEmpty())
         {
             return;
@@ -5035,6 +5118,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void dismissSyncMismatchReview()
     {
+        if (deferStateMutation(() -> dismissSyncMismatchReview())) return;
         clearSyncMismatchReviewState();
         markDirtyAndPersist();
     }
@@ -5042,6 +5126,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void dismissSyncMismatchReview(TaskSource source)
     {
+        if (deferStateMutation(() -> dismissSyncMismatchReview(source))) return;
         if (source == null)
         {
             dismissSyncMismatchReview();
@@ -5070,6 +5155,8 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void markSyncMismatchTasksIncompleteAndPersist(List<XtremeTask> tasksToMark)
     {
+        List<XtremeTask> requested = tasksToMark == null ? Collections.emptyList() : new ArrayList<>(tasksToMark);
+        if (deferStateMutation(() -> markSyncMismatchTasksIncompleteAndPersist(requested))) return;
         if (tasksToMark == null || tasksToMark.isEmpty())
         {
             return;
@@ -5104,6 +5191,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     @Override
     public void markAllSyncMismatchTasksIncompleteAndPersist()
     {
+        if (deferStateMutation(() -> markAllSyncMismatchTasksIncompleteAndPersist())) return;
         List<XtremeTask> mismatches = getSyncMismatchTasks();
         if (mismatches.isEmpty())
         {

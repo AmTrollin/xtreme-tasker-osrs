@@ -4,6 +4,7 @@ import javax.inject.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.*;
 import net.runelite.client.eventbus.*;
 
@@ -84,6 +85,12 @@ public class CollectionLogWidgetMonitor
     @Subscribe
     public void onScriptPostFired(ScriptPostFired event)
     {
+        if (event.getScriptId() != ScriptID.COLLECTION_DRAW_LIST && event.getScriptId() != CLOG_SETUP_SCRIPT) return;
+        if (!isOwnCollectionLog())
+        {
+            if (event.getScriptId() == CLOG_SETUP_SCRIPT) endSetupCacheBatch();
+            return;
+        }
         if (event.getScriptId() == ScriptID.COLLECTION_DRAW_LIST)
         {
             log.debug("XtremeTasker CLOG sync debug: collection draw-list script {} post-fired; scanning visible widget page",
@@ -146,6 +153,8 @@ public class CollectionLogWidgetMonitor
     @Subscribe
     public void onScriptPreFired(ScriptPreFired event)
     {
+        if (event.getScriptId() != CLOG_SETUP_SCRIPT && event.getScriptId() != CLOG_ITEM_DRAW_SCRIPT) return;
+        if (!isOwnCollectionLog()) return;
         if (event.getScriptId() == CLOG_SETUP_SCRIPT)
         {
             log.debug("XtremeTasker CLOG sync debug: setup script {} pre-fired at tick {}",
@@ -199,8 +208,14 @@ public class CollectionLogWidgetMonitor
         }
     }
 
+    private boolean isOwnCollectionLog()
+    {
+        return client == null || client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) == 0;
+    }
+
     private void scanCollectionLogEntryItemsWidget()
     {
+        if (!isOwnCollectionLog()) return;
         Widget items = client == null ? null : client.getWidget(ComponentID.COLLECTION_LOG_ENTRY_ITEMS);
         if (items == null || items.isHidden())
         {
