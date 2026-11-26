@@ -39,12 +39,13 @@ import net.runelite.client.game.*;
 import net.runelite.client.input.*;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.*;
-import net.runelite.client.util.LinkBrowser;
 import org.slf4j.*;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.clearBounds;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.*;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.formatDuration;
 
 public class XtremeTaskerOverlay extends Overlay {
     private static final Logger log = LoggerFactory.getLogger(XtremeTaskerOverlay.class);
@@ -2461,7 +2462,7 @@ public class XtremeTaskerOverlay extends Overlay {
         Long ticks = plugin.getTaskTimeTicks(current);
         String time = ticks != null && ticks < 0
                 ? "Completed before rolled"
-                : compactFormatTicks(Math.round((ticks == null ? 0L : ticks) * 0.6));
+                : formatDuration(Math.round((ticks == null ? 0L : ticks) * 0.6));
         time = TextUtils.truncateToWidth(time, fm, textW);
         int timeX = card.x + (card.width - fm.stringWidth(time)) / 2;
         g.setColor(P.UI_TEXT_DIM);
@@ -2608,16 +2609,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private void clearFullPanelTabBounds() {
         clearBounds(currentTabBounds, tasksTabBounds, rulesTabBounds, taskListViewportBounds,
                 taskScrollbarRailBounds, taskScrollbarThumbBounds);
-    }
-
-    private static String compactFormatTicks(long seconds) {
-        if (seconds < 60) return seconds + "s";
-        long minutes = seconds / 60;
-        long remSeconds = seconds % 60;
-        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
-        long hours = minutes / 60;
-        long remMinutes = minutes % 60;
-        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
     }
 
     private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
@@ -3436,16 +3427,6 @@ public class XtremeTaskerOverlay extends Overlay {
         );
     }
 
-    private static String formatShortDuration(long seconds) {
-        if (seconds < 60) return seconds + "s";
-        long minutes = seconds / 60;
-        long remSeconds = seconds % 60;
-        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
-        long hours = minutes / 60;
-        long remMinutes = minutes % 60;
-        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
-    }
-
     /** Height in px available for the scrollable body on the Current tab. */
     private int computeCurrentViewportH(Graphics2D g, FontMetrics fm, Rectangle pb, int cursorYBaseline) {
         // Only reserve hint line at the bottom; button lives inside scroll body
@@ -4150,12 +4131,6 @@ public class XtremeTaskerOverlay extends Overlay {
         return visibleSyncMismatchTasks().size();
     }
 
-    public boolean isSyncMismatchTaskSelected(XtremeTask task) {
-        return task != null
-                && task.getId() != null
-                && selectedSyncMismatchTaskIds.contains(task.getId());
-    }
-
     public void toggleSyncMismatchTaskSelected(XtremeTask task) {
         if (task == null || task.getId() == null) return;
         if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
@@ -4406,14 +4381,6 @@ public class XtremeTaskerOverlay extends Overlay {
             top += fm.getHeight();
         }
         return top;
-    }
-
-    private static void clearBounds(Rectangle... bounds)
-    {
-        for (Rectangle bound : bounds)
-        {
-            bound.setBounds(0, 0, 0, 0);
-        }
     }
 
     private void layoutButtonPair(Rectangle left, Rectangle right, int x, int w, int y, int buttonW, int buttonH, int gap)

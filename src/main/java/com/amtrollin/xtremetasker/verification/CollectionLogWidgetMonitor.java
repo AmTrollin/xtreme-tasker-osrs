@@ -99,11 +99,6 @@ public class CollectionLogWidgetMonitor
             return;
         }
 
-        if (event.getScriptId() != CLOG_SETUP_SCRIPT)
-        {
-            return;
-        }
-
         log.debug("XtremeTasker CLOG sync debug: setup script {} post-fired; open batches before end={}",
                 CLOG_SETUP_SCRIPT, openSetupCacheBatches);
         endSetupCacheBatch();

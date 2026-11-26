@@ -667,7 +667,7 @@ public final class CurrentTabRenderer
             y += Math.max(8, card.height / 36);
             String timerText = completedBeforeRolled
                     ? "Completed before rolled"
-                    : formatTicks(Math.round(taskTimeTicks * 0.6));
+                    : formatDuration(Math.round(taskTimeTicks * 0.6));
             int timerX = x + Math.max(0, (innerW - timerFm.stringWidth(timerText)) / 2);
             g.setFont(timerFont);
             g.setColor(uiTextDim);
@@ -928,7 +928,7 @@ public final class CurrentTabRenderer
         }
         else if (ticks != null && ticks > 0)
         {
-            String time = "Time spent: " + formatTicks(Math.round(ticks * 0.6));
+            String time = "Time spent: " + formatDuration(Math.round(ticks * 0.6));
             time = truncateToWidth(time, fm, innerW);
             g.drawString(time, x, y);
             y += lineH;
@@ -964,17 +964,6 @@ public final class CurrentTabRenderer
         }
 
         return "";
-    }
-
-    private static String formatTicks(long seconds)
-    {
-        if (seconds < 60) return seconds + "s";
-        long minutes = seconds / 60;
-        long remSeconds = seconds % 60;
-        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
-        long hours = minutes / 60;
-        long remMinutes = minutes % 60;
-        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
     }
 
     private void drawBevelBox(Graphics2D g, Rectangle r, Color fill)

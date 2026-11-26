@@ -91,11 +91,6 @@ public final class TaskRowsRenderer {
         return rowHeight + listRowSpacing + 1;
     }
 
-    private static String prettyTier(TaskTier t)
-    {
-        return TaskLabelFormatter.tierLabel(t);
-    }
-
     /**
      * Renders the task list and returns layout containing viewport + per-row bounds.
      *
@@ -517,8 +512,7 @@ public final class TaskRowsRenderer {
     {
         if (seconds < 60) return seconds + "s";
         long minutes = seconds / 60;
-        long remSeconds = seconds % 60;
-        if (minutes < 60) return remSeconds > 0 ? minutes + "m" : minutes + "m";
+        if (minutes < 60) return minutes + "m";
         long hours = minutes / 60;
         long remMinutes = minutes % 60;
         return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";

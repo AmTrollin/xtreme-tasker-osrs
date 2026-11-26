@@ -14,6 +14,13 @@ import static org.junit.Assert.assertTrue;
 public class TextUtilsTest
 {
     @Test
+    public void taskDescriptionTimeNeverConvertsHoursToDays()
+    {
+        assertEquals("24h", TextUtils.formatDuration(24L * 60L * 60L));
+        assertEquals("54h 23m", TextUtils.formatDuration((54L * 60L + 23L) * 60L));
+    }
+
+    @Test
     public void wrapTextKeepsParentheticalPhraseTogether()
     {
         FontMetrics fm = fontMetrics();

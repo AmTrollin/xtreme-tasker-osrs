@@ -495,9 +495,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
             {
                 if (!affected.contains(id)) completionCandidateTaskIds.add(id);
             }
-        }
-        if (affected != null)
-        {
             completionCandidateTaskIds = orderCollectionLogSyncResults(new HashSet<>(completionCandidateTaskIds), false)
                     .stream().map(XtremeTask::getId).collect(Collectors.toList());
         }
@@ -1130,17 +1127,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private String readStateFileForAccount(String accountKey) {
-        Path path = stateFileForAccount(accountKey);
-        if (!Files.isRegularFile(path)) {
-            return null;
-        }
-
-        try {
-            return Files.readString(path, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.warn("Failed to read XtremeTasker state file {}", path, e);
-            return null;
-        }
+        return readStateFile(stateFileForAccount(accountKey), "Failed to read XtremeTasker state file {}");
     }
 
     private void writeStateFileForAccount(String accountKey, String json) {
@@ -1158,15 +1145,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private String readStateBackupFileForAccount(String accountKey, int index) {
-        Path path = stateBackupFileForAccount(accountKey, index);
+        return readStateFile(stateBackupFileForAccount(accountKey, index), "Failed to read XtremeTasker state backup file {}");
+    }
+
+    private String readStateFile(Path path, String failureMessage) {
         if (!Files.isRegularFile(path)) {
             return null;
         }
-
         try {
             return Files.readString(path, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            log.warn("Failed to read XtremeTasker state backup file {}", path, e);
+            log.warn(failureMessage, path, e);
             return null;
         }
     }
@@ -1252,11 +1241,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public void savePanelPosition(int x, int y) {
         configManager.setConfiguration(CONFIG_GROUP, PANEL_X_KEY, String.valueOf(x));
         configManager.setConfiguration(CONFIG_GROUP, PANEL_Y_KEY, String.valueOf(y));
-    }
-
-    public void clearPanelPosition() {
-        configManager.unsetConfiguration(CONFIG_GROUP, PANEL_X_KEY);
-        configManager.unsetConfiguration(CONFIG_GROUP, PANEL_Y_KEY);
     }
 
     /** Returns {x, y} if a saved panel position exists, otherwise null. */
@@ -1549,17 +1533,17 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     }
 
     private boolean isValidPersistedState(PersistedState state) {
-        return isValidIdSet(state.getManualCompletedTaskIds())
-                && isValidIdSet(state.getSyncedCompletedTaskIds())
-                && isValidIdSet(state.getRetiredTaskIds())
-                && isValidIdSet(state.getKnownTaskIds())
+        return isValidIdCollection(state.getManualCompletedTaskIds())
+                && isValidIdCollection(state.getSyncedCompletedTaskIds())
+                && isValidIdCollection(state.getRetiredTaskIds())
+                && isValidIdCollection(state.getKnownTaskIds())
                 && isValidIdCollection(state.getSyncCompletionCandidateTaskIds())
                 && isValidIdCollection(state.getSyncMismatchTaskIds())
                 && isValidLongMap(state.getManualCompletionTimestamps())
                 && isValidLongMap(state.getSyncedCompletionTimestamps())
                 && isValidLongMap(state.getTaskTimeTicksById())
                 && isValidLongMap(state.getCompletedTaskTimeTicksById())
-                && isValidIdSet(state.getCompletedBeforeRolledTaskIds())
+                && isValidIdCollection(state.getCompletedBeforeRolledTaskIds())
                 && isValidPositiveIntegerSet(state.getCollectionLogItemIds())
                 && state.getCombatAchievementLastSyncSeenAtMillis() >= 0L
                 && state.getCollectionLogLastSyncSeenAtMillis() >= 0L
@@ -1567,10 +1551,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 || state.getCurrentTaskCollectionLogBaselineCount() >= 0)
                 && state.getLastSeenPackVersion() >= 0
                 && state.getLastKnownTaskCount() >= 0;
-    }
-
-    private boolean isValidIdSet(Set<String> ids) {
-        return isValidIdCollection(ids);
     }
 
     private boolean isValidPositiveIntegerSet(Set<Integer> ids)
@@ -2437,11 +2417,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
 
     public long getCollectionLogItemObtainedOrder(int itemId) {
         return collectionLogService == null ? Long.MAX_VALUE : collectionLogService.getObtainedItemOrder(itemId);
-    }
-
-    public int countSyncedCollectionLogItems(int[] itemIds)
-    {
-        return collectionLogService == null ? 0 : Math.toIntExact(collectionLogService.countObtained(itemIds));
     }
 
     private int canonicalCollectionLogItemId(int itemId)
@@ -5517,14 +5492,6 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
                 .value(msg)
                 .runeLiteFormattedMessage(new ChatMessageBuilder().append(msg).build())
                 .build());
-    }
-
-    private void setSyncResultAndChat(TaskSource source, String msg)
-    {
-        long now = System.currentTimeMillis();
-        String localTime = formatSaveTime(now);
-        setSyncResult(source, msg, now, localTime);
-        chat(msg);
     }
 
     private void setCombinedSyncResultAndChat(String msg)

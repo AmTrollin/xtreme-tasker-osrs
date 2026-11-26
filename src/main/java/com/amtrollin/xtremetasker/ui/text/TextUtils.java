@@ -28,6 +28,17 @@ public final class TextUtils
 
     private TextUtils() {}
 
+    public static String formatDuration(long seconds)
+    {
+        if (seconds < 60) return seconds + "s";
+        long minutes = seconds / 60;
+        long remSeconds = seconds % 60;
+        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
+        long hours = minutes / 60;
+        long remMinutes = minutes % 60;
+        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
+    }
+
     public static String safe(String text)
     {
         return text == null ? "" : text;

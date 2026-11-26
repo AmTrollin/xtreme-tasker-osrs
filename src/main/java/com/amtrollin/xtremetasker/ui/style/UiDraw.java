@@ -12,6 +12,14 @@ public final class UiDraw
     {
     }
 
+    public static void clearBounds(Rectangle... bounds)
+    {
+        for (Rectangle bound : bounds)
+        {
+            bound.setBounds(0, 0, 0, 0);
+        }
+    }
+
     public static int centeredTextBaseline(Rectangle bounds, FontMetrics fm)
     {
         return bounds.y + ((bounds.height - fm.getHeight()) / 2) + fm.getAscent();
