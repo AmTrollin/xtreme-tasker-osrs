@@ -4,6 +4,7 @@ import com.amtrollin.xtremetasker.enums.TaskSource;
 import com.amtrollin.xtremetasker.enums.TaskTier;
 import com.amtrollin.xtremetasker.models.XtremeTask;
 import com.amtrollin.xtremetasker.models.persistence.PersistedState;
+import com.amtrollin.xtremetasker.persistence.PersistedStateStore;
 import com.amtrollin.xtremetasker.verification.CollectionLogService;
 import org.junit.Test;
 
@@ -19,16 +20,16 @@ public class PersistenceRegressionTest
     @Test
     public void accountNameKeySeparatesCharactersSharingLegacyHash()
     {
-        String xtremeTaskrKey = accountNameKey("XtremeTaskr");
-        String xtremeTaskrDifferentCaseKey = accountNameKey("xtremetaskr");
-        String amTrollinKey = accountNameKey("AmTrollin");
+        String xtremeTaskrKey = PersistedStateStore.accountNameKey("XtremeTaskr");
+        String xtremeTaskrDifferentCaseKey = PersistedStateStore.accountNameKey("xtremetaskr");
+        String amTrollinKey = PersistedStateStore.accountNameKey("AmTrollin");
 
         assertEquals("Character key should be stable across display-name case changes",
                 xtremeTaskrKey, xtremeTaskrDifferentCaseKey);
         assertFalse("Different characters must not share the same scoped save key",
                 xtremeTaskrKey.equals(amTrollinKey));
         assertEquals("17438951129000919538",
-                legacyAccountKeyFromScopedKey("17438951129000919538_" + xtremeTaskrKey));
+                PersistedStateStore.legacyAccountKeyFromScopedKey("17438951129000919538_" + xtremeTaskrKey));
     }
 
     @Test
@@ -88,18 +89,6 @@ public class PersistenceRegressionTest
         assertNotNull("Legacy generated id should resolve to the explicit-id task", current);
         assertEquals(task.getId(), current.getId());
         assertEquals(Long.valueOf(42L), plugin.getTaskTimeTicks(task));
-    }
-
-    private static String accountNameKey(String characterName)
-    {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        return plugin.accountNameKey(characterName);
-    }
-
-    private static String legacyAccountKeyFromScopedKey(String accountKey)
-    {
-        XtremeTaskerPlugin plugin = new XtremeTaskerPlugin();
-        return plugin.legacyAccountKeyFromScopedKey(accountKey);
     }
 
     private static String legacyGeneratedId(XtremeTask task) throws Exception
