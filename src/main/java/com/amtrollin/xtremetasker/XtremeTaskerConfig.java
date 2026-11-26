@@ -2,8 +2,9 @@ package com.amtrollin.xtremetasker;
 
 import net.runelite.client.config.*;
 
-@ConfigGroup("xtremetasker")
+@ConfigGroup(XtremeTaskerConfig.GROUP)
 public interface XtremeTaskerConfig extends Config {
+    String GROUP = "xtremetasker";
 
     enum RollSourceFilter {
         ALL("All tasks"),
