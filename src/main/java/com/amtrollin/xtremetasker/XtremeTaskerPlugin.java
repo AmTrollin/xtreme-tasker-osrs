@@ -1210,12 +1210,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public int[] loadIconPosition() {
         String sx = configManager.getConfiguration(CONFIG_GROUP, ICON_X_KEY);
         String sy = configManager.getConfiguration(CONFIG_GROUP, ICON_Y_KEY);
-        if (sx == null || sy == null) return null;
-        try {
-            return new int[]{Integer.parseInt(sx.trim()), Integer.parseInt(sy.trim())};
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return parsePosition(sx, sy);
     }
 
     /** Returns {x, y} if a saved position exists for the current viewport mode, otherwise null. */
@@ -1227,11 +1222,7 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
         if (sx == null || sy == null) {
             return resized ? loadIconPosition() : null;
         }
-        try {
-            return new int[]{Integer.parseInt(sx.trim()), Integer.parseInt(sy.trim())};
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        return parsePosition(sx, sy);
     }
 
     // ---- Panel position persistence (global, not per-account) ----
@@ -1247,6 +1238,10 @@ public class XtremeTaskerPlugin extends Plugin implements TaskerService {
     public int[] loadPanelPosition() {
         String sx = configManager.getConfiguration(CONFIG_GROUP, PANEL_X_KEY);
         String sy = configManager.getConfiguration(CONFIG_GROUP, PANEL_Y_KEY);
+        return parsePosition(sx, sy);
+    }
+
+    private static int[] parsePosition(String sx, String sy) {
         if (sx == null || sy == null) return null;
         try {
             return new int[]{Integer.parseInt(sx.trim()), Integer.parseInt(sy.trim())};

@@ -24,13 +24,11 @@ import java.awt.*;
 import java.awt.Point;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import lombok.Getter;
 import net.runelite.api.*;
@@ -49,8 +47,8 @@ import static com.amtrollin.xtremetasker.ui.text.TextUtils.formatDuration;
 
 public class XtremeTaskerOverlay extends Overlay {
     private static final Logger log = LoggerFactory.getLogger(XtremeTaskerOverlay.class);
-    private static final BufferedImage PLUGIN_ICON = loadPluginIconSafe();
-    private static final BufferedImage HEADER_ICON = loadHeaderIconSafe();
+    private static final BufferedImage PLUGIN_ICON = UiDraw.loadImage("/icons/xtreme_tasker_icon.png");
+    private static final BufferedImage HEADER_ICON = UiDraw.loadImage("/icons/xtreme_tasker_header.png");
     private static final UiPalette P = UiPalette.DEFAULT;
     private static final Color POPUP_BG = new Color(45, 36, 24, 252);
     private static final Color POPUP_BG_SOFT = new Color(45, 36, 24, 248);
@@ -95,14 +93,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final DateTimeFormatter SYNC_REVIEW_COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yy").withZone(ZoneId.systemDefault());
 
-    private static BufferedImage loadPluginIconSafe() {
-        try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_icon.png")) {
-            return in == null ? null : ImageIO.read(in);
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
     private static Map<String, List<WikiLink>> createTaskDetailsWikiLinksByName()
     {
         Map<String, List<WikiLink>> links = new HashMap<>();
@@ -131,14 +121,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private static String normalizeWikiTaskName(String value)
     {
         return value == null ? "" : value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
-    }
-
-    private static BufferedImage loadHeaderIconSafe() {
-        try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_header.png")) {
-            return in == null ? null : ImageIO.read(in);
-        } catch (Exception ignored) {
-            return null;
-        }
     }
 
     private static <K, V> Map<K, V> lruCache(int maxEntries)
