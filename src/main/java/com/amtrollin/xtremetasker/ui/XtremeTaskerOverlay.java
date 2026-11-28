@@ -24,13 +24,11 @@ import java.awt.*;
 import java.awt.Point;
 import java.awt.geom.*;
 import java.awt.image.BufferedImage;
-import java.io.InputStream;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import lombok.Getter;
 import net.runelite.api.*;
@@ -39,17 +37,18 @@ import net.runelite.client.game.*;
 import net.runelite.client.input.*;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.*;
-import net.runelite.client.util.LinkBrowser;
 import org.slf4j.*;
 import static com.amtrollin.xtremetasker.ui.style.UiConstants.*;
 import static com.amtrollin.xtremetasker.ui.style.UiDraw.centeredTextBaseline;
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.clearBounds;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static com.amtrollin.xtremetasker.ui.text.TaskLabelFormatter.*;
+import static com.amtrollin.xtremetasker.ui.text.TextUtils.formatDuration;
 
 public class XtremeTaskerOverlay extends Overlay {
     private static final Logger log = LoggerFactory.getLogger(XtremeTaskerOverlay.class);
-    private static final BufferedImage PLUGIN_ICON = loadPluginIconSafe();
-    private static final BufferedImage HEADER_ICON = loadHeaderIconSafe();
+    private static final BufferedImage PLUGIN_ICON = UiDraw.loadImage("/icons/xtreme_tasker_icon.png");
+    private static final BufferedImage HEADER_ICON = UiDraw.loadImage("/icons/xtreme_tasker_header.png");
     private static final UiPalette P = UiPalette.DEFAULT;
     private static final Color POPUP_BG = new Color(45, 36, 24, 252);
     private static final Color POPUP_BG_SOFT = new Color(45, 36, 24, 248);
@@ -94,14 +93,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private static final DateTimeFormatter SYNC_REVIEW_COMPLETION_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yy").withZone(ZoneId.systemDefault());
 
-    private static BufferedImage loadPluginIconSafe() {
-        try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_icon.png")) {
-            return in == null ? null : ImageIO.read(in);
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
     private static Map<String, List<WikiLink>> createTaskDetailsWikiLinksByName()
     {
         Map<String, List<WikiLink>> links = new HashMap<>();
@@ -130,14 +121,6 @@ public class XtremeTaskerOverlay extends Overlay {
     private static String normalizeWikiTaskName(String value)
     {
         return value == null ? "" : value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
-    }
-
-    private static BufferedImage loadHeaderIconSafe() {
-        try (InputStream in = XtremeTaskerOverlay.class.getResourceAsStream("/icons/xtreme_tasker_header.png")) {
-            return in == null ? null : ImageIO.read(in);
-        } catch (Exception ignored) {
-            return null;
-        }
     }
 
     private static <K, V> Map<K, V> lruCache(int maxEntries)
@@ -1875,7 +1858,7 @@ public class XtremeTaskerOverlay extends Overlay {
         }
 
         rollExecutionPending = false;
-        plugin.rollRandomTaskAndPersist();
+        plugin.queueRollRandomTaskAndPersist();
     }
 
     private void cancelPendingRollExecution()
@@ -2461,7 +2444,7 @@ public class XtremeTaskerOverlay extends Overlay {
         Long ticks = plugin.getTaskTimeTicks(current);
         String time = ticks != null && ticks < 0
                 ? "Completed before rolled"
-                : compactFormatTicks(Math.round((ticks == null ? 0L : ticks) * 0.6));
+                : formatDuration(Math.round((ticks == null ? 0L : ticks) * 0.6));
         time = TextUtils.truncateToWidth(time, fm, textW);
         int timeX = card.x + (card.width - fm.stringWidth(time)) / 2;
         g.setColor(P.UI_TEXT_DIM);
@@ -2610,16 +2593,6 @@ public class XtremeTaskerOverlay extends Overlay {
                 taskScrollbarRailBounds, taskScrollbarThumbBounds);
     }
 
-    private static String compactFormatTicks(long seconds) {
-        if (seconds < 60) return seconds + "s";
-        long minutes = seconds / 60;
-        long remSeconds = seconds % 60;
-        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
-        long hours = minutes / 60;
-        long remMinutes = minutes % 60;
-        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
-    }
-
     private void renderTaskDetailsIncompleteConfirm(Graphics2D g, FontMetrics fm)
     {
         int count = Math.max(1, selectedIncompleteTasksForDetails().size());
@@ -2647,18 +2620,8 @@ public class XtremeTaskerOverlay extends Overlay {
 
     public void handleTaskDetailsMarkIncompleteButton(XtremeTask task)
     {
-        if (task == null || !isTaskCompletedForIncompleteAction(task))
-        {
-            return;
-        }
-
-        selectedTaskDetailsIncompleteTaskIds.clear();
-        if (task.getId() != null)
-        {
-            selectedTaskDetailsIncompleteTaskIds.add(task.getId());
-        }
-        taskDetailsIncompleteConfirmCloseAfter = false;
-        taskDetailsIncompleteConfirmOpen = true;
+        // The expanded popup represents one instance, even for repeated tasks.
+        handleTaskDetailsInstanceMarkIncompleteButton(task);
     }
 
     public void handleTaskDetailsInstanceMarkIncompleteButton(XtremeTask task)
@@ -2672,14 +2635,6 @@ public class XtremeTaskerOverlay extends Overlay {
         selectedTaskDetailsIncompleteTaskIds.add(task.getId());
         taskDetailsIncompleteConfirmCloseAfter = false;
         taskDetailsIncompleteConfirmOpen = true;
-    }
-
-    private boolean isTaskCompletedForIncompleteAction(XtremeTask task)
-    {
-        TaskGroupProgress progress = plugin.getTaskGroupProgress(task);
-        return progress != null && progress.isGrouped()
-                ? progress.isComplete()
-                : plugin.isTaskCompleted(task);
     }
 
     private void closeTaskDetailsWithPendingIncompleteCheck()
@@ -3454,16 +3409,6 @@ public class XtremeTaskerOverlay extends Overlay {
         );
     }
 
-    private static String formatShortDuration(long seconds) {
-        if (seconds < 60) return seconds + "s";
-        long minutes = seconds / 60;
-        long remSeconds = seconds % 60;
-        if (minutes < 60) return remSeconds > 0 ? minutes + "m " + remSeconds + "s" : minutes + "m";
-        long hours = minutes / 60;
-        long remMinutes = minutes % 60;
-        return remMinutes > 0 ? hours + "h " + remMinutes + "m" : hours + "h";
-    }
-
     /** Height in px available for the scrollable body on the Current tab. */
     private int computeCurrentViewportH(Graphics2D g, FontMetrics fm, Rectangle pb, int cursorYBaseline) {
         // Only reserve hint line at the bottom; button lives inside scroll body
@@ -4168,12 +4113,6 @@ public class XtremeTaskerOverlay extends Overlay {
         return visibleSyncMismatchTasks().size();
     }
 
-    public boolean isSyncMismatchTaskSelected(XtremeTask task) {
-        return task != null
-                && task.getId() != null
-                && selectedSyncMismatchTaskIds.contains(task.getId());
-    }
-
     public void toggleSyncMismatchTaskSelected(XtremeTask task) {
         if (task == null || task.getId() == null) return;
         if (!selectedSyncMismatchTaskIds.remove(task.getId())) {
@@ -4424,14 +4363,6 @@ public class XtremeTaskerOverlay extends Overlay {
             top += fm.getHeight();
         }
         return top;
-    }
-
-    private static void clearBounds(Rectangle... bounds)
-    {
-        for (Rectangle bound : bounds)
-        {
-            bound.setBounds(0, 0, 0, 0);
-        }
     }
 
     private void layoutButtonPair(Rectangle left, Rectangle right, int x, int w, int y, int buttonW, int buttonH, int gap)

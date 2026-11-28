@@ -17,6 +17,20 @@ import static org.junit.Assert.assertTrue;
 public class PrerequisiteTrackerServiceTest
 {
     @Test
+    public void cachedPrerequisiteMetadataStillReadsLiveSkillProgress()
+    {
+        java.util.concurrent.atomic.AtomicInteger level = new java.util.concurrent.atomic.AtomicInteger(59);
+        PrerequisiteTrackerService service = new PrerequisiteTrackerService(null, skill -> level.get());
+        PrerequisiteStatus before = service.evaluate("60 Mining").get(0);
+        assertFalse(before.isCompleted());
+        level.set(60);
+        PrerequisiteStatus after = service.evaluate("60 Mining").get(0);
+        assertTrue(after.isCompleted());
+        org.junit.Assert.assertEquals(before.getSkillIcons(), after.getSkillIcons());
+        org.junit.Assert.assertEquals(before.getMarkerIcons(), after.getMarkerIcons());
+    }
+
+    @Test
     public void startedQuestAndSubquestPrerequisitesAcceptProgressOrCompletion() throws Exception
     {
         String[] prerequisites = {
@@ -104,10 +118,12 @@ public class PrerequisiteTrackerServiceTest
     public void diaryChangeMatchesItsVarbitOrContainingVarp() throws Exception
     {
         PrerequisiteTrackerService service = new PrerequisiteTrackerService();
+        java.util.concurrent.atomic.AtomicInteger definitionReads = new java.util.concurrent.atomic.AtomicInteger();
         Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(),
                 new Class<?>[] {Client.class}, (proxy, method, args) -> {
                     if (method.getName().equals("getVarbit"))
                     {
+                        definitionReads.incrementAndGet();
                         org.junit.Assert.assertEquals(Varbits.DIARY_ARDOUGNE_EASY, args[0]);
                         return Proxy.newProxyInstance(net.runelite.api.VarbitComposition.class.getClassLoader(),
                                 new Class<?>[] {net.runelite.api.VarbitComposition.class},
@@ -125,6 +141,7 @@ public class PrerequisiteTrackerServiceTest
         assertTrue(service.isDiaryCompletionVariable("ardougne", "easy", 1234, -1));
         assertFalse(service.isDiaryCompletionVariable("ardougne", "easy", 4321, -1));
         assertFalse(service.isDiaryCompletionVariable("unknown", "easy", 1234, -1));
+        org.junit.Assert.assertEquals("Diary metadata should be resolved once", 1, definitionReads.get());
     }
 
     @Test

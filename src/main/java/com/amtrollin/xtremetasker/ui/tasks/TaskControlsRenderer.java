@@ -584,12 +584,4 @@ public class TaskControlsRenderer
         g.drawString(mark, tx, ty);
     }
 
-    private static void clearBounds(Rectangle... bounds)
-    {
-        for (Rectangle bound : bounds)
-        {
-            bound.setBounds(0, 0, 0, 0);
-        }
-    }
-
 }

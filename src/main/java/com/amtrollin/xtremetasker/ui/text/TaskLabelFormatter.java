@@ -32,32 +32,6 @@ public final class TaskLabelFormatter
         }
     }
 
-    public static String shortTier(TaskTier tier)
-    {
-        if (tier == null)
-        {
-            return "?";
-        }
-
-        switch (tier)
-        {
-            case EASY:
-                return "E";
-            case MEDIUM:
-                return "M";
-            case HARD:
-                return "H";
-            case ELITE:
-                return "EL";
-            case MASTER:
-                return "MA";
-            case GRANDMASTER:
-                return "GM";
-            default:
-                return tier.name();
-        }
-    }
-
     public static String shortSource(TaskSource source)
     {
         if (source == null)
@@ -99,29 +73,4 @@ public final class TaskLabelFormatter
         }
     }
 
-    public static String fullTierLabel(TaskTier tier)
-    {
-        if (tier == null)
-        {
-            return "Unknown tier";
-        }
-
-        switch (tier)
-        {
-            case EASY:
-                return "Easy";
-            case MEDIUM:
-                return "Medium";
-            case HARD:
-                return "Hard";
-            case ELITE:
-                return "Elite";
-            case MASTER:
-                return "Master";
-            case GRANDMASTER:
-                return "Grandmaster";
-            default:
-                return tier.name();
-        }
-    }
 }

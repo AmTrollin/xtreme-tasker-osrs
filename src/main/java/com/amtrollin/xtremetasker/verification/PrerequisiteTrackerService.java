@@ -43,6 +43,31 @@ public class PrerequisiteTrackerService
         Pattern.CASE_INSENSITIVE
     );
 
+    private final Map<String, List<ParsedPrerequisite>> parsedPrerequisites = new LinkedHashMap<String, List<ParsedPrerequisite>>(256, 0.75f, true)
+    {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, List<ParsedPrerequisite>> entry)
+        {
+            return size() > 1024;
+        }
+    };
+    private final Map<String, Integer> diaryVariableIds = new HashMap<>();
+    private final Map<Integer, Integer> diaryParentVarps = new HashMap<>();
+
+    private static final class ParsedPrerequisite
+    {
+        private final String text;
+        private final List<Skill> skills;
+        private final List<MarkerIcon> markers;
+
+        private ParsedPrerequisite(String text, List<Skill> skills, List<MarkerIcon> markers)
+        {
+            this.text = text;
+            this.skills = List.copyOf(skills);
+            this.markers = List.copyOf(markers);
+        }
+    }
+
     private final Map<String, Skill> skillsByName = new HashMap<>();
     private final Map<String, Quest> questsByName = new HashMap<>();
     private final Map<String, Integer> varbitsByName = new HashMap<>();
@@ -75,15 +100,19 @@ public class PrerequisiteTrackerService
     public List<PrerequisiteStatus> evaluate(@NonNull String prereqs)
     {
         List<PrerequisiteStatus> out = new ArrayList<>();
-        for (String token : splitPrereqs(prereqs))
+        List<ParsedPrerequisite> parsed = parsedPrerequisites.computeIfAbsent(prereqs, value ->
         {
-            String text = token.trim();
-            if (text.isEmpty())
+            List<ParsedPrerequisite> tokens = new ArrayList<>();
+            for (String token : splitPrereqs(value))
             {
-                continue;
+                String text = token.trim();
+                if (!text.isEmpty()) tokens.add(new ParsedPrerequisite(text, skillIcons(text), markerIcons(text)));
             }
-
-            out.add(new PrerequisiteStatus(text, isSatisfied(text), checkSpans(text), skillIcons(text), markerIcons(text)));
+            return List.copyOf(tokens);
+        });
+        for (ParsedPrerequisite token : parsed)
+        {
+            out.add(new PrerequisiteStatus(token.text, isSatisfied(token.text), checkSpans(token.text), token.skills, token.markers));
         }
         return out;
     }
@@ -122,9 +151,10 @@ public class PrerequisiteTrackerService
         {
             return false;
         }
-        String regionKey = toDiaryRegionKey(region);
-        Integer varbitId = varbitsByName.get("DIARY_" + regionKey + "_" + difficulty.toUpperCase(Locale.ROOT));
-        if (varbitId == null)
+        String key = region + "|" + difficulty;
+        int varbitId = diaryVariableIds.computeIfAbsent(key, ignored ->
+                varbitsByName.getOrDefault("DIARY_" + toDiaryRegionKey(region) + "_" + difficulty.toUpperCase(Locale.ROOT), -1));
+        if (varbitId < 0)
         {
             return false;
         }
@@ -133,8 +163,16 @@ public class PrerequisiteTrackerService
             return true;
         }
         // Server updates usually identify the containing varp rather than the varbit.
-        VarbitComposition definition = client == null || varpId < 0 ? null : client.getVarbit(varbitId);
-        return definition != null && definition.getIndex() == varpId;
+        if (client == null || varpId < 0) return false;
+        Integer parent = diaryParentVarps.get(varbitId);
+        if (parent == null)
+        {
+            VarbitComposition definition = client.getVarbit(varbitId);
+            if (definition == null) return false;
+            parent = definition.getIndex();
+            diaryParentVarps.put(varbitId, parent);
+        }
+        return parent == varpId;
     }
 
     private Integer diaryCompletionThreshold(String regionKey, String difficultyKey)

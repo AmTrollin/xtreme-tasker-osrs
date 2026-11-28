@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.runelite.client.ui.FontManager;
+import static com.amtrollin.xtremetasker.ui.style.UiDraw.clearBounds;
 import static com.amtrollin.xtremetasker.ui.style.UiPalette.withAlpha;
 import static java.awt.Color.white;
 
@@ -572,14 +573,6 @@ public final class RulesTabRenderer {
 
     public static String githubReadmeUrl() {
         return GITHUB_README_URL;
-    }
-
-    private static void clearBounds(Rectangle... bounds)
-    {
-        for (Rectangle bound : bounds)
-        {
-            bound.setBounds(0, 0, 0, 0);
-        }
     }
 
     private static void drawCenteredText(Graphics2D g, FontMetrics fm, String text, int x, int baseline, int width, int pad)

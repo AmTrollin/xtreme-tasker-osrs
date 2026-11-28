@@ -3,6 +3,19 @@ $$\Huge\color{#B8860B}\textsf{RELEASE NOTES}$$
 <br>
 
 
+## <span style="color:#DEB887">v2.4.1 — 11.27.2026</span>
+
+#### <span style="color:#DCDCDC">Performance</span>
+* $\color{#778899}\textsf{Reduced repeated task completion, prerequisite, and Collection Log calculations while drawing the overlay to improve responsiveness and roll animation smoothness}$
+* $\color{#778899}\textsf{Moved progress saving to a background queue and reduced repeated Collection Log refresh work}$
+
+#### <span style="color:#DCDCDC">Bug Fixes & Reliability</span>
+* $\color{#778899}\textsf{Fixed repeated Collection Log tasks not being markable incomplete from task details when Condense repeated tasks is disabled}$
+* $\color{#778899}\textsf{Added an ownership check to ignore items displayed in another player's POH Collection Log}$
+* $\color{#778899}\textsf{Improved save reliability with atomic file replacement and handling when closing RuneLite or disabling the plugin}$
+
+<br>
+
 ## <span style="color:#DEB887">v2.4.0 — 11.15.2026</span>
 
 #### <span style="color:#DCDCDC">Bug Fixes</span>

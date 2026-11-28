@@ -40,6 +40,15 @@ processResources {
     exclude 'utils/**'
 }
 
+tasks.register('runClient', JavaExec) {
+    group = 'application'
+    description = 'Launch RuneLite with the local plugin and its resources.'
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.amtrollin.xtremetasker.XtremeTaskerPluginTest'
+    enableAssertions = true
+}
+
 tasks.register('shadowJar', Jar) {
     dependsOn classes
 

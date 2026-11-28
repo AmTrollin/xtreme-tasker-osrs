@@ -9,7 +9,6 @@ import com.amtrollin.xtremetasker.ui.style.*;
 import com.amtrollin.xtremetasker.ui.tasklist.*;
 import com.amtrollin.xtremetasker.ui.tasks.models.*;
 import com.amtrollin.xtremetasker.ui.text.*;
-import com.amtrollin.xtremetasker.ui.widgets.ButtonRenderer;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.time.*;
@@ -1201,24 +1200,4 @@ public final class TaskDetailsPopup
         return "unknown";
     }
 
-    private static String formatDuration(long seconds)
-    {
-        if (seconds < 60)
-        {
-            return seconds + "s";
-        }
-        long minutes = seconds / 60;
-        long remSeconds = seconds % 60;
-        if (minutes < 60)
-        {
-            return remSeconds > 0
-                    ? minutes + "m " + remSeconds + "s"
-                    : minutes + "m";
-        }
-        long hours = minutes / 60;
-        long remMinutes = minutes % 60;
-        return remMinutes > 0
-                ? hours + "h " + remMinutes + "m"
-                : hours + "h";
-    }
 }

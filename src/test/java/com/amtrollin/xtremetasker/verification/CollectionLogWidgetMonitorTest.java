@@ -42,6 +42,50 @@ public class CollectionLogWidgetMonitorTest
         assertEquals("Full CLOG scan must run while setup/render context is active", 2240, scannedScript.get());
     }
 
+    @Test
+    public void hostCollectionLogCannotCaptureItemsOrMarkFullSync() throws Exception
+    {
+        AtomicInteger hostBook = new AtomicInteger(1);
+        AtomicInteger scripts = new AtomicInteger();
+        Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(), new Class<?>[]{Client.class},
+                (proxy, method, args) -> {
+                    if ("getVarbitValue".equals(method.getName()))
+                    {
+                        assertEquals(net.runelite.api.gameval.VarbitID.COLLECTION_POH_HOST_BOOK_OPEN, args[0]);
+                        return hostBook.get();
+                    }
+                    if ("getTickCount".equals(method.getName())) return 100;
+                    if ("runScript".equals(method.getName())) scripts.incrementAndGet();
+                    return primitiveDefault(method.getReturnType());
+                });
+        CollectionLogService service = new CollectionLogService();
+        CollectionLogWidgetMonitor monitor = new CollectionLogWidgetMonitor();
+        setField(monitor, "client", client);
+        setField(monitor, "collectionLogService", service);
+        net.runelite.api.ScriptEvent script = (net.runelite.api.ScriptEvent) Proxy.newProxyInstance(
+                net.runelite.api.ScriptEvent.class.getClassLoader(), new Class<?>[]{net.runelite.api.ScriptEvent.class},
+                (proxy, method, args) -> "getArguments".equals(method.getName())
+                        ? new Object[]{4100, 10878, 1} : primitiveDefault(method.getReturnType()));
+        net.runelite.api.events.ScriptPreFired item = new net.runelite.api.events.ScriptPreFired(4100);
+        item.setScriptEvent(script);
+        monitor.onScriptPreFired(new net.runelite.api.events.ScriptPreFired(7797));
+        monitor.onScriptPreFired(item);
+        monitor.onScriptPostFired(new ScriptPostFired(net.runelite.api.ScriptID.COLLECTION_DRAW_LIST));
+        monitor.onScriptPostFired(new ScriptPostFired(7797));
+        assertEquals(0, service.getCapturedItemCount());
+        assertEquals(0, service.getSeenItemCount());
+        assertEquals(false, service.hasFullSyncSeen());
+        assertEquals(0, scripts.get());
+
+        hostBook.set(0);
+        monitor.onScriptPreFired(item);
+        monitor.onScriptPreFired(new net.runelite.api.events.ScriptPreFired(7797));
+        monitor.onScriptPostFired(new ScriptPostFired(7797));
+        assertEquals(true, service.isItemObtained(10878));
+        assertEquals(true, service.hasFullSyncSeen());
+        assertEquals(1, scripts.get());
+    }
+
     private static void setField(Object target, String name, Object value) throws Exception
     {
         Field field = target.getClass().getDeclaredField(name);
